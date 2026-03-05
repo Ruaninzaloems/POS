@@ -220,7 +220,7 @@ export function DropBoxModal({ isOpen, onClose, triggerReason }: DropBoxModalPro
                                 ) : (
                                     <Table>
                                         <TableHeader>
-                                            <TableRow className="bg-slate-50">
+                                            <TableRow className="bg-[#F7F7F7]">
                                                 <TableHead className="text-xs py-1.5">Description</TableHead>
                                                 <TableHead className="text-xs py-1.5">Reference</TableHead>
                                                 <TableHead className="text-xs py-1.5 text-right">Amount</TableHead>

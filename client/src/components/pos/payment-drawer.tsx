@@ -178,7 +178,7 @@ export function PaymentDrawer() {
 
     {/* Main Drawer */}
     <aside className={`
-        fixed inset-x-0 bottom-0 z-50 bg-white border-l border-slate-200/80 shadow-2xl transition-all duration-300 ease-out flex flex-col
+        fixed inset-x-0 bottom-0 z-50 bg-white border-l border-[#D6D6D6]/80 shadow-2xl transition-all duration-300 ease-out flex flex-col
         ${viewMode === 'desktop' ? 'lg:static lg:w-[420px] xl:w-[450px] lg:h-full lg:border-l lg:border-t-0 lg:shadow-none' : ''}
         ${isMobileExpanded ? 'h-[92vh] rounded-t-2xl' : `h-0 ${viewMode === 'desktop' ? 'lg:h-full' : ''} overflow-hidden`}
     `}>
@@ -189,7 +189,7 @@ export function PaymentDrawer() {
         </div>
         <div className="px-3 pb-2 flex justify-between items-center">
           <div className="flex items-center gap-1.5">
-            <div className="flex bg-slate-100 rounded-lg p-0.5">
+            <div className="flex bg-[#F2F4F7] rounded-lg p-0.5">
               <button
                 onClick={() => setMobileView('payment')}
                 className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${mobileView === 'payment' ? 'bg-white shadow-sm text-[var(--pos-accent)]' : 'text-slate-500'}`}
@@ -320,7 +320,7 @@ export function PaymentDrawer() {
       </div>
 
       {/* Footer - Always visible complete button */}
-      <div className="px-3 py-2.5 lg:p-5 bg-white border-t border-slate-200/80 space-y-1.5 lg:space-y-3 shadow-[0_-4px_10px_rgba(0,0,0,0.03)] z-30 relative shrink-0">
+      <div className="px-3 py-2.5 lg:p-5 bg-white border-t border-[#D6D6D6]/80 space-y-1.5 lg:space-y-3 shadow-[0_-4px_10px_rgba(0,0,0,0.03)] z-30 relative shrink-0">
         {/* Change + Tender summary */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -449,7 +449,7 @@ function getTypeBadge(type: string, originalData?: any) {
     case 'ACCOUNT_GROUP':
       return { label: 'Group', color: 'bg-purple-50 text-purple-700 border-purple-200', icon: Building2 };
     default:
-      return { label: type, color: 'bg-slate-50 text-slate-700 border-slate-200', icon: Package };
+      return { label: type, color: 'bg-[#F7F7F7] text-slate-700 border-[#D6D6D6]', icon: Package };
   }
 }
 
@@ -478,7 +478,7 @@ function MobileItemCard({ item, removeItem, updateItemAmount, updateItemDetails 
   const summaryLine = getItemSummaryLine(item, od);
 
   return (
-    <div className={`bg-white rounded-xl border shadow-sm overflow-hidden transition-all ${missingRequired ? 'border-amber-300 ring-1 ring-amber-200' : 'border-slate-200'}`} data-testid={`item-${item.id}`}>
+    <div className={`bg-white rounded-xl border shadow-sm overflow-hidden transition-all ${missingRequired ? 'border-amber-300 ring-1 ring-amber-200' : 'border-[#D6D6D6]'}`} data-testid={`item-${item.id}`}>
       <div className="p-3">
         <div className="flex items-start gap-2.5">
           <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${badge.color}`}>
@@ -518,7 +518,7 @@ function MobileItemCard({ item, removeItem, updateItemAmount, updateItemDetails 
           </div>
         )}
 
-        <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
+        <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#E5E5E5]">
           <div className="flex items-center gap-3">
             {item.amountDue > 0 && item.type !== 'DIRECT_INCOME' && (
               <div>
@@ -542,7 +542,7 @@ function MobileItemCard({ item, removeItem, updateItemAmount, updateItemDetails 
       </div>
 
       {expanded && (
-        <div className="border-t border-slate-100 bg-slate-50/50 p-3 space-y-3">
+        <div className="border-t border-[#E5E5E5] bg-[#F7F7F7]/50 p-3 space-y-3">
           {item.type === 'CONSUMER_SERVICES' || item.type === 'ACCOUNT_GROUP' ? (
             <ConsumerDetailsSection item={item} od={od} updateItemAmount={updateItemAmount} />
           ) : item.type === 'PREPAID' ? (
@@ -858,7 +858,7 @@ function MobileItemsList({ items, removeItem, updateItemAmount, updateItemDetail
           updateItemDetails={updateItemDetails}
         />
       ))}
-      <div className="flex justify-between items-center pt-2 px-1 border-t border-dashed border-slate-200 mt-2">
+      <div className="flex justify-between items-center pt-2 px-1 border-t border-dashed border-[#D6D6D6] mt-2">
         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{items.length} item{items.length !== 1 ? 's' : ''}</span>
         <span className="font-mono font-bold text-base text-slate-800">R {totalDue.toFixed(2)}</span>
       </div>
@@ -906,11 +906,11 @@ function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, a
             className={`flex items-center gap-2 p-2.5 rounded-xl border-2 transition-all active:scale-[0.97] touch-manipulation ${
               activeInput === 'cash'
                 ? 'border-emerald-500 bg-emerald-50 shadow-sm'
-                : 'border-slate-200 bg-white'
+                : 'border-[#D6D6D6] bg-white'
             }`}
             data-testid="toggle-cash"
           >
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${activeInput === 'cash' ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${activeInput === 'cash' ? 'bg-emerald-500 text-white' : 'bg-[#F2F4F7] text-slate-400'}`}>
               <Banknote className="w-4 h-4" />
             </div>
             <div className="text-left">
@@ -927,11 +927,11 @@ function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, a
                 ? 'border-red-500 bg-red-50 shadow-sm'
                 : activeInput === 'card'
                   ? 'border-[var(--pos-accent)] bg-[var(--pos-accent-tint)] shadow-sm'
-                  : 'border-slate-200 bg-white'
+                  : 'border-[#D6D6D6] bg-white'
             }`}
             data-testid="toggle-card"
           >
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${cardOverAmount ? 'bg-red-500 text-white' : activeInput === 'card' ? 'bg-[var(--pos-accent)] text-white' : 'bg-slate-100 text-slate-400'}`}>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${cardOverAmount ? 'bg-red-500 text-white' : activeInput === 'card' ? 'bg-[var(--pos-accent)] text-white' : 'bg-[#F2F4F7] text-slate-400'}`}>
               <CreditCard className="w-4 h-4" />
             </div>
             <div className="text-left">
@@ -1007,7 +1007,7 @@ function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, a
         {currentValue > 0 && (
           <button
             onClick={handleClearAmount}
-            className="h-11 w-11 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center active:scale-95 transition-all touch-manipulation shrink-0"
+            className="h-11 w-11 rounded-xl bg-[#F2F4F7] text-slate-500 flex items-center justify-center active:scale-95 transition-all touch-manipulation shrink-0"
             data-testid="button-clear"
           >
             <X className="w-4 h-4" />
@@ -1082,7 +1082,7 @@ function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, a
             className={`h-11 rounded-lg text-lg font-mono font-semibold active:scale-95 transition-all touch-manipulation ${
               key === 'DEL'
                 ? 'bg-red-50 text-red-500 border border-red-200 hover:bg-red-100'
-                : 'bg-white text-slate-800 border border-slate-200 hover:bg-slate-50 shadow-sm'
+                : 'bg-white text-slate-800 border border-[#D6D6D6] hover:bg-[#F7F7F7] shadow-sm'
             }`}
             data-testid={`numpad-${key}`}
           >
@@ -1116,7 +1116,7 @@ function DesktopItemCard({ item, removeItem, updateItemAmount, updateItemDetails
   const summaryLine = getItemSummaryLine(item, od);
 
   return (
-    <div className={`bg-white rounded-xl border shadow-sm overflow-hidden transition-all group ${hasRequiredFieldsMissing ? 'border-amber-300 ring-1 ring-amber-200' : 'border-slate-200/80 hover:border-[#D6D6D6]/50 hover:shadow-md'}`}>
+    <div className={`bg-white rounded-xl border shadow-sm overflow-hidden transition-all group ${hasRequiredFieldsMissing ? 'border-amber-300 ring-1 ring-amber-200' : 'border-[#D6D6D6]/80 hover:border-[#D6D6D6]/50 hover:shadow-md'}`}>
       <div className="p-3.5 flex items-start gap-3">
         <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${badge.color}`}>
           {categoryIcon || <BadgeIcon className="w-5 h-5" />}
@@ -1163,7 +1163,7 @@ function DesktopItemCard({ item, removeItem, updateItemAmount, updateItemDetails
         </div>
       </div>
       {expanded && (
-        <div className="border-t border-slate-100 bg-slate-50/50 p-3.5 space-y-3">
+        <div className="border-t border-[#E5E5E5] bg-[#F7F7F7]/50 p-3.5 space-y-3">
           {item.type === 'CONSUMER_SERVICES' || item.type === 'ACCOUNT_GROUP' ? (
             <ConsumerDetailsSection item={item} od={od} updateItemAmount={updateItemAmount} />
           ) : item.type === 'PREPAID' ? (
@@ -1187,7 +1187,7 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
   return (
     <div className="h-full flex flex-col">
       <div className="px-5 pt-4 shrink-0">
-        <div className="flex bg-slate-100/80 rounded-xl p-1 h-11">
+        <div className="flex bg-[#F2F4F7]/80 rounded-xl p-1 h-11">
           <button
             onClick={() => setDesktopTab('items')}
             className={`flex-1 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5 relative ${desktopTab === 'items' ? 'bg-white shadow-sm text-[var(--pos-accent)]' : 'text-slate-500 hover:text-slate-700'}`}
@@ -1225,7 +1225,7 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
                 {transactionItems.map((item: TransactionItem) => (
                   <DesktopItemCard key={item.id} item={item} removeItem={removeItem} updateItemAmount={updateItemAmount} updateItemDetails={updateItemDetails} />
                 ))}
-                <div className="flex justify-between items-center pt-3 px-1 border-t border-dashed border-slate-200">
+                <div className="flex justify-between items-center pt-3 px-1 border-t border-dashed border-[#D6D6D6]">
                   <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{transactionItems.length} item{transactionItems.length !== 1 ? 's' : ''}</span>
                   <span className="font-mono font-bold text-lg text-slate-800">R {totalDue.toFixed(2)}</span>
                 </div>
@@ -1260,7 +1260,7 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
                   {cashAllowed && (
                     <div 
                       onClick={() => !perItemSplitMode && setActiveInput('cash')}
-                      className={`p-4 rounded-xl border-2 text-left transition-all ${perItemSplitMode ? 'border-slate-200 bg-slate-50 opacity-70' : 'cursor-pointer'} ${!perItemSplitMode && activeInput === 'cash' ? 'border-green-500 bg-green-50/40 ring-2 ring-green-200/50 shadow-sm' : !perItemSplitMode ? 'border-slate-200 bg-slate-50 hover:bg-slate-100/80' : ''}`}
+                      className={`p-4 rounded-xl border-2 text-left transition-all ${perItemSplitMode ? 'border-[#D6D6D6] bg-[#F7F7F7] opacity-70' : 'cursor-pointer'} ${!perItemSplitMode && activeInput === 'cash' ? 'border-green-500 bg-green-50/40 ring-2 ring-green-200/50 shadow-sm' : !perItemSplitMode ? 'border-[#D6D6D6] bg-[#F7F7F7] hover:bg-[#F2F4F7]/80' : ''}`}
                     >
                       <div className={`flex items-center gap-1.5 mb-1 ${!perItemSplitMode && activeInput === 'cash' ? 'text-green-600' : 'text-muted-foreground'}`}>
                         <Banknote className="w-4 h-4" />
@@ -1292,7 +1292,7 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
                   {cardAllowed && (
                     <div 
                       onClick={() => !perItemSplitMode && setActiveInput('card')}
-                      className={`p-4 rounded-xl border-2 text-left transition-all ${perItemSplitMode ? 'border-slate-200 bg-slate-50 opacity-70' : 'cursor-pointer'} ${!perItemSplitMode && cardOverAmount ? 'border-red-500 bg-red-50/40 ring-2 ring-red-200/50 shadow-sm' : !perItemSplitMode && activeInput === 'card' ? 'border-[var(--pos-accent)] bg-[var(--pos-accent-tint)] ring-2 ring-[var(--pos-accent-shadow)] shadow-sm' : !perItemSplitMode ? 'border-slate-200 bg-slate-50 hover:bg-slate-100/80' : ''}`}
+                      className={`p-4 rounded-xl border-2 text-left transition-all ${perItemSplitMode ? 'border-[#D6D6D6] bg-[#F7F7F7] opacity-70' : 'cursor-pointer'} ${!perItemSplitMode && cardOverAmount ? 'border-red-500 bg-red-50/40 ring-2 ring-red-200/50 shadow-sm' : !perItemSplitMode && activeInput === 'card' ? 'border-[var(--pos-accent)] bg-[var(--pos-accent-tint)] ring-2 ring-[var(--pos-accent-shadow)] shadow-sm' : !perItemSplitMode ? 'border-[#D6D6D6] bg-[#F7F7F7] hover:bg-[#F2F4F7]/80' : ''}`}
                     >
                       <div className={`flex items-center gap-1.5 mb-1 ${!perItemSplitMode && cardOverAmount ? 'text-red-600' : !perItemSplitMode && activeInput === 'card' ? 'text-[var(--pos-accent)]' : 'text-muted-foreground'}`}>
                         <CreditCard className="w-4 h-4" />
@@ -1326,7 +1326,7 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
                   <div className="space-y-2">
                     <button
                       onClick={() => setPerItemSplitMode(!perItemSplitMode)}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all border ${perItemSplitMode ? 'bg-violet-50 border-violet-300 text-violet-700' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}`}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all border ${perItemSplitMode ? 'bg-violet-50 border-violet-300 text-violet-700' : 'bg-[#F7F7F7] border-[#D6D6D6] text-slate-500 hover:bg-[#F2F4F7]'}`}
                       data-testid="button-toggle-per-item-split"
                     >
                       <span className="flex items-center gap-1.5">
@@ -1348,7 +1348,7 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
                           const itemTotal = Math.round((itemCash + itemCard) * 100) / 100;
                           const mismatch = Math.abs(itemTotal - item.amountToPay) > 0.01 && item.amountToPay > 0;
                           return (
-                            <div key={item.id} className={`bg-white rounded-lg border p-2.5 space-y-1.5 ${mismatch ? 'border-amber-300' : 'border-slate-200'}`} data-testid={`per-item-split-${item.id}`}>
+                            <div key={item.id} className={`bg-white rounded-lg border p-2.5 space-y-1.5 ${mismatch ? 'border-amber-300' : 'border-[#D6D6D6]'}`} data-testid={`per-item-split-${item.id}`}>
                               <div className="flex items-center gap-2">
                                 <Badge variant="outline" className={`text-[8px] px-1 py-0 h-3.5 font-bold uppercase ${badge.color}`}>{badge.label}</Badge>
                                 <span className="text-[11px] font-medium text-slate-700 truncate flex-1">{item.description || item.reference}</span>

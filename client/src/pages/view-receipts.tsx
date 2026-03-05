@@ -810,7 +810,7 @@ export default function ViewReceipts() {
                     <Card className="shadow-sm">
                         <CardContent className="p-0">
                             <Tabs defaultValue="receipt-search" className="w-full">
-                                <TabsList className="w-full justify-start rounded-none border-b bg-slate-50 h-auto p-0 gap-0">
+                                <TabsList className="w-full justify-start rounded-none border-b bg-[#F7F7F7] h-auto p-0 gap-0">
                                     <TabsTrigger value="receipt-search" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[var(--pos-accent)] data-[state=active]:bg-white data-[state=active]:shadow-none data-[state=active]:text-[#2E2E2E] px-4 sm:px-6 py-2.5 text-xs sm:text-sm font-medium gap-1.5" data-testid="tab-receipt-search">
                                         <FileText className="w-3.5 h-3.5" />
                                         Receipt Search
@@ -1347,7 +1347,7 @@ export default function ViewReceipts() {
                                                                         <span className="text-slate-400">Account:</span> {accountNo || '-'}
                                                                     </div>
                                                                     <div>
-                                                                        <span className="text-slate-400">Type:</span> <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700">EFT</span>
+                                                                        <span className="text-slate-400">Type:</span> <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#F2F4F7] text-slate-700">EFT</span>
                                                                     </div>
                                                                     <div>
                                                                         <span className="text-slate-400">Bank Date:</span> {bankDate ? new Date(bankDate).toLocaleDateString('en-ZA') : '-'}
@@ -1411,7 +1411,7 @@ export default function ViewReceipts() {
                                                                             {allocDate ? new Date(allocDate).toLocaleDateString('en-ZA', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) : '-'}
                                                                         </TableCell>
                                                                         <TableCell className="text-[11px]">
-                                                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700">EFT</span>
+                                                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#F2F4F7] text-slate-700">EFT</span>
                                                                         </TableCell>
                                                                         <TableCell className="text-center">
                                                                             <div className="flex gap-1 justify-center">
@@ -1474,7 +1474,7 @@ export default function ViewReceipts() {
 
                         {receipts.length > 0 && (
                             <div className="bg-white border rounded-lg shadow-sm mb-3 overflow-hidden" data-testid="filter-toolbar">
-                                <div className="flex items-center gap-2 p-2 sm:p-3 border-b bg-slate-50/80">
+                                <div className="flex items-center gap-2 p-2 sm:p-3 border-b bg-[#F7F7F7]">
                                     <div className="relative flex-1 max-w-xs">
                                         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                                         <Input className="h-10 sm:h-8 pl-8 text-sm bg-white" placeholder="Quick search in results..." value={quickSearch} onChange={e => setQuickSearch(e.target.value)} data-testid="input-quick-search" />
@@ -1560,7 +1560,7 @@ export default function ViewReceipts() {
                                 )}
 
                                 {activeFilterCount > 0 && (
-                                    <div className="flex flex-wrap items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-slate-50/50 border-b">
+                                    <div className="flex flex-wrap items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-[#F7F7F7]/50 border-b">
                                         <span className="text-[10px] text-slate-400 uppercase font-medium mr-1">Active:</span>
                                         {quickSearch.trim() && (
                                             <Badge variant="secondary" className="text-[10px] px-1.5 py-0 gap-1 bg-[var(--pos-accent-tint)] text-[#2E2E2E] border-[var(--pos-accent-shadow)] hover:bg-[var(--pos-accent-tint-strong)] cursor-pointer" onClick={() => setQuickSearch('')}>
@@ -1590,7 +1590,7 @@ export default function ViewReceipts() {
                                     </div>
                                 )}
 
-                                <div className="flex sm:hidden items-center justify-between px-2 py-1.5 bg-slate-50/50 border-b text-xs text-slate-500">
+                                <div className="flex sm:hidden items-center justify-between px-2 py-1.5 bg-[#F7F7F7]/50 border-b text-xs text-slate-500">
                                     {activeFilterCount > 0 && filteredReceipts.length !== receipts.length && (
                                         <span className="font-medium text-[var(--pos-accent)]">{filteredReceipts.length} of {receipts.length} shown</span>
                                     )}
@@ -1643,7 +1643,7 @@ export default function ViewReceipts() {
                                         </div>
                                         <div className="flex flex-wrap gap-1 mb-1.5">
                                             {payMethod && <Badge variant="outline" className="text-[9px] px-1 py-0 text-sky-700 border-sky-200 bg-sky-50">{payMethod}</Badge>}
-                                            {payType && <Badge variant="outline" className="text-[9px] px-1 py-0 text-slate-600 border-slate-200 bg-slate-50">{payType}</Badge>}
+                                            {payType && <Badge variant="outline" className="text-[9px] px-1 py-0 text-slate-600 border-[#D6D6D6] bg-[#F7F7F7]">{payType}</Badge>}
                                             {payOption && <Badge variant="outline" className="text-[9px] px-1 py-0 text-violet-600 border-violet-200 bg-violet-50">{payOption}</Badge>}
                                         </div>
                                         <div className="flex justify-between items-center text-xs text-muted-foreground">
@@ -1660,7 +1660,7 @@ export default function ViewReceipts() {
 
                         <div className="hidden sm:block flex-1 border rounded-md bg-white shadow-sm overflow-auto">
                             <Table>
-                                <TableHeader className="bg-slate-100 sticky top-0 z-10">
+                                <TableHeader className="bg-[#F2F4F7] sticky top-0 z-10">
                                     <TableRow>
                                         <TableHead className="w-[50px] font-bold text-slate-700">No</TableHead>
                                         <TableHead className="min-w-[120px] font-bold text-slate-700 cursor-pointer select-none hover:text-[var(--pos-accent)]" onClick={() => handleSort('accountNumber')}>
@@ -1692,8 +1692,8 @@ export default function ViewReceipts() {
                                         </TableHead>
                                         <TableHead className="min-w-[200px] font-bold text-slate-700">Cash Book</TableHead>
                                         <TableHead className="min-w-[150px] font-bold text-slate-700">Cashier Office</TableHead>
-                                        <TableHead className="min-w-[100px] font-bold text-slate-700 sticky right-[120px] bg-slate-100"><span className="inline-flex items-center">Action <HelpTip text="Generate a new copy of this receipt for the customer." size="sm" /></span></TableHead>
-                                        <TableHead className="min-w-[120px] font-bold text-slate-700 sticky right-0 bg-slate-100">Status</TableHead>
+                                        <TableHead className="min-w-[100px] font-bold text-slate-700 sticky right-[120px] bg-[#F2F4F7]"><span className="inline-flex items-center">Action <HelpTip text="Generate a new copy of this receipt for the customer." size="sm" /></span></TableHead>
+                                        <TableHead className="min-w-[120px] font-bold text-slate-700 sticky right-0 bg-[#F2F4F7]">Status</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -1743,7 +1743,7 @@ export default function ViewReceipts() {
                                                     key={serialNo || idx}
                                                     className={cn(
                                                         isCancelled && 'bg-red-50/50',
-                                                        'hover:bg-slate-50 cursor-pointer'
+                                                        'hover:bg-[#F7F7F7] cursor-pointer'
                                                     )}
                                                     data-testid={`row-receipt-${idx}`}
                                                 >
@@ -1798,7 +1798,7 @@ export default function ViewReceipts() {
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
-                                                            className="h-7 text-xs bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700 font-medium px-3 shadow-sm"
+                                                            className="h-7 text-xs bg-[#F7F7F7] hover:bg-[#F2F4F7] border-[#D6D6D6] text-slate-700 font-medium px-3 shadow-sm"
                                                             onClick={(e) => { e.stopPropagation(); handlePrintReceipt(receipt); }}
                                                             disabled={printingReceiptId !== null}
                                                             data-testid={`button-print-${idx}`}

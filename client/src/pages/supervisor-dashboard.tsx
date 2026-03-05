@@ -947,7 +947,7 @@ export default function SupervisorDashboard() {
     return (
       <div className="border rounded-md overflow-auto max-h-[300px]">
         <Table>
-          <TableHeader className="bg-slate-50 sticky top-0">
+          <TableHeader className="bg-[#F7F7F7] sticky top-0">
             <TableRow>
               <TableHead className="text-xs py-2">#</TableHead>
               <TableHead className="text-xs py-2">Account/Ref</TableHead>
@@ -963,7 +963,7 @@ export default function SupervisorDashboard() {
               const receiptId = item.id || item.receiptId || item.receipt_id;
               const isCancelled = item.isCancelled === 1 || item.isCancelled === true;
               return (
-                <TableRow key={idx} className="hover:bg-slate-50">
+                <TableRow key={idx} className="hover:bg-[#F7F7F7]">
                   <TableCell className="text-xs py-1.5">{idx + 1}</TableCell>
                   <TableCell className="text-xs font-mono py-1.5">{item.accountNumber || item.accountId || item.invoiceNumber || item.account || '-'}</TableCell>
                   <TableCell className="text-xs font-mono py-1.5">{item.receiptNo || item.receipt_no || item.receiptNumber || '-'}</TableCell>
@@ -1213,7 +1213,7 @@ export default function SupervisorDashboard() {
                                         <span className="font-mono font-bold text-slate-900">{req.receiptNo || `#${req.receiptId}`}</span>
                                         <div className="flex items-center gap-1.5 mt-0.5">
                                             {req.paymentType && (
-                                                <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 uppercase text-[10px] tracking-wider font-semibold">{req.paymentType}</span>
+                                                <span className="bg-[#F2F4F7] px-1.5 py-0.5 rounded border border-[#D6D6D6] uppercase text-[10px] tracking-wider font-semibold">{req.paymentType}</span>
                                             )}
                                             <Badge variant="outline" className="text-[10px] px-1 py-0 text-[#6B6B6B] border-[#D6D6D6] bg-[#F7F7F7]">API</Badge>
                                         </div>
@@ -1259,7 +1259,7 @@ export default function SupervisorDashboard() {
                                     <div>
                                         <span className="font-mono font-bold text-slate-900">{tx.receiptNumber}</span>
                                         <div className="flex items-center gap-1.5 mt-0.5">
-                                            <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 uppercase text-[10px] tracking-wider font-semibold">{mainType}</span>
+                                            <span className="bg-[#F2F4F7] px-1.5 py-0.5 rounded border border-[#D6D6D6] uppercase text-[10px] tracking-wider font-semibold">{mainType}</span>
                                             <Badge variant="outline" className="text-[10px] px-1 py-0 text-amber-700 border-amber-300 bg-amber-50">Local</Badge>
                                         </div>
                                     </div>
@@ -1312,7 +1312,7 @@ export default function SupervisorDashboard() {
                                                 <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
                                                     {req.accountNumber && <span className="font-mono">{req.accountNumber}</span>}
                                                     {req.paymentType && (
-                                                        <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 uppercase text-[10px] tracking-wider font-semibold">
+                                                        <span className="bg-[#F2F4F7] px-1.5 py-0.5 rounded border border-[#D6D6D6] uppercase text-[10px] tracking-wider font-semibold">
                                                             {req.paymentType}
                                                         </span>
                                                     )}
@@ -1377,7 +1377,7 @@ export default function SupervisorDashboard() {
                                             <div className="flex flex-col">
                                                 <span className="font-mono font-bold text-slate-900">{tx.receiptNumber}</span>
                                                 <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                                                    <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 uppercase text-[10px] tracking-wider font-semibold">
+                                                    <span className="bg-[#F2F4F7] px-1.5 py-0.5 rounded border border-[#D6D6D6] uppercase text-[10px] tracking-wider font-semibold">
                                                         {mainType}
                                                     </span>
                                                     <Badge variant="outline" className="text-[10px] px-1 py-0 text-amber-700 border-amber-300 bg-amber-50">Local</Badge>
@@ -1520,7 +1520,7 @@ export default function SupervisorDashboard() {
                                             <div className="flex flex-col">
                                                 <span className="font-mono font-bold text-slate-900">{tx.receiptNumber}</span>
                                                 <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                                                    <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 uppercase text-[10px] tracking-wider font-semibold">
+                                                    <span className="bg-[#F2F4F7] px-1.5 py-0.5 rounded border border-[#D6D6D6] uppercase text-[10px] tracking-wider font-semibold">
                                                         {mainType}
                                                     </span>
                                                 </div>
@@ -1584,7 +1584,7 @@ export default function SupervisorDashboard() {
           <Button variant="outline" className="gap-2 w-full md:w-auto" asChild>
               <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className={`gap-2 w-full md:w-auto ${filterVariance || filterStatus !== 'All' || filterDate !== 'All' ? 'bg-slate-100 border-slate-300' : ''}`}>
+                    <Button variant="outline" className={`gap-2 w-full md:w-auto ${filterVariance || filterStatus !== 'All' || filterDate !== 'All' ? 'bg-[#F2F4F7] border-slate-300' : ''}`}>
                         <Filter className="w-4 h-4" />
                         More Filters
                         {(filterVariance || filterStatus !== 'All' || filterDate !== 'All') && (
@@ -1657,7 +1657,7 @@ export default function SupervisorDashboard() {
         </div>
       ) : reconMode === 'PER_CASHIER' ? (
           <div className="bg-white rounded-lg shadow-sm border overflow-x-auto">
-              <div className="p-3 sm:p-4 border-b bg-slate-50 flex items-center justify-between">
+              <div className="p-3 sm:p-4 border-b bg-[#F7F7F7] flex items-center justify-between">
                   <h3 className="font-semibold text-sm sm:text-base">Cashier Shifts</h3>
                   <span className="text-xs text-muted-foreground">{filteredShifts.length} cashier(s)</span>
               </div>
@@ -1785,7 +1785,7 @@ export default function SupervisorDashboard() {
                       </Select>
                       {perOfficeData && (
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <Badge variant="outline" className="bg-slate-50">{perOfficeData.cashBookName || `Cashbook ${perOfficeData.cashBookId}`}</Badge>
+                              <Badge variant="outline" className="bg-[#F7F7F7]">{perOfficeData.cashBookName || `Cashbook ${perOfficeData.cashBookId}`}</Badge>
                               <span>{perOfficeData.completionStatus}</span>
                           </div>
                       )}
@@ -1993,7 +1993,7 @@ export default function SupervisorDashboard() {
             </DialogHeader>
 
             <div className="flex flex-col gap-6 py-4 flex-1 overflow-hidden">
-                <div className="flex flex-wrap items-end gap-4 bg-slate-50 p-4 rounded-lg border">
+                <div className="flex flex-wrap items-end gap-4 bg-[#F7F7F7] p-4 rounded-lg border">
                     <div className="flex flex-col gap-1.5">
                         <Label>Financial Year</Label>
                         <Select value={statsFinancialYear} onValueChange={(val) => updateStatsPeriod(val, statsMonth)}>
@@ -2089,7 +2089,7 @@ export default function SupervisorDashboard() {
                         </CardContent>
                     </Card>
                     
-                    <Card className="bg-slate-50 border-slate-200 shadow-sm">
+                    <Card className="bg-[#F7F7F7] border-[#D6D6D6] shadow-sm">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-slate-800">Performance Rating</CardTitle>
                         </CardHeader>
@@ -2109,7 +2109,7 @@ export default function SupervisorDashboard() {
 
                 <div className="border rounded-md flex-1 overflow-auto">
                     <Table>
-                        <TableHeader className="bg-slate-50 sticky top-0">
+                        <TableHeader className="bg-[#F7F7F7] sticky top-0">
                             <TableRow>
                                 <TableHead className="whitespace-nowrap">Date</TableHead>
                                 <TableHead className="whitespace-nowrap">Cashier</TableHead>
@@ -2243,7 +2243,7 @@ export default function SupervisorDashboard() {
                                       <span className="font-mono font-bold text-lg">{formatCurrency(Number(reviewData.reconcile.totalAmt || reviewData.reconcile.totalDeclared || 0))}</span>
                                   </div>
                                   {Number(reviewData.reconcile.cashFloat || reviewData.reconcile.float || 0) > 0 && (
-                                    <div className="flex justify-between items-center p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-sm">
+                                    <div className="flex justify-between items-center p-2.5 bg-[#F7F7F7] rounded-lg border border-[#D6D6D6] text-sm">
                                         <span className="text-slate-600">Float</span>
                                         <span className="font-mono font-medium text-slate-700">{formatCurrency(Number(reviewData.reconcile.cashFloat || reviewData.reconcile.float || 0))}</span>
                                     </div>
@@ -2270,7 +2270,7 @@ export default function SupervisorDashboard() {
                           </div>
                           <div className="max-h-[200px] overflow-y-auto">
                             <Table>
-                              <TableHeader className="bg-slate-50 sticky top-0">
+                              <TableHeader className="bg-[#F7F7F7] sticky top-0">
                                 <TableRow>
                                   <TableHead className="text-xs">Description</TableHead>
                                   <TableHead className="text-xs text-right">System</TableHead>

@@ -343,7 +343,7 @@ export default function CashierSetup() {
 
     const StepIndicator = ({ step, label, status }: { step: number; label: string; status: StepStatus }) => (
         <div className="flex items-center gap-3 text-sm" data-testid={`step-${step}-indicator`}>
-            <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${status === 'loading' ? 'bg-[var(--pos-accent-tint)] border-[var(--pos-accent)]' : status === 'success' ? 'bg-emerald-100 border-emerald-300' : status === 'error' ? 'bg-red-100 border-red-300' : 'bg-slate-100 border-slate-200'}`}>
+            <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${status === 'loading' ? 'bg-[var(--pos-accent-tint)] border-[var(--pos-accent)]' : status === 'success' ? 'bg-emerald-100 border-emerald-300' : status === 'error' ? 'bg-red-100 border-red-300' : 'bg-[#F2F4F7] border-[#D6D6D6]'}`}>
                 {status === 'loading' && <Loader2 className="h-4 w-4 animate-spin text-[var(--pos-accent)]" />}
                 {status === 'success' && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
                 {status === 'error' && <AlertTriangle className="h-4 w-4 text-red-500" />}
@@ -374,7 +374,7 @@ export default function CashierSetup() {
     if (sessionLoading || (step1Status === 'loading' && step2Status === 'pending')) {
         return (
             <div className="min-h-screen bg-[#F2F4F7] flex items-center justify-center p-4" data-testid="cashier-setup-loading">
-                <Card className="w-full max-w-4xl rounded-2xl shadow-xl shadow-black/5 border-slate-200/80 bg-white overflow-hidden">
+                <Card className="w-full max-w-4xl rounded-2xl shadow-xl shadow-black/5 border-[#D6D6D6]/80 bg-white overflow-hidden">
                     <CardContent className="p-12 flex flex-col items-center gap-4">
                         <Loader2 className="h-8 w-8 animate-spin text-[var(--pos-accent)]" />
                         <p className="text-slate-600">
@@ -393,7 +393,7 @@ export default function CashierSetup() {
     if (dayEndPending) {
         return (
             <div className="min-h-screen bg-[#F2F4F7] flex items-center justify-center p-4" data-testid="cashier-setup-pending">
-                <Card className="w-full max-w-lg rounded-2xl shadow-xl shadow-black/5 border-slate-200/80 bg-white overflow-hidden">
+                <Card className="w-full max-w-lg rounded-2xl shadow-xl shadow-black/5 border-[#D6D6D6]/80 bg-white overflow-hidden">
                     <CardContent className="p-8 sm:p-10 text-center space-y-5">
                         <div className="mx-auto w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center">
                             <AlertTriangle className="h-8 w-8 text-amber-600" />
@@ -405,7 +405,7 @@ export default function CashierSetup() {
                                 You cannot start or resume a session until the supervisor approves or returns your submission.
                             </p>
                         </div>
-                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-left space-y-2">
+                        <div className="bg-[#F7F7F7] border border-[#D6D6D6] rounded-xl p-4 text-left space-y-2">
                             <div className="flex items-center gap-2 text-sm">
                                 <User className="h-4 w-4 text-[#6B6B6B] shrink-0" />
                                 <span className="text-[#6B6B6B]">Cashier:</span>
@@ -440,12 +440,12 @@ export default function CashierSetup() {
 
     return (
         <div className="min-h-screen bg-[#F2F4F7] flex items-start sm:items-center justify-center p-4 py-6 overflow-y-auto" data-testid="cashier-setup-page">
-            <Card className="w-full max-w-4xl rounded-2xl shadow-xl shadow-black/5 border-slate-200/80 bg-white overflow-hidden my-auto sm:my-0">
+            <Card className="w-full max-w-4xl rounded-2xl shadow-xl shadow-black/5 border-[#D6D6D6]/80 bg-white overflow-hidden my-auto sm:my-0">
                 <CardHeader className="bg-[linear-gradient(180deg,#8C8C8C_0%,#6F6F6F_100%)] text-white px-6 py-4">
                     <CardTitle className="text-white text-lg">Cashier Setup</CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 sm:p-8 bg-white">
-                    <div className="mb-6 p-4 bg-slate-50/80 border border-slate-200 rounded-xl space-y-3" data-testid="step-indicators">
+                    <div className="mb-6 p-4 bg-[#F7F7F7] border border-[#D6D6D6] rounded-xl space-y-3" data-testid="step-indicators">
                         <StepIndicator step={1} label="Validate Cashier" status={step1Status} />
                         <StepIndicator step={2} label="Load Cash Offices" status={step2Status} />
                         <StepIndicator step={3} label="Start Session" status={step3Status} />
@@ -548,7 +548,7 @@ export default function CashierSetup() {
                             <Input
                                 value={firstName}
                                 disabled
-                                className="bg-slate-100 border-slate-300 text-slate-800 font-medium"
+                                className="bg-[#F2F4F7] border-slate-300 text-slate-800 font-medium"
                                 data-testid="input-cashier-name"
                             />
                         </div>
@@ -558,7 +558,7 @@ export default function CashierSetup() {
                             <Input
                                 value={lastName}
                                 disabled
-                                className="bg-slate-100 border-slate-300 text-slate-800 font-medium"
+                                className="bg-[#F2F4F7] border-slate-300 text-slate-800 font-medium"
                                 data-testid="input-cashier-surname"
                             />
                         </div>
@@ -568,7 +568,7 @@ export default function CashierSetup() {
                             <Input
                                 value={String(userId)}
                                 disabled
-                                className="bg-slate-100 border-slate-300 text-slate-800 font-mono"
+                                className="bg-[#F2F4F7] border-slate-300 text-slate-800 font-mono"
                                 data-testid="input-cashier-id"
                             />
                         </div>
@@ -580,7 +580,7 @@ export default function CashierSetup() {
                                 step="0.01"
                                 value={floatInput}
                                 onChange={(e) => setFloatInput(e.target.value)}
-                                className="h-11 rounded-xl border-slate-200 font-mono text-lg text-right text-slate-600"
+                                className="h-11 rounded-xl border-[#D6D6D6] font-mono text-lg text-right text-slate-600"
                                 disabled={isCashierRegistered !== true}
                                 data-testid="input-float"
                             />
@@ -589,7 +589,7 @@ export default function CashierSetup() {
                         <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] items-start sm:items-center gap-1 sm:gap-4">
                             <Label className="text-left sm:text-right text-sm font-semibold text-slate-600">Cashier Office <span className="text-red-500">*</span></Label>
                             <Select value={selectedOfficeId} onValueChange={setSelectedOfficeId} disabled={isCashierRegistered !== true || cashOffices.length === 0} data-testid="select-cash-office">
-                                <SelectTrigger className="h-11 rounded-xl border-slate-200 focus:border-[var(--pos-accent)] focus:ring-2 focus:ring-[var(--pos-accent-tint)] text-slate-600" data-testid="select-cash-office-trigger">
+                                <SelectTrigger className="h-11 rounded-xl border-[#D6D6D6] focus:border-[var(--pos-accent)] focus:ring-2 focus:ring-[var(--pos-accent-tint)] text-slate-600" data-testid="select-cash-office-trigger">
                                     <SelectValue placeholder={step2Status === 'loading' ? 'Loading offices...' : '-- Select Cash Office --'} />
                                 </SelectTrigger>
                                 <SelectContent className="max-h-[300px]">
@@ -614,7 +614,7 @@ export default function CashierSetup() {
                                     value={ledgerVoteDisplay}
                                     disabled
                                     title={ledgerVoteDisplay}
-                                    className={`bg-slate-50 rounded-xl border border-slate-200 font-mono text-[11px] ${hasValidVote ? 'text-slate-800 font-medium' : selectedOffice ? 'text-amber-600 border-amber-300' : 'text-slate-400'}`}
+                                    className={`bg-[#F7F7F7] rounded-xl border border-[#D6D6D6] font-mono text-[11px] ${hasValidVote ? 'text-slate-800 font-medium' : selectedOffice ? 'text-amber-600 border-amber-300' : 'text-slate-400'}`}
                                     placeholder="Select a cash office to view ledger vote"
                                     data-testid="input-ledger-vote"
                                 />
@@ -706,7 +706,7 @@ export default function CashierSetup() {
                                                         {opt.isTicked && opt.enabled ? (
                                                             <Badge className="text-[10px] px-1.5 py-0 bg-[var(--pos-accent-tint)] text-[#2E2E2E] border-[var(--pos-accent-shadow)] hover:bg-[var(--pos-accent-tint)]" data-testid={`option-status-${opt.posPaymentOption_ID}`}>Enabled</Badge>
                                                         ) : (
-                                                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-slate-50 text-slate-400 border-slate-200" data-testid={`option-status-${opt.posPaymentOption_ID}`}>Disabled</Badge>
+                                                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-[#F7F7F7] text-slate-400 border-[#D6D6D6]" data-testid={`option-status-${opt.posPaymentOption_ID}`}>Disabled</Badge>
                                                         )}
                                                     </div>
                                                 ))}
@@ -753,7 +753,7 @@ export default function CashierSetup() {
                                                         {t.isTicked && t.enabled ? (
                                                             <Badge className="text-[10px] px-1.5 py-0 bg-[var(--pos-accent-tint)] text-[#2E2E2E] border-[var(--pos-accent-shadow)] hover:bg-[var(--pos-accent-tint)]" data-testid={`type-status-${t.posPaymentType_ID}`}>Enabled</Badge>
                                                         ) : (
-                                                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-slate-50 text-slate-400 border-slate-200" data-testid={`type-status-${t.posPaymentType_ID}`}>Disabled</Badge>
+                                                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-[#F7F7F7] text-slate-400 border-[#D6D6D6]" data-testid={`type-status-${t.posPaymentType_ID}`}>Disabled</Badge>
                                                         )}
                                                     </div>
                                                 ))}
@@ -761,7 +761,7 @@ export default function CashierSetup() {
                                         )}
                                     </div>
 
-                                    <div className={`bg-gradient-to-br ${receiptRangeStatus?.valid ? 'from-emerald-50 to-emerald-100/50 border-emerald-200' : receiptRangeStatus === null ? 'from-slate-50 to-slate-100/50 border-slate-200' : 'from-red-50 to-red-100/50 border-red-200'} border rounded-xl p-4`} data-testid="card-receipt-range">
+                                    <div className={`bg-gradient-to-br ${receiptRangeStatus?.valid ? 'from-emerald-50 to-emerald-100/50 border-emerald-200' : receiptRangeStatus === null ? 'from-[#F7F7F7] to-[#F2F4F7]/50 border-[#D6D6D6]' : 'from-red-50 to-red-100/50 border-red-200'} border rounded-xl p-4`} data-testid="card-receipt-range">
                                         <div className="flex items-center gap-2 mb-3">
                                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${receiptRangeStatus?.valid ? 'bg-emerald-500/10' : receiptRangeStatus === null ? 'bg-slate-500/10' : 'bg-red-500/10'}`}>
                                                 {receiptRangeStatus?.valid ? (
@@ -826,7 +826,7 @@ export default function CashierSetup() {
                             <Button
                                 type="button"
                                 variant="outline"
-                                className="w-full h-12 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50"
+                                className="w-full h-12 rounded-xl border-[#D6D6D6] text-slate-600 hover:bg-[#F7F7F7]"
                                 onClick={() => setLocation('/')}
                                 data-testid="button-cancel"
                             >

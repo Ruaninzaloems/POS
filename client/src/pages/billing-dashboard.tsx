@@ -306,8 +306,8 @@ function AnimatedCounter({ value }: { value: number }) {
 const SEVERITY_STYLES = {
     critical: { dot: 'bg-red-500', text: 'text-red-700 font-semibold', badge: 'bg-red-100 text-red-700 border-red-200' },
     warning: { dot: 'bg-amber-500', text: 'text-amber-700 font-medium', badge: 'bg-amber-100 text-amber-700 border-amber-200' },
-    info: { dot: 'bg-[var(--pos-accent)]', text: 'text-slate-700', badge: 'bg-slate-100 text-slate-600 border-slate-200' },
-    neutral: { dot: 'bg-slate-300', text: 'text-slate-400', badge: 'bg-slate-50 text-slate-400 border-slate-100' },
+    info: { dot: 'bg-[var(--pos-accent)]', text: 'text-slate-700', badge: 'bg-[#F2F4F7] text-slate-600 border-[#D6D6D6]' },
+    neutral: { dot: 'bg-slate-300', text: 'text-slate-400', badge: 'bg-[#F7F7F7] text-slate-400 border-[#E5E5E5]' },
 };
 
 function exportToExcel(rows: any[], sheetName: string, fileName: string) {
@@ -409,7 +409,7 @@ function DetailTable({ endpoint, label }: { endpoint: string; label?: string }) 
 
     if (error) {
         return (
-            <div className="flex items-center gap-2 py-4 px-3 rounded-lg bg-slate-50 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2 py-4 px-3 rounded-lg bg-[#F7F7F7] text-sm text-muted-foreground">
                 <AlertCircle className="w-4 h-4 text-slate-400 shrink-0" />
                 <span>{error}</span>
             </div>
@@ -457,7 +457,7 @@ function DetailTable({ endpoint, label }: { endpoint: string; label?: string }) 
             <div className="overflow-x-auto overflow-y-auto max-h-[400px]">
                 <Table className="w-full table-auto">
                     <TableHeader className="sticky top-0 z-10 bg-white">
-                        <TableRow className="bg-slate-50">
+                        <TableRow className="bg-[#F7F7F7]">
                             {columns.map(col => (
                                 <TableHead key={col} className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 whitespace-nowrap py-2 px-2.5">
                                     {friendlyLabel(col)}
@@ -486,7 +486,7 @@ function DetailTable({ endpoint, label }: { endpoint: string; label?: string }) 
                     </TableBody>
                 </Table>
             </div>
-            <div className="flex items-center justify-between px-3 py-2 border-t bg-slate-50/50">
+            <div className="flex items-center justify-between px-3 py-2 border-t bg-[#F7F7F7]/50">
                 <span className="text-xs text-muted-foreground" data-testid="text-table-range">
                     {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, totalCount)} of {totalCount.toLocaleString()}
                 </span>
@@ -560,7 +560,7 @@ function GraphsPanel() {
                     <div className="overflow-x-auto overflow-y-auto max-h-[250px]">
                         <Table className="w-full table-auto">
                             <TableHeader className="sticky top-0 z-10 bg-white">
-                                <TableRow className="bg-slate-50">
+                                <TableRow className="bg-[#F7F7F7]">
                                     {cols.map(c => <TableHead key={c} className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 whitespace-nowrap px-2.5">{friendlyLabel(c)}</TableHead>)}
                                 </TableRow>
                             </TableHeader>
@@ -667,7 +667,7 @@ function CategoryPanel({ category, subItems, isLoading }: { category: CategoryCo
                     <div key={item.key}>
                         <button
                             className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group ${
-                                isExpanded ? 'bg-[var(--pos-accent-tint)] ring-1 ring-[var(--pos-accent-shadow)]' : 'hover:bg-slate-50'
+                                isExpanded ? 'bg-[var(--pos-accent-tint)] ring-1 ring-[var(--pos-accent-shadow)]' : 'hover:bg-[#F7F7F7]'
                             }`}
                             onClick={() => setExpandedItem(isExpanded ? null : item.key)}
                             data-testid={`btn-subitem-${item.key}`}
@@ -876,7 +876,7 @@ export default function BillingDashboard() {
                     <div>
                         <div className="flex items-center gap-2 mb-3">
                             <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Categories</h2>
-                            <div className="flex-1 h-px bg-gradient-to-r from-slate-200 to-transparent" />
+                            <div className="flex-1 h-px bg-gradient-to-r from-[#D6D6D6] to-transparent" />
                         </div>
 
                         <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-4" data-testid="category-pills">
@@ -891,7 +891,7 @@ export default function BillingDashboard() {
                                         className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all ${
                                             isActive
                                                 ? `bg-gradient-to-r ${cat.gradient} text-white shadow-lg scale-[1.02]`
-                                                : `bg-white border ${hasData ? 'border-slate-200 text-slate-700' : 'border-slate-100 text-slate-400'} hover:border-slate-300 hover:shadow-sm`
+                                                : `bg-white border ${hasData ? 'border-[#D6D6D6] text-slate-700' : 'border-[#E5E5E5] text-slate-400'} hover:border-slate-300 hover:shadow-sm`
                                         }`}
                                         data-testid={`pill-${cat.key}`}
                                     >
@@ -901,7 +901,7 @@ export default function BillingDashboard() {
                                         {cat.key !== 'graphs' && (
                                             <span className={`inline-flex items-center justify-center min-w-[22px] h-5 px-1.5 rounded-full text-[10px] font-bold ${
                                                 isActive ? 'bg-white/25 text-white'
-                                                    : hasData ? `${cat.badgeColor} text-white` : 'bg-slate-100 text-slate-400'
+                                                    : hasData ? `${cat.badgeColor} text-white` : 'bg-[#F2F4F7] text-slate-400'
                                             }`}>
                                                 {(loading || !platinumUser) ? <Loader2 className="w-3 h-3 animate-spin" /> : <AnimatedCounter value={count} />}
                                             </span>
@@ -914,7 +914,7 @@ export default function BillingDashboard() {
                         <Card className="border-0 shadow-lg bg-white/90 backdrop-blur-sm overflow-hidden">
                             <div className={`h-1 bg-gradient-to-r ${activeCat.gradient}`} />
                             <CardContent className="p-4 sm:p-5">
-                                <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-100">
+                                <div className="flex items-center gap-3 mb-4 pb-3 border-b border-[#E5E5E5]">
                                     <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${activeCat.gradient} text-white flex items-center justify-center shadow-md`}>
                                         {activeCat.icon}
                                     </div>

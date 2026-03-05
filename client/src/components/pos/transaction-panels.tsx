@@ -530,7 +530,7 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
       if (item) {
           // Wrap in a container to maintain layout
           return (
-              <div className="flex-1 p-3 sm:p-6 bg-gradient-to-br from-slate-50 to-[#F7F7F7]">
+              <div className="flex-1 p-3 sm:p-6 bg-gradient-to-br from-[#F7F7F7] to-[#F7F7F7]">
                   <div className="max-w-[1200px] mx-auto space-y-4 sm:space-y-6">
                       <AccountEnquiryView item={item} />
                   </div>
@@ -543,7 +543,7 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
     if (isSearchActive) {
       return (
         <div className="flex-1 flex flex-col items-center justify-start pt-16 sm:pt-24 p-4 sm:p-8 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-[#F7F7F7] to-[#F7F7F7]" />
+          <div className="absolute inset-0 bg-gradient-to-br from-[#F7F7F7] via-[#F7F7F7] to-[#F7F7F7]" />
           <div className="relative z-10 flex flex-col items-center">
             <Loader2 className="w-6 h-6 text-[#6B6B6B] animate-spin mb-3" />
             <p className="text-sm text-slate-400">Searching...</p>
@@ -554,7 +554,7 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
 
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-[#F7F7F7] to-[#F7F7F7]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#F7F7F7] via-[#F7F7F7] to-[#F7F7F7]" />
         <div className="absolute top-1/4 -left-32 w-64 h-64 bg-[var(--pos-accent-tint)] rounded-full blur-3xl" />
         <div className="absolute bottom-1/4 -right-32 w-64 h-64 bg-[var(--pos-accent-tint)] rounded-full blur-3xl" />
         
@@ -572,25 +572,25 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
           <p className="text-sm text-slate-400 text-center mb-6 max-w-sm leading-relaxed">Search for an account, meter, or item above to begin receipting</p>
 
           <div className="grid grid-cols-2 gap-2 w-full max-w-xs mb-6">
-            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white border border-slate-100 shadow-sm" data-testid="hint-accounts">
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white border border-[#E5E5E5] shadow-sm" data-testid="hint-accounts">
               <div className="w-7 h-7 rounded-lg bg-[var(--pos-accent-tint)] flex items-center justify-center shrink-0">
                 <User className="w-3.5 h-3.5 text-[var(--pos-accent)]" />
               </div>
               <span className="text-[11px] font-medium text-slate-600 leading-tight">Consumer Accounts</span>
             </div>
-            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white border border-slate-100 shadow-sm" data-testid="hint-prepaid">
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white border border-[#E5E5E5] shadow-sm" data-testid="hint-prepaid">
               <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
                 <Zap className="w-3.5 h-3.5 text-amber-500" />
               </div>
               <span className="text-[11px] font-medium text-slate-600 leading-tight">Prepaid Meters</span>
             </div>
-            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white border border-slate-100 shadow-sm" data-testid="hint-clearance">
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white border border-[#E5E5E5] shadow-sm" data-testid="hint-clearance">
               <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
                 <FileCheck className="w-3.5 h-3.5 text-emerald-500" />
               </div>
               <span className="text-[11px] font-medium text-slate-600 leading-tight">Clearance Certs</span>
             </div>
-            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white border border-slate-100 shadow-sm" data-testid="hint-direct">
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white border border-[#E5E5E5] shadow-sm" data-testid="hint-direct">
               <div className="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
                 <FileText className="w-3.5 h-3.5 text-violet-500" />
               </div>
@@ -730,7 +730,7 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
                   </div>
 
                   {transactionItems.length > 0 && (
-                    <div className={`rounded-xl border shadow-sm p-3 sm:p-4 ${allReady ? 'bg-emerald-50/80 border-emerald-200' : 'bg-white border-slate-200'}`}>
+                    <div className={`rounded-xl border shadow-sm p-3 sm:p-4 ${allReady ? 'bg-emerald-50/80 border-emerald-200' : 'bg-white border-[#D6D6D6]'}`}>
                       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${allReady ? 'bg-emerald-500 text-white' : 'bg-[var(--pos-accent)] text-white'}`}>
@@ -842,7 +842,7 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
                       </CardHeader>
                       <CardContent className="p-2 sm:p-0">
                           {pagedItems.map((item, idx, arr) => (
-                              <div key={item.id} ref={el => { basketItemRefs.current[item.id] = el; }} className={`rounded-xl border transition-all ${item.amountToPay <= 0 ? 'border-amber-200/80 bg-amber-50/30' : 'border-slate-200/80'} shadow-sm hover:shadow-md ${idx < arr.length - 1 ? 'mb-2' : ''}`}>
+                              <div key={item.id} ref={el => { basketItemRefs.current[item.id] = el; }} className={`rounded-xl border transition-all ${item.amountToPay <= 0 ? 'border-amber-200/80 bg-amber-50/30' : 'border-[#D6D6D6]/80'} shadow-sm hover:shadow-md ${idx < arr.length - 1 ? 'mb-2' : ''}`}>
                                   <div className="sm:grid sm:grid-cols-[1fr_2fr_1fr_1fr_auto] sm:gap-4 sm:items-center p-3 sm:p-4">
                                       <div className="flex items-center justify-between sm:justify-start gap-2 mb-2 sm:mb-0">
                                           <div className="flex items-center gap-2">
@@ -1014,7 +1014,7 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
 
   // Single Item Views
   return (
-    <div className="flex-1 p-3 sm:p-6 bg-gradient-to-br from-slate-50 to-[#F7F7F7]"> 
+    <div className="flex-1 p-3 sm:p-6 bg-gradient-to-br from-[#F7F7F7] to-[#F7F7F7]"> 
       <div className="max-w-[1200px] mx-auto space-y-4 sm:space-y-6"> 
         
         {/* Header Badge */}
@@ -1054,7 +1054,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
         const [stagedAmount, setStagedAmount] = React.useState<number>(item.amountToPay || 0);
 
         return (
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
             <div className={`px-3 sm:px-4 py-2.5 border-b ${isWater ? 'bg-gradient-to-r from-[#F7F7F7] to-[#F7F7F7] border-[#D6D6D6]' : 'bg-gradient-to-r from-amber-50 to-yellow-50/50 border-amber-100'}`}>
               <div className="flex items-center gap-2.5">
                 <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${isWater ? 'bg-[var(--pos-accent)] text-white' : 'bg-amber-500 text-white'}`}>
@@ -1077,11 +1077,11 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
 
             <div className="px-3 sm:px-4 py-3 space-y-3">
               <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="bg-slate-50 rounded-lg p-2">
+                <div className="bg-[#F7F7F7] rounded-lg p-2">
                   <div className="text-[10px] text-slate-400 font-semibold uppercase">Customer</div>
                   <div className="font-medium text-slate-800 truncate">{account.name}</div>
                 </div>
-                <div className="bg-slate-50 rounded-lg p-2">
+                <div className="bg-[#F7F7F7] rounded-lg p-2">
                   <div className="text-[10px] text-slate-400 font-semibold uppercase">Address</div>
                   <div className="font-medium text-slate-800 truncate">{account.address || '-'}</div>
                 </div>
@@ -1167,7 +1167,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
         const today = new Date().toLocaleDateString('en-ZA', { year: 'numeric', month: '2-digit', day: '2-digit' });
 
         return (
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden" data-testid={`card-clearance-${item.id}`}>
+          <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden" data-testid={`card-clearance-${item.id}`}>
             <div className="px-3 sm:px-4 py-2.5 border-b bg-gradient-to-r from-amber-50 to-orange-50/50 border-amber-100">
               <div className="flex items-center gap-2.5">
                 <div className="shrink-0 w-8 h-8 rounded-full bg-amber-500 text-white flex items-center justify-center">
@@ -1177,7 +1177,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                   <div className="flex items-center gap-1.5">
                     <h3 className="text-sm font-bold text-[#2E2E2E]">Clearance Application</h3>
                     {clr.status && (
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold ${clr.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-slate-100 text-slate-600 ring-1 ring-slate-200'}`}>
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold ${clr.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-[#F2F4F7] text-slate-600 ring-1 ring-[#D6D6D6]'}`}>
                         {clr.status}
                       </span>
                     )}
@@ -1200,31 +1200,31 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
               {(clr.ownerName || clr.propertyAddress || clr.sgNumber) && (
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   {clr.ownerName && (
-                    <div className="bg-slate-50 rounded-lg p-2">
+                    <div className="bg-[#F7F7F7] rounded-lg p-2">
                       <div className="text-[10px] text-slate-400 font-semibold uppercase">Owner</div>
                       <div className="font-medium text-slate-800 truncate">{clr.ownerName}</div>
                     </div>
                   )}
                   {(clr.accountID || paidItems[0]?.accountNumber) && (
-                    <div className="bg-slate-50 rounded-lg p-2">
+                    <div className="bg-[#F7F7F7] rounded-lg p-2">
                       <div className="text-[10px] text-slate-400 font-semibold uppercase">Account</div>
                       <div className="font-medium text-slate-800 font-mono">{paidItems[0]?.accountNumber || clr.accountID}</div>
                     </div>
                   )}
                   {clr.propertyAddress && (
-                    <div className="bg-slate-50 rounded-lg p-2 col-span-2">
+                    <div className="bg-[#F7F7F7] rounded-lg p-2 col-span-2">
                       <div className="text-[10px] text-slate-400 font-semibold uppercase">Address</div>
                       <div className="font-medium text-slate-800 truncate">{clr.propertyAddress}</div>
                     </div>
                   )}
                   {clr.sgNumber && (
-                    <div className="bg-slate-50 rounded-lg p-2">
+                    <div className="bg-[#F7F7F7] rounded-lg p-2">
                       <div className="text-[10px] text-slate-400 font-semibold uppercase">SG Number</div>
                       <div className="font-medium text-slate-800 font-mono">{clr.sgNumber}</div>
                     </div>
                   )}
                   {clr.expiryDate && (
-                    <div className="bg-slate-50 rounded-lg p-2">
+                    <div className="bg-[#F7F7F7] rounded-lg p-2">
                       <div className="text-[10px] text-slate-400 font-semibold uppercase">Valid Until</div>
                       <div className="font-medium text-slate-800">{clr.expiryDate}</div>
                     </div>
@@ -1234,7 +1234,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
 
               <div>
                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Payment Lines</div>
-                <div className="sm:hidden divide-y divide-slate-100 border border-slate-200 rounded-lg overflow-hidden">
+                <div className="sm:hidden divide-y divide-[#E5E5E5] border border-[#D6D6D6] rounded-lg overflow-hidden">
                   {paidItems.length > 0 ? paidItems.map((pi: any, i: number) => {
                     const costAmount = pi.amount || 0;
                     const payAmount = pi.paymentAmount ?? pi.amount ?? 0;
@@ -1262,10 +1262,10 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                   )}
                 </div>
 
-                <div className="hidden sm:block overflow-x-auto border border-slate-200 rounded-lg">
+                <div className="hidden sm:block overflow-x-auto border border-[#D6D6D6] rounded-lg">
                   <Table>
                     <TableHeader>
-                      <TableRow className="hover:bg-transparent bg-slate-50">
+                      <TableRow className="hover:bg-transparent bg-[#F7F7F7]">
                         <TableHead className="text-xs">Account</TableHead>
                         <TableHead className="text-xs">Name</TableHead>
                         <TableHead className="text-xs">Type</TableHead>
@@ -1343,7 +1343,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
         const incomeItem = item.originalData as DirectIncomeItem;
         
         return (
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
             <div className="px-3 sm:px-4 py-2.5 border-b bg-gradient-to-r from-emerald-50 to-green-50/50 border-emerald-100">
               <div className="flex items-center gap-2.5">
                 <div className="shrink-0 w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] font-bold">
@@ -1352,7 +1352,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                 <div className="min-w-0 flex-1">
                   <h3 className="text-sm font-bold text-[#2E2E2E] truncate">{item.description}</h3>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-[9px] font-mono px-1 py-0 rounded bg-slate-100 text-slate-600 ring-1 ring-slate-200">
+                    <span className="text-[9px] font-mono px-1 py-0 rounded bg-[#F2F4F7] text-slate-600 ring-1 ring-[#D6D6D6]">
                       SCOA: {incomeItem.scoaItem}
                     </span>
                     <span className="text-[10px] text-slate-500">{incomeItem.groupName}</span>
@@ -1373,7 +1373,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                     tabIndex={10}
                     autoFocus
                     placeholder="e.g. JD"
-                    className="h-9 text-sm bg-slate-50 border-slate-200"
+                    className="h-9 text-sm bg-[#F7F7F7] border-[#D6D6D6]"
                     value={item.additionalInfo || ''}
                     onChange={(e) => updateItemDetails(item.id, { additionalInfo: e.target.value })}
                     data-testid={`input-initials-${item.id}`}
@@ -1385,7 +1385,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                     id={`lastName-${item.id}`}
                     tabIndex={20}
                     placeholder="Surname / Company"
-                    className={`h-9 text-sm bg-slate-50 border-slate-200 ${(item as any).paidByError ? 'border-red-500 ring-1 ring-red-500' : ''}`}
+                    className={`h-9 text-sm bg-[#F7F7F7] border-[#D6D6D6] ${(item as any).paidByError ? 'border-red-500 ring-1 ring-red-500' : ''}`}
                     value={item.paidBy || ''}
                     onChange={(e) => updateItemDetails(item.id, { paidBy: e.target.value })}
                     data-testid={`input-lastname-${item.id}`}
@@ -1400,7 +1400,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                   id={`desc-${item.id}`}
                   tabIndex={30}
                   placeholder="Payment description..."
-                  className={`resize-none h-16 text-sm bg-slate-50 border-slate-200 ${(item as any).notesError ? 'border-red-500 ring-1 ring-red-500' : ''}`}
+                  className={`resize-none h-16 text-sm bg-[#F7F7F7] border-[#D6D6D6] ${(item as any).notesError ? 'border-red-500 ring-1 ring-red-500' : ''}`}
                   value={item.notes || ''}
                   onChange={(e) => updateItemDetails(item.id, { notes: e.target.value })}
                   data-testid={`input-desc-${item.id}`}
@@ -1480,8 +1480,8 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
 
     // Default Fallback
     return (
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-3 sm:px-4 py-2.5 border-b bg-slate-50">
+      <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+        <div className="px-3 sm:px-4 py-2.5 border-b bg-[#F7F7F7]">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-[#2E2E2E]">{item.description}</h3>
             <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50" onClick={() => removeItem(item.id)}>

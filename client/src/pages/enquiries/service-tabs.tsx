@@ -2891,7 +2891,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
               )}
 
               <div className="flex justify-center pt-4">
-                <button onClick={() => setShowPrepaidSales(false)} className="inline-flex items-center gap-1.5 px-6 py-2.5 bg-gradient-to-r from-slate-700 to-slate-800 text-white text-sm font-semibold rounded-lg hover:from-slate-800 hover:to-slate-900 transition-all shadow-md" data-testid="button-close-prepaid-sales">
+                <button onClick={() => setShowPrepaidSales(false)} className="inline-flex items-center gap-1.5 px-6 py-2.5 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] text-white text-sm font-semibold rounded-lg hover:from-[var(--pos-accent-dark)] hover:to-[var(--pos-accent-dark)] transition-all shadow-md" data-testid="button-close-prepaid-sales">
                   Close
                 </button>
               </div>

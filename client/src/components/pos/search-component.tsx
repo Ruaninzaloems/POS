@@ -390,7 +390,7 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder={placeholder || "Search Account / Meter / Group..."}
-          className="h-12 rounded-xl border-2 border-slate-200 bg-white pl-14 pr-4 text-base focus:border-[var(--pos-accent)] focus:ring-4 focus:ring-[var(--pos-accent-tint)] shadow-sm placeholder:text-slate-400 transition-all"
+          className="h-12 rounded-xl border-2 border-[#D6D6D6] bg-white pl-14 pr-4 text-base focus:border-[var(--pos-accent)] focus:ring-4 focus:ring-[var(--pos-accent-tint)] shadow-sm placeholder:text-slate-400 transition-all"
           autoFocus={autoFocus}
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex gap-1">
@@ -430,7 +430,7 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
       </Popover>
 
       {isOpen && (results.length > 0 || externalResults.length > 0 || isSearchingExternal || (miscGroupsLoading && searchQuery.length >= 2)) && (
-        <div className="absolute top-full left-0 right-0 mt-2 rounded-xl shadow-xl border border-slate-200/80 bg-white/98 backdrop-blur-sm text-popover-foreground overflow-hidden animate-in fade-in zoom-in-95 duration-100 z-[100] max-h-[60vh] overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-2 rounded-xl shadow-xl border border-[#D6D6D6] bg-white/98 backdrop-blur-sm text-popover-foreground overflow-hidden animate-in fade-in zoom-in-95 duration-100 z-[100] max-h-[60vh] overflow-y-auto">
           <div className="py-1">
             {isSearchingExternal && (
                 <div className="px-4 py-2 text-xs text-muted-foreground flex items-center gap-2 bg-muted/30">

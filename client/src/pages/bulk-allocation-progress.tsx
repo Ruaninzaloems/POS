@@ -826,10 +826,10 @@ export default function BulkAllocationProgress() {
 
                   return (
                     <>
-                      <div className={`px-5 sm:px-6 pt-5 sm:pt-6 pb-4 ${isComplete ? 'bg-gradient-to-br from-emerald-50 to-green-50/50' : isError ? 'bg-gradient-to-br from-red-50 to-rose-50/50' : isInProgress ? 'bg-gradient-to-br from-[var(--pos-accent-tint)] to-[var(--pos-accent-tint)]' : 'bg-gradient-to-br from-slate-50 to-[var(--pos-accent-tint)]'}`}>
+                      <div className={`px-5 sm:px-6 pt-5 sm:pt-6 pb-4 ${isComplete ? 'bg-gradient-to-br from-emerald-50 to-green-50/50' : isError ? 'bg-gradient-to-br from-red-50 to-rose-50/50' : isInProgress ? 'bg-gradient-to-br from-[var(--pos-accent-tint)] to-[var(--pos-accent-tint)]' : 'bg-gradient-to-br from-[#F7F7F7] to-[var(--pos-accent-tint)]'}`}>
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${isComplete ? 'bg-emerald-100 text-emerald-600' : isError ? 'bg-red-100 text-red-600' : isInProgress ? 'bg-[var(--pos-accent-tint-strong)] text-[var(--pos-accent)]' : 'bg-slate-100 text-slate-600'}`}>
+                            <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${isComplete ? 'bg-emerald-100 text-emerald-600' : isError ? 'bg-red-100 text-red-600' : isInProgress ? 'bg-[var(--pos-accent-tint-strong)] text-[var(--pos-accent)]' : 'bg-[#F2F4F7] text-slate-600'}`}>
                               {isComplete ? <CheckCircle2 className="w-5 h-5" /> : isError ? <XCircle className="w-5 h-5" /> : isInProgress ? <Activity className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                             </div>
                             <div className="min-w-0">
@@ -878,8 +878,8 @@ export default function BulkAllocationProgress() {
                       </div>
 
                       <div className="px-5 sm:px-6 py-4 space-y-4">
-                        <div className="rounded-lg border border-slate-200 overflow-hidden">
-                          <div className="bg-slate-50 px-3 py-2 border-b border-slate-200">
+                        <div className="rounded-lg border border-[#D6D6D6] overflow-hidden">
+                          <div className="bg-[#F7F7F7] px-3 py-2 border-b border-[#D6D6D6]">
                             <h3 className="text-[11px] uppercase tracking-wider font-bold text-slate-500 flex items-center gap-1.5">
                               <Layers className="w-3.5 h-3.5" /> Job Information
                             </h3>
@@ -913,8 +913,8 @@ export default function BulkAllocationProgress() {
                         </div>
 
                         {(detailData.fileName || detailData.filePath || detailData.fileDate || detailData.dateCaptured) && (
-                          <div className="rounded-lg border border-slate-200 overflow-hidden">
-                            <div className="bg-slate-50 px-3 py-2 border-b border-slate-200">
+                          <div className="rounded-lg border border-[#D6D6D6] overflow-hidden">
+                            <div className="bg-[#F7F7F7] px-3 py-2 border-b border-[#D6D6D6]">
                               <h3 className="text-[11px] uppercase tracking-wider font-bold text-slate-500 flex items-center gap-1.5">
                                 <FileText className="w-3.5 h-3.5" /> File & Dates
                               </h3>
@@ -929,7 +929,7 @@ export default function BulkAllocationProgress() {
                               {detailData.filePath && (
                                 <div className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] items-start px-3 py-2.5">
                                   <span className="text-xs font-medium text-slate-500 pt-0.5">File Path</span>
-                                  <span className="text-xs font-mono text-slate-600 break-all bg-slate-50 rounded px-2 py-1">{detailData.filePath}</span>
+                                  <span className="text-xs font-mono text-slate-600 break-all bg-[#F7F7F7] rounded px-2 py-1">{detailData.filePath}</span>
                                 </div>
                               )}
                               {detailData.fileDate && (
@@ -955,8 +955,8 @@ export default function BulkAllocationProgress() {
                         )}
 
                         {(cashierName || detailData.cashierID != null || capturerName || detailData.capturerID != null) && (
-                          <div className="rounded-lg border border-slate-200 overflow-hidden">
-                            <div className="bg-slate-50 px-3 py-2 border-b border-slate-200">
+                          <div className="rounded-lg border border-[#D6D6D6] overflow-hidden">
+                            <div className="bg-[#F7F7F7] px-3 py-2 border-b border-[#D6D6D6]">
                               <h3 className="text-[11px] uppercase tracking-wider font-bold text-slate-500 flex items-center gap-1.5">
                                 <User className="w-3.5 h-3.5" /> People
                               </h3>
@@ -1004,8 +1004,8 @@ export default function BulkAllocationProgress() {
                         )}
 
                         {extraFields.length > 0 && (
-                          <div className="rounded-lg border border-slate-200 overflow-hidden">
-                            <div className="bg-slate-50 px-3 py-2 border-b border-slate-200">
+                          <div className="rounded-lg border border-[#D6D6D6] overflow-hidden">
+                            <div className="bg-[#F7F7F7] px-3 py-2 border-b border-[#D6D6D6]">
                               <h3 className="text-[11px] uppercase tracking-wider font-bold text-slate-500 flex items-center gap-1.5">
                                 <Hash className="w-3.5 h-3.5" /> Additional Details
                               </h3>
@@ -1078,7 +1078,7 @@ export default function BulkAllocationProgress() {
               </>
             ) : (
               <div className="py-12 text-center">
-                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                <div className="w-12 h-12 rounded-full bg-[#F2F4F7] flex items-center justify-center mx-auto mb-3">
                   <Eye className="w-5 h-5 text-slate-400" />
                 </div>
                 <p className="text-sm font-medium text-slate-600">No detail data available</p>

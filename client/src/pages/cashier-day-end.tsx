@@ -328,13 +328,13 @@ export default function CashierDayEnd() {
                                 </div>
                                 <div>
                                     <Label className="text-xs text-slate-500 font-semibold">Cashier Office *</Label>
-                                    <div className="mt-1 text-sm font-medium bg-slate-50 border rounded px-3 py-2">
+                                    <div className="mt-1 text-sm font-medium bg-[#F7F7F7] border rounded px-3 py-2">
                                         {cashierDetails?.cashOfficeName || cashierDetails?.cash_office || cashierDetails?.cashOffice || cashierDetails?.officeName || cashierDetails?.const_CashOffice?.cashOfficeDesc || '-'}
                                     </div>
                                 </div>
                                 <div>
                                     <Label className="text-xs text-slate-500 font-semibold">Reconcile Date</Label>
-                                    <div className="mt-1 text-sm font-mono bg-slate-50 border rounded px-3 py-2">{today}</div>
+                                    <div className="mt-1 text-sm font-mono bg-[#F7F7F7] border rounded px-3 py-2">{today}</div>
                                 </div>
                                 <div>
                                     <Label className="text-xs text-slate-500 font-semibold flex items-center gap-1">Reason <HelpTip text="Provide an explanation if there is a variance in your cash count." /></Label>
@@ -396,7 +396,7 @@ export default function CashierDayEnd() {
                                                             <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-4">No records to display</TableCell>
                                                         </TableRow>
                                                     ) : cardList.map((item, idx) => (
-                                                        <TableRow key={idx} className="hover:bg-slate-50">
+                                                        <TableRow key={idx} className="hover:bg-[#F7F7F7]">
                                                             <TableCell className="text-xs py-1.5">{idx + 1}</TableCell>
                                                             <TableCell className="text-xs font-mono py-1.5">{item.accountNumber || item.accountId || item.invoiceNumber || '-'}</TableCell>
                                                             <TableCell className="text-xs font-mono py-1.5">{item.receiptNo || item.receipt_no || '-'}</TableCell>
@@ -473,7 +473,7 @@ export default function CashierDayEnd() {
                                                             <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-4">No records to display</TableCell>
                                                         </TableRow>
                                                     ) : chequeList.map((item, idx) => (
-                                                        <TableRow key={idx} className="hover:bg-slate-50">
+                                                        <TableRow key={idx} className="hover:bg-[#F7F7F7]">
                                                             <TableCell className="text-xs py-1.5">{idx + 1}</TableCell>
                                                             <TableCell className="text-xs font-mono py-1.5">{item.accountNumber || item.accountId || item.invoiceNumber || '-'}</TableCell>
                                                             <TableCell className="text-xs font-mono py-1.5">{item.receiptNo || item.receipt_no || '-'}</TableCell>
@@ -548,7 +548,7 @@ export default function CashierDayEnd() {
                                                             <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-4">No records to display</TableCell>
                                                         </TableRow>
                                                     ) : dropBoxList.map((item, idx) => (
-                                                        <TableRow key={idx} className="hover:bg-slate-50">
+                                                        <TableRow key={idx} className="hover:bg-[#F7F7F7]">
                                                             <TableCell className="text-xs py-1.5">{idx + 1}</TableCell>
                                                             <TableCell className="text-xs py-1.5">{item.description || item.accountNumber || '-'}</TableCell>
                                                             <TableCell className="text-xs font-mono py-1.5">{item.referenceNumber || item.receiptNo || item.receipt_no || '-'}</TableCell>
@@ -671,7 +671,7 @@ export default function CashierDayEnd() {
                                     )}
 
                                     <div className="flex justify-end mt-4">
-                                        <div className="bg-slate-100 border-2 border-slate-300 rounded-lg px-6 py-3 text-right">
+                                        <div className="bg-[#F2F4F7] border-2 border-slate-300 rounded-lg px-6 py-3 text-right">
                                             <span className="text-sm text-slate-600 mr-4 flex items-center gap-1">Total Cash <HelpTip text="The total cash calculated from your denomination count above." /></span>
                                             <span className="text-lg font-bold font-mono text-slate-800">
                                                 R {cashOnHand.toFixed(2)}
@@ -686,19 +686,19 @@ export default function CashierDayEnd() {
                                     <div className="px-1 sm:px-0 space-y-3">
                                         <div className="flex justify-between items-center py-2 border-b">
                                             <span className="text-sm font-semibold text-slate-700 flex items-center gap-1">Total Cash on Hand + Drop Box (R) <HelpTip text="The starting cash amount in your drawer at the beginning of your shift." /></span>
-                                            <span className="font-mono font-bold text-sm bg-slate-50 border px-4 py-1.5 rounded min-w-[120px] text-right">
+                                            <span className="font-mono font-bold text-sm bg-[#F7F7F7] border px-4 py-1.5 rounded min-w-[120px] text-right">
                                                 {totalCashOnHandPlusDropBox.toFixed(2)}
                                             </span>
                                         </div>
                                         <div className="flex justify-between items-center py-2 border-b">
                                             <span className="text-sm font-semibold text-slate-700">Total Cheque Receipts (R)</span>
-                                            <span className="font-mono font-bold text-sm bg-slate-50 border px-4 py-1.5 rounded min-w-[120px] text-right">
+                                            <span className="font-mono font-bold text-sm bg-[#F7F7F7] border px-4 py-1.5 rounded min-w-[120px] text-right">
                                                 {totalChequeAmt.toFixed(2)}
                                             </span>
                                         </div>
                                         <div className="flex justify-between items-center py-2 border-b">
                                             <span className="text-sm font-semibold text-slate-700">Total Debit/Credit Card Receipts (R)</span>
-                                            <span className="font-mono font-bold text-sm bg-slate-50 border px-4 py-1.5 rounded min-w-[120px] text-right">
+                                            <span className="font-mono font-bold text-sm bg-[#F7F7F7] border px-4 py-1.5 rounded min-w-[120px] text-right">
                                                 {totalCreditAmt.toFixed(2)}
                                             </span>
                                         </div>
@@ -767,7 +767,7 @@ export default function CashierDayEnd() {
                                                 <>
                                                 <div className="hidden sm:block border rounded-md overflow-auto max-h-[400px]">
                                                     <Table>
-                                                        <TableHeader className="bg-slate-100 sticky top-0">
+                                                        <TableHeader className="bg-[#F2F4F7] sticky top-0">
                                                             <TableRow>
                                                                 <TableHead className="font-bold text-xs">#</TableHead>
                                                                 <TableHead className="font-bold text-xs">Receipt No</TableHead>

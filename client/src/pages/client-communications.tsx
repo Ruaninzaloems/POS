@@ -511,7 +511,7 @@ export default function ClientCommunications() {
                 <p className="text-xs sm:text-sm text-[#6B6B6B] mt-0.5">Send custom emails and SMS to account holders</p>
               </div>
             </div>
-            <div className="flex items-center gap-1.5 bg-slate-100 rounded-lg p-0.5 self-start sm:self-auto shrink-0">
+            <div className="flex items-center gap-1.5 bg-[#F2F4F7] rounded-lg p-0.5 self-start sm:self-auto shrink-0">
               <HelpTip text="Choose whether to send via email (Mimecast) or SMS gateway." side="bottom" />
               <button
                 onClick={() => setMode('email')}
@@ -539,7 +539,7 @@ export default function ClientCommunications() {
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4">
               <div className="lg:col-span-2 space-y-3 sm:space-y-4">
                 <div className="bg-white rounded-xl border shadow-sm overflow-hidden flex flex-col" style={{ maxHeight: 'min(calc(100vh - 260px), 600px)' }}>
-                  <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b bg-gradient-to-r from-slate-50 to-white shrink-0">
+                  <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b bg-[#F7F7F7] shrink-0">
                     <div className="flex items-center justify-between">
                       <h2 className="font-semibold text-xs sm:text-sm text-slate-800 flex items-center gap-1.5 sm:gap-2">
                         <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[var(--pos-accent)]" />
@@ -599,14 +599,14 @@ export default function ClientCommunications() {
                           value={searchQuery}
                           onChange={e => handleSearchInput(e.target.value)}
                           placeholder="Search account number or name..."
-                          className="pl-9 pr-8 h-10 sm:h-8 text-sm sm:text-xs bg-white border-slate-200 focus:border-[var(--pos-accent)] rounded-lg sm:rounded-md"
+                          className="pl-9 pr-8 h-10 sm:h-8 text-sm sm:text-xs bg-white border-[#D6D6D6] focus:border-[var(--pos-accent)] rounded-lg sm:rounded-md"
                           data-testid="input-search-recipient"
                         />
                         {searching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 animate-spin text-slate-400" />}
                       </div>
 
                       {searchDropdownOpen && searchResults.length > 0 && (
-                        <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl sm:rounded-lg shadow-xl max-h-[50vh] sm:max-h-72 overflow-auto overscroll-contain">
+                        <div className="absolute z-50 mt-1 w-full bg-white border border-[#D6D6D6] rounded-xl sm:rounded-lg shadow-xl max-h-[50vh] sm:max-h-72 overflow-auto overscroll-contain">
                           {searchResults.map((item, idx) => {
                             const accId = item.account_ID || item.accountID || item.id;
                             const accNo = item.accountNumber || item.accountNo || String(accId);
@@ -616,7 +616,7 @@ export default function ClientCommunications() {
                             return (
                               <button
                                 key={idx}
-                                className={`w-full text-left px-3 py-3 sm:py-2.5 hover:bg-[var(--pos-accent-tint)] active:bg-[var(--pos-accent-tint-strong)] transition-colors border-b border-slate-100 last:border-b-0 ${alreadyAdded ? 'opacity-40 bg-slate-50' : ''}`}
+                                className={`w-full text-left px-3 py-3 sm:py-2.5 hover:bg-[var(--pos-accent-tint)] active:bg-[var(--pos-accent-tint-strong)] transition-colors border-b border-[#E5E5E5] last:border-b-0 ${alreadyAdded ? 'opacity-40 bg-[#F7F7F7]' : ''}`}
                                 onClick={() => !alreadyAdded && addRecipient(item)}
                                 disabled={alreadyAdded}
                                 data-testid={`button-add-recipient-${accId}`}
@@ -659,7 +659,7 @@ export default function ClientCommunications() {
                   </div>
 
                   {recipients.length > 0 && (
-                    <div className="flex items-center justify-between px-3 py-1.5 border-b bg-slate-50/80 text-[11px] text-slate-500 shrink-0">
+                    <div className="flex items-center justify-between px-3 py-1.5 border-b bg-[#F7F7F7] text-[11px] text-slate-500 shrink-0">
                       <span className="font-medium">{selectedRecipients.length} of {recipients.length} selected</span>
                       <div className="flex gap-2">
                         <button onClick={selectAll} className="text-[var(--pos-accent)] hover:underline font-medium active:text-[var(--pos-accent-dark)]">All</button>
@@ -674,7 +674,7 @@ export default function ClientCommunications() {
                   <div ref={recipientListRef} className="flex-1 overflow-auto" style={{ minHeight: 0 }}>
                     {recipients.length === 0 ? (
                       <div className="p-6 sm:p-8 text-center">
-                        <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-2.5 sm:mb-3">
+                        <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-[#F2F4F7] flex items-center justify-center mx-auto mb-2.5 sm:mb-3">
                           <Users className="w-5 h-5 text-slate-400" />
                         </div>
                         <p className="text-xs sm:text-sm font-medium text-slate-500">No recipients added</p>
@@ -701,7 +701,7 @@ export default function ClientCommunications() {
                                 transform: `translateY(${virtualRow.start}px)`,
                               }}
                             >
-                              <div className={`flex items-start gap-2 sm:gap-2.5 px-2.5 sm:px-3 py-2.5 border-b border-slate-100 transition-colors ${r.selected ? 'bg-white' : 'bg-slate-50/60 opacity-60'}`}>
+                              <div className={`flex items-start gap-2 sm:gap-2.5 px-2.5 sm:px-3 py-2.5 border-b border-[#E5E5E5] transition-colors ${r.selected ? 'bg-white' : 'bg-[#F7F7F7]/50 opacity-60'}`}>
                                 <input
                                   type="checkbox"
                                   checked={r.selected}
@@ -751,7 +751,7 @@ export default function ClientCommunications() {
                   </div>
 
                   {recipients.length > 0 && (
-                    <div className="px-2.5 sm:px-3 py-2 border-t bg-gradient-to-r from-slate-50 to-white shrink-0">
+                    <div className="px-2.5 sm:px-3 py-2 border-t bg-[#F7F7F7] shrink-0">
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] sm:text-[11px]">
                         <HelpTip text="Contact information pulled from the account. Additional emails can be added." />
                         <span className="flex items-center gap-1 text-slate-500">
@@ -783,7 +783,7 @@ export default function ClientCommunications() {
 
               <div className="lg:col-span-3 space-y-3 sm:space-y-4">
                 <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-                  <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b bg-gradient-to-r from-slate-50 to-white">
+                  <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b bg-[#F7F7F7]">
                     <h2 className="font-semibold text-xs sm:text-sm text-slate-800 flex items-center gap-2">
                       {mode === 'email' ? <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[var(--pos-accent)]" /> : <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-600" />}
                       Compose {mode === 'email' ? 'Email' : 'SMS'}
@@ -839,7 +839,7 @@ export default function ClientCommunications() {
                         {attachments.length > 0 ? (
                           <div className="space-y-1.5">
                             {attachments.map(att => (
-                              <div key={att.id} className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2 border border-slate-200">
+                              <div key={att.id} className="flex items-center gap-2 bg-[#F7F7F7] rounded-lg px-3 py-2 border border-[#D6D6D6]">
                                 <FileText className="w-4 h-4 text-[var(--pos-accent)] shrink-0" />
                                 <span className="text-[11px] sm:text-xs text-slate-700 truncate flex-1">{att.name}</span>
                                 <span className="text-[10px] text-slate-400 shrink-0">{formatFileSize(att.size)}</span>
@@ -851,7 +851,7 @@ export default function ClientCommunications() {
                             <p className="text-[10px] text-slate-400 pl-1">Total: {formatFileSize(attachments.reduce((s, a) => s + a.size, 0))}</p>
                           </div>
                         ) : (
-                          <div className="border-2 border-dashed border-slate-200 rounded-lg p-4 sm:p-5 text-center cursor-pointer hover:border-[var(--pos-accent)] hover:bg-[var(--pos-accent-tint)] active:bg-[var(--pos-accent-tint)] transition-all" onClick={() => fileInputRef.current?.click()}>
+                          <div className="border-2 border-dashed border-[#D6D6D6] rounded-lg p-4 sm:p-5 text-center cursor-pointer hover:border-[var(--pos-accent)] hover:bg-[var(--pos-accent-tint)] active:bg-[var(--pos-accent-tint)] transition-all" onClick={() => fileInputRef.current?.click()}>
                             <Upload className="w-5 h-5 mx-auto text-slate-300 mb-1.5" />
                             <p className="text-[11px] sm:text-xs text-slate-400">Tap to upload files</p>
                             <p className="text-[10px] text-slate-300 mt-0.5">PDF, DOCX, XLSX, images</p>
@@ -910,7 +910,7 @@ export default function ClientCommunications() {
 
                 {showPreview && (
                   <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-                    <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b bg-gradient-to-r from-slate-50 to-white flex items-center justify-between">
+                    <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b bg-[#F7F7F7] flex items-center justify-between">
                       <h3 className="font-semibold text-xs sm:text-sm text-slate-800 flex items-center gap-2">
                         <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-600" />
                         Message Preview
@@ -943,7 +943,7 @@ export default function ClientCommunications() {
                           )}
                         </div>
                       )}
-                      <div className="bg-slate-50 rounded-lg p-3 sm:p-4 border border-slate-200 whitespace-pre-wrap text-xs sm:text-sm text-slate-700 min-h-[60px] sm:min-h-[80px]">
+                      <div className="bg-[#F7F7F7] rounded-lg p-3 sm:p-4 border border-[#D6D6D6] whitespace-pre-wrap text-xs sm:text-sm text-slate-700 min-h-[60px] sm:min-h-[80px]">
                         {messageBody || '(empty message)'}
                       </div>
                     </div>

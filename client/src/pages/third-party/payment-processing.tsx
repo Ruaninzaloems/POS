@@ -628,7 +628,7 @@ export default function ThirdPartyPaymentProcessing() {
 
           {step === 'import' && (
             <Card className="border-t-4 border-t-[var(--pos-accent)] shadow-sm">
-              <CardHeader className="bg-slate-100/50 pb-4 border-b">
+              <CardHeader className="bg-[#F2F4F7]/50 pb-4 border-b">
                 <div className="flex items-center gap-2">
                   <div className="h-6 w-1 bg-[var(--pos-accent)] rounded-full"></div>
                   <CardTitle className="text-lg font-medium text-slate-800">
@@ -666,7 +666,7 @@ export default function ThirdPartyPaymentProcessing() {
                         id="cashBookId"
                         value={`${cashierInfo.cashOfficeId} - ${cashierInfo.cashOfficeDesc || ''}`}
                         readOnly
-                        className="bg-slate-50 cursor-not-allowed"
+                        className="bg-[#F7F7F7] cursor-not-allowed"
                         data-testid="input-cashbook-id"
                       />
                     ) : (
@@ -859,7 +859,7 @@ export default function ThirdPartyPaymentProcessing() {
               )}
 
               <Card className="border-t-4 border-t-[var(--pos-accent)] shadow-sm">
-                <CardHeader className="bg-slate-100/50 pb-3 border-b">
+                <CardHeader className="bg-[#F2F4F7]/50 pb-3 border-b">
                   <div className="flex flex-col gap-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -943,7 +943,7 @@ export default function ThirdPartyPaymentProcessing() {
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
-                          <TableRow className="bg-slate-50">
+                          <TableRow className="bg-[#F7F7F7]">
                             <TableHead className="w-[40px]">#</TableHead>
                             <TableHead>
                               <span className="flex items-center gap-1">Account Match <HelpTip text="Shows the imported account number and the resolved current EMS account. If different, the old number was automatically mapped." /></span>
@@ -1068,7 +1068,7 @@ export default function ThirdPartyPaymentProcessing() {
                 </p>
                 {commitResult?.masterId && (
                   <p className="text-sm font-medium text-slate-700">
-                    Master ID: <span className="font-mono bg-slate-100 px-2 py-0.5 rounded">{commitResult.masterId}</span>
+                    Master ID: <span className="font-mono bg-[#F2F4F7] px-2 py-0.5 rounded">{commitResult.masterId}</span>
                   </p>
                 )}
                 <Button onClick={handleNewImport} className="gap-2 bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] mt-4" data-testid="button-start-new">
@@ -1088,7 +1088,7 @@ export default function ThirdPartyPaymentProcessing() {
             <DialogDescription>Find the correct consumer account to link to this transaction.</DialogDescription>
           </DialogHeader>
           {searchIdx !== null && transactions.find(t => t.index === searchIdx) && (
-            <div className="bg-slate-50 rounded-lg p-3 text-sm border mb-2">
+            <div className="bg-[#F7F7F7] rounded-lg p-3 text-sm border mb-2">
               <div className="grid grid-cols-2 gap-2">
                 <div><span className="text-muted-foreground">Imported Account:</span> <span className="font-mono font-medium">{transactions.find(t => t.index === searchIdx)!.importedAccountNumber}</span></div>
                 <div><span className="text-muted-foreground">Amount:</span> <span className="font-medium">R {transactions.find(t => t.index === searchIdx)!.amount.toFixed(2)}</span></div>
@@ -1119,7 +1119,7 @@ export default function ThirdPartyPaymentProcessing() {
             <div className="max-h-[300px] overflow-auto border rounded">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-slate-50 text-xs">
+                  <TableRow className="bg-[#F7F7F7] text-xs">
                     <TableHead>Account</TableHead>
                     <TableHead>Owner</TableHead>
                     <TableHead>Address</TableHead>
@@ -1164,47 +1164,47 @@ export default function ThirdPartyPaymentProcessing() {
           {viewTxn && (
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="bg-slate-50 rounded p-2.5 border">
+                <div className="bg-[#F7F7F7] rounded p-2.5 border">
                   <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Imported Account</div>
                   <div className="font-mono font-medium">{viewTxn.importedAccountNumber}</div>
                 </div>
-                <div className="bg-slate-50 rounded p-2.5 border">
+                <div className="bg-[#F7F7F7] rounded p-2.5 border">
                   <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Resolved Account</div>
                   <div className="font-mono font-medium">{viewTxn.resolvedAccountId || <span className="text-red-500 italic">Not resolved</span>}</div>
                 </div>
-                <div className="bg-slate-50 rounded p-2.5 border">
+                <div className="bg-[#F7F7F7] rounded p-2.5 border">
                   <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Amount</div>
                   <div className="font-mono font-medium">R {viewTxn.amount.toFixed(2)}</div>
                 </div>
-                <div className="bg-slate-50 rounded p-2.5 border">
+                <div className="bg-[#F7F7F7] rounded p-2.5 border">
                   <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Match Status</div>
                   <div>{matchStatusBadge(viewTxn.matchStatus)}</div>
                 </div>
-                <div className="bg-slate-50 rounded p-2.5 border">
+                <div className="bg-[#F7F7F7] rounded p-2.5 border">
                   <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Reference</div>
                   <div className="font-mono text-xs">{viewTxn.importedReference || '-'}</div>
                 </div>
-                <div className="bg-slate-50 rounded p-2.5 border">
+                <div className="bg-[#F7F7F7] rounded p-2.5 border">
                   <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Validated</div>
                   <div>{viewTxn.validated ? <Badge className="bg-green-100 text-green-800 text-[10px]">Yes</Badge> : <Badge variant="destructive" className="text-[10px]">No</Badge>}</div>
                 </div>
               </div>
-              <div className="bg-slate-50 rounded p-2.5 border text-sm">
+              <div className="bg-[#F7F7F7] rounded p-2.5 border text-sm">
                 <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Owner / Name</div>
                 <div>{viewTxn.ownerName || '-'}</div>
               </div>
-              <div className="bg-slate-50 rounded p-2.5 border text-sm">
+              <div className="bg-[#F7F7F7] rounded p-2.5 border text-sm">
                 <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Property Address</div>
                 <div>{viewTxn.propertyAddress || '-'}</div>
               </div>
               {viewTxn.validationMessage && (
-                <div className="bg-slate-50 rounded p-2.5 border text-sm">
+                <div className="bg-[#F7F7F7] rounded p-2.5 border text-sm">
                   <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Validation Message</div>
                   <div className="text-xs">{viewTxn.validationMessage}</div>
                 </div>
               )}
               {viewTxn.comment && (
-                <div className="bg-slate-50 rounded p-2.5 border text-sm">
+                <div className="bg-[#F7F7F7] rounded p-2.5 border text-sm">
                   <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Comment</div>
                   <div className="text-xs">{viewTxn.comment}</div>
                 </div>

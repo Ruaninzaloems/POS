@@ -487,7 +487,7 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                           {COIN_DENOMINATIONS.map(d => {
                             const subtotal = denominations[d.key] * d.value;
                             return (
-                              <div key={d.key} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 transition-all">
+                              <div key={d.key} className="flex items-center gap-2 rounded-lg border border-[#D6D6D6] bg-[#F7F7F7] px-2.5 py-1.5 transition-all">
                                 <div className="w-10 text-xs font-bold text-slate-700 shrink-0">{d.label}</div>
                                 <div className="text-slate-400 text-xs shrink-0">x</div>
                                 <Input
@@ -542,10 +542,10 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
             </div>
 
             {hasPostalOrder && (
-              <div className="rounded-xl border border-slate-200 overflow-hidden">
+              <div className="rounded-xl border border-[#D6D6D6] overflow-hidden">
                 <button
                   type="button"
-                  className="w-full flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors"
+                  className="w-full flex items-center justify-between px-5 py-3 hover:bg-[#F7F7F7] transition-colors"
                   onClick={() => setShowPostalOrder(!showPostalOrder)}
                 >
                   <div className="flex items-center gap-3">
@@ -584,10 +584,10 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
             )}
 
             {hasCheque && (
-              <div className="rounded-xl border border-slate-200 overflow-hidden">
+              <div className="rounded-xl border border-[#D6D6D6] overflow-hidden">
                 <button
                   type="button"
-                  className="w-full flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors"
+                  className="w-full flex items-center justify-between px-5 py-3 hover:bg-[#F7F7F7] transition-colors"
                   onClick={() => setShowCheque(!showCheque)}
                 >
                   <div className="flex items-center gap-3">
@@ -626,10 +626,10 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
             )}
 
             {hasDropBox && (
-              <div className="rounded-xl border border-slate-200 overflow-hidden">
+              <div className="rounded-xl border border-[#D6D6D6] overflow-hidden">
                 <button
                   type="button"
-                  className="w-full flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors"
+                  className="w-full flex items-center justify-between px-5 py-3 hover:bg-[#F7F7F7] transition-colors"
                   onClick={() => setShowDropBox(!showDropBox)}
                 >
                   <div className="flex items-center gap-3">
@@ -799,7 +799,7 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
               <Input
                 id="reason"
                 type="text"
-                className="mt-1.5 h-10 bg-slate-50"
+                className="mt-1.5 h-10 bg-[#F7F7F7]"
                 placeholder="Enter reason if there is a cash variance..."
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
@@ -848,7 +848,7 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
               </div>
             </div>
 
-            <div className="bg-slate-50 rounded-xl border p-5 space-y-3">
+            <div className="bg-[#F7F7F7] rounded-xl border p-5 space-y-3">
               <div className="flex items-center gap-2 mb-1">
                 <User className="w-4 h-4 text-slate-400" />
                 <span className="text-sm font-semibold text-slate-700">{cashierName}</span>
@@ -949,7 +949,7 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
           </div>
         )}
 
-        <DialogFooter className="px-6 py-4 border-t bg-slate-50 rounded-b-xl sm:justify-between">
+        <DialogFooter className="px-6 py-4 border-t bg-[#F7F7F7] rounded-b-xl sm:justify-between">
           {step === 'capture' && (
             <>
               <Button variant="ghost" onClick={onClose} className="text-slate-500" data-testid="button-cancel">Cancel</Button>

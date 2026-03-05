@@ -359,7 +359,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
   const accountName = account.name || 'Unknown';
 
   const Field = ({ label, value }: { label: string, value: string | number | undefined }) => (
-    <div className="flex justify-between items-start py-1.5 border-b border-slate-100 last:border-0 gap-2">
+    <div className="flex justify-between items-start py-1.5 border-b border-[#E5E5E5] last:border-0 gap-2">
       <span className="text-[11px] sm:text-xs text-slate-500 shrink-0">{label}</span>
       <span className="text-[11px] sm:text-xs text-slate-800 font-medium text-right break-words">{value || '-'}</span>
     </div>
@@ -367,12 +367,12 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
 
   return (
     <div className="space-y-3">
-       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-         <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+       <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+         <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-[#E5E5E5] bg-[#F7F7F7]">
            <div className="flex items-center gap-2.5">
               <button
                 onClick={() => { if (viewingItemId) setViewingItem(null); else removeItem(item.id); }}
-                className="shrink-0 w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors"
+                className="shrink-0 w-7 h-7 rounded-lg bg-[#F2F4F7] hover:bg-[#E5E5E5] flex items-center justify-center text-slate-500 transition-colors"
                 data-testid="button-close-enquiry"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
@@ -387,7 +387,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                   <h3 className="text-sm font-bold text-[#2E2E2E] truncate max-w-[160px] sm:max-w-none" data-testid="text-account-name">
                     {accountName}
                   </h3>
-                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${isActive ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-slate-100 text-slate-500 ring-1 ring-slate-200'}`}>
+                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${isActive ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-[#F2F4F7] text-slate-500 ring-1 ring-[#D6D6D6]'}`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                     {account.status || 'Active'}
                   </span>
@@ -446,7 +446,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
 
          <Collapsible open={isOpen} onOpenChange={setIsOpen}>
            <CollapsibleTrigger asChild>
-             <button className="w-full flex items-center justify-between px-3 sm:px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors border-b border-slate-100" data-testid="button-toggle-details">
+             <button className="w-full flex items-center justify-between px-3 sm:px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-[#F7F7F7] transition-colors border-b border-[#E5E5E5]" data-testid="button-toggle-details">
                <span className="flex items-center gap-1.5">
                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
                  Account Details
@@ -455,7 +455,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
              </button>
            </CollapsibleTrigger>
            <CollapsibleContent>
-             <div className="px-3 sm:px-4 py-2 space-y-3 bg-slate-50/50">
+             <div className="px-3 sm:px-4 py-2 space-y-3 bg-[#F7F7F7]/50">
                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
                  <div>
                    <Field label="Account Number" value={account.accountNo} />
@@ -500,8 +500,8 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
          </Collapsible>
        </div>
 
-       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-         <div className="px-3 sm:px-4 py-2 border-b border-slate-100 flex items-center justify-between">
+       <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+         <div className="px-3 sm:px-4 py-2 border-b border-[#E5E5E5] flex items-center justify-between">
            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Services & Balance</span>
            {balanceError && (
              <button onClick={fetchBalanceData} className="text-[10px] text-[var(--pos-accent)] font-medium hover:underline">Retry</button>
@@ -540,7 +540,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                        { l: '60d', v: row.days60 },
                        { l: '90+', v: (row.days90 || 0) + (row.days120 || 0) + (row.days150 || 0) + (row.days180Plus || 0) },
                      ].map(({ l, v }) => (
-                       <div key={l} className="text-center bg-slate-50 rounded px-1 py-0.5">
+                       <div key={l} className="text-center bg-[#F7F7F7] rounded px-1 py-0.5">
                          <div className="text-slate-400 font-medium">{l}</div>
                          <div className={`font-mono font-semibold ${(v || 0) > 0 ? 'text-slate-700' : 'text-slate-400'}`}>{(v || 0).toFixed(0)}</div>
                        </div>
@@ -549,7 +549,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                  </div>
                ))}
                {account.agingBreakdown && account.agingBreakdown.length > 1 && (
-                 <div className="px-3 py-2 bg-slate-50">
+                 <div className="px-3 py-2 bg-[#F7F7F7]">
                    <div className="flex justify-between items-center">
                      <span className="text-xs font-bold text-slate-800">Total</span>
                      <span className="text-sm font-bold font-mono text-red-600">
@@ -562,7 +562,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
 
              <div className="hidden sm:block overflow-x-auto text-xs">
                <table className="w-full text-left border-collapse min-w-[800px]">
-                 <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+                 <thead className="bg-[#F7F7F7] text-slate-600 font-semibold border-b border-[#D6D6D6]">
                    <tr>
                      <th className="p-2">Service</th>
                      <th className="p-2 text-right">Outstanding</th>
@@ -582,7 +582,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                      totalOutstanding: account.outstandingAmount, newCharge: 0, currentAccount: account.outstandingAmount,
                      days30: 0, days60: 0, days90: 0, days120: 0, days150: 0, days180Plus: 0
                    }]).map((row, idx) => (
-                     <tr key={idx} className="border-b border-slate-100 last:border-0 hover:bg-[var(--pos-accent-tint)]" data-testid={`row-aging-desktop-${idx}`}>
+                     <tr key={idx} className="border-b border-[#E5E5E5] last:border-0 hover:bg-[var(--pos-accent-tint)]" data-testid={`row-aging-desktop-${idx}`}>
                        <td className="p-2">{row.totalOutstanding < 0 && row.serviceDescription === 'Balance B/F' ? 'Advance Payment' : row.serviceDescription}</td>
                        <td className="p-2 text-right font-mono">{(row.totalOutstanding || 0).toFixed(2)}</td>
                        <td className="p-2 text-right font-mono">{(row.newCharge || 0).toFixed(2)}</td>
@@ -596,7 +596,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                      </tr>
                    ))}
                    {account.agingBreakdown && account.agingBreakdown.length > 1 && (
-                     <tr className="bg-slate-50 font-bold border-t border-slate-200">
+                     <tr className="bg-[#F7F7F7] font-bold border-t border-[#D6D6D6]">
                        <td className="p-2">Total</td>
                        <td className="p-2 text-right font-mono">{account.agingBreakdown.reduce((s, i) => s + i.totalOutstanding, 0).toFixed(2)}</td>
                        <td className="p-2 text-right font-mono">{account.agingBreakdown.reduce((s, i) => s + i.newCharge, 0).toFixed(2)}</td>

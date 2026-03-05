@@ -39,9 +39,9 @@ function PosPageContent() {
   return (
     <PosLayout>
       <div className="flex flex-col lg:flex-row flex-1 overflow-y-auto lg:overflow-hidden relative">
-        <div className="flex-1 flex flex-col min-w-0 bg-slate-50 relative">
+        <div className="flex-1 flex flex-col min-w-0 bg-[#F7F7F7] relative">
           
-          <div className="px-3 sm:px-5 lg:px-6 py-2.5 sm:py-3 bg-white border-b border-slate-100 z-30 shrink-0 relative sticky top-0">
+          <div className="px-3 sm:px-5 lg:px-6 py-2.5 sm:py-3 bg-white border-b border-[#E5E5E5] z-30 shrink-0 relative sticky top-0">
             <div className="max-w-2xl mx-auto w-full">
               <UnifiedSearch onSearchActiveChange={setIsSearchActive} />
             </div>

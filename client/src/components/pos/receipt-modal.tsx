@@ -409,7 +409,7 @@ export function ReceiptModal() {
               return (
                 <div className="space-y-3">
                   {hasSingleAccount && consumerItems[0] && (
-                    <div className="bg-slate-50 rounded-lg p-3 space-y-1">
+                    <div className="bg-[#F7F7F7] rounded-lg p-3 space-y-1">
                       <div className="flex justify-between text-xs">
                         <span className="text-muted-foreground">Account</span>
                         <span className="font-mono font-medium">{consumerItems[0].reference}</span>
@@ -423,7 +423,7 @@ export function ReceiptModal() {
                     </div>
                   )}
                   {hasMultipleAccounts && (
-                    <div className="bg-slate-50 rounded-lg p-3 space-y-2">
+                    <div className="bg-[#F7F7F7] rounded-lg p-3 space-y-2">
                       <p className="text-xs font-semibold text-slate-700">{consumerItems.length} accounts processed</p>
                       <div className="space-y-1 max-h-32 overflow-y-auto">
                         {consumerItems.map((item: TransactionItem, idx: number) => (

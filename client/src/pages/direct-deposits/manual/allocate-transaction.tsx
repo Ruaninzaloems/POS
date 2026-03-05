@@ -1187,7 +1187,7 @@ export default function AllocateTransaction() {
       <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
         <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5 flex items-center gap-2 sm:gap-4">
              <Link href="/direct-deposits/manual">
-                <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9 rounded-full hover:bg-slate-100" data-testid="button-back">
+                <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9 rounded-full hover:bg-[#F2F4F7]" data-testid="button-back">
                     <ArrowLeft className="w-4 h-4" />
                 </Button>
              </Link>
@@ -1223,7 +1223,7 @@ export default function AllocateTransaction() {
                 </div>
               </div>
             </div>
-            <div className="mt-2 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <div className="mt-2 h-1.5 bg-[#F2F4F7] rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-500 ease-out ${isFullyAllocated ? 'bg-emerald-500' : allocationPercent > 0 ? 'bg-[var(--pos-accent)]' : 'bg-slate-200'}`}
                 style={{ width: `${allocationPercent}%` }}
@@ -1235,7 +1235,7 @@ export default function AllocateTransaction() {
 
             <div className="hidden lg:block lg:col-span-4 xl:col-span-3 space-y-5">
               <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
-                <div className="px-5 py-4 border-b bg-gradient-to-r from-slate-50 to-white">
+                <div className="px-5 py-4 border-b bg-[#F7F7F7]">
                     <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 rounded-lg bg-[var(--pos-accent-tint)] flex items-center justify-center">
                             <CreditCard className="w-4 h-4 text-[var(--pos-accent)]" />
@@ -1271,14 +1271,14 @@ export default function AllocateTransaction() {
               <div className="rounded-xl border bg-white shadow-sm p-5">
                 <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Allocation Progress</h3>
                 <div className="space-y-3">
-                    <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-2.5 bg-[#F2F4F7] rounded-full overflow-hidden">
                         <div
                             className={`h-full rounded-full transition-all duration-500 ease-out ${isFullyAllocated ? 'bg-emerald-500' : allocationPercent > 0 ? 'bg-[var(--pos-accent)]' : 'bg-slate-200'}`}
                             style={{ width: `${allocationPercent}%` }}
                         />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-slate-50 rounded-lg p-2.5 text-center">
+                        <div className="bg-[#F7F7F7] rounded-lg p-2.5 text-center">
                             <div className="text-[11px] text-muted-foreground mb-0.5">Allocated</div>
                             <div className="text-sm font-bold font-mono text-slate-800">R {allocatedTotal.toFixed(2)}</div>
                         </div>
@@ -1338,10 +1338,10 @@ export default function AllocateTransaction() {
 
             <div className="lg:col-span-8 xl:col-span-9">
               <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
-                <div className="px-3 sm:px-5 py-3 sm:py-4 border-b bg-gradient-to-r from-white to-slate-50/50">
+                <div className="px-3 sm:px-5 py-3 sm:py-4 border-b bg-[#F7F7F7]">
                     <div className="flex items-center justify-between mb-3">
                         <h2 className="text-sm sm:text-base font-semibold tracking-tight">Allocation Lines</h2>
-                        <Button variant="outline" size="sm" className="h-7 sm:h-8 text-xs gap-1.5 border-slate-200" data-testid="button-import-csv" onClick={() => setCsvDialogOpen(true)}>
+                        <Button variant="outline" size="sm" className="h-7 sm:h-8 text-xs gap-1.5 border-[#D6D6D6]" data-testid="button-import-csv" onClick={() => setCsvDialogOpen(true)}>
                             <Upload className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Import</span> File
                         </Button>
                     </div>
@@ -1359,7 +1359,7 @@ export default function AllocateTransaction() {
                                     className={`inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap shrink-0 ${
                                         isActive
                                             ? 'bg-slate-900 text-white shadow-sm'
-                                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700'
+                                            : 'bg-[#F2F4F7] text-slate-500 hover:bg-slate-200 hover:text-slate-700'
                                     }`}
                                 >
                                     <Icon className="w-3 h-3" />
@@ -1381,7 +1381,7 @@ export default function AllocateTransaction() {
                                 searchScope === 'CLEARANCE' ? "Search clearance certificate..." :
                                 "Search direct income group..."
                             }
-                            className="h-10 sm:h-11 pl-9 sm:pl-10 pr-10 bg-slate-50 border-slate-200 rounded-lg focus:bg-white transition-colors text-sm"
+                            className="h-10 sm:h-11 pl-9 sm:pl-10 pr-10 bg-[#F7F7F7] border-[#D6D6D6] rounded-lg focus:bg-white transition-colors text-sm"
                             value={ddSearchQuery}
                             onChange={e => handleDDSearchInput(e.target.value)}
                             onFocus={() => { if (ddSearchResults.length > 0) setDdDropdownOpen(true); }}
@@ -1393,12 +1393,12 @@ export default function AllocateTransaction() {
                             </button>
                         )}
                         {ddDropdownOpen && ddSearchResults.length > 0 && (
-                            <div className="absolute z-50 top-full left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl shadow-slate-200/50 max-h-80 overflow-y-auto">
+                            <div className="absolute z-50 top-full left-0 right-0 mt-1.5 bg-white border border-[#D6D6D6] rounded-xl shadow-xl shadow-slate-200/50 max-h-80 overflow-y-auto">
                                 {ddSearchResults.map((result, idx) => (
                                     <button
                                         key={`${result.type}-${result.accountId}-${idx}`}
                                         data-testid={`dd-result-${result.type}-${result.accountId}`}
-                                        className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-100/80 last:border-b-0 flex items-center gap-3 transition-colors"
+                                        className="w-full text-left px-4 py-3 hover:bg-[#F7F7F7] border-b border-[#E5E5E5] last:border-b-0 flex items-center gap-3 transition-colors"
                                         onClick={() => handleSelectDDResult(result)}
                                     >
                                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
@@ -1423,7 +1423,7 @@ export default function AllocateTransaction() {
                                             </div>
                                         </div>
                                         {result.outstandingAmount != null && result.outstandingAmount !== 0 && (
-                                            <span className="text-xs font-mono font-medium text-slate-500 shrink-0 bg-slate-50 px-2 py-1 rounded">
+                                            <span className="text-xs font-mono font-medium text-slate-500 shrink-0 bg-[#F7F7F7] px-2 py-1 rounded">
                                                 R {result.outstandingAmount.toFixed(2)}
                                             </span>
                                         )}
@@ -1432,7 +1432,7 @@ export default function AllocateTransaction() {
                             </div>
                         )}
                         {ddDropdownOpen && ddSearchResults.length === 0 && !ddSearching && ddSearchQuery.length >= 2 && (
-                            <div className="absolute z-50 top-full left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl shadow-slate-200/50 p-6 text-center">
+                            <div className="absolute z-50 top-full left-0 right-0 mt-1.5 bg-white border border-[#D6D6D6] rounded-xl shadow-xl shadow-slate-200/50 p-6 text-center">
                                 <Search className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                                 <p className="text-sm text-muted-foreground">No results found for "<span className="font-medium text-slate-600">{ddSearchQuery}</span>"</p>
                             </div>
@@ -1725,7 +1725,7 @@ export default function AllocateTransaction() {
                 <div className="min-h-[280px] sm:min-h-[360px]">
                     {lines.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-16 sm:py-20 px-6 text-center">
-                            <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+                            <div className="w-16 h-16 rounded-2xl bg-[#F2F4F7] flex items-center justify-center mb-4">
                                 <Banknote className="w-7 h-7 text-slate-400" />
                             </div>
                             <h3 className="text-sm font-medium text-slate-600 mb-1">No allocations yet</h3>
@@ -1745,7 +1745,7 @@ export default function AllocateTransaction() {
                         <>
                             <div className="sm:hidden divide-y">
                                 {pageLines.map((line, idx) => (
-                                    <div key={line.id} className="px-4 py-3 flex items-center gap-3 hover:bg-slate-50/50 transition-colors">
+                                    <div key={line.id} className="px-4 py-3 flex items-center gap-3 hover:bg-[#F7F7F7]/50 transition-colors">
                                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold ${
                                             line.allocationType === 'CASHBOOK' ? 'bg-orange-50 text-orange-600' :
                                             line.allocationType === 'CLEARANCE' ? 'bg-amber-50 text-amber-600' :
@@ -1778,7 +1778,7 @@ export default function AllocateTransaction() {
 
                             <table className="hidden sm:table w-full">
                                 <thead>
-                                    <tr className="border-b bg-slate-50/50">
+                                    <tr className="border-b bg-[#F7F7F7]/50">
                                         <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-5 py-3 w-8">#</th>
                                         <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Account</th>
                                         <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Description</th>
@@ -1789,7 +1789,7 @@ export default function AllocateTransaction() {
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {pageLines.map((line, idx) => (
-                                        <tr key={line.id} className="hover:bg-slate-50/50 transition-colors group">
+                                        <tr key={line.id} className="hover:bg-[#F7F7F7]/50 transition-colors group">
                                             <td className="px-5 py-3">
                                                 <span className="text-xs text-muted-foreground">{startIdx + idx + 1}</span>
                                             </td>
@@ -1839,7 +1839,7 @@ export default function AllocateTransaction() {
                             </table>
 
                             {totalPages > 1 && (
-                                <div className="flex items-center justify-between px-5 py-3 border-t bg-slate-50/30">
+                                <div className="flex items-center justify-between px-5 py-3 border-t bg-[#F7F7F7]/30">
                                     <span className="text-xs text-muted-foreground">
                                         Showing {startIdx + 1}–{Math.min(startIdx + LINES_PER_PAGE, lines.length)} of {lines.length} lines
                                     </span>
@@ -1872,7 +1872,7 @@ export default function AllocateTransaction() {
                 </div>
 
                 {lines.length > 0 && (
-                    <div className="hidden sm:flex px-5 py-4 border-t bg-gradient-to-r from-slate-50 to-white items-center justify-between">
+                    <div className="hidden sm:flex px-5 py-4 border-t bg-[#F7F7F7] items-center justify-between">
                         <div className="flex items-center gap-6 text-sm">
                             <div>
                                 <span className="text-muted-foreground">Allocated:</span>
@@ -1955,7 +1955,7 @@ export default function AllocateTransaction() {
                   data-testid="input-csv-file"
                 />
                 <div
-                  className="w-full max-w-md border-2 border-dashed border-slate-200 rounded-xl p-10 text-center cursor-pointer hover:border-[var(--pos-accent)] hover:bg-[var(--pos-accent-tint)] transition-all"
+                  className="w-full max-w-md border-2 border-dashed border-[#D6D6D6] rounded-xl p-10 text-center cursor-pointer hover:border-[var(--pos-accent)] hover:bg-[var(--pos-accent-tint)] transition-all"
                   onClick={() => csvFileInputRef.current?.click()}
                   data-testid="csv-dropzone"
                 >
@@ -1963,7 +1963,7 @@ export default function AllocateTransaction() {
                   <p className="text-sm font-medium text-slate-700 mb-1">Click to select a file</p>
                   <p className="text-xs text-muted-foreground">Supported formats: .csv, .txt, .xlsx, .xls</p>
                 </div>
-                <div className="mt-6 w-full max-w-md bg-slate-50 rounded-lg p-4 text-xs text-muted-foreground space-y-1.5">
+                <div className="mt-6 w-full max-w-md bg-[#F7F7F7] rounded-lg p-4 text-xs text-muted-foreground space-y-1.5">
                   <p className="font-medium text-slate-600 text-sm mb-2">Expected file format:</p>
                   <p className="font-mono bg-white px-2 py-1 rounded border text-[11px]">AccountNumber, Amount</p>
                   <p className="font-mono bg-white px-2 py-1 rounded border text-[11px]">100234, 500.00</p>
@@ -1976,7 +1976,7 @@ export default function AllocateTransaction() {
             {csvStep === 'preview' && (
               <div className="space-y-3 p-1">
                 <div className="flex items-center justify-between px-1">
-                  <span className="text-sm font-medium text-slate-700">{csvParsedRows.length} row(s) from <span className="font-mono text-xs bg-slate-100 px-1.5 py-0.5 rounded">{csvFile?.name}</span></span>
+                  <span className="text-sm font-medium text-slate-700">{csvParsedRows.length} row(s) from <span className="font-mono text-xs bg-[#F2F4F7] px-1.5 py-0.5 rounded">{csvFile?.name}</span></span>
                   <Button variant="ghost" size="sm" className="text-xs text-slate-500 gap-1" onClick={() => { setCsvStep('upload'); setCsvParsedRows([]); setCsvFile(null); }}>
                     <X className="w-3 h-3" /> Change file
                   </Button>
@@ -1984,7 +1984,7 @@ export default function AllocateTransaction() {
                 <div className="border rounded-lg overflow-hidden">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-slate-50 border-b">
+                      <tr className="bg-[#F7F7F7] border-b">
                         <th className="text-left px-4 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider w-8">#</th>
                         <th className="text-left px-4 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Account No</th>
                         <th className="text-right px-4 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Amount</th>
@@ -1996,7 +1996,7 @@ export default function AllocateTransaction() {
                         const pg = Math.min(csvPage, totalPg || 1);
                         const start = (pg - 1) * CSV_PAGE_SIZE;
                         return csvParsedRows.slice(start, start + CSV_PAGE_SIZE).map((row, idx) => (
-                          <tr key={start + idx} className="hover:bg-slate-50/50">
+                          <tr key={start + idx} className="hover:bg-[#F7F7F7]/50">
                             <td className="px-4 py-2 text-xs text-muted-foreground">{start + idx + 1}</td>
                             <td className="px-4 py-2 font-mono text-sm">{row.accountNo}</td>
                             <td className="px-4 py-2 text-right font-mono text-sm font-medium">R {row.amount.toFixed(2)}</td>
@@ -2071,7 +2071,7 @@ export default function AllocateTransaction() {
                 <div className="border rounded-lg overflow-hidden">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-slate-50 border-b">
+                      <tr className="bg-[#F7F7F7] border-b">
                         <th className="text-left px-3 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider w-8">#</th>
                         <th className="text-left px-3 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Account</th>
                         <th className="text-left px-3 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Name</th>

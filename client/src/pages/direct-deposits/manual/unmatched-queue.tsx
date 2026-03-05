@@ -454,7 +454,7 @@ export default function UnmatchedQueue() {
   const getConfidenceColor = (confidence: number) => {
     if (confidence >= 80) return 'bg-emerald-100 text-emerald-700 border-emerald-200';
     if (confidence >= 60) return 'bg-[var(--pos-accent-tint)] text-[#6B6B6B] border-[#D6D6D6]';
-    return 'bg-slate-100 text-slate-600 border-slate-200';
+    return 'bg-[#F2F4F7] text-slate-600 border-[#D6D6D6]';
   };
 
   const getMatchIcon = (matchType: SuggestedMatch['matchType']) => {
@@ -529,7 +529,7 @@ export default function UnmatchedQueue() {
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <Input
                   placeholder="Search description, ref, amount..."
-                  className="pl-10 h-10 bg-slate-50 border-slate-200 rounded-lg focus:bg-white transition-colors text-sm"
+                  className="pl-10 h-10 bg-[#F7F7F7] border-[#D6D6D6] rounded-lg focus:bg-white transition-colors text-sm"
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
                   data-testid="input-search"
@@ -544,7 +544,7 @@ export default function UnmatchedQueue() {
 
              <Popover>
                 <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className={`gap-1.5 h-10 px-3 ${activeFiltersCount > 0 ? 'bg-[var(--pos-accent-tint)] border-[var(--pos-accent)] text-[var(--pos-accent)]' : 'border-slate-200'}`} data-testid="button-filter">
+                    <Button variant="outline" size="sm" className={`gap-1.5 h-10 px-3 ${activeFiltersCount > 0 ? 'bg-[var(--pos-accent-tint)] border-[var(--pos-accent)] text-[var(--pos-accent)]' : 'border-[#D6D6D6]'}`} data-testid="button-filter">
                         <Filter className="w-3.5 h-3.5" />
                         <span className="text-xs">{activeFiltersCount > 0 ? `${activeFiltersCount} Filter` : 'Filter'}</span>
                     </Button>
@@ -571,7 +571,7 @@ export default function UnmatchedQueue() {
                 </PopoverContent>
              </Popover>
 
-             <Button variant="outline" size="sm" className="h-10 px-3 gap-1.5 border-slate-200" onClick={() => loadData(page)} disabled={loading} data-testid="button-refresh">
+             <Button variant="outline" size="sm" className="h-10 px-3 gap-1.5 border-[#D6D6D6]" onClick={() => loadData(page)} disabled={loading} data-testid="button-refresh">
                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
                  <span className="text-xs hidden sm:inline">Refresh</span>
              </Button>
@@ -625,7 +625,7 @@ export default function UnmatchedQueue() {
                 </div>
               ) : filtered.length === 0 ? (
                 <div className="text-center py-16" data-testid="text-empty-state-mobile">
-                  <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                  <div className="w-14 h-14 rounded-2xl bg-[#F2F4F7] flex items-center justify-center mx-auto mb-3">
                     <Banknote className="w-6 h-6 text-slate-400" />
                   </div>
                   <p className="text-sm text-muted-foreground">{items.length === 0 ? 'No bank deposits found.' : 'No items match your search.'}</p>
@@ -682,7 +682,7 @@ export default function UnmatchedQueue() {
               <div className="flex-1 min-h-0 overflow-auto">
               <table className="w-full">
                 <thead className="sticky top-0 z-[1]">
-                  <tr className="border-b bg-slate-50">
+                  <tr className="border-b bg-[#F7F7F7]">
                     <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-4 py-2.5 w-14">ID</th>
                     <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-4 py-2.5 w-24">Date</th>
                     <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-4 py-2.5">Description</th>
@@ -703,7 +703,7 @@ export default function UnmatchedQueue() {
                   ) : filtered.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="py-16 text-center" data-testid="text-empty-state">
-                        <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                        <div className="w-14 h-14 rounded-2xl bg-[#F2F4F7] flex items-center justify-center mx-auto mb-3">
                           <Banknote className="w-6 h-6 text-slate-400" />
                         </div>
                         <p className="text-sm text-muted-foreground">{items.length === 0 ? 'No bank deposits found.' : 'No items match your search.'}</p>
@@ -713,7 +713,7 @@ export default function UnmatchedQueue() {
                     <React.Fragment key={tx.posItem_ID}>
                       <tr
                         data-testid={`row-positem-${tx.posItem_ID}`}
-                        className={`transition-colors ${!tx.billingAllocated ? 'cursor-pointer hover:bg-slate-50/80' : ''} ${expandedSuggestion === tx.posItem_ID ? 'bg-amber-50/30' : ''}`}
+                        className={`transition-colors ${!tx.billingAllocated ? 'cursor-pointer hover:bg-[#F7F7F7]' : ''} ${expandedSuggestion === tx.posItem_ID ? 'bg-amber-50/30' : ''}`}
                         onClick={() => !tx.billingAllocated && checkingItemId === null && handleAllocateClick(tx.posItem_ID)}
                       >
                         <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{tx.posItem_ID}</td>
@@ -791,15 +791,15 @@ export default function UnmatchedQueue() {
               </div>
 
               {totalPages > 1 && (
-                <div className="flex items-center justify-between px-5 py-3.5 border-t bg-slate-50/50">
+                <div className="flex items-center justify-between px-5 py-3.5 border-t bg-[#F7F7F7]/50">
                   <p className="text-xs text-muted-foreground">
                     Page <span className="font-medium text-slate-700">{page}</span> of <span className="font-medium text-slate-700">{totalPages}</span> <span className="text-slate-400">({totalCount.toLocaleString()} items)</span>
                   </p>
                   <div className="flex gap-1.5">
-                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1 border-slate-200" disabled={page <= 1 || loading} onClick={() => setPage(p => p - 1)} data-testid="button-prev-page">
+                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1 border-[#D6D6D6]" disabled={page <= 1 || loading} onClick={() => setPage(p => p - 1)} data-testid="button-prev-page">
                       <ChevronLeft className="w-3.5 h-3.5" /> Prev
                     </Button>
-                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1 border-slate-200" disabled={page >= totalPages || loading} onClick={() => setPage(p => p + 1)} data-testid="button-next-page">
+                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1 border-[#D6D6D6]" disabled={page >= totalPages || loading} onClick={() => setPage(p => p + 1)} data-testid="button-next-page">
                       Next <ChevronRight className="w-3.5 h-3.5" />
                     </Button>
                   </div>
@@ -873,7 +873,7 @@ function SuggestionPanel({ posItemId, suggestions, loading, getConfidenceColor, 
                 <div className="text-[10px] text-amber-600/80 truncate">{s.matchDetail}</div>
               </div>
               {s.outstandingAmount != null && s.outstandingAmount !== 0 && (
-                <span className="text-[10px] font-mono text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded shrink-0">
+                <span className="text-[10px] font-mono text-slate-500 bg-[#F7F7F7] px-1.5 py-0.5 rounded shrink-0">
                   R {s.outstandingAmount.toFixed(2)}
                 </span>
               )}
