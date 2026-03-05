@@ -304,11 +304,11 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
   };
   const getSvcColor = (name: string) => {
     const lower = (name || '').toLowerCase();
-    if (lower.includes('water')) return { bg: 'from-cyan-500 to-cyan-600', light: 'bg-cyan-50 text-cyan-700 ring-cyan-200', iconBg: 'bg-cyan-100 text-cyan-600' };
-    if (lower.includes('electricity') || lower.includes('elec')) return { bg: 'from-amber-500 to-amber-600', light: 'bg-amber-50 text-amber-700 ring-amber-200', iconBg: 'bg-amber-100 text-amber-600' };
-    if (lower.includes('sanitation') || lower.includes('sewer')) return { bg: 'from-violet-500 to-violet-600', light: 'bg-violet-50 text-violet-700 ring-violet-200', iconBg: 'bg-violet-100 text-violet-600' };
-    if (lower.includes('waste') || lower.includes('refuse')) return { bg: 'from-emerald-500 to-emerald-600', light: 'bg-emerald-50 text-emerald-700 ring-emerald-200', iconBg: 'bg-emerald-100 text-emerald-600' };
-    if (lower.includes('rates') || lower.includes('property')) return { bg: 'from-orange-500 to-orange-600', light: 'bg-orange-50 text-orange-700 ring-orange-200', iconBg: 'bg-orange-100 text-orange-600' };
+    if (lower.includes('water')) return { bg: 'from-[var(--pos-accent)] to-[var(--pos-accent-dark)]', light: 'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)] ring-[#D6D6D6]', iconBg: 'bg-[var(--pos-accent-tint-strong)] text-[var(--pos-accent)]' };
+    if (lower.includes('electricity') || lower.includes('elec')) return { bg: 'from-[var(--pos-accent)] to-[var(--pos-accent-dark)]', light: 'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)] ring-[#D6D6D6]', iconBg: 'bg-[var(--pos-accent-tint-strong)] text-[var(--pos-accent)]' };
+    if (lower.includes('sanitation') || lower.includes('sewer')) return { bg: 'from-[var(--pos-accent)] to-[var(--pos-accent-dark)]', light: 'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)] ring-[#D6D6D6]', iconBg: 'bg-[var(--pos-accent-tint-strong)] text-[var(--pos-accent)]' };
+    if (lower.includes('waste') || lower.includes('refuse')) return { bg: 'from-[var(--pos-accent)] to-[var(--pos-accent-dark)]', light: 'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)] ring-[#D6D6D6]', iconBg: 'bg-[var(--pos-accent-tint-strong)] text-[var(--pos-accent)]' };
+    if (lower.includes('rates') || lower.includes('property')) return { bg: 'from-[var(--pos-accent)] to-[var(--pos-accent-dark)]', light: 'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)] ring-[#D6D6D6]', iconBg: 'bg-[var(--pos-accent-tint-strong)] text-[var(--pos-accent)]' };
     return { bg: 'from-[var(--pos-accent)] to-[var(--pos-accent-dark)]', light: 'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)] ring-[#D6D6D6]', iconBg: 'bg-[var(--pos-accent-tint-strong)] text-[var(--pos-accent)]' };
   };
 
@@ -964,20 +964,20 @@ function MeterIntelligence({ allReadings }: { allReadings: any[] }) {
           {analysis && (
             <>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-lg px-3 py-2.5 border border-amber-200">
-                  <div className="text-[9px] text-amber-600 uppercase tracking-wider font-bold">Avg Daily</div>
-                  <div className="text-sm sm:text-base font-mono font-black text-amber-800 mt-0.5">{fmt(analysis.avgDailyConsumption)}</div>
-                  <div className="text-[9px] text-amber-500">units/day</div>
+                <div className="bg-gradient-to-br from-[var(--pos-accent-tint)] to-[#F7F7F7] rounded-lg px-3 py-2.5 border border-[#D6D6D6]">
+                  <div className="text-[9px] text-[var(--pos-accent)] uppercase tracking-wider font-bold">Avg Daily</div>
+                  <div className="text-sm sm:text-base font-mono font-black text-[#2E2E2E] mt-0.5">{fmt(analysis.avgDailyConsumption)}</div>
+                  <div className="text-[9px] text-[var(--pos-accent-light)]">units/day</div>
                 </div>
                 <div className="bg-gradient-to-br from-[var(--pos-accent-tint)] to-[#F7F7F7] rounded-lg px-3 py-2.5 border border-[#D6D6D6]">
                   <div className="text-[9px] text-[var(--pos-accent)] uppercase tracking-wider font-bold">Avg Monthly</div>
                   <div className="text-sm sm:text-base font-mono font-black text-[#2E2E2E] mt-0.5">{fmt(analysis.avgMonthlyConsumption)}</div>
                   <div className="text-[9px] text-[var(--pos-accent)]">units/{STANDARD_MONTH_DAYS}d</div>
                 </div>
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg px-3 py-2.5 border border-green-200">
-                  <div className="text-[9px] text-green-600 uppercase tracking-wider font-bold">Range (Daily)</div>
-                  <div className="text-xs font-mono font-bold text-green-800 mt-0.5">{fmt(analysis.minDaily)} – {fmt(analysis.maxDaily)}</div>
-                  <div className="text-[9px] text-green-500">min – max</div>
+                <div className="bg-gradient-to-br from-[var(--pos-accent-tint)] to-[#F7F7F7] rounded-lg px-3 py-2.5 border border-[#D6D6D6]">
+                  <div className="text-[9px] text-[var(--pos-accent)] uppercase tracking-wider font-bold">Range (Daily)</div>
+                  <div className="text-xs font-mono font-bold text-[#2E2E2E] mt-0.5">{fmt(analysis.minDaily)} – {fmt(analysis.maxDaily)}</div>
+                  <div className="text-[9px] text-[var(--pos-accent-light)]">min – max</div>
                 </div>
                 <div className="bg-gradient-to-br from-[var(--pos-accent-tint)] to-[var(--pos-accent-tint)]/60 rounded-lg px-3 py-2.5 border border-[var(--pos-accent-light)]">
                   <div className="text-[9px] text-[var(--pos-accent-dark)] uppercase tracking-wider font-bold">Period Data</div>

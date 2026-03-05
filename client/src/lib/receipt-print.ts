@@ -162,7 +162,7 @@ export function generateReceiptHtml(data: ReceiptPrintData, isReprint: boolean =
   const outstandingBalance = data.outstandingBalance ?? 0;
   const vatAmount = data.vatAmount ?? 0;
 
-  const addressLines = munAddress.split('\n').map(l => `<div>${l}</div>`).join('');
+  const addressLines = munAddress.split('\n').filter(l => l.trim()).map(l => `<div>${l.trim()}</div>`).join('');
 
   const hasVatInServices = services.some(s => {
     const desc = (s.description || s.serviceDescription || '').toLowerCase();
@@ -174,157 +174,279 @@ export function generateReceiptHtml(data: ReceiptPrintData, isReprint: boolean =
     .map(s => {
       const desc = s.description || s.serviceDescription || '';
       const amt = s.amount ?? 0;
-      return `<tr><td class="svc-label">${desc}</td><td class="value">${fmtR(amt)}</td></tr>`;
+      return `<tr><td class="svc-desc">${desc}</td><td class="svc-amt">${fmtR(amt)}</td></tr>`;
     }).join('');
 
-  const reprintLabel = isReprint ? `<tr><td colspan="2" class="center bold reprint-label">Reprint</td></tr><tr><td colspan="2">&nbsp;</td></tr>` : '';
+  const reprintBadge = isReprint ? `<div class="reprint-badge">REPRINT</div>` : '';
 
   const accountAddr = data.address || '';
-  const addressFormatted = accountAddr ? accountAddr.split(/[\r\n]+/).map(l => l.trim()).filter(Boolean).join('<br/>') : '';
+  const addressFormatted = accountAddr ? accountAddr.split(/[\r\n]+/).map(l => l.trim()).filter(Boolean).join(', ') : '';
+
+  const accountName = data.accountName || data.consumerName || '';
 
   return `<!DOCTYPE html>
 <html><head><title>Receipt ${receiptNo}</title>
 <style>
-  @page {
-    size: A4;
-    margin: 15mm 20mm;
-  }
+  @page { size: A4; margin: 12mm 16mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 12px;
-    line-height: 1.4;
-    color: #000;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+    font-size: 11px;
+    line-height: 1.5;
+    color: #1a1a1a;
     background: #fff;
-    max-width: 500px;
+    max-width: 520px;
     margin: 0 auto;
-    padding: 20px;
+    padding: 0;
   }
-
-  table.receipt {
-    width: 100%;
-    border-collapse: collapse;
+  .receipt-container {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;
   }
-  table.receipt td {
-    padding: 2px 4px;
-    vertical-align: top;
-    font-size: 12px;
-  }
-  table.receipt td.label {
-    text-align: left;
-    font-weight: bold;
-    width: 45%;
-    white-space: nowrap;
-  }
-  table.receipt td.svc-label {
-    text-align: left;
-    width: 45%;
-    white-space: nowrap;
-  }
-  table.receipt td.value {
-    text-align: right;
-    width: 55%;
-    word-break: break-word;
-  }
-  table.receipt td.center {
+  .header {
+    background: linear-gradient(135deg, #1a3a4a 0%, #2d5a6b 100%);
+    color: #fff;
+    padding: 20px 24px 16px;
     text-align: center;
   }
-  table.receipt td.bold {
-    font-weight: bold;
+  .header h1 {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
   }
-  .reprint-label {
-    font-size: 14px;
-    font-weight: bold;
+  .header .addr {
+    font-size: 10px;
+    opacity: 0.8;
+    line-height: 1.4;
   }
-  .header-section {
-    text-align: center;
+  .header .vat {
+    font-size: 9px;
+    opacity: 0.6;
+    margin-top: 6px;
+    letter-spacing: 0.3px;
+  }
+  .reprint-badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    padding: 2px 12px;
+    border-radius: 10px;
     margin-bottom: 10px;
   }
-  .header-section h1 {
-    font-size: 14px;
-    font-weight: bold;
+  .receipt-meta {
+    padding: 14px 24px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e8e8e8;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 16px;
+  }
+  .meta-item {
+    display: flex;
+    flex-direction: column;
+  }
+  .meta-label {
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #888;
+    font-weight: 600;
+  }
+  .meta-value {
+    font-size: 11px;
+    color: #1a1a1a;
+    font-weight: 500;
+    word-break: break-word;
+  }
+  .meta-value.mono {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+  }
+  .meta-item.full-width {
+    grid-column: 1 / -1;
+  }
+  .section-title {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #888;
+    font-weight: 700;
+    padding: 12px 24px 6px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .services-table {
+    width: 100%;
+    border-collapse: collapse;
+    padding: 0;
+  }
+  .services-table td {
+    padding: 5px 24px;
+    font-size: 11px;
+    border-bottom: 1px solid #f5f5f5;
+  }
+  .services-table td.svc-desc {
+    color: #444;
+    width: 60%;
+  }
+  .services-table td.svc-amt {
+    text-align: right;
+    font-family: 'Courier New', monospace;
+    font-weight: 500;
+    color: #1a1a1a;
+    width: 40%;
+  }
+  .services-table tr:last-child td {
+    border-bottom: none;
+  }
+  .total-section {
+    padding: 0 24px;
+    border-top: 2px solid #1a3a4a;
     margin: 0;
   }
-  .header-section .addr {
+  .total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .total-row:last-child {
+    border-bottom: none;
+  }
+  .total-row .t-label {
     font-size: 11px;
+    color: #555;
   }
-  .header-section .vat {
+  .total-row .t-value {
+    font-family: 'Courier New', monospace;
     font-size: 11px;
-    margin-top: 2px;
+    font-weight: 500;
+    color: #1a1a1a;
   }
-  .separator {
-    border: none;
-    border-top: 1px solid #000;
-    margin: 6px 0;
+  .total-row.grand {
+    padding: 10px 0;
+    border-bottom: 1px solid #e0e0e0;
   }
-  .separator-thick {
-    border: none;
-    border-top: 2px solid #000;
-    margin: 6px 0;
+  .total-row.grand .t-label {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a1a1a;
   }
-  .spacer td {
-    padding: 4px 0;
+  .total-row.grand .t-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a3a4a;
   }
-  .thank-you {
+  .total-row.balance .t-value {
+    color: ${outstandingBalance < 0 ? '#16a34a' : outstandingBalance > 0 ? '#dc2626' : '#1a1a1a'};
+  }
+  .payment-info {
+    padding: 12px 24px;
+    background: #f8f9fa;
+    border-top: 1px solid #e8e8e8;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 16px;
+  }
+  .footer {
     text-align: center;
-    margin-top: 12px;
-    font-size: 12px;
+    padding: 14px 24px;
+    border-top: 1px solid #e8e8e8;
   }
-
+  .footer .thank-you {
+    font-size: 11px;
+    color: #888;
+    font-style: italic;
+  }
   @media print {
-    body { padding: 0; margin: 0 auto; max-width: 500px; }
+    body { padding: 0; margin: 0 auto; max-width: 520px; }
+    .receipt-container { border: none; border-radius: 0; }
+    .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .receipt-meta, .payment-info { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
   @media screen {
-    body {
-      padding: 30px 20px;
-      border: 1px solid #ddd;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      margin: 20px auto;
-    }
+    body { padding: 24px 16px; background: #f0f0f0; }
+    .receipt-container { box-shadow: 0 4px 24px rgba(0,0,0,0.12); }
   }
 </style></head>
 <body>
-  <div class="header-section">
+<div class="receipt-container">
+  <div class="header">
+    ${reprintBadge}
     <h1>${municipality}</h1>
-    ${addressLines}
-    <div class="vat">VAT Registration Number: ${vatReg}</div>
+    <div class="addr">${addressLines}</div>
+    ${vatReg ? `<div class="vat">VAT Reg: ${vatReg}</div>` : ''}
   </div>
 
-  <table class="receipt">
-    ${reprintLabel}
-    <tr><td class="label">Receipt No</td><td class="value">${receiptNo}</td></tr>
-    <tr><td class="label">Receipt Date</td><td class="value">${fmtDate(data.receiptDate)}</td></tr>
-    <tr><td class="label">Account No</td><td class="value">${data.accountNumber || ''}</td></tr>
-    ${data.oldAccountCode ? `<tr><td class="label">Old Account No</td><td class="value">${data.oldAccountCode}</td></tr>` : ''}
-    ${(data.accountName || data.consumerName) ? `<tr><td class="label">Account Name</td><td class="value">${data.accountName || data.consumerName || ''}</td></tr>` : ''}
-    ${data.sgNumber ? `<tr><td class="label">SG Number</td><td class="value">${data.sgNumber}</td></tr>` : ''}
-    ${addressFormatted ? `<tr><td class="label">Address</td><td class="value">${addressFormatted}</td></tr>` : ''}
+  <div class="receipt-meta">
+    <div class="meta-item">
+      <span class="meta-label">Receipt No</span>
+      <span class="meta-value mono">${receiptNo}</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Date</span>
+      <span class="meta-value">${fmtDate(data.receiptDate)}</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Account No</span>
+      <span class="meta-value mono">${data.accountNumber || '-'}</span>
+    </div>
+    ${data.oldAccountCode ? `<div class="meta-item"><span class="meta-label">Old Account No</span><span class="meta-value mono">${data.oldAccountCode}</span></div>` : ''}
+    ${accountName ? `<div class="meta-item full-width"><span class="meta-label">Account Holder</span><span class="meta-value">${accountName}</span></div>` : ''}
+    ${data.sgNumber ? `<div class="meta-item"><span class="meta-label">SG Number</span><span class="meta-value mono">${data.sgNumber}</span></div>` : ''}
+    ${addressFormatted ? `<div class="meta-item full-width"><span class="meta-label">Address</span><span class="meta-value">${addressFormatted}</span></div>` : ''}
+  </div>
 
-    <tr class="spacer"><td colspan="2"></td></tr>
-
+  ${svcRows ? `
+  <div class="section-title">Service Allocations</div>
+  <table class="services-table">
     ${svcRows}
-    ${!hasVatInServices ? `<tr><td class="label">Vat Amount</td><td class="value">${fmtR(vatAmount)}</td></tr>` : ''}
-
-    <tr class="spacer"><td colspan="2"></td></tr>
-    <tr><td colspan="2"><hr class="separator-thick" /></td></tr>
-
-    <tr><td class="label bold">Total</td><td class="value bold">${fmtR(total)}</td></tr>
-    <tr><td class="label">Tender Amount</td><td class="value">${fmtR(tenderAmount)}</td></tr>
-    <tr><td class="label">Change</td><td class="value">${fmtR(changeAmount)}</td></tr>
-
-    <tr class="spacer"><td colspan="2"></td></tr>
-
-    <tr><td class="label">Outstanding Balance</td><td class="value">${fmtR(outstandingBalance)}</td></tr>
-
-    <tr class="spacer"><td colspan="2"></td></tr>
-
-    <tr><td class="label">Payment Type</td><td class="value">${data.paymentType || ''}</td></tr>
-    <tr><td class="label">Payment Option</td><td class="value">${data.paymentOption || ''}</td></tr>
-    <tr><td class="label">Cashier</td><td class="value">${data.cashierName || ''}</td></tr>
-    <tr><td class="label">Cash Office</td><td class="value">${data.cashOffice || ''}</td></tr>
+    ${!hasVatInServices && vatAmount > 0 ? `<tr><td class="svc-desc" style="color:#888;">VAT Amount</td><td class="svc-amt" style="color:#888;">${fmtR(vatAmount)}</td></tr>` : ''}
   </table>
+  ` : ''}
 
-  <div class="thank-you">Thank you.</div>
+  <div class="total-section">
+    <div class="total-row grand">
+      <span class="t-label">Total</span>
+      <span class="t-value">R ${fmtR(total)}</span>
+    </div>
+    ${tenderAmount !== total ? `<div class="total-row"><span class="t-label">Tendered</span><span class="t-value">R ${fmtR(tenderAmount)}</span></div>` : ''}
+    ${changeAmount > 0 ? `<div class="total-row"><span class="t-label">Change</span><span class="t-value">R ${fmtR(changeAmount)}</span></div>` : ''}
+    <div class="total-row balance">
+      <span class="t-label">Outstanding Balance</span>
+      <span class="t-value">R ${fmtR(outstandingBalance)}</span>
+    </div>
+  </div>
+
+  <div class="payment-info">
+    <div class="meta-item">
+      <span class="meta-label">Payment Type</span>
+      <span class="meta-value">${data.paymentType || '-'}</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Payment Option</span>
+      <span class="meta-value">${data.paymentOption || '-'}</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Cashier</span>
+      <span class="meta-value">${data.cashierName || '-'}</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Cash Office</span>
+      <span class="meta-value">${data.cashOffice || '-'}</span>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="thank-you">Thank you for your payment</div>
+  </div>
+</div>
 </body></html>`;
 }
 

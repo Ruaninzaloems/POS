@@ -129,9 +129,9 @@ export function TabCard({ children, title, icon, action }: { children: React.Rea
 export function SectionHeader({ title }: { title: string }) {
   return (
     <div className="flex items-center gap-3 py-2 sm:py-2.5 mt-1">
-      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300 to-slate-300" />
+      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[#D6D6D6] to-[#D6D6D6]" />
       <span className="text-[10px] sm:text-[11px] font-bold text-[var(--pos-accent)] uppercase tracking-[0.15em] whitespace-nowrap px-2">{title}</span>
-      <div className="h-px flex-1 bg-gradient-to-l from-transparent via-slate-300 to-slate-300" />
+      <div className="h-px flex-1 bg-gradient-to-l from-transparent via-[#D6D6D6] to-[#D6D6D6]" />
     </div>
   );
 }
