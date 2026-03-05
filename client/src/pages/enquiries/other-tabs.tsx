@@ -199,7 +199,7 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
     }
   }, [accountId]);
 
-  useEffect(() => { if (!loaded.current) load(); }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
@@ -855,7 +855,7 @@ export function HandoverTab({ accountId }: { accountId: number }) {
     }
   }, [accountId]);
 
-  useEffect(() => { if (!loaded.current) load(); }, [load]);
+  useEffect(() => { load(); }, [load]);
   useEffect(() => { setCurrentPage(1); }, [accountId]);
 
   if (loading) return <LoadingSkeleton />;
@@ -1090,7 +1090,7 @@ export function NotificationsTab({ accountId }: { accountId: number }) {
     }
   }, [accountId]);
 
-  useEffect(() => { if (!loaded.current) load(); }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
@@ -1201,7 +1201,7 @@ export function StatementsTab({ accountId }: { accountId: number }) {
     }
   }, [accountId]);
 
-  useEffect(() => { if (!loaded.current) load(); }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   const filteredData = useMemo(() => {
     return data.filter(s => {
@@ -1519,7 +1519,7 @@ export function ClearanceTab({ accountId, propertyId, currentAccountNumber, curr
     }
   }, [accountId, propertyId]);
 
-  useEffect(() => { if (!loaded.current) load(); }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
@@ -1876,7 +1876,7 @@ export function DebtorNotesTab({ accountId }: { accountId: number }) {
     }
   }, [accountId]);
 
-  useEffect(() => { if (!loaded.current) load(); }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
@@ -1945,7 +1945,7 @@ export function Section129Tab({ accountId }: { accountId: number }) {
     }
   }, [accountId]);
 
-  useEffect(() => { if (!loaded.current) load(); }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
@@ -2000,7 +2000,7 @@ export function OccupiersTab({ accountId }: { accountId: number }) {
     }
   }, [accountId]);
 
-  useEffect(() => { if (!loaded.current) load(); }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   const handleAdd = async () => {
     if (!addName.trim()) return;
@@ -2877,7 +2877,7 @@ export function IndigentHistoryTab({ accountId }: { accountId: number }) {
     }
   }, [accountId]);
 
-  useEffect(() => { if (!loaded.current) load(); }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
@@ -2947,7 +2947,7 @@ export function IndigentHistoryTab({ accountId }: { accountId: number }) {
                 const isActive = statusText.toLowerCase().includes('active') || statusText.toLowerCase().includes('approved');
                 const isTerminated = statusText.toLowerCase().includes('terminat') || statusText.toLowerCase().includes('disqualif') || statusText.toLowerCase().includes('cancel');
                 return (
-                  <tr key={i} className={`border-b border-[#E5E5E5] hover:bg-teal-50/30 transition-colors ${isTerminated ? 'bg-red-50/20' : ''}`} data-testid={`indigent-row-${i}`}>
+                  <tr key={i} className={`border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)]/30 transition-colors ${isTerminated ? 'bg-red-50/20' : ''}`} data-testid={`indigent-row-${i}`}>
                     <td className="py-2.5 px-3">
                       <Badge variant="outline" className={`text-[10px] whitespace-nowrap ${isActive ? 'bg-emerald-50 text-emerald-700 border-[#D6D6D6]' : isTerminated ? 'bg-red-50 text-red-700 border-red-200' : 'bg-[#F7F7F7] text-slate-600 border-[#D6D6D6]'}`}>
                         {statusText}

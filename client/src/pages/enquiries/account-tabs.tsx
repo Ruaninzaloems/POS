@@ -160,7 +160,7 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
     }
   }, [accountId]);
 
-  useEffect(() => { if (!loaded.current) load(); }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   const b = basic || {};
   const a = air || {};
@@ -628,7 +628,7 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
     }
   }, [accountId]);
 
-  useEffect(() => { if (!loaded.current) load(); }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   const searchRelatedAccounts = useCallback(async () => {
     if (!data) return;
@@ -768,7 +768,7 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
           )}
           {relatedLoading && (
             <div className="flex items-center justify-center py-8 gap-2 text-sm text-muted-foreground">
-              <RefreshCw className="w-4 h-4 animate-spin text-purple-500" />
+              <RefreshCw className="w-4 h-4 animate-spin text-[var(--pos-accent)]" />
               Searching for related accounts...
             </div>
           )}
@@ -1069,7 +1069,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
         getTransactionHistory(accountNumber || String(accountId).padStart(12, '0'), accountId),
         getPaymentPlanRemainingCapital(accountId),
         getPaymentPlansByAccountId(accountId),
-        getAccountRatesDetails(accountId, '2025/2026'),
+        getAccountRatesDetails(accountId),
       ]);
       if (balResult.status === 'fulfilled') {
         const d = balResult.value;
@@ -1090,7 +1090,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
     }
   }, [accountId]);
 
-  useEffect(() => { if (!loaded.current) load(); }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
@@ -1430,16 +1430,16 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
                   <div className="text-[11px] font-semibold text-slate-800 mb-1">{plan.serviceDescription || plan.description || plan.capitalCostType || plan.serviceType || `Service ${i + 1}`}</div>
                   <div className="grid grid-cols-2 gap-x-3 gap-y-1">
                     <div className="flex justify-between text-[10px]"><span className="text-slate-500">Capital</span><span className="font-mono font-medium text-slate-700">{fmt(plan.capitalAmount ?? plan.originalCapital ?? 0)}</span></div>
-                    <div className="flex justify-between text-[10px]"><span className="text-slate-500">Remaining</span><span className="font-mono font-semibold text-purple-700">{fmt(plan.remainingCapitalAmount ?? plan.remainingCapital ?? plan.capitalRemaining ?? 0)}</span></div>
+                    <div className="flex justify-between text-[10px]"><span className="text-slate-500">Remaining</span><span className="font-mono font-semibold text-[var(--pos-accent-dark)]">{fmt(plan.remainingCapitalAmount ?? plan.remainingCapital ?? plan.capitalRemaining ?? 0)}</span></div>
                     <div className="flex justify-between text-[10px]"><span className="text-slate-500">Instalment</span><span className="font-mono font-medium text-slate-700">{fmt(plan.instalmentAmount ?? plan.installmentAmount ?? plan.monthlyInstalment ?? 0)}</span></div>
                     <div className="flex justify-between text-[10px]"><span className="text-slate-500">Period</span><span className="text-slate-700">{plan.repaymentPeriod ?? '-'} / {plan.remainingPeriod ?? '-'} left</span></div>
                   </div>
                 </div>
               ))}
-              <div className="border-2 border-purple-200 rounded-lg p-3 bg-purple-50/50">
+              <div className="border-2 border-[var(--pos-accent-light)] rounded-lg p-3 bg-[var(--pos-accent-tint)]">
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="font-bold text-[#2E2E2E]">Total Remaining</span>
-                  <span className="font-bold font-mono text-purple-700">{fmt(capitalPlans.reduce((s: number, p: any) => s + (p.remainingCapitalAmount ?? p.remainingCapital ?? p.capitalRemaining ?? 0), 0))}</span>
+                  <span className="font-bold font-mono text-[var(--pos-accent-dark)]">{fmt(capitalPlans.reduce((s: number, p: any) => s + (p.remainingCapitalAmount ?? p.remainingCapital ?? p.capitalRemaining ?? 0), 0))}</span>
                 </div>
               </div>
             </>
@@ -1463,10 +1463,10 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
                   <td colSpan={6} className="py-6 text-center text-slate-400 text-sm italic">No records to display.</td>
                 </tr>
               ) : capitalPlans.map((plan: any, i: number) => (
-                <tr key={i} className="border-b border-[#E5E5E5] hover:bg-purple-50/30 transition-colors" data-testid={`row-capital-${i}`}>
+                <tr key={i} className="border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)]/30 transition-colors" data-testid={`row-capital-${i}`}>
                   <td className="py-2.5 px-3 font-medium text-slate-800 text-[13px]">{plan.serviceDescription || plan.description || plan.capitalCostType || plan.serviceType || `Service ${i + 1}`}</td>
                   <td className="py-2.5 px-3 text-right font-mono text-slate-700 text-[13px]">{fmt(plan.capitalAmount ?? plan.originalCapital ?? 0)}</td>
-                  <td className="py-2.5 px-3 text-right font-mono text-purple-700 font-semibold text-[13px]">{fmt(plan.remainingCapitalAmount ?? plan.remainingCapital ?? plan.capitalRemaining ?? 0)}</td>
+                  <td className="py-2.5 px-3 text-right font-mono text-[var(--pos-accent-dark)] font-semibold text-[13px]">{fmt(plan.remainingCapitalAmount ?? plan.remainingCapital ?? plan.capitalRemaining ?? 0)}</td>
                   <td className="py-2.5 px-3 text-right font-mono text-slate-700 text-[13px]">{fmt(plan.instalmentAmount ?? plan.installmentAmount ?? plan.monthlyInstalment ?? 0)}</td>
                   <td className="py-2.5 px-3 text-center text-slate-600 text-[13px]">{plan.repaymentPeriod ?? plan.period ?? plan.totalPeriod ?? '-'}</td>
                   <td className="py-2.5 px-3 text-center text-slate-600 text-[13px]">{plan.remainingPeriod ?? plan.periodsRemaining ?? '-'}</td>
@@ -1475,10 +1475,10 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
             </tbody>
             {capitalPlans.length > 0 && (
               <tfoot>
-                <tr className="border-t-2 border-purple-200 bg-purple-50/50">
+                <tr className="border-t-2 border-[var(--pos-accent-light)] bg-[var(--pos-accent-tint)]">
                   <td className="py-2.5 px-3 font-bold text-[#2E2E2E] text-[13px]">Total</td>
                   <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800 text-[13px]">{fmt(capitalPlans.reduce((s: number, p: any) => s + (p.capitalAmount ?? p.originalCapital ?? 0), 0))}</td>
-                  <td className="py-2.5 px-3 text-right font-mono font-bold text-purple-700 text-[13px]">{fmt(capitalPlans.reduce((s: number, p: any) => s + (p.remainingCapitalAmount ?? p.remainingCapital ?? p.capitalRemaining ?? 0), 0))}</td>
+                  <td className="py-2.5 px-3 text-right font-mono font-bold text-[var(--pos-accent-dark)] text-[13px]">{fmt(capitalPlans.reduce((s: number, p: any) => s + (p.remainingCapitalAmount ?? p.remainingCapital ?? p.capitalRemaining ?? 0), 0))}</td>
                   <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800 text-[13px]">{fmt(capitalPlans.reduce((s: number, p: any) => s + (p.instalmentAmount ?? p.installmentAmount ?? p.monthlyInstalment ?? 0), 0))}</td>
                   <td className="py-2.5 px-3" />
                   <td className="py-2.5 px-3" />
@@ -1747,7 +1747,7 @@ export function LinkedAccountsTab({ accountId, onSelectAccount }: { accountId: n
               {linkedAccounts.length} account{linkedAccounts.length !== 1 ? 's' : ''}
             </Badge>
             <div className="text-right ml-auto">
-              <span className="text-[10px] text-purple-200 uppercase tracking-wide mr-2">Combined Outstanding</span>
+              <span className="text-[10px] text-white/60 uppercase tracking-wide mr-2">Combined Outstanding</span>
               <span className={`text-xs sm:text-sm font-bold ${totalCombined > 0 ? 'text-red-200' : 'text-green-200'}`}>
                 {formatCurrency(totalCombined)}
               </span>
@@ -1770,7 +1770,7 @@ export function LinkedAccountsTab({ accountId, onSelectAccount }: { accountId: n
             return (
               <div key={aId || idx}>
                 <div
-                  className={`px-3 sm:px-4 py-3 cursor-pointer transition-colors ${isExpanded ? 'bg-purple-50/50' : 'hover:bg-[#F7F7F7]'}`}
+                  className={`px-3 sm:px-4 py-3 cursor-pointer transition-colors ${isExpanded ? 'bg-[var(--pos-accent-tint)]' : 'hover:bg-[#F7F7F7]'}`}
                   onClick={() => setExpandedRow(isExpanded ? null : idx)}
                   data-testid={`linked-account-row-${aId}`}
                 >
@@ -1808,7 +1808,7 @@ export function LinkedAccountsTab({ accountId, onSelectAccount }: { accountId: n
                 </div>
 
                 {isExpanded && balanceDetails.length > 0 && (
-                  <div className="px-4 sm:px-8 pb-3 bg-purple-50/30">
+                  <div className="px-4 sm:px-8 pb-3 bg-[var(--pos-accent-tint)]/50">
                     <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 mt-1">Balance Breakdown</div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                       {balanceDetails.map((b: any, bi: number) => (
@@ -1823,7 +1823,7 @@ export function LinkedAccountsTab({ accountId, onSelectAccount }: { accountId: n
                   </div>
                 )}
                 {isExpanded && balanceDetails.length === 0 && (
-                  <div className="px-4 sm:px-8 pb-3 bg-purple-50/30">
+                  <div className="px-4 sm:px-8 pb-3 bg-[var(--pos-accent-tint)]/50">
                     <div className="text-[11px] text-slate-400 italic">No detailed balance breakdown available</div>
                   </div>
                 )}

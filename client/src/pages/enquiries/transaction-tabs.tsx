@@ -64,7 +64,7 @@ function HtmlDetailMobileCards({ html }: { html: string }) {
                     const isInline = isShortNumeric || (isShortVal && val !== '-');
                     return (
                       <div key={ci} className={isInline && val !== '-' ? 'flex justify-between items-baseline gap-2' : ''}>
-                        <span className="text-[10px] uppercase tracking-wider text-teal-700 font-semibold shrink-0">{header}</span>
+                        <span className="text-[10px] uppercase tracking-wider text-[var(--pos-accent-dark)] font-semibold shrink-0">{header}</span>
                         <span className={`text-xs text-slate-700 break-all ${isInline ? 'text-right' : 'block mt-0.5 leading-relaxed'} ${isShortNumeric ? 'font-mono font-semibold' : ''}`}>{val || '-'}</span>
                       </div>
                     );
@@ -1025,7 +1025,7 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
                       { label: 'Total', value: fmt(selectedTxn.total), color: (selectedTxn.total || 0) < 0 ? 'text-red-600' : 'text-[var(--pos-accent)]', bold: true },
                     ].map(item => (
                       <div key={item.label} className="bg-white p-2.5 flex justify-between items-center">
-                        <span className="text-[10px] uppercase tracking-wider text-teal-700 font-semibold">{item.label}</span>
+                        <span className="text-[10px] uppercase tracking-wider text-[var(--pos-accent-dark)] font-semibold">{item.label}</span>
                         <span className={`font-mono text-sm ${item.bold ? 'font-bold' : 'font-semibold'} ${item.color}`}>{item.value}</span>
                       </div>
                     ))}
@@ -1247,7 +1247,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
     return groups;
   }, [filteredReceipts]);
 
-  useEffect(() => { if (!loaded.current) load(); }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
@@ -1351,7 +1351,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
       
 
       {(eftBankNotes.length > 0 || eftNotesLoading) && (
-        <div className="bg-white rounded-xl border border-teal-200 shadow-sm overflow-hidden mb-4">
+        <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden mb-4">
           <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)]">
             <div className="flex items-center gap-2">
               <CreditCard className="w-4 h-4 text-white" />
@@ -1364,7 +1364,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
             </div>
           </div>
           {eftNotesLoading ? (
-            <div className="p-6 flex items-center justify-center gap-2 text-sm text-teal-600">
+            <div className="p-6 flex items-center justify-center gap-2 text-sm text-[var(--pos-accent)]">
               <Loader2 className="w-4 h-4 animate-spin" /> Loading EFT bank statement notes...
             </div>
           ) : eftBankNotes.length === 0 ? (
@@ -1379,9 +1379,9 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                   const bankDate = note.bankStatementDate ?? '';
                   const allocDate = note.billingAllocationDate ?? '';
                   return (
-                    <div key={idx} className="border border-teal-100 rounded-lg p-3 bg-teal-50/30 space-y-1.5" data-testid={`eft-note-mobile-${idx}`}>
+                    <div key={idx} className="border border-[#E5E5E5] rounded-lg p-3 bg-[var(--pos-accent-tint)]/30 space-y-1.5" data-testid={`eft-note-mobile-${idx}`}>
                       {bankNote && (
-                        <div className="text-xs font-medium text-teal-800 bg-teal-100 px-2 py-1 rounded">
+                        <div className="text-xs font-medium text-[var(--pos-accent-dark)] bg-[var(--pos-accent-tint)] px-2 py-1 rounded">
                           {bankNote}
                         </div>
                       )}
@@ -1408,12 +1408,12 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
               <div className="hidden sm:block overflow-x-auto" data-testid="eft-notes-table">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="bg-teal-50 border-b border-teal-200">
-                      <th className="text-left px-3 py-2 font-semibold text-teal-700">Bank Statement Note</th>
-                      <th className="text-left px-3 py-2 font-semibold text-teal-700">Receipt No</th>
-                      <th className="text-right px-3 py-2 font-semibold text-teal-700">Amount</th>
-                      <th className="text-left px-3 py-2 font-semibold text-teal-700">Statement Date</th>
-                      <th className="text-left px-3 py-2 font-semibold text-teal-700">Allocation Date</th>
+                    <tr className="bg-[#F7F7F7] border-b border-[#D6D6D6]">
+                      <th className="text-left px-3 py-2 font-semibold text-[var(--pos-accent-dark)]">Bank Statement Note</th>
+                      <th className="text-left px-3 py-2 font-semibold text-[var(--pos-accent-dark)]">Receipt No</th>
+                      <th className="text-right px-3 py-2 font-semibold text-[var(--pos-accent-dark)]">Amount</th>
+                      <th className="text-left px-3 py-2 font-semibold text-[var(--pos-accent-dark)]">Statement Date</th>
+                      <th className="text-left px-3 py-2 font-semibold text-[var(--pos-accent-dark)]">Allocation Date</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1424,10 +1424,10 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                       const bankDate = note.bankStatementDate ?? '';
                       const allocDate = note.billingAllocationDate ?? '';
                       return (
-                        <tr key={idx} className="border-b border-[#E5E5E5] hover:bg-teal-50/30" data-testid={`eft-note-row-${idx}`}>
+                        <tr key={idx} className="border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)]/30" data-testid={`eft-note-row-${idx}`}>
                           <td className="px-3 py-2 max-w-[280px]">
                             {bankNote ? (
-                              <span className="text-teal-800 font-medium bg-teal-50 px-1.5 py-0.5 rounded text-[11px]" title={bankNote}>{bankNote}</span>
+                              <span className="text-[var(--pos-accent-dark)] font-medium bg-[var(--pos-accent-tint)] px-1.5 py-0.5 rounded text-[11px]" title={bankNote}>{bankNote}</span>
                             ) : (
                               <span className="text-slate-400 italic text-[10px]">No note</span>
                             )}

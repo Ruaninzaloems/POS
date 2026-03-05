@@ -979,10 +979,10 @@ function MeterIntelligence({ allReadings }: { allReadings: any[] }) {
                   <div className="text-xs font-mono font-bold text-green-800 mt-0.5">{fmt(analysis.minDaily)} – {fmt(analysis.maxDaily)}</div>
                   <div className="text-[9px] text-green-500">min – max</div>
                 </div>
-                <div className="bg-gradient-to-br from-purple-50 to-fuchsia-50 rounded-lg px-3 py-2.5 border border-purple-200">
-                  <div className="text-[9px] text-purple-600 uppercase tracking-wider font-bold">Period Data</div>
-                  <div className="text-xs font-mono font-bold text-purple-800 mt-0.5">{analysis.periodMonths} months</div>
-                  <div className="text-[9px] text-purple-500">{fmt(analysis.totalConsumption)} total units</div>
+                <div className="bg-gradient-to-br from-[var(--pos-accent-tint)] to-[var(--pos-accent-tint)]/60 rounded-lg px-3 py-2.5 border border-[var(--pos-accent-light)]">
+                  <div className="text-[9px] text-[var(--pos-accent-dark)] uppercase tracking-wider font-bold">Period Data</div>
+                  <div className="text-xs font-mono font-bold text-[var(--pos-accent)] mt-0.5">{analysis.periodMonths} months</div>
+                  <div className="text-[9px] text-[var(--pos-accent-light)]">{fmt(analysis.totalConsumption)} total units</div>
                 </div>
               </div>
 
@@ -1283,7 +1283,7 @@ function BillingEstimator({ readingHistory, selectedMeter, allReadings }: { read
                   </div>
                   <div className="bg-white rounded px-2 py-1 border border-[#D6D6D6]">
                     <span className="text-slate-500 block text-[9px] uppercase">Daily Avg</span>
-                    <span className="font-mono font-semibold text-purple-700">{est.dailyConsumption ? fmt(est.dailyConsumption) : '-'} /day</span>
+                    <span className="font-mono font-semibold text-[var(--pos-accent-dark)]">{est.dailyConsumption ? fmt(est.dailyConsumption) : '-'} /day</span>
                   </div>
                 </div>
                 {est.isProRated && typeof est.readingDays === 'number' && (
@@ -1434,7 +1434,7 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
     }
   }, [accountId]);
 
-  useEffect(() => { if (!loaded.current) load(); }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   const loadHistory = useCallback(async (meter: any) => {
     setSelectedMeter(meter);
@@ -2070,7 +2070,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
           const desc = getServiceTypeDesc(s).toLowerCase();
           if (desc.includes('water')) return { icon: '💧', color: 'text-[var(--pos-accent)]' };
           if (desc.includes('electric') || desc.includes('elec')) return { icon: '⚡', color: 'text-amber-500' };
-          if (desc.includes('sewer') || desc.includes('sanit') || desc.includes('efflu')) return { icon: '🔧', color: 'text-purple-600' };
+          if (desc.includes('sewer') || desc.includes('sanit') || desc.includes('efflu')) return { icon: '🔧', color: 'text-[var(--pos-accent)]' };
           if (desc.includes('refuse') || desc.includes('waste') || desc.includes('solid')) return { icon: '🗑️', color: 'text-green-600' };
           if (desc.includes('rate') || desc.includes('property') || desc.includes('valuation')) return { icon: '🏠', color: 'text-[var(--pos-accent)]' };
           return { icon: '⚙️', color: 'text-slate-500' };
@@ -2142,7 +2142,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">Service ID</span><span className="font-mono font-semibold text-[var(--pos-accent)]">{s.services_ID || s.serviceId || s.service_ID || s.serviceID || s.serviceType_ID || s.tariffTypeID || '-'}</span></div>
-                  {(s.meterNo || s.meterNumber) && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Meter No</span><span className="font-mono font-semibold text-teal-700">{s.meterNo || s.meterNumber || '-'}</span></div>}
+                  {(s.meterNo || s.meterNumber) && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Meter No</span><span className="font-mono font-semibold text-[var(--pos-accent-dark)]">{s.meterNo || s.meterNumber || '-'}</span></div>}
                   {(s.physicalMeterNo || s.physicalMeterNumber) && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Physical Meter</span><span className="font-mono text-slate-700">{s.physicalMeterNo || s.physicalMeterNumber || '-'}</span></div>}
                   <div className="col-span-2 flex justify-between text-[11px]"><span className="text-slate-500">Tariff</span><span className="text-slate-700 text-right truncate ml-2 max-w-[70%]">{s.tariff || s.tariffCode || s.tariffDescription || s.tariffDesc || '-'}</span></div>
                   {s.meterConnectionSize && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Connection</span><span className="text-slate-700">{s.meterConnectionSize}</span></div>}
@@ -2208,7 +2208,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                       )}
                     </td>
                     <td className="py-2 px-3 font-mono text-[var(--pos-accent)]">{s.services_ID || s.serviceId || s.service_ID || s.serviceID || s.serviceType_ID || s.tariffTypeID || '-'}</td>
-                    <td className="py-2 px-3 font-mono text-teal-700 font-semibold">{s.meterNo || s.meterNumber || '-'}</td>
+                    <td className="py-2 px-3 font-mono text-[var(--pos-accent-dark)] font-semibold">{s.meterNo || s.meterNumber || '-'}</td>
                     <td className="py-2 px-3 text-slate-500 text-xs max-w-[200px] truncate">{s.tariff || s.tariffCode || s.tariffDescription || s.tariffDesc || '-'}</td>
                     <td className="py-2 px-3">
                       <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border ${isMeterActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : (s.meterStatus || s.statusDesc) ? 'bg-red-100 text-red-600 border-red-200' : 'bg-[#F2F4F7] text-slate-500 border-[#D6D6D6]'}`}>
@@ -2311,7 +2311,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
               const isSvcActive = svcStatus === 'active';
               const isSelected = consumptionMeter && (consumptionMeter.meterNo || consumptionMeter.meterNumber) === (m.meterNo || m.meterNumber);
               return (
-              <div key={i} className={`bg-white border rounded-xl p-3 space-y-2 cursor-pointer active:scale-[0.99] transition-all ${isSelected ? 'border-teal-400 bg-teal-50 shadow-sm' : 'border-[#D6D6D6]'}`}
+              <div key={i} className={`bg-white border rounded-xl p-3 space-y-2 cursor-pointer active:scale-[0.99] transition-all ${isSelected ? 'border-[var(--pos-accent)] bg-[var(--pos-accent-tint)] shadow-sm' : 'border-[#D6D6D6]'}`}
                 onClick={() => viewConsumption(m)}
               >
                 <div className="flex items-center gap-2">
@@ -2363,7 +2363,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                 {convMeters.map((m: any, i: number) => {
                   const isSelected = consumptionMeter && (consumptionMeter.meterNo || consumptionMeter.meterNumber) === (m.meterNo || m.meterNumber);
                   return (
-                  <tr key={i} className={`border-b border-[#E5E5E5] cursor-pointer transition-colors ${isSelected ? 'bg-teal-50 ring-1 ring-teal-300' : 'hover:bg-teal-50/30'}`}
+                  <tr key={i} className={`border-b border-[#E5E5E5] cursor-pointer transition-colors ${isSelected ? 'bg-[var(--pos-accent-tint)] ring-1 ring-[var(--pos-accent-light)]' : 'hover:bg-[var(--pos-accent-tint)]/30'}`}
                     onClick={() => viewConsumption(m)}
                   >
                     <td className="py-2 px-3 font-medium">{getServiceTypeDesc(m) || '-'}</td>

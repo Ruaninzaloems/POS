@@ -49,7 +49,7 @@ export function IncentivesTab({ accountId }: { accountId: number }) {
     }
   }, [accountId]);
 
-  useEffect(() => { if (!loaded.current) load(); }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
@@ -68,8 +68,8 @@ export function IncentivesTab({ accountId }: { accountId: number }) {
             <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Payment Incentive</h3>
           </div>
           <div className="py-12 px-3 sm:px-5 flex flex-col items-center justify-center text-center">
-            <div className="w-14 h-14 rounded-full bg-purple-50 flex items-center justify-center mb-4">
-              <Gift className="w-7 h-7 text-purple-300" />
+            <div className="w-14 h-14 rounded-full bg-[var(--pos-accent-tint)] flex items-center justify-center mb-4">
+              <Gift className="w-7 h-7 text-[var(--pos-accent-light)]" />
             </div>
             <p className="text-sm font-medium text-slate-500">No Payment Incentive</p>
             <p className="text-xs text-slate-400 mt-1">There are no active payment incentives on this account</p>
@@ -142,7 +142,7 @@ export function IncentivesTab({ accountId }: { accountId: number }) {
               </thead>
               <tbody>
                 {journals.map((j: any, i: number) => (
-                  <tr key={i} className="border-b border-[#E5E5E5] hover:bg-purple-50/30 transition-colors" data-testid={`row-journal-${i}`}>
+                  <tr key={i} className="border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)]/30 transition-colors" data-testid={`row-journal-${i}`}>
                     <td className="py-2 px-3 text-slate-600 whitespace-nowrap">{j.journalDate || j.date || j.transactionDate ? new Date(j.journalDate || j.date || j.transactionDate).toLocaleDateString('en-ZA') : '-'}</td>
                     <td className="py-2 px-3 text-slate-700">{j.description || j.journalDescription || '-'}</td>
                     <td className="py-2 px-3 text-right font-mono font-semibold">{fmtAmt(j.journalAmount ?? j.amount ?? j.incentiveAmount ?? 0)}</td>
@@ -184,7 +184,7 @@ export function DepositsTab({ accountId }: { accountId: number }) {
     }
   }, [accountId]);
 
-  useEffect(() => { if (!loaded.current) load(); }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
@@ -344,7 +344,7 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
     }
   }, [accountId]);
 
-  useEffect(() => { if (!loaded.current) load(); }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
@@ -782,7 +782,7 @@ export function DebitOrdersTab({ accountId }: { accountId: number }) {
     }
   }, [accountId]);
 
-  useEffect(() => { if (!loaded.current) load(); }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
@@ -908,7 +908,7 @@ export function DebitOrdersTab({ accountId }: { accountId: number }) {
               {(deductions.length + debitOrders.length) === 0 ? (
                 <tr><td colSpan={17} className="py-8 text-center text-slate-400 text-sm italic">No records to display.</td></tr>
               ) : [...deductions, ...debitOrders].map((d: any, i: number) => (
-                <tr key={i} className="border-b border-[#E5E5E5] hover:bg-teal-50/30 transition-colors" data-testid={`row-debit-${i}`}>
+                <tr key={i} className="border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)]/30 transition-colors" data-testid={`row-debit-${i}`}>
                   <td className="py-2 px-2 text-center text-slate-500 text-[13px]">{d.nr ?? d.number ?? i + 1}</td>
                   <td className="py-2 px-2">
                     <Badge variant={d.status === 'Active' || d.status === 'Successful' ? 'default' : 'secondary'} className="text-[10px]">
