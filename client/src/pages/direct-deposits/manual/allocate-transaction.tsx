@@ -150,8 +150,9 @@ export default function AllocateTransaction() {
             searchBody.name = query;
           }
 
+          let accountSearchFailed = false;
           const searches: Promise<any>[] = [
-            platinumSearchAccountsPayment(searchBody).catch((err) => { console.error('[AllocateTransaction] Failed to search accounts:', err); return []; }),
+            platinumSearchAccountsPayment(searchBody).catch((err) => { console.error('[AllocateTransaction] Failed to search accounts:', err); accountSearchFailed = true; return []; }),
           ];
           if (isNumeric) {
             searches.push(
@@ -160,6 +161,10 @@ export default function AllocateTransaction() {
           }
 
           const [accountResults, oldAccountResults] = await Promise.all(searches);
+
+          if (accountSearchFailed && parseResults(accountResults).length === 0) {
+            toast({ title: "Account Search Failed", description: "The account search timed out or failed. Try a more specific search term.", variant: "destructive" });
+          }
 
           for (const item of parseResults(accountResults)) {
             const accId = item.account_ID || item.accountID || item.id;
@@ -291,7 +296,7 @@ export default function AllocateTransaction() {
     } finally {
       if (searchVersion === ddSearchVersionRef.current) setDdSearching(false);
     }
-  }, [searchScope, miscGroups, miscGroupsLoaded]);
+  }, [searchScope, miscGroups, miscGroupsLoaded, toast]);
 
   const handleDDSearchInput = (value: string) => {
     setDdSearchQuery(value);
