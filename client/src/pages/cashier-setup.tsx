@@ -421,7 +421,7 @@ export default function CashierSetup() {
                             <div className="flex items-center gap-2 text-sm">
                                 <Calendar className="h-4 w-4 text-[#6B6B6B] shrink-0" />
                                 <span className="text-[#6B6B6B]">Date:</span>
-                                <span className="font-medium text-[#2E2E2E]">{new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                                <span className="font-medium text-[#2E2E2E]">{new Date().toLocaleDateString('en-ZA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
                             </div>
                         </div>
                         <Button
@@ -548,7 +548,7 @@ export default function CashierSetup() {
                             <Input
                                 value={firstName}
                                 disabled
-                                className="bg-[#F2F4F7] border-[#D6D6D6] text-slate-800 font-medium"
+                                className="bg-[#F2F4F7] border-slate-300 text-slate-800 font-medium"
                                 data-testid="input-cashier-name"
                             />
                         </div>
@@ -558,7 +558,7 @@ export default function CashierSetup() {
                             <Input
                                 value={lastName}
                                 disabled
-                                className="bg-[#F2F4F7] border-[#D6D6D6] text-slate-800 font-medium"
+                                className="bg-[#F2F4F7] border-slate-300 text-slate-800 font-medium"
                                 data-testid="input-cashier-surname"
                             />
                         </div>
@@ -568,7 +568,7 @@ export default function CashierSetup() {
                             <Input
                                 value={String(userId)}
                                 disabled
-                                className="bg-[#F2F4F7] border-[#D6D6D6] text-slate-800 font-mono"
+                                className="bg-[#F2F4F7] border-slate-300 text-slate-800 font-mono"
                                 data-testid="input-cashier-id"
                             />
                         </div>
