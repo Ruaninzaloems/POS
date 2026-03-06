@@ -611,11 +611,8 @@ export default function ViewReceipts() {
     const formatReceiptDate = (dateStr: string) => {
         if (!dateStr) return '-';
         try {
-            if (dateStr.includes('/')) {
-                return dateStr.substring(0, 16);
-            }
             const d = new Date(dateStr);
-            return d.toLocaleString('en-ZA', {
+            return d.toLocaleString('en-GB', {
                 timeZone: 'Africa/Johannesburg',
                 day: '2-digit', month: '2-digit', year: 'numeric',
                 hour: '2-digit', minute: '2-digit', hour12: false,
@@ -975,8 +972,8 @@ export default function ViewReceipts() {
                                                                 </div>
                                                                 {accountId > 0 && <div className="text-xs text-slate-600">Account: {accountId}</div>}
                                                                 <div className="flex flex-wrap gap-x-3 text-xs text-slate-500">
-                                                                    {dateAllocated && <span>Allocated: {new Date(dateAllocated).toLocaleDateString('en-ZA')}</span>}
-                                                                    {bankDate && <span>Bank Date: {new Date(bankDate).toLocaleDateString('en-ZA')}</span>}
+                                                                    {dateAllocated && <span>Allocated: {new Date(dateAllocated).toLocaleDateString('en-GB')}</span>}
+                                                                    {bankDate && <span>Bank Date: {new Date(bankDate).toLocaleDateString('en-GB')}</span>}
                                                                     {payTypeLabel && <span>Type: {payTypeLabel}</span>}
                                                                 </div>
                                                                 {status && (
@@ -1048,10 +1045,10 @@ export default function ViewReceipts() {
                                                                             {bankAmount > 0 ? `R ${bankAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : '-'}
                                                                         </TableCell>
                                                                         <TableCell className="text-[10px] text-slate-600">
-                                                                            {dateAllocated ? new Date(dateAllocated).toLocaleDateString('en-ZA') : '-'}
+                                                                            {dateAllocated ? new Date(dateAllocated).toLocaleDateString('en-GB') : '-'}
                                                                         </TableCell>
                                                                         <TableCell className="text-[10px] text-slate-600">
-                                                                            {bankDate ? new Date(bankDate).toLocaleDateString('en-ZA') : '-'}
+                                                                            {bankDate ? new Date(bankDate).toLocaleDateString('en-GB') : '-'}
                                                                         </TableCell>
                                                                         <TableCell className="text-[11px] text-slate-600">{payTypeLabel || '-'}</TableCell>
                                                                         <TableCell className="text-[10px]">
@@ -1123,7 +1120,7 @@ export default function ViewReceipts() {
                                                     const fmtDate = (d: string, withTime?: boolean) => {
                                                         if (!d) return '-';
                                                         try {
-                                                            return new Date(d).toLocaleDateString('en-ZA', {
+                                                            return new Date(d).toLocaleDateString('en-GB', {
                                                                 day: '2-digit', month: 'short', year: 'numeric',
                                                                 ...(withTime ? { hour: '2-digit', minute: '2-digit' } : {}),
                                                             });
@@ -1312,10 +1309,10 @@ export default function ViewReceipts() {
                                                                         <span className="text-slate-400">Type:</span> <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#F2F4F7] text-slate-700">EFT</span>
                                                                     </div>
                                                                     <div>
-                                                                        <span className="text-slate-400">Bank Date:</span> {bankDate ? new Date(bankDate).toLocaleDateString('en-ZA') : '-'}
+                                                                        <span className="text-slate-400">Bank Date:</span> {bankDate ? new Date(bankDate).toLocaleDateString('en-GB') : '-'}
                                                                     </div>
                                                                     <div>
-                                                                        <span className="text-slate-400">Allocated:</span> {allocDate ? new Date(allocDate).toLocaleDateString('en-ZA') : '-'}
+                                                                        <span className="text-slate-400">Allocated:</span> {allocDate ? new Date(allocDate).toLocaleDateString('en-GB') : '-'}
                                                                     </div>
                                                                 </div>
                                                                 <div className="flex gap-2">
@@ -1367,10 +1364,10 @@ export default function ViewReceipts() {
                                                                             R {amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
                                                                         </TableCell>
                                                                         <TableCell className="text-[10px] text-slate-600 whitespace-nowrap">
-                                                                            {bankDate ? new Date(bankDate).toLocaleDateString('en-ZA', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) : '-'}
+                                                                            {bankDate ? new Date(bankDate).toLocaleDateString('en-GB', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) : '-'}
                                                                         </TableCell>
                                                                         <TableCell className="text-[10px] text-slate-600 whitespace-nowrap">
-                                                                            {allocDate ? new Date(allocDate).toLocaleDateString('en-ZA', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) : '-'}
+                                                                            {allocDate ? new Date(allocDate).toLocaleDateString('en-GB', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) : '-'}
                                                                         </TableCell>
                                                                         <TableCell className="text-[11px]">
                                                                             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#F2F4F7] text-slate-700">EFT</span>

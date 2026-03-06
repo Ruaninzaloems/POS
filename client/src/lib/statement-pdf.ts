@@ -14,7 +14,7 @@ function fmt(v: any): string {
 
 function fmtDate(v: any): string {
   if (!v) return '-';
-  try { return new Date(v).toLocaleDateString('en-ZA'); } catch { return String(v); }
+  try { return new Date(v).toLocaleDateString('en-GB'); } catch { return String(v); }
 }
 
 export async function generateStatementPdf(
@@ -72,7 +72,7 @@ export async function generateStatementPdf(
   doc.setFont('helvetica', 'normal');
   doc.text(statementType === 'detailed' ? 'Detailed Account Statement' : 'Account Statement', margin, 19);
   doc.setFontSize(8);
-  doc.text(`Generated: ${new Date().toLocaleDateString('en-ZA')} ${new Date().toLocaleTimeString('en-ZA')}`, pageW - margin, 19, { align: 'right' });
+  doc.text(`Generated: ${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString('en-ZA')}`, pageW - margin, 19, { align: 'right' });
   doc.text(`Period: ${financialYear} ${month || 'Full Year'}`, pageW - margin, 12, { align: 'right' });
   y = 35;
 

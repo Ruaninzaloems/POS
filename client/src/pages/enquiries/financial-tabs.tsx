@@ -95,8 +95,8 @@ export function IncentivesTab({ accountId }: { accountId: number }) {
             <FieldRow label="Incentive Type" value={item.incentiveType || item.code} icon={<Activity className="w-3.5 h-3.5" />} />
             <FieldRow label="Incentive Amount" value={item.incentiveAmount != null || item.incentive != null ? `R ${fmtAmt(item.incentiveAmount ?? item.incentive)}` : null} icon={<Banknote className="w-3.5 h-3.5" />} />
             <FieldRow label="Financial Year" value={item.financialYear} icon={<CalendarDays className="w-3.5 h-3.5" />} />
-            <FieldRow label="Valid From" value={item.validPeriodFrom ? new Date(item.validPeriodFrom).toLocaleDateString('en-ZA') : null} icon={<CalendarDays className="w-3.5 h-3.5" />} />
-            <FieldRow label="Valid To" value={item.validPeriodTo ? new Date(item.validPeriodTo).toLocaleDateString('en-ZA') : null} icon={<CalendarDays className="w-3.5 h-3.5" />} />
+            <FieldRow label="Valid From" value={item.validPeriodFrom ? new Date(item.validPeriodFrom).toLocaleDateString('en-GB') : null} icon={<CalendarDays className="w-3.5 h-3.5" />} />
+            <FieldRow label="Valid To" value={item.validPeriodTo ? new Date(item.validPeriodTo).toLocaleDateString('en-GB') : null} icon={<CalendarDays className="w-3.5 h-3.5" />} />
             <FieldRow label="CRN" value={item.crn} icon={<Shield className="w-3.5 h-3.5" />} />
             <FieldRow label="Enabled" value={item.enable ? 'Yes' : 'No'} icon={<Shield className="w-3.5 h-3.5" />} />
           </div>
@@ -114,7 +114,7 @@ export function IncentivesTab({ accountId }: { accountId: number }) {
             {journals.map((j: any, i: number) => (
               <div key={i} className="bg-white border border-[#D6D6D6] rounded-lg p-3 space-y-1.5" data-testid={`row-journal-${i}`}>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-600">{j.journalDate || j.date || j.transactionDate ? new Date(j.journalDate || j.date || j.transactionDate).toLocaleDateString('en-ZA') : '-'}</span>
+                  <span className="text-xs text-slate-600">{j.journalDate || j.date || j.transactionDate ? new Date(j.journalDate || j.date || j.transactionDate).toLocaleDateString('en-GB') : '-'}</span>
                   <Badge variant="outline" className="text-[10px]">{j.status || j.journalStatus || '-'}</Badge>
                 </div>
                 <div className="text-xs text-slate-700 font-medium">{j.description || j.journalDescription || '-'}</div>
@@ -143,7 +143,7 @@ export function IncentivesTab({ accountId }: { accountId: number }) {
               <tbody>
                 {journals.map((j: any, i: number) => (
                   <tr key={i} className="border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)]/30 transition-colors" data-testid={`row-journal-${i}`}>
-                    <td className="py-2 px-3 text-slate-600 whitespace-nowrap">{j.journalDate || j.date || j.transactionDate ? new Date(j.journalDate || j.date || j.transactionDate).toLocaleDateString('en-ZA') : '-'}</td>
+                    <td className="py-2 px-3 text-slate-600 whitespace-nowrap">{j.journalDate || j.date || j.transactionDate ? new Date(j.journalDate || j.date || j.transactionDate).toLocaleDateString('en-GB') : '-'}</td>
                     <td className="py-2 px-3 text-slate-700">{j.description || j.journalDescription || '-'}</td>
                     <td className="py-2 px-3 text-right font-mono font-semibold">{fmtAmt(j.journalAmount ?? j.amount ?? j.incentiveAmount ?? 0)}</td>
                     <td className="py-2 px-3 text-slate-600 font-mono">{j.reference || j.journalReference || j.docNumber || '-'}</td>
@@ -233,7 +233,7 @@ export function DepositsTab({ accountId }: { accountId: number }) {
                   </div>
                   <div className="flex justify-between text-[11px]">
                     <span className="text-slate-500 font-medium">Receipt Date</span>
-                    <span className="text-slate-800 font-semibold text-right">{dep.receiptDate || dep.dateCaptured || dep.depositDate ? new Date(dep.receiptDate || dep.dateCaptured || dep.depositDate).toLocaleDateString('en-ZA') : '-'}</span>
+                    <span className="text-slate-800 font-semibold text-right">{dep.receiptDate || dep.dateCaptured || dep.depositDate ? new Date(dep.receiptDate || dep.dateCaptured || dep.depositDate).toLocaleDateString('en-GB') : '-'}</span>
                   </div>
                   <div className="flex justify-between text-[11px]">
                     <span className="text-slate-500 font-medium">Payment Type</span>
@@ -279,7 +279,7 @@ export function DepositsTab({ accountId }: { accountId: number }) {
                     <tr key={i} className="border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)]/40 transition-colors" data-testid={`row-deposit-${i}`}>
                       <td className="py-3 px-5 text-slate-700 font-medium">{dep.serviceDesc || dep.serviceDescription || dep.description || '-'}</td>
                       <td className="py-3 px-5 text-slate-600 font-mono text-[13px]">{dep.receiptNo || dep.docNumber || dep.reference || ''}</td>
-                      <td className="py-3 px-5 text-slate-600">{dep.receiptDate || dep.dateCaptured || dep.depositDate ? new Date(dep.receiptDate || dep.dateCaptured || dep.depositDate).toLocaleDateString('en-ZA') : '-'}</td>
+                      <td className="py-3 px-5 text-slate-600">{dep.receiptDate || dep.dateCaptured || dep.depositDate ? new Date(dep.receiptDate || dep.dateCaptured || dep.depositDate).toLocaleDateString('en-GB') : '-'}</td>
                       <td className="py-3 px-5 text-slate-600">{dep.paymentType || dep.paymentMethod || dep.type || '-'}</td>
                       <td className="py-3 px-5 text-right font-mono text-slate-800 font-semibold">{fmt(dep.deposit ?? dep.depositAmount ?? dep.amount ?? 0)}</td>
                       <td className="py-3 px-5 text-slate-600">{dep.cashierName || dep.cashier || dep.capturedBy || '-'}</td>
@@ -350,7 +350,7 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
   if (error) return <ErrorState message={error} onRetry={load} />;
 
   const fmtAmt = (v: any) => { if (v == null || v === '') return '0.00'; const n = Number(v); return isNaN(n) ? '0.00' : n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
-  const fmtDate = (v: any) => v ? new Date(v).toLocaleDateString('en-ZA') : '-';
+  const fmtDate = (v: any) => v ? new Date(v).toLocaleDateString('en-GB') : '-';
   const hasPlans = plans.length > 0;
   const hasExtensions = extensions.length > 0;
   const hasPaymentAmounts = paymentAmounts.length > 0;
@@ -625,7 +625,7 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
                   </div>
                   <div className="flex justify-between text-[11px]">
                     <span className="text-slate-500 font-medium">Date</span>
-                    <span className="text-slate-800 font-semibold text-right">{pa.receiptDate ? new Date(pa.receiptDate).toLocaleDateString('en-ZA') : '-'}</span>
+                    <span className="text-slate-800 font-semibold text-right">{pa.receiptDate ? new Date(pa.receiptDate).toLocaleDateString('en-GB') : '-'}</span>
                   </div>
                   <div className="flex justify-between text-[11px]">
                     <span className="text-slate-500 font-medium">Payment Type</span>
@@ -676,7 +676,7 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
                   {paymentAmounts.map((pa: any, i: number) => (
                     <tr key={i} className={`border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)] transition-colors ${pa.cancelReson ? 'bg-red-50/30' : ''}`}>
                       <td className="py-2.5 px-3 font-mono font-medium">{pa.receiptNo || '-'}</td>
-                      <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">{pa.receiptDate ? new Date(pa.receiptDate).toLocaleDateString('en-ZA') : '-'}</td>
+                      <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">{pa.receiptDate ? new Date(pa.receiptDate).toLocaleDateString('en-GB') : '-'}</td>
                       <td className="py-2.5 px-3">
                         <Badge variant="outline" className={`text-[10px] ${pa.paymentType === 'Cash' ? 'bg-green-50 text-green-700 border-green-200' : pa.paymentType === 'Credit Card' ? 'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)] border-[#D6D6D6]' : 'bg-[#F7F7F7] text-slate-600 border-[#D6D6D6]'}`}>
                           {pa.paymentType || '-'}
@@ -735,7 +735,7 @@ export function PaymentExtensionHistoryTab({ accountId }: { accountId: number })
 
   const formatDate = (v: any) => {
     if (!v) return '';
-    try { const d = new Date(v); return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString('en-ZA'); } catch { return String(v); }
+    try { const d = new Date(v); return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString('en-GB'); } catch { return String(v); }
   };
 
   return (
@@ -791,7 +791,7 @@ export function DebitOrdersTab({ accountId }: { accountId: number }) {
     const n = typeof v === 'number' ? v : parseFloat(v) || 0;
     return n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
-  const fmtDate = (v: any) => v ? new Date(v).toLocaleDateString('en-ZA') : '-';
+  const fmtDate = (v: any) => v ? new Date(v).toLocaleDateString('en-GB') : '-';
 
   return (
     <div className="p-3 sm:p-5 space-y-4 sm:space-y-5">
@@ -1237,7 +1237,7 @@ export function RatesValuationsTab({ accountId, propertyId }: { accountId: numbe
 
   const propId = propertyId || accountId;
   const fmt = (v: any) => { if (v == null || v === '') return '0.00'; const n = Number(v); return isNaN(n) ? '0.00' : n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
-  const fmtDate = (v: any) => v ? new Date(v).toLocaleDateString('en-ZA') : '-';
+  const fmtDate = (v: any) => v ? new Date(v).toLocaleDateString('en-GB') : '-';
 
   const load = useCallback(async () => {
     setLoading(true);

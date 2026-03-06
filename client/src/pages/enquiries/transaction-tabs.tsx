@@ -537,7 +537,7 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
     if (!billingPeriodData || billingPeriodData.length === 0) return [];
 
     const mapped = billingPeriodData.map((row: any) => {
-      const txDate = row.transactionDate ? new Date(row.transactionDate).toLocaleDateString('en-ZA', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+      const txDate = row.transactionDate ? new Date(row.transactionDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
       const desc = row.description || '';
       const drilldown = (row.drilldown || '').toLowerCase();
       const descLower = desc.toLowerCase();
@@ -693,7 +693,7 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
   const txnCurrencyCols = [5, 6, 7, 8];
 
   const mapTxnRows = (rows: any[]) => rows.map((row: any) => [
-    row.transactionDate ? new Date(row.transactionDate).toLocaleDateString('en-ZA') : '',
+    row.transactionDate ? new Date(row.transactionDate).toLocaleDateString('en-GB') : '',
     row.description || '',
     row.transactionId || '',
     row.documentNumber || '',
@@ -1082,7 +1082,7 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
                               const isNum = typeof val === 'number';
                               const isNeg = isNum && val < 0;
                               const isDate = typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val);
-                              const formatted = isDate ? new Date(val).toLocaleDateString('en-ZA') : isNum ? fmt(val) : val != null ? String(val) : '-';
+                              const formatted = isDate ? new Date(val).toLocaleDateString('en-GB') : isNum ? fmt(val) : val != null ? String(val) : '-';
                               const label = key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim();
                               return (
                                 <div key={key} className="flex justify-between items-baseline gap-2">
@@ -1118,7 +1118,7 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
                                   const isDate = typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val);
                                   return (
                                     <td key={key} className={`px-3 py-2 whitespace-nowrap ${isNum ? 'text-right font-mono' : ''} ${isNeg ? 'text-red-600' : 'text-slate-700'}`}>
-                                      {isDate ? new Date(val).toLocaleDateString('en-ZA') : isNum ? fmt(val) : val != null ? String(val) : '-'}
+                                      {isDate ? new Date(val).toLocaleDateString('en-GB') : isNum ? fmt(val) : val != null ? String(val) : '-'}
                                     </td>
                                   );
                                 })}
@@ -1237,7 +1237,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
       const d = items[0]?.receiptDate ? new Date(items[0].receiptDate) : null;
       groups.push({
         key,
-        label: d ? d.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long' }) : 'Unknown Date',
+        label: d ? d.toLocaleDateString('en-GB', { year: 'numeric', month: 'long' }) : 'Unknown Date',
         year: d ? d.getFullYear() : 0,
         month: d ? d.getMonth() : 0,
         items,
@@ -1395,11 +1395,11 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                       </div>
                       <div className="flex justify-between items-baseline">
                         <span className="text-[10px] text-slate-500">Statement Date</span>
-                        <span className="text-[11px] text-slate-600">{bankDate ? new Date(bankDate).toLocaleDateString('en-ZA') : '-'}</span>
+                        <span className="text-[11px] text-slate-600">{bankDate ? new Date(bankDate).toLocaleDateString('en-GB') : '-'}</span>
                       </div>
                       <div className="flex justify-between items-baseline">
                         <span className="text-[10px] text-slate-500">Allocation Date</span>
-                        <span className="text-[11px] text-slate-600">{allocDate ? new Date(allocDate).toLocaleDateString('en-ZA') : '-'}</span>
+                        <span className="text-[11px] text-slate-600">{allocDate ? new Date(allocDate).toLocaleDateString('en-GB') : '-'}</span>
                       </div>
                     </div>
                   );
@@ -1437,10 +1437,10 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                             R {Number(amount).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
                           </td>
                           <td className="px-3 py-2 text-slate-600">
-                            {bankDate ? new Date(bankDate).toLocaleDateString('en-ZA') : '-'}
+                            {bankDate ? new Date(bankDate).toLocaleDateString('en-GB') : '-'}
                           </td>
                           <td className="px-3 py-2 text-slate-600">
-                            {allocDate ? new Date(allocDate).toLocaleDateString('en-ZA') : '-'}
+                            {allocDate ? new Date(allocDate).toLocaleDateString('en-GB') : '-'}
                           </td>
                         </tr>
                       );
@@ -1595,7 +1595,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                                       </div>
                                       <div className="flex items-center gap-1.5 sm:gap-3 mt-0.5 flex-wrap">
                                         <span className="text-[10px] sm:text-[11px] text-slate-500">
-                                          {receiptDate ? receiptDate.toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                                          {receiptDate ? receiptDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
                                         </span>
                                         {receiptDate && (
                                           <span className="text-[9px] sm:text-[10px] text-slate-400">
@@ -1667,7 +1667,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                       <div className="flex items-start justify-between gap-2 mb-1.5">
                         <div>
                           <div className="font-mono text-xs font-bold text-[var(--pos-accent)]">{item.receiptNo || '-'}</div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">{item.receiptDate ? new Date(item.receiptDate).toLocaleDateString('en-ZA') : '-'}</div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">{item.receiptDate ? new Date(item.receiptDate).toLocaleDateString('en-GB') : '-'}</div>
                         </div>
                         <div className="text-right">
                           <div className="font-mono text-sm font-bold text-slate-800">R {(item.amount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</div>
@@ -1724,7 +1724,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                       {sortedReceipts.map((item: any, i: number) => (
                         <tr key={item.receiptId || i} className={`border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)]/30 transition-colors ${item.isCancelled ? 'bg-red-50/30' : ''}`}>
                           <td className="py-2.5 px-3 font-mono text-[var(--pos-accent)] font-semibold whitespace-nowrap text-xs">{item.receiptNo || '-'}</td>
-                          <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">{item.receiptDate ? new Date(item.receiptDate).toLocaleDateString('en-ZA') : '-'}</td>
+                          <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">{item.receiptDate ? new Date(item.receiptDate).toLocaleDateString('en-GB') : '-'}</td>
                           <td className="py-2.5 px-3">
                             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium ${
                               (item.paymentType || '').toLowerCase().includes('cash') ? 'bg-green-50 text-green-700 border border-green-200' :
@@ -2392,7 +2392,7 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
           amount,
           vatAmount: vat,
           total: amount + vat,
-          detail: termDate ? `Active until ${new Date(termDate).toLocaleDateString('en-ZA')}` : 'Ongoing',
+          detail: termDate ? `Active until ${new Date(termDate).toLocaleDateString('en-GB')}` : 'Ongoing',
         });
       }
 

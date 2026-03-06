@@ -60,12 +60,12 @@ export class PermitTemplate extends React.Component<PermitTemplateProps, PermitT
 
             <div className="flex justify-between border-b border-gray-300 pb-2">
                 <span className="font-bold uppercase text-gray-600">Date Issued:</span>
-                <span className="font-mono font-bold">{new Date().toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                <span className="font-mono font-bold">{new Date().toLocaleDateString('en-GB', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: 'short', year: 'numeric' })}</span>
             </div>
 
             <div className="flex justify-between border-b border-gray-300 pb-2">
                 <span className="font-bold uppercase text-gray-600">Valid Until:</span>
-                <span className="font-mono font-bold">{new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                <span className="font-mono font-bold">{new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toLocaleDateString('en-GB', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: 'short', year: 'numeric' })}</span>
             </div>
 
             <div className="mt-8">

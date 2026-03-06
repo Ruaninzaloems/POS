@@ -1231,7 +1231,7 @@ export default function SupervisorDashboard() {
                                 </div>
                                 <div className="flex items-center justify-between text-sm text-muted-foreground">
                                     <span>{req.cashierName || 'Unknown'}</span>
-                                    <span className="text-xs">{req.requestDate ? new Date(req.requestDate).toLocaleTimeString('en-ZA', { timeZone: 'Africa/Johannesburg', hour: '2-digit', minute: '2-digit', hour12: false }) + ' · ' + new Date(req.requestDate).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', month: 'short', day: '2-digit' }) : '—'}</span>
+                                    <span className="text-xs">{req.requestDate ? new Date(req.requestDate).toLocaleTimeString('en-ZA', { timeZone: 'Africa/Johannesburg', hour: '2-digit', minute: '2-digit', hour12: false }) + ' · ' + new Date(req.requestDate).toLocaleDateString('en-GB', { timeZone: 'Africa/Johannesburg', month: 'short', day: '2-digit' }) : '—'}</span>
                                 </div>
                                 {req.reason && <p className="text-xs text-red-600 truncate" title={req.reason}>{req.reason}</p>}
                                 <div className="flex gap-2">
@@ -1276,7 +1276,7 @@ export default function SupervisorDashboard() {
                                 </div>
                                 <div className="flex items-center justify-between text-sm text-muted-foreground">
                                     <span>{cashier?.name || 'Unknown Cashier'}</span>
-                                    <span className="text-xs">{new Date(tx.timestamp).toLocaleTimeString('en-ZA', { timeZone: 'Africa/Johannesburg', hour: '2-digit', minute: '2-digit', hour12: false }) + ' · ' + new Date(tx.timestamp).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', month: 'short', day: '2-digit' })}</span>
+                                    <span className="text-xs">{new Date(tx.timestamp).toLocaleTimeString('en-ZA', { timeZone: 'Africa/Johannesburg', hour: '2-digit', minute: '2-digit', hour12: false }) + ' · ' + new Date(tx.timestamp).toLocaleDateString('en-GB', { timeZone: 'Africa/Johannesburg', month: 'short', day: '2-digit' })}</span>
                                 </div>
                                 {tx.cancellationReason && <p className="text-xs text-red-600 truncate" title={tx.cancellationReason}>{tx.cancellationReason}</p>}
                                 <div className="flex gap-2">
@@ -1339,7 +1339,7 @@ export default function SupervisorDashboard() {
                                             {req.requestDate ? (
                                                 <div className="flex flex-col">
                                                     <span className="text-slate-900">{new Date(req.requestDate).toLocaleTimeString('en-ZA', { timeZone: 'Africa/Johannesburg', hour: '2-digit', minute: '2-digit', hour12: false })}</span>
-                                                    <span className="text-xs text-muted-foreground">{new Date(req.requestDate).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', month: 'short', day: '2-digit' })}</span>
+                                                    <span className="text-xs text-muted-foreground">{new Date(req.requestDate).toLocaleDateString('en-GB', { timeZone: 'Africa/Johannesburg', month: 'short', day: '2-digit' })}</span>
                                                 </div>
                                             ) : (
                                                 <span className="text-xs text-muted-foreground">—</span>
@@ -1402,7 +1402,7 @@ export default function SupervisorDashboard() {
                                         <TableCell>
                                             <div className="flex flex-col">
                                                 <span className="text-slate-900">{new Date(tx.timestamp).toLocaleTimeString('en-ZA', { timeZone: 'Africa/Johannesburg', hour: '2-digit', minute: '2-digit', hour12: false })}</span>
-                                                <span className="text-xs text-muted-foreground">{new Date(tx.timestamp).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', month: 'short', day: '2-digit' })}</span>
+                                                <span className="text-xs text-muted-foreground">{new Date(tx.timestamp).toLocaleDateString('en-GB', { timeZone: 'Africa/Johannesburg', month: 'short', day: '2-digit' })}</span>
                                             </div>
                                         </TableCell>
                                         <TableCell>
@@ -1692,7 +1692,7 @@ export default function SupervisorDashboard() {
                               <StatusBadge status={shift.status} returnReason={shift.returnReason} />
                           </div>
                           <div className="flex items-center justify-between text-sm">
-                              <span className="text-muted-foreground">{new Date(shift.startTime).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit' })}</span>
+                              <span className="text-muted-foreground">{new Date(shift.startTime).toLocaleDateString('en-GB', { timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit' })}</span>
                               <span className="text-muted-foreground">{shift.transactionCount} tx</span>
                           </div>
                           <div className="flex items-center justify-between text-sm">
@@ -1741,7 +1741,7 @@ export default function SupervisorDashboard() {
                                   <span>{shift.cashOffice || '-'}</span>
                                   {shift.groupCashiers && <Badge variant="outline" className="ml-1 text-[8px] px-1 py-0 bg-[var(--pos-accent-tint)] text-[var(--pos-accent)] border-[#D6D6D6]">Grouped</Badge>}
                               </TableCell>
-                              <TableCell>{new Date(shift.startTime).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit' })}</TableCell>
+                              <TableCell>{new Date(shift.startTime).toLocaleDateString('en-GB', { timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit' })}</TableCell>
                               <TableCell className="text-right">{shift.transactionCount}</TableCell>
                               <TableCell className="text-right font-mono">{formatCurrency(shift.systemTotals.total)}</TableCell>
                               <TableCell className={`text-right font-mono font-bold ${(shift.variance?.total || 0) !== 0 ? 'text-red-600' : 'text-green-600'}`}>
@@ -2138,7 +2138,7 @@ export default function SupervisorDashboard() {
                             ) : (
                                 varianceStats?.history.map(shift => (
                                     <TableRow key={shift.id}>
-                                        <TableCell>{new Date(shift.startTime).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit' })}</TableCell>
+                                        <TableCell>{new Date(shift.startTime).toLocaleDateString('en-GB', { timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit' })}</TableCell>
                                         <TableCell>{shift.cashierName}</TableCell>
                                         <TableCell className="text-right font-mono text-muted-foreground">{formatCurrency(shift.systemTotals.total)}</TableCell>
                                         <TableCell className="text-right font-mono">{formatCurrency(shift.declaredTotals?.total || 0)}</TableCell>

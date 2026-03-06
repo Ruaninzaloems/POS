@@ -185,8 +185,8 @@ export default function AllocationHistory() {
       const element = document.createElement("a");
       const fileContent = "FileDate,CapturedDate,Description,Reference,Process,Method,Amount,Status,Records\n" + 
           filteredHistory.map(t => {
-              const fd = t.fileDate ? new Date(t.fileDate).toLocaleDateString('en-ZA') : '';
-              const cd = t.dateCaptured ? new Date(t.dateCaptured).toLocaleDateString('en-ZA') : '';
+              const fd = t.fileDate ? new Date(t.fileDate).toLocaleDateString('en-GB') : '';
+              const cd = t.dateCaptured ? new Date(t.dateCaptured).toLocaleDateString('en-GB') : '';
               const method = (t.fileName === 'Manual Allocation' || t.fileName === 'Not applicable') ? 'Manual' : 'Bulk';
               return `${fd},${cd},"${t.fileName}","${t.paymentReference}",${t.process},${method},${t.allocatedAmount},${t.job_Status},${t.records}`;
           }).join("\n");
@@ -259,11 +259,11 @@ export default function AllocationHistory() {
 
   const formatDate = (d: string | null) => {
       if (!d) return '-';
-      try { return new Date(d).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric' }); } catch { return '-'; }
+      try { return new Date(d).toLocaleDateString('en-GB', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric' }); } catch { return '-'; }
   };
   const formatDateTime = (d: string | null) => {
       if (!d) return '-';
-      try { return new Date(d).toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', ''); } catch { return '-'; }
+      try { return new Date(d).toLocaleString('en-GB', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', ''); } catch { return '-'; }
   };
 
   return (
@@ -590,7 +590,7 @@ export default function AllocationHistory() {
                         </div>
                         <div className="text-right">
                             <div className="text-sm font-medium text-[#6B6B6B]">Report Date</div>
-                            <div className="font-mono text-sm">{new Date().toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '')}</div>
+                            <div className="font-mono text-sm">{new Date().toLocaleString('en-GB', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '')}</div>
                         </div>
                     </div>
 

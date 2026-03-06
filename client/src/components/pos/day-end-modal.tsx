@@ -223,7 +223,7 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
   const cashierName = platinumUser?.userName || platinumUser?.firstName ? `${platinumUser?.firstName || ''} ${platinumUser?.lastName || ''}`.trim() : currentUser?.name || 'Cashier';
   const officeName = sessionDetails?.officeDesc || 'Cash Office';
   const today = new Date();
-  const dateStr = today.toLocaleDateString('en-ZA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const dateStr = today.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const timeStr = today.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
 
   const handleNext = () => {

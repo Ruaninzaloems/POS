@@ -347,9 +347,9 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
     const status = svc.serviceStatus || svc.statusDesc || svc.status || '-';
     const isActiveStatus = status.toLowerCase() === 'active';
     const serviceMode = svc.serviceModeDesc || svc.serviceMode || '';
-    const requestDate = svc.serviceRequestedDate ? new Date(svc.serviceRequestedDate).toLocaleDateString('en-ZA') : '-';
+    const requestDate = svc.serviceRequestedDate ? new Date(svc.serviceRequestedDate).toLocaleDateString('en-GB') : '-';
     const commencementDate = svc.serviceCommencementDate || svc.commencementDate
-      ? new Date(svc.serviceCommencementDate || svc.commencementDate).toLocaleDateString('en-ZA')
+      ? new Date(svc.serviceCommencementDate || svc.commencementDate).toLocaleDateString('en-GB')
       : svc.startDate || '-';
     return (
       <div key={globalIdx} className="bg-[#F7F7F7] rounded-lg border border-[#D6D6D6] p-3 space-y-2">
@@ -2147,7 +2147,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                   <div className="col-span-2 flex justify-between text-[11px]"><span className="text-slate-500">Tariff</span><span className="text-slate-700 text-right truncate ml-2 max-w-[70%]">{s.tariff || s.tariffCode || s.tariffDescription || s.tariffDesc || '-'}</span></div>
                   {s.meterConnectionSize && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Connection</span><span className="text-slate-700">{s.meterConnectionSize}</span></div>}
                   {s.frequency && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Frequency</span><span className="text-slate-700">{s.frequency}</span></div>}
-                  {(s.installDate || s.dateInstalled || s.serviceCommencementDate) && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Start Date</span><span className="text-slate-700">{(() => { const d = s.serviceCommencementDate || s.installDate || s.dateInstalled; if (!d) return '-'; if (typeof d === 'string' && d.includes('T')) return new Date(d).toLocaleDateString('en-ZA'); return d; })()}</span></div>}
+                  {(s.installDate || s.dateInstalled || s.serviceCommencementDate) && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Start Date</span><span className="text-slate-700">{(() => { const d = s.serviceCommencementDate || s.installDate || s.dateInstalled; if (!d) return '-'; if (typeof d === 'string' && d.includes('T')) return new Date(d).toLocaleDateString('en-GB'); return d; })()}</span></div>}
                   {(s.routeFileName || s.routeFile) && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Route</span><span className="text-slate-700 truncate ml-1">{s.routeFileName || s.routeFile || '-'}</span></div>}
                 </div>
                 {hasMeter && (
@@ -2581,7 +2581,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">Meter No</span><span className="font-mono font-bold text-[var(--pos-accent)]">{m.prepaidMeterNo || m.meterNumber || m.meterNo || '-'}</span></div>
                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">Physical</span><span className="font-mono text-slate-700">{m.physicalMeterNumber || m.physicalMeterNo || '-'}</span></div>
                   <div className="col-span-2 flex justify-between text-[11px]"><span className="text-slate-500">Tariff</span><span className="text-slate-700 text-right truncate ml-2 max-w-[70%]">{m.tariff || m.tariffDescription || m.tariffDesc || '-'}</span></div>
-                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Last Recharge</span><span className="font-mono text-slate-700">{m.lastRechargeDate ? (() => { const d = m.lastRechargeDate; if (d.includes('/')) { const p = d.split('/'); return `${p[0]}/${p[1]}/${p[2]}`; } return new Date(d).toLocaleDateString('en-ZA'); })() : '-'}</span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Last Recharge</span><span className="font-mono text-slate-700">{m.lastRechargeDate ? new Date(m.lastRechargeDate).toLocaleDateString('en-GB') : '-'}</span></div>
                   {m.lastRechargeAmount !== undefined && m.lastRechargeAmount !== null && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Last Amount</span><span className="font-mono text-emerald-700 font-semibold">R {Number(m.lastRechargeAmount).toFixed(2)}</span></div>}
                   {m.lastReceiptNo && <div className="col-span-2 flex justify-between text-[11px]"><span className="text-slate-500">Receipt</span><span className="font-mono text-slate-700 text-right truncate ml-2 max-w-[65%]">{m.lastReceiptNo}</span></div>}
                 </div>
@@ -2624,7 +2624,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                       {m.lastReceiptNo || '-'}
                     </td>
                     <td className="py-2 px-3 text-right font-mono text-xs">
-                      {m.lastRechargeDate ? (() => { const d = m.lastRechargeDate; if (d.includes('/')) return d; return new Date(d).toLocaleDateString('en-ZA'); })() : '-'}
+                      {m.lastRechargeDate ? new Date(m.lastRechargeDate).toLocaleDateString('en-GB') : '-'}
                     </td>
                     <td className="py-2 px-3 text-center">
                       <button
@@ -2813,7 +2813,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                         ) : prepaidRechargeDetails.map((r: any, i: number) => (
                           <div key={i} className="bg-white border border-[#D6D6D6] rounded-lg p-3 space-y-2" data-testid={`recharge-detail-row-${i}`}>
                             <div className="flex items-center justify-between">
-                              <span className="text-xs text-slate-600">{(() => { const d = r.dateCaptured || r.receiptDate || r.rechargeDate; if (!d) return '-'; if (typeof d === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(d)) { const [dd,mm,yy] = d.split('/'); return `${dd}/${mm}/${yy}`; } return new Date(d).toLocaleDateString('en-ZA'); })()}</span>
+                              <span className="text-xs text-slate-600">{(() => { const d = r.dateCaptured || r.receiptDate || r.rechargeDate; if (!d) return '-'; if (typeof d === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(d)) { const [dd,mm,yy] = d.split('/'); return `${dd}/${mm}/${yy}`; } return new Date(d).toLocaleDateString('en-GB'); })()}</span>
                               {r.isCancelled || r.canceledStatus === 'Yes' || r.cancelledStatus === 'Yes' ? (
                                 <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 border border-red-200">Cancelled</span>
                               ) : (
@@ -2864,7 +2864,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                               <tr><td colSpan={10} className="text-center text-slate-400 py-6">No recharge details found for this meter</td></tr>
                             ) : prepaidRechargeDetails.map((r: any, i: number) => (
                               <tr key={i} className="border-b border-[#E5E5E5] hover:bg-emerald-50/30 transition-colors" data-testid={`recharge-detail-row-${i}`}>
-                                <td className="py-2.5 px-3 text-slate-600">{(() => { const d = r.dateCaptured || r.receiptDate || r.rechargeDate; if (!d) return '-'; if (typeof d === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(d)) { const [dd,mm,yy] = d.split('/'); return `${dd}/${mm}/${yy}`; } return new Date(d).toLocaleDateString('en-ZA'); })()}</td>
+                                <td className="py-2.5 px-3 text-slate-600">{(() => { const d = r.dateCaptured || r.receiptDate || r.rechargeDate; if (!d) return '-'; if (typeof d === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(d)) { const [dd,mm,yy] = d.split('/'); return `${dd}/${mm}/${yy}`; } return new Date(d).toLocaleDateString('en-GB'); })()}</td>
                                 <td className="py-2.5 px-3 font-mono text-[var(--pos-accent)] font-semibold text-xs">{r.receiptNo || r.receiptNumber || '-'}</td>
                                 <td className="py-2.5 px-3 text-right font-mono">{(r.amount ?? r.rechargeAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
                                 <td className="py-2.5 px-3 text-right font-mono">{(r.vatAmount ?? r.vat ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>

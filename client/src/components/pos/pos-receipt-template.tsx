@@ -46,7 +46,7 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
 
 
   const formatDate = (ts: number) => {
-    return new Date(ts).toLocaleString('en-ZA', {
+    return new Date(ts).toLocaleString('en-GB', {
       timeZone: 'Africa/Johannesburg',
       day: '2-digit', month: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit', second: '2-digit',
@@ -74,7 +74,7 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
       ? 'Split (Cash + Card)'
       : transaction.payment.card > 0 ? 'Credit Card' : 'Cash';
     const txDate = new Date(transaction.timestamp);
-    const dateStr = txDate.toLocaleString('en-ZA', {
+    const dateStr = txDate.toLocaleString('en-GB', {
       timeZone: 'Africa/Johannesburg',
       day: '2-digit', month: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit', second: '2-digit',

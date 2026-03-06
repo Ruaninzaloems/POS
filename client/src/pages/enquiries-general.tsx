@@ -49,9 +49,9 @@ function RiskFlagsBanner({ accountId }: { accountId: number }) {
     const parts = d.split('/');
     if (parts.length === 3 && parts[0].length <= 2) {
       const date = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
-      return isNaN(date.getTime()) ? d : date.toLocaleDateString('en-ZA');
+      return isNaN(date.getTime()) ? d : date.toLocaleDateString('en-GB');
     }
-    try { const date = new Date(d); return isNaN(date.getTime()) ? d : date.toLocaleDateString('en-ZA'); } catch { return d; }
+    try { const date = new Date(d); return isNaN(date.getTime()) ? d : date.toLocaleDateString('en-GB'); } catch { return d; }
   };
 
   useEffect(() => {

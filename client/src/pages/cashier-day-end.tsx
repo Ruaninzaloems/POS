@@ -290,7 +290,7 @@ export default function CashierDayEnd() {
     };
 
     const getCashierName = (c: any) => c.name || c.cashierName || c.userName || `Cashier ${c.id || c.cashierId}`;
-    const today = new Date().toLocaleDateString('en-ZA', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    const today = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit' });
 
     return (
         <PosLayout>
@@ -783,7 +783,7 @@ export default function CashierDayEnd() {
                                                                 const payTypeLabel = item.paymentTypeId === 1 ? 'Cash' : item.paymentTypeId === 3 ? 'Credit Card' : item.paymentTypeId === 4 ? 'Postal Order' : (item.paymentType || item.payMode || '-');
                                                                 const amt = Number(item.paidAmount || item.amount || 0);
                                                                 const dateVal = item.dateCaptured || item.receiptDate || item.date || '-';
-                                                                const dateStr = dateVal !== '-' ? new Date(dateVal).toLocaleString('en-ZA', { dateStyle: 'short', timeStyle: 'short' }) : '-';
+                                                                const dateStr = dateVal !== '-' ? new Date(dateVal).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' }) : '-';
                                                                 return (
                                                                 <TableRow key={idx} className={item.isCancelled ? 'bg-red-50/50 opacity-70' : ''}>
                                                                     <TableCell className="text-xs">{idx + 1}</TableCell>
@@ -810,7 +810,7 @@ export default function CashierDayEnd() {
                                                         const payTypeLabel = item.paymentTypeId === 1 ? 'Cash' : item.paymentTypeId === 3 ? 'Credit Card' : item.paymentTypeId === 4 ? 'Postal Order' : (item.paymentType || item.payMode || '-');
                                                         const amt = Number(item.paidAmount || item.amount || 0);
                                                         const dateVal = item.dateCaptured || item.receiptDate || item.date || '-';
-                                                        const dateStr = dateVal !== '-' ? new Date(dateVal).toLocaleString('en-ZA', { dateStyle: 'short', timeStyle: 'short' }) : '-';
+                                                        const dateStr = dateVal !== '-' ? new Date(dateVal).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' }) : '-';
                                                         return (
                                                         <div key={idx} className={`bg-white border rounded-lg p-3 space-y-1.5 ${item.isCancelled ? 'opacity-70 border-red-200 bg-red-50' : ''}`} data-testid={`mobile-reconcile-card-${idx}`}>
                                                             <div className="flex justify-between items-center">

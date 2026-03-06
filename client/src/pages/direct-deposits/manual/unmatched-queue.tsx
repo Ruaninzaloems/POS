@@ -637,7 +637,7 @@ export default function UnmatchedQueue() {
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-sm text-slate-800 truncate">{tx.note || '-'}</div>
                         <div className="text-xs text-muted-foreground font-mono mt-0.5">
-                          #{tx.posItem_ID} | {tx.dateOfTransaction ? new Date(tx.dateOfTransaction).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'}
+                          #{tx.posItem_ID} | {tx.dateOfTransaction ? new Date(tx.dateOfTransaction).toLocaleDateString('en-GB', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'}
                         </div>
                       </div>
                       {tx.billingAllocated ? (
@@ -718,7 +718,7 @@ export default function UnmatchedQueue() {
                       >
                         <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{tx.posItem_ID}</td>
                         <td className="px-4 py-2.5 whitespace-nowrap text-xs text-slate-600">
-                          <span className="font-mono">{tx.dateOfTransaction ? new Date(tx.dateOfTransaction).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'}</span>
+                          <span className="font-mono">{tx.dateOfTransaction ? new Date(tx.dateOfTransaction).toLocaleDateString('en-GB', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'}</span>
                         </td>
                         <td className="px-4 py-2.5">
                           <div className="text-xs text-slate-700 truncate max-w-[400px]" title={tx.note}>{tx.note || '-'}</div>

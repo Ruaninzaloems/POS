@@ -87,11 +87,11 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptTemplateP
         </div>
         <div className="flex justify-between">
             <span>Receipt Date</span>
-            <span>{new Date().toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(',', '')}</span>
+            <span>{new Date().toLocaleString('en-GB', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(',', '')}</span>
         </div>
         <div className="flex justify-between">
             <span>Payment Date:</span>
-            <span>{new Date(transaction.transactionDate).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+            <span>{new Date(transaction.transactionDate).toLocaleDateString('en-GB', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
         </div>
         
         {primaryAccount && (
@@ -186,7 +186,7 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptTemplateP
 
       <div className="text-center mt-6 italic text-[9px]">
         {muniInfo?.receiptFooter ? <div className="mb-1">{muniInfo.receiptFooter}</div> : 'Thank you.'}
-        <div className="mt-1 text-[8px] text-gray-400">System Gen: {new Date().toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(',', '')}</div>
+        <div className="mt-1 text-[8px] text-gray-400">System Gen: {new Date().toLocaleString('en-GB', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(',', '')}</div>
       </div>
     </div>
   );

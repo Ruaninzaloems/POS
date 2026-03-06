@@ -40,7 +40,7 @@ function fmt(v: any): string {
 
 function fmtDate(v: any): string {
   if (!v) return '';
-  try { return new Date(v).toLocaleDateString('en-ZA', { day: '2-digit', month: '2-digit', year: 'numeric' }); } catch { return String(v); }
+  try { return new Date(v).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }); } catch { return String(v); }
 }
 
 function fmtInt(v: any): string {
@@ -509,7 +509,7 @@ export async function generateValuationCertificate(accountId: number): Promise<v
   doc.setFontSize(9);
   doc.text('Municipal Manager', margin + 5, y);
 
-  const today = new Date().toLocaleDateString('en-ZA', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
   doc.setFont('helvetica', 'normal');
   doc.text(`Date: ${today}`, pageW - margin - 40, y);
 

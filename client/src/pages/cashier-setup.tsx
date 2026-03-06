@@ -421,7 +421,7 @@ export default function CashierSetup() {
                             <div className="flex items-center gap-2 text-sm">
                                 <Calendar className="h-4 w-4 text-[#6B6B6B] shrink-0" />
                                 <span className="text-[#6B6B6B]">Date:</span>
-                                <span className="font-medium text-[#2E2E2E]">{new Date().toLocaleDateString('en-ZA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                                <span className="font-medium text-[#2E2E2E]">{new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
                             </div>
                         </div>
                         <Button

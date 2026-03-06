@@ -267,7 +267,7 @@ export async function downloadTransactionExcel(options: {
     { label: 'Financial Year:', value: financialYear },
   ];
   if (period) infoItems.push({ label: 'Period:', value: period });
-  infoItems.push({ label: 'Generated:', value: new Date().toLocaleDateString('en-ZA') + ' ' + new Date().toLocaleTimeString('en-ZA') });
+  infoItems.push({ label: 'Generated:', value: new Date().toLocaleDateString('en-GB') + ' ' + new Date().toLocaleTimeString('en-ZA') });
 
   for (const info of infoItems) {
     const infoR: any[] = new Array(colCount).fill('');
@@ -382,7 +382,7 @@ export async function downloadSummaryExcel(options: {
   const infoItems = [
     { label: 'Account Number:', value: accountNumber },
     { label: 'Financial Year(s):', value: financialYears.join(', ') },
-    { label: 'Generated:', value: new Date().toLocaleDateString('en-ZA') + ' ' + new Date().toLocaleTimeString('en-ZA') },
+    { label: 'Generated:', value: new Date().toLocaleDateString('en-GB') + ' ' + new Date().toLocaleTimeString('en-ZA') },
   ];
   for (const info of infoItems) {
     const infoR: any[] = new Array(colCount).fill('');

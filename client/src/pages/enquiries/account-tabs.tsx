@@ -180,7 +180,7 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
 
   const formatDate = (v: any) => {
     if (!v) return '';
-    try { const d = new Date(v); return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString('en-ZA'); } catch { return String(v); }
+    try { const d = new Date(v); return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString('en-GB'); } catch { return String(v); }
   };
 
   const f = (v: any, fallback?: string) => {
@@ -654,7 +654,7 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
 
   const n = data;
   const fullName = [n.firstNames || n.initials, n.surname_Company || n.companyName || n.name].filter(Boolean).join(' ').trim();
-  const dob = n.dateOfBirth ? (() => { try { const d = new Date(n.dateOfBirth); return isNaN(d.getTime()) ? n.dateOfBirth : d.toLocaleDateString('en-ZA'); } catch { return n.dateOfBirth; } })() : '';
+  const dob = n.dateOfBirth ? (() => { try { const d = new Date(n.dateOfBirth); return isNaN(d.getTime()) ? n.dateOfBirth : d.toLocaleDateString('en-GB'); } catch { return n.dateOfBirth; } })() : '';
 
   return (
     <div className="p-3 sm:p-5 space-y-4 sm:space-y-5" data-testid="name-info-panel">
@@ -889,7 +889,7 @@ async function generateBalanceDebtPdf(
   doc.text('Balance / Debt Inquiry Report', margin, y);
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Account: ${accountId}  |  Generated: ${new Date().toLocaleDateString('en-ZA')} ${new Date().toLocaleTimeString('en-ZA')}`, margin, y + 6);
+  doc.text(`Account: ${accountId}  |  Generated: ${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString('en-ZA')}`, margin, y + 6);
   y += 14;
 
   doc.setFontSize(11);
@@ -993,7 +993,7 @@ async function generateBalanceDebtPdf(
     const payRows = payments.map(p => [
       p.receiptNumber || p.receiptNo || '-',
       p.paymentType || p.receiptType || p.transactionType || '-',
-      p.receiptDate ? new Date(p.receiptDate).toLocaleDateString('en-ZA') : '-',
+      p.receiptDate ? new Date(p.receiptDate).toLocaleDateString('en-GB') : '-',
       fmt(p.amount || p.receiptAmount || 0),
       p.cashierName || p.cashier || '-',
       p.cashBook || p.cashBookName || '-',
@@ -1022,7 +1022,7 @@ async function generateBalanceDebtPdf(
       startY: y,
       head: [['Date', 'Receipt #', 'Type', 'Amount']],
       body: reversals.map(rv => [
-        rv.receiptDate ? new Date(rv.receiptDate).toLocaleDateString('en-ZA') : '-',
+        rv.receiptDate ? new Date(rv.receiptDate).toLocaleDateString('en-GB') : '-',
         rv.receiptNumber || rv.receiptNo || '-',
         rv.receiptType || rv.transactionType || '-',
         fmt(rv.amount || rv.receiptAmount || 0),
@@ -1290,7 +1290,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
                   title: 'Total Balance / Debt Inquiry',
                   infoRows: [
                     { label: 'Account Number:', value: acctLabel },
-                    { label: 'Date:', value: new Date().toLocaleDateString('en-ZA') },
+                    { label: 'Date:', value: new Date().toLocaleDateString('en-GB') },
                   ],
                   headers: hdrs,
                   rows: dataRows,
@@ -1406,7 +1406,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
                   title: 'Debtors - Remaining Capital Amounts',
                   infoRows: [
                     { label: 'Account Number:', value: acctLabel2 },
-                    { label: 'Date:', value: new Date().toLocaleDateString('en-ZA') },
+                    { label: 'Date:', value: new Date().toLocaleDateString('en-GB') },
                   ],
                   headers: hdrs,
                   rows: dataRows,
@@ -1501,7 +1501,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
                 const dataRows = payments.map(p => [
                   p.receiptNumber || p.receiptNo || '-',
                   p.paymentType || p.receiptType || p.transactionType || '-',
-                  p.receiptDate ? new Date(p.receiptDate).toLocaleDateString('en-ZA') : '-',
+                  p.receiptDate ? new Date(p.receiptDate).toLocaleDateString('en-GB') : '-',
                   p.amount || p.receiptAmount || 0,
                   p.cashierName || p.cashier || '-',
                   p.cashBook || p.cashBookName || '-',
@@ -1514,7 +1514,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
                   title: 'Payments Received',
                   infoRows: [
                     { label: 'Account Number:', value: acctLabel3 },
-                    { label: 'Date:', value: new Date().toLocaleDateString('en-ZA') },
+                    { label: 'Date:', value: new Date().toLocaleDateString('en-GB') },
                   ],
                   headers: hdrs,
                   rows: dataRows,
@@ -1537,7 +1537,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
               </div>
               <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px]">
                 <span className="text-slate-500">Type</span><span className="text-slate-700 text-right">{p.paymentType || p.receiptType || '-'}</span>
-                <span className="text-slate-500">Date</span><span className="text-slate-700 text-right">{p.receiptDate ? new Date(p.receiptDate).toLocaleDateString('en-ZA') : '-'}</span>
+                <span className="text-slate-500">Date</span><span className="text-slate-700 text-right">{p.receiptDate ? new Date(p.receiptDate).toLocaleDateString('en-GB') : '-'}</span>
                 <span className="text-slate-500">Cashier</span><span className="text-slate-700 text-right truncate">{p.cashierName || p.cashier || '-'}</span>
               </div>
               <div className="flex justify-end pt-1 border-t border-[#E5E5E5]">
@@ -1579,7 +1579,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
                   <tr key={i} className="border-b border-[#F7F7F7] hover:bg-green-50/50" data-testid={`row-payment-${i}`}>
                     <td className="py-1.5 px-3 font-mono text-slate-700 whitespace-nowrap">{p.receiptNumber || p.receiptNo || '-'}</td>
                     <td className="py-1.5 px-3 text-slate-600 whitespace-nowrap">{p.paymentType || p.receiptType || p.transactionType || '-'}</td>
-                    <td className="py-1.5 px-3 text-slate-600 whitespace-nowrap">{p.receiptDate ? new Date(p.receiptDate).toLocaleDateString('en-ZA') : '-'}</td>
+                    <td className="py-1.5 px-3 text-slate-600 whitespace-nowrap">{p.receiptDate ? new Date(p.receiptDate).toLocaleDateString('en-GB') : '-'}</td>
                     <td className="py-1.5 px-3 text-right font-mono font-medium text-green-700 whitespace-nowrap">{fmt(p.amount || p.receiptAmount || 0)}</td>
                     <td className="py-1.5 px-3 text-center">
                       <button
@@ -1615,7 +1615,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
               <SectionDownloadBtn onClick={() => {
                 const hdrs = ['Date', 'Receipt #', 'Type', 'Amount'];
                 const dataRows = reversals.map(rv => [
-                  rv.receiptDate ? new Date(rv.receiptDate).toLocaleDateString('en-ZA') : '-',
+                  rv.receiptDate ? new Date(rv.receiptDate).toLocaleDateString('en-GB') : '-',
                   rv.receiptNumber || rv.receiptNo || '-',
                   rv.receiptType || rv.transactionType || '-',
                   rv.amount || rv.receiptAmount || 0,
@@ -1627,7 +1627,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
                   title: 'Payment Reversals',
                   infoRows: [
                     { label: 'Account Number:', value: acctLabel4 },
-                    { label: 'Date:', value: new Date().toLocaleDateString('en-ZA') },
+                    { label: 'Date:', value: new Date().toLocaleDateString('en-GB') },
                   ],
                   headers: hdrs,
                   rows: dataRows,
@@ -1646,7 +1646,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
             <div key={i} className="border border-[#D6D6D6] rounded-lg p-2.5 flex items-center justify-between">
               <div className="min-w-0">
                 <div className="text-[11px] font-mono font-semibold text-slate-800">{rv.receiptNumber || rv.receiptNo || '-'}</div>
-                <div className="text-[10px] text-slate-500">{rv.receiptDate ? new Date(rv.receiptDate).toLocaleDateString('en-ZA') : '-'} &middot; {rv.receiptType || rv.transactionType || '-'}</div>
+                <div className="text-[10px] text-slate-500">{rv.receiptDate ? new Date(rv.receiptDate).toLocaleDateString('en-GB') : '-'} &middot; {rv.receiptType || rv.transactionType || '-'}</div>
               </div>
               <span className="text-[12px] font-bold font-mono text-red-700 shrink-0 ml-2">{fmt(rv.amount || rv.receiptAmount || 0)}</span>
             </div>
@@ -1668,7 +1668,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
               <tbody>
                 {reversals.slice(0, 20).map((rv: any, i: number) => (
                   <tr key={i} className="border-b border-[#F7F7F7] hover:bg-red-50/50">
-                    <td className="py-1.5 px-3 text-slate-600">{rv.receiptDate ? new Date(rv.receiptDate).toLocaleDateString('en-ZA') : '-'}</td>
+                    <td className="py-1.5 px-3 text-slate-600">{rv.receiptDate ? new Date(rv.receiptDate).toLocaleDateString('en-GB') : '-'}</td>
                     <td className="py-1.5 px-3 font-mono text-slate-700">{rv.receiptNumber || rv.receiptNo || '-'}</td>
                     <td className="py-1.5 px-3 text-slate-500">{rv.receiptType || rv.transactionType || '-'}</td>
                     <td className="py-1.5 px-3 text-right font-mono font-medium text-red-700">{fmt(rv.amount || rv.receiptAmount || 0)}</td>

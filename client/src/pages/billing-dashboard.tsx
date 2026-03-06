@@ -381,7 +381,7 @@ function DetailTable({ endpoint, label }: { endpoint: string; label?: string }) 
                 if (rows.length < exportPageSize) break;
             }
             if (allRows.length > 0) {
-                exportToExcel(allRows, safeName, `${safeName} - ${new Date().toLocaleDateString('en-ZA')}`);
+                exportToExcel(allRows, safeName, `${safeName} - ${new Date().toLocaleDateString('en-GB')}`);
             }
         } catch {
             exportToExcel(items, safeName, `${safeName} - Page ${page}`);
@@ -548,7 +548,7 @@ function GraphsPanel() {
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => exportToExcel(items, title, `${title} - ${new Date().toLocaleDateString('en-ZA')}`)}
+                        onClick={() => exportToExcel(items, title, `${title} - ${new Date().toLocaleDateString('en-GB')}`)}
                         className="h-7 gap-1.5 text-xs text-emerald-700 hover:bg-emerald-100 font-medium"
                         data-testid={`btn-export-${title.toLowerCase().replace(/\s+/g, '-')}`}
                     >
@@ -603,7 +603,7 @@ function CategoryPanel({ category, subItems, isLoading }: { category: CategoryCo
     const handleExportSummary = useCallback(() => {
         if (!subItems.length) return;
         const rows = subItems.map(s => ({ Item: s.label, Count: s.count, Severity: s.severity }));
-        exportToExcel(rows, `${category.label} Summary`, `${category.label} Summary - ${new Date().toLocaleDateString('en-ZA')}`);
+        exportToExcel(rows, `${category.label} Summary`, `${category.label} Summary - ${new Date().toLocaleDateString('en-GB')}`);
     }, [subItems, category.label]);
 
     if (category.key === 'graphs') return <GraphsPanel />;

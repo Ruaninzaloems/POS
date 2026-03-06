@@ -35,7 +35,6 @@ function fmtR(val: number | undefined | null): string {
 function fmtDate(dateStr: string | undefined | null): string {
   if (!dateStr) return '';
   try {
-    if (dateStr.includes('/') && dateStr.length <= 20) return dateStr;
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return dateStr;
     const dd = String(d.getDate()).padStart(2, '0');

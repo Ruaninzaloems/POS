@@ -215,7 +215,7 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
   };
   const fmtDate = (v: any) => {
     if (!v) return '-';
-    try { return new Date(v).toLocaleDateString('en-ZA'); } catch { return String(v); }
+    try { return new Date(v).toLocaleDateString('en-GB'); } catch { return String(v); }
   };
   const fmtInt = (v: any) => {
     if (v === null || v === undefined || v === '') return '-';
@@ -704,7 +704,7 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
               <div className="sm:hidden p-2 space-y-2">
                 {contactHistory.map((r: any, i: number) => (
                   <div key={i} className="border border-[#D6D6D6] rounded-lg p-3 space-y-1.5" data-testid={`contact-history-card-${i}`}>
-                    <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Date</span><span className="text-slate-800 font-semibold text-right">{(() => { try { return r.changeDate ? new Date(r.changeDate).toLocaleDateString('en-ZA') : r.date || '-'; } catch { return r.changeDate || '-'; } })()}</span></div>
+                    <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Date</span><span className="text-slate-800 font-semibold text-right">{(() => { try { return r.changeDate ? new Date(r.changeDate).toLocaleDateString('en-GB') : r.date || '-'; } catch { return r.changeDate || '-'; } })()}</span></div>
                     <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Field</span><span className="text-slate-800 font-semibold text-right">{r.fieldName || r.field || r.description || '-'}</span></div>
                     <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Old Value</span><span className="text-red-500 font-semibold text-right font-mono">{r.oldValue || r.previousValue || '-'}</span></div>
                     <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">New Value</span><span className="text-emerald-600 font-semibold text-right font-mono">{r.newValue || r.currentValue || '-'}</span></div>
@@ -726,7 +726,7 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
                   <tbody>
                     {contactHistory.map((r: any, i: number) => (
                       <tr key={i} className="border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)] transition-colors" data-testid={`contact-history-row-${i}`}>
-                        <td className="py-2.5 px-4 text-slate-600 whitespace-nowrap">{(() => { try { return r.changeDate ? new Date(r.changeDate).toLocaleDateString('en-ZA') : r.date || '-'; } catch { return r.changeDate || '-'; } })()}</td>
+                        <td className="py-2.5 px-4 text-slate-600 whitespace-nowrap">{(() => { try { return r.changeDate ? new Date(r.changeDate).toLocaleDateString('en-GB') : r.date || '-'; } catch { return r.changeDate || '-'; } })()}</td>
                         <td className="py-2.5 px-4 font-medium text-slate-800">{r.fieldName || r.field || r.description || '-'}</td>
                         <td className="py-2.5 px-4 text-red-500 font-mono">{r.oldValue || r.previousValue || '-'}</td>
                         <td className="py-2.5 px-4 text-emerald-600 font-mono font-medium">{r.newValue || r.currentValue || '-'}</td>
@@ -773,7 +773,7 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
                   {addressHistory.map((r: any, i: number) => (
                     <div key={i} className="bg-white border border-[#D6D6D6] rounded-lg p-3 space-y-1.5" data-testid={`address-history-row-${i}`}>
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-slate-600">{(() => { try { return r.changeDate ? new Date(r.changeDate).toLocaleDateString('en-ZA') : r.date || '-'; } catch { return r.changeDate || '-'; } })()}</span>
+                        <span className="text-xs font-semibold text-slate-600">{(() => { try { return r.changeDate ? new Date(r.changeDate).toLocaleDateString('en-GB') : r.date || '-'; } catch { return r.changeDate || '-'; } })()}</span>
                         <span className="text-[10px] text-slate-400">{r.changedBy || r.user || '-'}</span>
                       </div>
                       <div className="text-xs text-slate-800">{(r.address || r.deliveryAddress || '-').replace(/\r\n/g, ', ')}</div>
@@ -792,7 +792,7 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
                     <tbody>
                       {addressHistory.map((r: any, i: number) => (
                         <tr key={i} className="border-b border-[#E5E5E5] hover:bg-amber-50/30 transition-colors" data-testid={`address-history-row-${i}`}>
-                          <td className="py-2.5 px-4 text-slate-600 whitespace-nowrap">{(() => { try { return r.changeDate ? new Date(r.changeDate).toLocaleDateString('en-ZA') : r.date || '-'; } catch { return r.changeDate || '-'; } })()}</td>
+                          <td className="py-2.5 px-4 text-slate-600 whitespace-nowrap">{(() => { try { return r.changeDate ? new Date(r.changeDate).toLocaleDateString('en-GB') : r.date || '-'; } catch { return r.changeDate || '-'; } })()}</td>
                           <td className="py-2.5 px-4 text-slate-800">{(r.address || r.deliveryAddress || '-').replace(/\r\n/g, ', ')}</td>
                           <td className="py-2.5 px-4 text-slate-500">{r.changedBy || r.user || '-'}</td>
                         </tr>
@@ -865,7 +865,7 @@ export function HandoverTab({ accountId }: { accountId: number }) {
     const n = typeof v === 'number' ? v : parseFloat(v) || 0;
     return n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
-  const fmtDate = (v: any) => v ? new Date(v).toLocaleDateString('en-ZA') : '-';
+  const fmtDate = (v: any) => v ? new Date(v).toLocaleDateString('en-GB') : '-';
 
   const infoItems = data ? (Array.isArray(data) ? data : [data]) : [];
   const enqItems = enquiry ? (Array.isArray(enquiry) ? enquiry : [enquiry]) : [];
@@ -1134,7 +1134,7 @@ export function NotificationsTab({ accountId }: { accountId: number }) {
             <div className="sm:hidden p-2 space-y-2">
               {accountNotifs.map((n: any, i: number) => (
                 <div key={i} className="border border-[#D6D6D6] rounded-lg p-3 space-y-1.5">
-                  <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Date</span><span className="text-slate-800 font-semibold text-right">{n.notificationDate ? new Date(n.notificationDate).toLocaleDateString('en-ZA') : '-'}</span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Date</span><span className="text-slate-800 font-semibold text-right">{n.notificationDate ? new Date(n.notificationDate).toLocaleDateString('en-GB') : '-'}</span></div>
                   <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Type</span><span className="text-slate-800 font-semibold text-right">{n.notificationType || n.type || '-'}</span></div>
                   <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Message</span><span className="text-slate-800 font-semibold text-right max-w-[180px] truncate">{n.message || n.description || '-'}</span></div>
                   <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Status</span><span className="text-right"><Badge variant="outline" className="text-[10px]">{n.status || '-'}</Badge></span></div>
@@ -1155,7 +1155,7 @@ export function NotificationsTab({ accountId }: { accountId: number }) {
                 <tbody>
                   {accountNotifs.map((n: any, i: number) => (
                     <tr key={i} className="border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)]/30 transition-colors">
-                      <td className="py-2 px-3 text-slate-600">{n.notificationDate ? new Date(n.notificationDate).toLocaleDateString('en-ZA') : '-'}</td>
+                      <td className="py-2 px-3 text-slate-600">{n.notificationDate ? new Date(n.notificationDate).toLocaleDateString('en-GB') : '-'}</td>
                       <td className="py-2 px-3 font-medium">{n.notificationType || n.type || '-'}</td>
                       <td className="py-2 px-3 max-w-[300px] truncate">{n.message || n.description || '-'}</td>
                       <td className="py-2 px-3"><Badge variant="outline" className="text-[10px]">{n.status || '-'}</Badge></td>
@@ -1278,7 +1278,7 @@ export function StatementsTab({ accountId }: { accountId: number }) {
             </div>
           ) : data.map((s: any, i: number) => (
             <div key={i} className="border border-[#D6D6D6] rounded-lg p-3 space-y-1.5" data-testid={`statement-card-${i}`}>
-              <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Date</span><span className="text-slate-800 font-semibold text-right">{s.statementDate ? new Date(s.statementDate).toLocaleDateString('en-ZA') : '-'}</span></div>
+              <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Date</span><span className="text-slate-800 font-semibold text-right">{s.statementDate ? new Date(s.statementDate).toLocaleDateString('en-GB') : '-'}</span></div>
               <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Period</span><span className="text-slate-800 font-semibold text-right">{s.month ? `${s.financialYear} - ${s.month}` : s.period || '-'}</span></div>
               <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Amount</span><span className="text-slate-800 font-semibold text-right font-mono">{(s.amount ?? s.totalAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span></div>
               <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Type</span><span className="text-right"><span className="inline-flex px-2 py-0.5 rounded-md text-[10px] font-medium bg-[var(--pos-accent-tint)] text-[var(--pos-accent)] border border-[#D6D6D6]">{s.statementType || s.type || 'Standard'}</span></span></div>
@@ -1313,7 +1313,7 @@ export function StatementsTab({ accountId }: { accountId: number }) {
                 </td></tr>
               ) : data.map((s: any, i: number) => (
                 <tr key={i} className="border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)]/30 transition-colors" data-testid={`statement-row-${i}`}>
-                  <td className="py-2.5 px-3 text-slate-600">{s.statementDate ? new Date(s.statementDate).toLocaleDateString('en-ZA') : '-'}</td>
+                  <td className="py-2.5 px-3 text-slate-600">{s.statementDate ? new Date(s.statementDate).toLocaleDateString('en-GB') : '-'}</td>
                   <td className="py-2.5 px-3 font-medium">{s.month ? `${s.financialYear} - ${s.month}` : s.period || '-'}</td>
                   <td className="py-2.5 px-3">{s.description || s.statementDescription || 'Account Statement'}</td>
                   <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800">{(s.amount ?? s.totalAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
@@ -1524,7 +1524,7 @@ export function ClearanceTab({ accountId, propertyId, currentAccountNumber, curr
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
 
-  const fmtDate = (v: any) => v ? new Date(v).toLocaleDateString('en-ZA') : '-';
+  const fmtDate = (v: any) => v ? new Date(v).toLocaleDateString('en-GB') : '-';
   const fmtR = (v: any) => v != null ? `R ${Number(v).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-';
 
   const normalizeStr = (s: string | undefined | null) => (s ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
@@ -1887,7 +1887,7 @@ export function DebtorNotesTab({ accountId }: { accountId: number }) {
       <div className="sm:hidden space-y-2">
         {data.map((n: any, i: number) => (
           <div key={i} className="border border-[#D6D6D6] rounded-lg p-3 space-y-1.5">
-            <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Date</span><span className="text-slate-800 font-semibold text-right">{n.noteDate ? new Date(n.noteDate).toLocaleDateString('en-ZA') : n.date || n.createdDate || '-'}</span></div>
+            <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Date</span><span className="text-slate-800 font-semibold text-right">{n.noteDate ? new Date(n.noteDate).toLocaleDateString('en-GB') : n.date || n.createdDate || '-'}</span></div>
             <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Note Type</span><span className="text-slate-800 font-semibold text-right">{n.noteType || n.type || '-'}</span></div>
             <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Description</span><span className="text-slate-800 font-semibold text-right max-w-[180px] truncate">{n.description || n.noteDescription || n.notes || '-'}</span></div>
             <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Amount</span><span className="text-slate-800 font-semibold text-right font-mono">{n.amount != null ? (n.amount).toLocaleString('en-ZA', { minimumFractionDigits: 2 }) : '-'}</span></div>
@@ -1910,7 +1910,7 @@ export function DebtorNotesTab({ accountId }: { accountId: number }) {
           <tbody>
             {data.map((n: any, i: number) => (
               <tr key={i} className="border-b border-[#E5E5E5] hover:bg-[#F7F7F7] transition-colors">
-                <td className="py-2 px-3 text-slate-600">{n.noteDate ? new Date(n.noteDate).toLocaleDateString('en-ZA') : n.date || n.createdDate || '-'}</td>
+                <td className="py-2 px-3 text-slate-600">{n.noteDate ? new Date(n.noteDate).toLocaleDateString('en-GB') : n.date || n.createdDate || '-'}</td>
                 <td className="py-2 px-3 font-medium">{n.noteType || n.type || '-'}</td>
                 <td className="py-2 px-3 max-w-[300px] truncate">{n.description || n.noteDescription || n.notes || '-'}</td>
                 <td className="py-2 px-3 text-slate-500 text-xs">{n.createdBy || n.user || '-'}</td>
@@ -2185,7 +2185,7 @@ export function OccupiersTab({ accountId }: { accountId: number }) {
                     </div>
                   </div>
 
-                  <div className="text-right font-bold mb-6">Date : {new Date().toLocaleDateString('en-ZA', { day: '2-digit', month: '2-digit', year: 'numeric' })}</div>
+                  <div className="text-right font-bold mb-6">Date : {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</div>
 
                   <h2 className="text-xl font-bold mb-6">PROOF OF RESIDENTIAL ADDRESS</h2>
 
@@ -2884,7 +2884,7 @@ export function IndigentHistoryTab({ accountId }: { accountId: number }) {
 
   const fmtDate = (v: any) => {
     if (!v) return '-';
-    try { return new Date(v).toLocaleDateString('en-ZA'); } catch { return '-'; }
+    try { return new Date(v).toLocaleDateString('en-GB'); } catch { return '-'; }
   };
   const fmtAmt = (v: any) => v != null && v !== '' ? Number(v).toLocaleString('en-ZA', { minimumFractionDigits: 2 }) : '0.00';
 

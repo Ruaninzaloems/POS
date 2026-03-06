@@ -1258,7 +1258,7 @@ export default function AllocateTransaction() {
                     <div className="flex items-center gap-4 text-sm">
                         <div>
                             <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider block mb-1">Date</label>
-                            <span className="font-mono text-xs">{transaction.dateOfTransaction ? new Date(transaction.dateOfTransaction).toLocaleDateString('en-ZA') : '-'}</span>
+                            <span className="font-mono text-xs">{transaction.dateOfTransaction ? new Date(transaction.dateOfTransaction).toLocaleDateString('en-GB') : '-'}</span>
                         </div>
                     </div>
                 </div>
