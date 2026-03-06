@@ -384,7 +384,7 @@ export default function BulkAllocationProgress() {
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Financial Year</Label>
                 <Select value={selectedYear} onValueChange={setSelectedYear} disabled={loadingFilters} data-testid="select-financial-year">
-                  <SelectTrigger data-testid="trigger-financial-year">
+                  <SelectTrigger className="h-11 sm:h-9" data-testid="trigger-financial-year">
                     <SelectValue placeholder={loadingFilters ? 'Loading...' : 'All Years'} />
                   </SelectTrigger>
                   <SelectContent>
@@ -398,7 +398,7 @@ export default function BulkAllocationProgress() {
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Process</Label>
                 <Select value={selectedProcess} onValueChange={setSelectedProcess} disabled={loadingFilters} data-testid="select-process">
-                  <SelectTrigger data-testid="trigger-process">
+                  <SelectTrigger className="h-11 sm:h-9" data-testid="trigger-process">
                     <SelectValue placeholder={loadingFilters ? 'Loading...' : 'All Processes'} />
                   </SelectTrigger>
                   <SelectContent>
@@ -412,7 +412,7 @@ export default function BulkAllocationProgress() {
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Billing Month</Label>
                 <Select value={selectedMonth} onValueChange={setSelectedMonth} disabled={loadingFilters} data-testid="select-billing-month">
-                  <SelectTrigger data-testid="trigger-billing-month">
+                  <SelectTrigger className="h-11 sm:h-9" data-testid="trigger-billing-month">
                     <SelectValue placeholder={loadingFilters ? 'Loading...' : 'All Months'} />
                   </SelectTrigger>
                   <SelectContent>
@@ -426,7 +426,7 @@ export default function BulkAllocationProgress() {
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Status</Label>
                 <Select value={statusFilter ?? '__all__'} onValueChange={v => setStatusFilter(v === '__all__' ? null : v)} data-testid="select-status-filter">
-                  <SelectTrigger data-testid="trigger-status-filter">
+                  <SelectTrigger className="h-11 sm:h-9" data-testid="trigger-status-filter">
                     <SelectValue placeholder="All Statuses" />
                   </SelectTrigger>
                   <SelectContent>
@@ -446,19 +446,19 @@ export default function BulkAllocationProgress() {
               <Button
                 onClick={() => { setPage(1); searchAllocations(1); }}
                 disabled={loading || loadingFilters}
-                className="gap-1.5 flex-1 sm:flex-none"
+                className="gap-1.5 flex-1 sm:flex-none h-11 sm:h-9"
                 data-testid="button-search"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                 Search
               </Button>
-              <Button variant="outline" onClick={resetFilters} className="gap-1.5 flex-1 sm:flex-none" data-testid="button-reset">
+              <Button variant="outline" onClick={resetFilters} className="gap-1.5 flex-1 sm:flex-none h-11 sm:h-9" data-testid="button-reset">
                 <RotateCcw className="w-4 h-4" /> Reset
               </Button>
               <div className="ml-auto flex items-center gap-2">
                 <Label className="text-xs text-muted-foreground hidden sm:inline">Per page:</Label>
                 <Select value={String(pageSize)} onValueChange={v => { setPageSize(parseInt(v, 10)); setPage(1); }} data-testid="select-page-size">
-                  <SelectTrigger className="w-20 h-8" data-testid="trigger-page-size">
+                  <SelectTrigger className="w-20 h-11 sm:h-8" data-testid="trigger-page-size">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -518,10 +518,10 @@ export default function BulkAllocationProgress() {
             </div>
             {statusFilter && (
               <div className="flex items-center gap-2 mt-2">
-                <Badge variant="secondary" className="gap-1 text-xs">
+                <Badge variant="secondary" className="gap-1.5 text-xs py-1.5 px-2.5">
                   Filtered: {statusCards.find(c => c.key === statusFilter)?.label}
-                  <button onClick={() => setStatusFilter(null)} className="ml-1 hover:text-red-500">
-                    <XCircle className="w-3 h-3" />
+                  <button onClick={() => setStatusFilter(null)} className="ml-1 hover:text-red-500 p-1 -mr-1 min-w-[28px] min-h-[28px] flex items-center justify-center">
+                    <XCircle className="w-4 h-4" />
                   </button>
                 </Badge>
                 <span className="text-xs text-muted-foreground">
@@ -562,7 +562,7 @@ export default function BulkAllocationProgress() {
                 </div>
                 <p className="font-semibold text-gray-700">No Jobs Match This Status</p>
                 <p className="text-sm text-muted-foreground mt-1">Click a different status card or clear the filter</p>
-                <Button variant="outline" size="sm" className="mt-3" onClick={() => setStatusFilter(null)}>Show All Jobs</Button>
+                <Button variant="outline" size="sm" className="mt-3 h-11 sm:h-9" onClick={() => setStatusFilter(null)}>Show All Jobs</Button>
               </div>
             ) : (
               <>
@@ -580,7 +580,7 @@ export default function BulkAllocationProgress() {
                     return (
                       <div
                         key={jobId}
-                        className="p-3 active:bg-muted/40 transition-colors cursor-pointer"
+                        className="p-4 active:bg-muted/40 transition-colors cursor-pointer"
                         onClick={() => viewJobDetail(job)}
                         data-testid={`card-job-${jobId}`}
                       >
@@ -597,30 +597,30 @@ export default function BulkAllocationProgress() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-7 w-7 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                                className="h-11 w-11 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
                                 onClick={(e) => handleRetryJob(job, e)}
                                 disabled={retryingJobId === jobId}
                                 data-testid={`button-retry-mobile-${jobId}`}
                               >
                                 {retryingJobId === jobId ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  <Loader2 className="w-5 h-5 animate-spin" />
                                 ) : (
-                                  <RefreshCw className="w-4 h-4" />
+                                  <RefreshCw className="w-5 h-5" />
                                 )}
                               </Button>
                             )}
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-7 w-7 p-0 shrink-0"
+                              className="h-11 w-11 p-0 shrink-0"
                               onClick={(e) => { e.stopPropagation(); viewJobDetail(job); }}
                               data-testid={`button-view-mobile-${jobId}`}
                             >
-                              <Eye className="w-4 h-4" />
+                              <Eye className="w-5 h-5" />
                             </Button>
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs mt-0.5">
                           <div>
                             <span className="text-muted-foreground">Ref: </span>
                             <span className="font-medium truncate">{reference}</span>
@@ -761,21 +761,21 @@ export default function BulkAllocationProgress() {
                       : `${((page - 1) * pageSize) + 1}–${Math.min(page * pageSize, totalCount)} of ${formatNumber(totalCount)}`
                     }
                   </p>
-                  <div className="flex items-center gap-1">
-                    <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={page <= 1} onClick={() => handlePageChange(1)} data-testid="button-first-page">
-                      <ChevronsLeft className="w-4 h-4" />
+                  <div className="flex items-center gap-1.5 sm:gap-1">
+                    <Button variant="outline" size="sm" className="h-11 w-11 sm:h-7 sm:w-7 p-0" disabled={page <= 1} onClick={() => handlePageChange(1)} data-testid="button-first-page">
+                      <ChevronsLeft className="w-5 h-5 sm:w-4 sm:h-4" />
                     </Button>
-                    <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={page <= 1} onClick={() => handlePageChange(page - 1)} data-testid="button-prev-page">
-                      <ChevronLeft className="w-4 h-4" />
+                    <Button variant="outline" size="sm" className="h-11 w-11 sm:h-7 sm:w-7 p-0" disabled={page <= 1} onClick={() => handlePageChange(page - 1)} data-testid="button-prev-page">
+                      <ChevronLeft className="w-5 h-5 sm:w-4 sm:h-4" />
                     </Button>
-                    <span className="text-xs sm:text-sm px-2 sm:px-3 font-medium">
+                    <span className="text-sm sm:text-sm px-3 sm:px-3 font-medium min-w-[3rem] text-center">
                       {page}/{totalPages}
                     </span>
-                    <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={page >= totalPages} onClick={() => handlePageChange(page + 1)} data-testid="button-next-page">
-                      <ChevronRight className="w-4 h-4" />
+                    <Button variant="outline" size="sm" className="h-11 w-11 sm:h-7 sm:w-7 p-0" disabled={page >= totalPages} onClick={() => handlePageChange(page + 1)} data-testid="button-next-page">
+                      <ChevronRight className="w-5 h-5 sm:w-4 sm:h-4" />
                     </Button>
-                    <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={page >= totalPages} onClick={() => handlePageChange(totalPages)} data-testid="button-last-page">
-                      <ChevronsRight className="w-4 h-4" />
+                    <Button variant="outline" size="sm" className="h-11 w-11 sm:h-7 sm:w-7 p-0" disabled={page >= totalPages} onClick={() => handlePageChange(totalPages)} data-testid="button-last-page">
+                      <ChevronsRight className="w-5 h-5 sm:w-4 sm:h-4" />
                     </Button>
                   </div>
                 </div>
@@ -887,25 +887,25 @@ export default function BulkAllocationProgress() {
                           </div>
                           <div className="divide-y divide-[#E5E5E5]">
                             {detailData.paymentReference && (
-                              <div className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] items-center px-3 py-2.5">
+                              <div className="flex flex-col sm:grid sm:grid-cols-[160px_1fr] sm:items-center px-3 py-2.5 gap-0.5 sm:gap-0">
                                 <span className="text-xs font-medium text-slate-500">Payment Reference</span>
-                                <span className="text-sm font-mono font-semibold text-slate-800">{detailData.paymentReference}</span>
+                                <span className="text-sm font-mono font-semibold text-slate-800 break-all">{detailData.paymentReference}</span>
                               </div>
                             )}
                             {detailData.financialYear && (
-                              <div className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] items-center px-3 py-2.5">
+                              <div className="flex flex-col sm:grid sm:grid-cols-[160px_1fr] sm:items-center px-3 py-2.5 gap-0.5 sm:gap-0">
                                 <span className="text-xs font-medium text-slate-500">Financial Year</span>
                                 <span className="text-sm font-semibold text-slate-700">{detailData.financialYear}</span>
                               </div>
                             )}
                             {detailData.billPeriodId != null && (
-                              <div className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] items-center px-3 py-2.5">
+                              <div className="flex flex-col sm:grid sm:grid-cols-[160px_1fr] sm:items-center px-3 py-2.5 gap-0.5 sm:gap-0">
                                 <span className="text-xs font-medium text-slate-500">Billing Period ID</span>
                                 <span className="text-sm font-mono text-slate-700">{detailData.billPeriodId}</span>
                               </div>
                             )}
                             {detailData.groupID != null && (
-                              <div className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] items-center px-3 py-2.5">
+                              <div className="flex flex-col sm:grid sm:grid-cols-[160px_1fr] sm:items-center px-3 py-2.5 gap-0.5 sm:gap-0">
                                 <span className="text-xs font-medium text-slate-500">Group ID</span>
                                 <span className="text-sm font-mono text-slate-700">{detailData.groupID}</span>
                               </div>
@@ -922,19 +922,19 @@ export default function BulkAllocationProgress() {
                             </div>
                             <div className="divide-y divide-[#E5E5E5]">
                               {detailData.fileName && (
-                                <div className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] items-center px-3 py-2.5">
+                                <div className="flex flex-col sm:grid sm:grid-cols-[160px_1fr] sm:items-center px-3 py-2.5 gap-0.5 sm:gap-0">
                                   <span className="text-xs font-medium text-slate-500">File Name</span>
                                   <span className="text-sm font-mono text-slate-700 break-all">{detailData.fileName === 'Not applicable' ? <span className="text-slate-400 italic font-sans">Not applicable</span> : detailData.fileName}</span>
                                 </div>
                               )}
                               {detailData.filePath && (
-                                <div className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] items-start px-3 py-2.5">
-                                  <span className="text-xs font-medium text-slate-500 pt-0.5">File Path</span>
+                                <div className="flex flex-col sm:grid sm:grid-cols-[160px_1fr] sm:items-start px-3 py-2.5 gap-0.5 sm:gap-0">
+                                  <span className="text-xs font-medium text-slate-500 sm:pt-0.5">File Path</span>
                                   <span className="text-xs font-mono text-slate-600 break-all bg-[#F7F7F7] rounded px-2 py-1">{detailData.filePath}</span>
                                 </div>
                               )}
                               {detailData.fileDate && (
-                                <div className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] items-center px-3 py-2.5">
+                                <div className="flex flex-col sm:grid sm:grid-cols-[160px_1fr] sm:items-center px-3 py-2.5 gap-0.5 sm:gap-0">
                                   <span className="text-xs font-medium text-slate-500">File Date</span>
                                   <span className="text-sm text-slate-700 flex items-center gap-1.5">
                                     <Calendar className="w-3.5 h-3.5 text-slate-400" />
@@ -943,7 +943,7 @@ export default function BulkAllocationProgress() {
                                 </div>
                               )}
                               {detailData.dateCaptured && (
-                                <div className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] items-center px-3 py-2.5">
+                                <div className="flex flex-col sm:grid sm:grid-cols-[160px_1fr] sm:items-center px-3 py-2.5 gap-0.5 sm:gap-0">
                                   <span className="text-xs font-medium text-slate-500">Date Captured</span>
                                   <span className="text-sm text-slate-700 flex items-center gap-1.5">
                                     <Calendar className="w-3.5 h-3.5 text-slate-400" />
@@ -964,7 +964,7 @@ export default function BulkAllocationProgress() {
                             </div>
                             <div className="divide-y divide-[#E5E5E5]">
                               {(cashierName || detailData.cashierID != null) && (
-                                <div className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] items-center px-3 py-2.5">
+                                <div className="flex flex-col sm:grid sm:grid-cols-[160px_1fr] sm:items-center px-3 py-2.5 gap-0.5 sm:gap-0">
                                   <span className="text-xs font-medium text-slate-500">Cashier</span>
                                   <span className="text-sm text-slate-700">
                                     {cashierName ? (
@@ -976,7 +976,7 @@ export default function BulkAllocationProgress() {
                                 </div>
                               )}
                               {(capturerName || detailData.capturerID != null) && (
-                                <div className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] items-center px-3 py-2.5">
+                                <div className="flex flex-col sm:grid sm:grid-cols-[160px_1fr] sm:items-center px-3 py-2.5 gap-0.5 sm:gap-0">
                                   <span className="text-xs font-medium text-slate-500">Capturer</span>
                                   <span className="text-sm text-slate-700">
                                     {capturerName ? (
@@ -1022,7 +1022,7 @@ export default function BulkAllocationProgress() {
                                   (typeof value === 'string' && (value.includes('T') || value.includes('Z')) && !isNaN(Date.parse(value)))
                                     ? formatDate(value) : String(value);
                                 return (
-                                  <div key={key} className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] items-center px-3 py-2.5">
+                                  <div key={key} className="flex flex-col sm:grid sm:grid-cols-[160px_1fr] sm:items-center px-3 py-2.5 gap-0.5 sm:gap-0">
                                     <span className="text-xs font-medium text-slate-500">{label}</span>
                                     <span className="text-sm font-mono text-slate-700 break-words">{display}</span>
                                   </div>

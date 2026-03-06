@@ -901,24 +901,24 @@ export default function ThirdPartyPaymentProcessing() {
             </div>
             <div className="flex items-center gap-2">
               {pageTab === 'third-party' && step !== 'import' && (
-                <Button variant="outline" onClick={handleNewImport} className="gap-2" data-testid="button-new-import">
-                  <ChevronLeft className="h-4 w-4" /> New Import
+                <Button variant="outline" onClick={handleNewImport} className="gap-2 h-11 sm:h-9" data-testid="button-new-import">
+                  <ChevronLeft className="h-4 w-4" /> <span className="hidden sm:inline">New Import</span><span className="sm:hidden">Back</span>
                 </Button>
               )}
               {pageTab === 'generic-import' && giStep !== 'upload' && (
-                <Button variant="outline" onClick={handleGenericNewImport} className="gap-2" data-testid="button-gi-new-import">
-                  <ChevronLeft className="h-4 w-4" /> New Import
+                <Button variant="outline" onClick={handleGenericNewImport} className="gap-2 h-11 sm:h-9" data-testid="button-gi-new-import">
+                  <ChevronLeft className="h-4 w-4" /> <span className="hidden sm:inline">New Import</span><span className="sm:hidden">Back</span>
                 </Button>
               )}
             </div>
           </div>
           <div className="mt-4">
             <Tabs value={pageTab} onValueChange={(v) => setPageTab(v as PageTab)}>
-              <TabsList className="bg-[#F2F4F7] h-9">
-                <TabsTrigger value="third-party" className="text-sm h-8 px-4" data-testid="tab-third-party">
+              <TabsList className="bg-[#F2F4F7] h-11 sm:h-9 w-full sm:w-auto">
+                <TabsTrigger value="third-party" className="text-sm h-10 sm:h-8 px-4 flex-1 sm:flex-initial" data-testid="tab-third-party">
                   Third Party Import
                 </TabsTrigger>
-                <TabsTrigger value="generic-import" className="text-sm h-8 px-4" data-testid="tab-generic-import">
+                <TabsTrigger value="generic-import" className="text-sm h-10 sm:h-8 px-4 flex-1 sm:flex-initial" data-testid="tab-generic-import">
                   Generic Import
                 </TabsTrigger>
               </TabsList>
@@ -1036,7 +1036,7 @@ export default function ThirdPartyPaymentProcessing() {
                   <Button
                     onClick={handleImport}
                     disabled={isProcessing || !selectedTypeId || !file}
-                    className="bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] gap-2 min-w-[150px] w-full sm:w-auto"
+                    className="bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] gap-2 min-w-[150px] w-full sm:w-auto h-11 sm:h-10"
                     data-testid="button-import"
                   >
                     {isProcessing ? (
@@ -1166,16 +1166,16 @@ export default function ThirdPartyPaymentProcessing() {
               <Card className="border-t-4 border-t-[var(--pos-accent)] shadow-sm">
                 <CardHeader className="bg-[#F2F4F7]/50 pb-3 border-b">
                   <div className="flex flex-col gap-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="h-6 w-1 bg-[var(--pos-accent)] rounded-full"></div>
-                        <CardTitle className="text-lg font-medium text-slate-800">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="h-6 w-1 bg-[var(--pos-accent)] rounded-full shrink-0"></div>
+                        <CardTitle className="text-base sm:text-lg font-medium text-slate-800 truncate">
                           Imported Transactions
-                          {importId && <span className="text-sm font-normal text-muted-foreground ml-2">(Import: {importId})</span>}
+                          {importId && <span className="text-xs sm:text-sm font-normal text-muted-foreground ml-2">(Import: {importId})</span>}
                         </CardTitle>
                       </div>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => loadTransactions()} disabled={loadingTxns} className="gap-1" data-testid="button-refresh-txns">
+                      <div className="flex flex-wrap gap-2">
+                        <Button variant="outline" size="sm" onClick={() => loadTransactions()} disabled={loadingTxns} className="gap-1 h-11 sm:h-8 flex-1 sm:flex-initial" data-testid="button-refresh-txns">
                           <RefreshCw className={`h-3.5 w-3.5 ${loadingTxns ? 'animate-spin' : ''}`} /> Refresh
                         </Button>
                         <Button
@@ -1183,7 +1183,7 @@ export default function ThirdPartyPaymentProcessing() {
                           size="sm"
                           onClick={handleValidateForReconcile}
                           disabled={validating || transactions.length === 0}
-                          className="gap-1 text-[var(--pos-accent)] border-[#D6D6D6] hover:bg-[var(--pos-accent-tint)]"
+                          className="gap-1 text-[var(--pos-accent)] border-[#D6D6D6] hover:bg-[var(--pos-accent-tint)] h-11 sm:h-8 flex-1 sm:flex-initial"
                           data-testid="button-validate"
                         >
                           {validating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileCheck className="h-3.5 w-3.5" />}
@@ -1193,7 +1193,7 @@ export default function ThirdPartyPaymentProcessing() {
                           size="sm"
                           onClick={handleCommit}
                           disabled={committing || transactions.length === 0 || !allValidated}
-                          className="gap-1 bg-green-600 hover:bg-green-700 disabled:opacity-50"
+                          className="gap-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 h-11 sm:h-8 w-full sm:w-auto"
                           title={!allValidated ? `${counts.total - counts.validated} unresolved transaction(s) — resolve all before committing` : ''}
                           data-testid="button-commit"
                         >
@@ -1205,23 +1205,25 @@ export default function ThirdPartyPaymentProcessing() {
                     </div>
 
                     <Tabs value={activeFilter} onValueChange={(v) => setActiveFilter(v as FilterTab)} className="w-full">
-                      <TabsList className="bg-[#F2F4F7] h-8">
-                        <TabsTrigger value="all" className="text-xs h-7 px-3" data-testid="tab-all">
-                          All ({counts.total})
-                        </TabsTrigger>
-                        <TabsTrigger value="auto-matched" className="text-xs h-7 px-3" data-testid="tab-auto-matched">
-                          Auto-Matched ({counts.autoMatched})
-                        </TabsTrigger>
-                        <TabsTrigger value="needs-review" className="text-xs h-7 px-3" data-testid="tab-needs-review">
-                          Needs Review ({counts.needsReview})
-                        </TabsTrigger>
-                        <TabsTrigger value="unmatched" className="text-xs h-7 px-3" data-testid="tab-unmatched">
-                          Unmatched ({counts.unmatched})
-                        </TabsTrigger>
-                        <TabsTrigger value="ready" className="text-xs h-7 px-3" data-testid="tab-ready">
-                          Ready ({counts.validated})
-                        </TabsTrigger>
-                      </TabsList>
+                      <div className="overflow-x-auto -mx-2 px-2">
+                        <TabsList className="bg-[#F2F4F7] h-11 sm:h-8 w-max sm:w-auto">
+                          <TabsTrigger value="all" className="text-xs h-10 sm:h-7 px-3" data-testid="tab-all">
+                            All ({counts.total})
+                          </TabsTrigger>
+                          <TabsTrigger value="auto-matched" className="text-xs h-10 sm:h-7 px-3" data-testid="tab-auto-matched">
+                            <span className="hidden sm:inline">Auto-Matched</span><span className="sm:hidden">Auto</span> ({counts.autoMatched})
+                          </TabsTrigger>
+                          <TabsTrigger value="needs-review" className="text-xs h-10 sm:h-7 px-3" data-testid="tab-needs-review">
+                            Review ({counts.needsReview})
+                          </TabsTrigger>
+                          <TabsTrigger value="unmatched" className="text-xs h-10 sm:h-7 px-3" data-testid="tab-unmatched">
+                            <span className="hidden sm:inline">Unmatched</span><span className="sm:hidden">None</span> ({counts.unmatched})
+                          </TabsTrigger>
+                          <TabsTrigger value="ready" className="text-xs h-10 sm:h-7 px-3" data-testid="tab-ready">
+                            Ready ({counts.validated})
+                          </TabsTrigger>
+                        </TabsList>
+                      </div>
                     </Tabs>
                   </div>
                 </CardHeader>
@@ -1245,118 +1247,223 @@ export default function ThirdPartyPaymentProcessing() {
                       {transactions.length === 0 ? 'No transactions found for this import.' : `No transactions match the "${activeFilter}" filter.`}
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-[#F7F7F7]">
-                            <TableHead className="w-[40px]">#</TableHead>
-                            <TableHead>
-                              <span className="flex items-center gap-1">Account Match <HelpTip text="Shows the imported account number and the resolved current EMS account. If different, the old number was automatically mapped." /></span>
-                            </TableHead>
-                            <TableHead>Owner / Name</TableHead>
-                            <TableHead className="text-right">Amount</TableHead>
-                            <TableHead>Reference</TableHead>
-                            <TableHead>
-                              <span className="flex items-center gap-1">Match Status <HelpTip text="Auto-Matched = system found exact match. Needs Review = multiple matches found. Unmatched = no match. Manually Matched = linked by user." /></span>
-                            </TableHead>
-                            <TableHead className="text-center w-[150px]">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {filteredTransactions.map((txn) => (
-                            <TableRow
-                              key={txn.index}
-                              className={`${!txn.validated ? 'bg-red-50/30' : txn.matchStatus === 'Auto-Matched' && txn.importedAccountNumber !== txn.resolvedAccountId ? 'bg-[var(--pos-accent-tint)]' : ''}`}
-                              data-testid={`row-txn-${txn.index}`}
-                            >
-                              <TableCell className="text-xs text-muted-foreground font-mono">{txn.index + 1}</TableCell>
-                              <TableCell>
-                                {editingIdx === txn.index ? (
+                    <>
+                      <div className="hidden sm:block overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-[#F7F7F7]">
+                              <TableHead className="w-[40px]">#</TableHead>
+                              <TableHead>
+                                <span className="flex items-center gap-1">Account Match <HelpTip text="Shows the imported account number and the resolved current EMS account. If different, the old number was automatically mapped." /></span>
+                              </TableHead>
+                              <TableHead>Owner / Name</TableHead>
+                              <TableHead className="text-right">Amount</TableHead>
+                              <TableHead>Reference</TableHead>
+                              <TableHead>
+                                <span className="flex items-center gap-1">Match Status <HelpTip text="Auto-Matched = system found exact match. Needs Review = multiple matches found. Unmatched = no match. Manually Matched = linked by user." /></span>
+                              </TableHead>
+                              <TableHead className="text-center w-[150px]">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredTransactions.map((txn) => (
+                              <TableRow
+                                key={txn.index}
+                                className={`${!txn.validated ? 'bg-red-50/30' : txn.matchStatus === 'Auto-Matched' && txn.importedAccountNumber !== txn.resolvedAccountId ? 'bg-[var(--pos-accent-tint)]' : ''}`}
+                                data-testid={`row-txn-${txn.index}`}
+                              >
+                                <TableCell className="text-xs text-muted-foreground font-mono">{txn.index + 1}</TableCell>
+                                <TableCell>
+                                  {editingIdx === txn.index ? (
+                                    <div className="space-y-1">
+                                      <div className="text-[10px] text-muted-foreground">Imported: <span className="font-mono">{txn.importedAccountNumber}</span></div>
+                                      <Input
+                                        value={editAccountNo}
+                                        onChange={(e) => setEditAccountNo(e.target.value)}
+                                        className="h-7 text-xs w-40 font-mono"
+                                        placeholder="New account number"
+                                        data-testid={`input-edit-account-${txn.index}`}
+                                      />
+                                    </div>
+                                  ) : (
+                                    <div className="space-y-0.5">
+                                      {txn.importedAccountNumber !== txn.resolvedAccountId && txn.resolvedAccountId ? (
+                                        <>
+                                          <div className="text-[10px] text-muted-foreground line-through">
+                                            Imported: <span className="font-mono">{txn.importedAccountNumber}</span>
+                                          </div>
+                                          <div className="flex items-center gap-1">
+                                            <ArrowRight className="h-3 w-3 text-green-600 shrink-0" />
+                                            <span className="font-mono text-sm text-green-700 font-medium">{txn.resolvedAccountId}</span>
+                                          </div>
+                                        </>
+                                      ) : txn.resolvedAccountId ? (
+                                        <span className="font-mono text-sm text-[var(--pos-accent)] font-medium">{txn.resolvedAccountId}</span>
+                                      ) : (
+                                        <div className="space-y-0.5">
+                                          <span className="font-mono text-sm text-red-600">{txn.importedAccountNumber}</span>
+                                          <div className="text-[10px] text-red-500">No match found</div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-sm max-w-[150px] truncate" title={txn.ownerName || '-'}>{txn.ownerName || '-'}</TableCell>
+                                <TableCell className="text-right font-mono text-sm">R {txn.amount.toFixed(2)}</TableCell>
+                                <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate" title={txn.importedReference}>{txn.importedReference || '-'}</TableCell>
+                                <TableCell>
                                   <div className="space-y-1">
-                                    <div className="text-[10px] text-muted-foreground">Imported: <span className="font-mono">{txn.importedAccountNumber}</span></div>
-                                    <Input
-                                      value={editAccountNo}
-                                      onChange={(e) => setEditAccountNo(e.target.value)}
-                                      className="h-7 text-xs w-40 font-mono"
-                                      placeholder="New account number"
-                                      data-testid={`input-edit-account-${txn.index}`}
-                                    />
+                                    <div className="flex items-center gap-1">
+                                      {matchStatusBadge(txn.matchStatus)}
+                                      {txn.isDuplicate && (
+                                        <Badge variant="destructive" className="text-[10px]">Dup</Badge>
+                                      )}
+                                    </div>
+                                    {txn.validationMessage && (
+                                      <p className="text-[10px] text-muted-foreground max-w-[180px] truncate" title={txn.validationMessage}>
+                                        {txn.validationMessage}
+                                      </p>
+                                    )}
                                   </div>
-                                ) : (
-                                  <div className="space-y-0.5">
-                                    {txn.importedAccountNumber !== txn.resolvedAccountId && txn.resolvedAccountId ? (
-                                      <>
-                                        <div className="text-[10px] text-muted-foreground line-through">
-                                          Imported: <span className="font-mono">{txn.importedAccountNumber}</span>
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                          <ArrowRight className="h-3 w-3 text-green-600 shrink-0" />
-                                          <span className="font-mono text-sm text-green-700 font-medium">{txn.resolvedAccountId}</span>
-                                        </div>
-                                      </>
-                                    ) : txn.resolvedAccountId ? (
-                                      <span className="font-mono text-sm text-[var(--pos-accent)] font-medium">{txn.resolvedAccountId}</span>
-                                    ) : (
-                                      <div className="space-y-0.5">
-                                        <span className="font-mono text-sm text-red-600">{txn.importedAccountNumber}</span>
-                                        <div className="text-[10px] text-red-500">No match found</div>
+                                </TableCell>
+                                <TableCell>
+                                  {editingIdx === txn.index ? (
+                                    <div className="flex gap-1 justify-center">
+                                      <Button size="sm" variant="ghost" onClick={handleSaveEdit} disabled={savingEdit} className="h-7 w-7 p-0" title="Save" data-testid={`button-save-edit-${txn.index}`}>
+                                        {savingEdit ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5 text-green-600" />}
+                                      </Button>
+                                      <Button size="sm" variant="ghost" onClick={handleCancelEdit} className="h-7 w-7 p-0" title="Cancel">
+                                        <X className="h-3.5 w-3.5 text-red-500" />
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex gap-0.5 justify-center">
+                                      <Button size="sm" variant="ghost" onClick={() => handleViewAccount(txn)} className="h-7 w-7 p-0" title="View details" data-testid={`button-view-${txn.index}`}>
+                                        <Eye className="h-3.5 w-3.5 text-slate-500" />
+                                      </Button>
+                                      <Button size="sm" variant="ghost" onClick={() => openAccountSearch(txn.index)} className="h-7 w-7 p-0" title="Search & Link" data-testid={`button-search-${txn.index}`}>
+                                        <Search className="h-3.5 w-3.5 text-[var(--pos-accent)]" />
+                                      </Button>
+                                      <Button size="sm" variant="ghost" onClick={() => handleStartEdit(txn)} className="h-7 w-7 p-0" title="Override Link" data-testid={`button-edit-${txn.index}`}>
+                                        <Edit2 className="h-3.5 w-3.5 text-amber-600" />
+                                      </Button>
+                                      {txn.resolvedAccountId && (
+                                        <Button size="sm" variant="ghost" onClick={() => handleClearLink(txn.index)} className="h-7 w-7 p-0" title="Clear Link" data-testid={`button-clear-${txn.index}`}>
+                                          <Unlink className="h-3.5 w-3.5 text-red-400" />
+                                        </Button>
+                                      )}
+                                    </div>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+
+                      <div className="sm:hidden divide-y divide-[#E5E7EB]">
+                        {filteredTransactions.map((txn) => (
+                          <div
+                            key={txn.index}
+                            className={`p-4 space-y-3 ${!txn.validated ? 'bg-red-50/30' : txn.matchStatus === 'Auto-Matched' && txn.importedAccountNumber !== txn.resolvedAccountId ? 'bg-[var(--pos-accent-tint)]' : ''}`}
+                            data-testid={`card-txn-${txn.index}`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-xs text-muted-foreground font-mono shrink-0">#{txn.index + 1}</span>
+                                <div className="flex items-center gap-1 flex-wrap">
+                                  {matchStatusBadge(txn.matchStatus)}
+                                  {txn.isDuplicate && <Badge variant="destructive" className="text-[10px]">Dup</Badge>}
+                                </div>
+                              </div>
+                              <span className="font-mono text-sm font-bold text-[#2E2E2E] shrink-0">R {txn.amount.toFixed(2)}</span>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              {editingIdx === txn.index ? (
+                                <div className="space-y-2">
+                                  <div className="text-xs text-muted-foreground">Imported: <span className="font-mono">{txn.importedAccountNumber}</span></div>
+                                  <Input
+                                    value={editAccountNo}
+                                    onChange={(e) => setEditAccountNo(e.target.value)}
+                                    className="h-11 text-sm font-mono"
+                                    placeholder="New account number"
+                                    data-testid={`input-edit-account-mobile-${txn.index}`}
+                                  />
+                                </div>
+                              ) : (
+                                <div>
+                                  {txn.importedAccountNumber !== txn.resolvedAccountId && txn.resolvedAccountId ? (
+                                    <div className="space-y-0.5">
+                                      <div className="text-[11px] text-muted-foreground line-through">
+                                        Imported: <span className="font-mono">{txn.importedAccountNumber}</span>
                                       </div>
-                                    )}
-                                  </div>
-                                )}
-                              </TableCell>
-                              <TableCell className="text-sm max-w-[150px] truncate" title={txn.ownerName || '-'}>{txn.ownerName || '-'}</TableCell>
-                              <TableCell className="text-right font-mono text-sm">R {txn.amount.toFixed(2)}</TableCell>
-                              <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate" title={txn.importedReference}>{txn.importedReference || '-'}</TableCell>
-                              <TableCell>
-                                <div className="space-y-1">
-                                  <div className="flex items-center gap-1">
-                                    {matchStatusBadge(txn.matchStatus)}
-                                    {txn.isDuplicate && (
-                                      <Badge variant="destructive" className="text-[10px]">Dup</Badge>
-                                    )}
-                                  </div>
-                                  {txn.validationMessage && (
-                                    <p className="text-[10px] text-muted-foreground max-w-[180px] truncate" title={txn.validationMessage}>
-                                      {txn.validationMessage}
-                                    </p>
+                                      <div className="flex items-center gap-1">
+                                        <ArrowRight className="h-3 w-3 text-green-600 shrink-0" />
+                                        <span className="font-mono text-sm text-green-700 font-medium break-all">{txn.resolvedAccountId}</span>
+                                      </div>
+                                    </div>
+                                  ) : txn.resolvedAccountId ? (
+                                    <span className="font-mono text-sm text-[var(--pos-accent)] font-medium break-all">{txn.resolvedAccountId}</span>
+                                  ) : (
+                                    <div className="space-y-0.5">
+                                      <span className="font-mono text-sm text-red-600 break-all">{txn.importedAccountNumber}</span>
+                                      <div className="text-[11px] text-red-500">No match found</div>
+                                    </div>
                                   )}
                                 </div>
-                              </TableCell>
-                              <TableCell>
-                                {editingIdx === txn.index ? (
-                                  <div className="flex gap-1 justify-center">
-                                    <Button size="sm" variant="ghost" onClick={handleSaveEdit} disabled={savingEdit} className="h-7 w-7 p-0" title="Save" data-testid={`button-save-edit-${txn.index}`}>
-                                      {savingEdit ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5 text-green-600" />}
+                              )}
+
+                              {txn.ownerName && (
+                                <div className="text-xs text-muted-foreground">
+                                  <span className="font-medium text-slate-600">{txn.ownerName}</span>
+                                </div>
+                              )}
+
+                              {txn.importedReference && (
+                                <div className="text-xs text-muted-foreground">
+                                  Ref: <span className="font-mono">{txn.importedReference}</span>
+                                </div>
+                              )}
+
+                              {txn.validationMessage && (
+                                <p className="text-[11px] text-muted-foreground">{txn.validationMessage}</p>
+                              )}
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 pt-1">
+                              {editingIdx === txn.index ? (
+                                <>
+                                  <Button size="sm" onClick={handleSaveEdit} disabled={savingEdit} className="h-11 flex-1 gap-1.5 bg-green-600 hover:bg-green-700" data-testid={`button-save-edit-mobile-${txn.index}`}>
+                                    {savingEdit ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
+                                  </Button>
+                                  <Button size="sm" variant="outline" onClick={handleCancelEdit} className="h-11 flex-1 gap-1.5">
+                                    <X className="h-4 w-4" /> Cancel
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  <Button size="sm" variant="outline" onClick={() => handleViewAccount(txn)} className="h-11 flex-1 gap-1.5" data-testid={`button-view-mobile-${txn.index}`}>
+                                    <Eye className="h-4 w-4" /> View
+                                  </Button>
+                                  <Button size="sm" variant="outline" onClick={() => openAccountSearch(txn.index)} className="h-11 flex-1 gap-1.5 text-[var(--pos-accent)] border-[var(--pos-accent)]" data-testid={`button-search-mobile-${txn.index}`}>
+                                    <Search className="h-4 w-4" /> Link
+                                  </Button>
+                                  <Button size="sm" variant="outline" onClick={() => handleStartEdit(txn)} className="h-11 gap-1.5 px-3" data-testid={`button-edit-mobile-${txn.index}`}>
+                                    <Edit2 className="h-4 w-4 text-amber-600" />
+                                  </Button>
+                                  {txn.resolvedAccountId && (
+                                    <Button size="sm" variant="outline" onClick={() => handleClearLink(txn.index)} className="h-11 gap-1.5 px-3" data-testid={`button-clear-mobile-${txn.index}`}>
+                                      <Unlink className="h-4 w-4 text-red-400" />
                                     </Button>
-                                    <Button size="sm" variant="ghost" onClick={handleCancelEdit} className="h-7 w-7 p-0" title="Cancel">
-                                      <X className="h-3.5 w-3.5 text-red-500" />
-                                    </Button>
-                                  </div>
-                                ) : (
-                                  <div className="flex gap-0.5 justify-center">
-                                    <Button size="sm" variant="ghost" onClick={() => handleViewAccount(txn)} className="h-7 w-7 p-0" title="View details" data-testid={`button-view-${txn.index}`}>
-                                      <Eye className="h-3.5 w-3.5 text-slate-500" />
-                                    </Button>
-                                    <Button size="sm" variant="ghost" onClick={() => openAccountSearch(txn.index)} className="h-7 w-7 p-0" title="Search & Link" data-testid={`button-search-${txn.index}`}>
-                                      <Search className="h-3.5 w-3.5 text-[var(--pos-accent)]" />
-                                    </Button>
-                                    <Button size="sm" variant="ghost" onClick={() => handleStartEdit(txn)} className="h-7 w-7 p-0" title="Override Link" data-testid={`button-edit-${txn.index}`}>
-                                      <Edit2 className="h-3.5 w-3.5 text-amber-600" />
-                                    </Button>
-                                    {txn.resolvedAccountId && (
-                                      <Button size="sm" variant="ghost" onClick={() => handleClearLink(txn.index)} className="h-7 w-7 p-0" title="Clear Link" data-testid={`button-clear-${txn.index}`}>
-                                        <Unlink className="h-3.5 w-3.5 text-red-400" />
-                                      </Button>
-                                    )}
-                                  </div>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
                   )}
                 </CardContent>
               </Card>
@@ -1376,7 +1483,7 @@ export default function ThirdPartyPaymentProcessing() {
                     Master ID: <span className="font-mono bg-[#F2F4F7] px-2 py-0.5 rounded">{commitResult.masterId}</span>
                   </p>
                 )}
-                <Button onClick={handleNewImport} className="gap-2 bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] mt-4" data-testid="button-start-new">
+                <Button onClick={handleNewImport} className="gap-2 bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] mt-4 h-11 sm:h-10 w-full sm:w-auto" data-testid="button-start-new">
                   <Upload className="h-4 w-4" /> Start New Import
                 </Button>
               </CardContent>
@@ -1414,7 +1521,7 @@ export default function ThirdPartyPaymentProcessing() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 gap-1.5 text-xs text-[var(--pos-accent-dark)] hover:text-[var(--pos-accent-dark)] hover:bg-[var(--pos-accent-tint)]"
+                          className="h-11 sm:h-7 gap-1.5 text-xs text-[var(--pos-accent-dark)] hover:text-[var(--pos-accent-dark)] hover:bg-[var(--pos-accent-tint)]"
                           data-testid="button-gi-download-template"
                           onClick={() => {
                             const header = 'AccountNumber,Amount,ReceiptDate,PaymentTypeId';
@@ -1438,7 +1545,7 @@ export default function ThirdPartyPaymentProcessing() {
                           Download Template
                         </Button>
                       </div>
-                      <div className="border-2 border-dashed border-[var(--pos-accent-light)] rounded-lg p-6 text-center hover:bg-[var(--pos-accent-tint)] transition-colors">
+                      <div className="border-2 border-dashed border-[var(--pos-accent-light)] rounded-lg p-4 sm:p-6 text-center hover:bg-[var(--pos-accent-tint)] transition-colors min-h-[100px] flex items-center justify-center">
                         <Input
                           id="gi-file"
                           type="file"
@@ -1466,7 +1573,7 @@ export default function ThirdPartyPaymentProcessing() {
                       <Label htmlFor="gi-payment-ref" className="text-sm font-medium text-slate-700">Payment Reference (optional)</Label>
                       <Input
                         id="gi-payment-ref"
-                        className="mt-1.5"
+                        className="mt-1.5 h-11 sm:h-10"
                         placeholder="e.g. Batch 2026-03"
                         value={giPaymentRef}
                         onChange={(e) => setGiPaymentRef(e.target.value)}
@@ -1480,7 +1587,7 @@ export default function ThirdPartyPaymentProcessing() {
                         <Input
                           id="gi-receipt-date"
                           type="date"
-                          className="mt-1.5"
+                          className="mt-1.5 h-11 sm:h-10"
                           value={giReceiptDate}
                           onChange={(e) => setGiReceiptDate(e.target.value)}
                           data-testid="input-gi-receipt-date"
@@ -1489,7 +1596,7 @@ export default function ThirdPartyPaymentProcessing() {
                       <div>
                         <Label htmlFor="gi-payment-type" className="text-sm font-medium text-slate-700">Payment Method</Label>
                         <Select value={giPaymentTypeId} onValueChange={setGiPaymentTypeId}>
-                          <SelectTrigger id="gi-payment-type" className="mt-1.5" data-testid="select-gi-payment-type">
+                          <SelectTrigger id="gi-payment-type" className="mt-1.5 h-11 sm:h-10" data-testid="select-gi-payment-type">
                             <SelectValue placeholder="Select payment method" />
                           </SelectTrigger>
                           <SelectContent>
@@ -1504,14 +1611,14 @@ export default function ThirdPartyPaymentProcessing() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-h-[44px]">
                       <button
                         type="button"
                         onClick={() => setGiPostToCashbook(!giPostToCashbook)}
-                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${giPostToCashbook ? 'bg-[var(--pos-accent)]' : 'bg-slate-200'}`}
+                        className={`relative inline-flex h-6 w-11 sm:h-5 sm:w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${giPostToCashbook ? 'bg-[var(--pos-accent)]' : 'bg-slate-200'}`}
                         data-testid="toggle-gi-post-to-cashbook"
                       >
-                        <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${giPostToCashbook ? 'translate-x-4' : 'translate-x-0'}`} />
+                        <span className={`pointer-events-none inline-block h-5 w-5 sm:h-4 sm:w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${giPostToCashbook ? 'translate-x-5 sm:translate-x-4' : 'translate-x-0'}`} />
                       </button>
                       <Label className="text-sm font-medium text-slate-700 cursor-pointer" onClick={() => setGiPostToCashbook(!giPostToCashbook)}>
                         Post to Cashbook
@@ -1530,7 +1637,7 @@ export default function ThirdPartyPaymentProcessing() {
                     <Button
                       onClick={handleGenericImportSubmit}
                       disabled={!giFile || giSubmitting}
-                      className="gap-2 bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-white"
+                      className="gap-2 bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-white h-11 sm:h-10 w-full sm:w-auto"
                       data-testid="button-gi-submit"
                     >
                       {giSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -1643,7 +1750,7 @@ export default function ThirdPartyPaymentProcessing() {
                       </div>
                     </CardHeader>
                     <CardContent className="p-0">
-                      <div className="max-h-[300px] overflow-auto">
+                      <div className="max-h-[300px] overflow-auto hidden sm:block">
                         <Table>
                           <TableHeader>
                             <TableRow className="bg-[#F7F7F7] text-[10px] uppercase tracking-wider">
@@ -1665,6 +1772,20 @@ export default function ThirdPartyPaymentProcessing() {
                           </TableBody>
                         </Table>
                       </div>
+                      <div className="sm:hidden max-h-[300px] overflow-auto divide-y divide-[#E5E7EB]">
+                        {giResults.map((r, i) => (
+                          <div key={i} className="p-3 space-y-1" data-testid={`card-gi-result-${i}`}>
+                            <div className="flex items-center justify-between">
+                              <span className="font-mono text-xs font-medium">{r.accountNo || r.accountNumber || r.account_Number || '-'}</span>
+                              <span className="font-mono text-xs font-bold">{r.allocatedAmount !== undefined ? `R ${Number(r.allocatedAmount).toFixed(2)}` : r.amount !== undefined ? `R ${Number(r.amount).toFixed(2)}` : '-'}</span>
+                            </div>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs text-muted-foreground truncate">{r.accountName || r.name || r.ownerName || '-'}</span>
+                              <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200 shrink-0">{r.status || 'Allocated'}</Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </CardContent>
                   </Card>
                 )}
@@ -1679,7 +1800,7 @@ export default function ThirdPartyPaymentProcessing() {
                       </div>
                     </CardHeader>
                     <CardContent className="p-0">
-                      <div className="max-h-[300px] overflow-auto">
+                      <div className="max-h-[300px] overflow-auto hidden sm:block">
                         <Table>
                           <TableHeader>
                             <TableRow className="bg-red-50/50 text-[10px] uppercase tracking-wider">
@@ -1699,6 +1820,17 @@ export default function ThirdPartyPaymentProcessing() {
                           </TableBody>
                         </Table>
                       </div>
+                      <div className="sm:hidden max-h-[300px] overflow-auto divide-y divide-[#E5E7EB]">
+                        {giErrors.map((e, i) => (
+                          <div key={i} className="p-3 space-y-1" data-testid={`card-gi-error-${i}`}>
+                            <div className="flex items-center justify-between">
+                              <span className="font-mono text-xs font-medium">{e.accountNo || e.accountNumber || e.account_Number || '-'}</span>
+                              <span className="font-mono text-xs font-bold">{e.allocatedAmount !== undefined ? `R ${Number(e.allocatedAmount).toFixed(2)}` : e.amount !== undefined ? `R ${Number(e.amount).toFixed(2)}` : '-'}</span>
+                            </div>
+                            <p className="text-xs text-red-700 break-words">{e.errorMessage || e.error || e.message || '-'}</p>
+                          </div>
+                        ))}
+                      </div>
                     </CardContent>
                   </Card>
                 )}
@@ -1713,7 +1845,7 @@ export default function ThirdPartyPaymentProcessing() {
                 )}
 
                 <div className="flex justify-end">
-                  <Button onClick={handleGenericNewImport} className="gap-2 bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-white" data-testid="button-gi-new">
+                  <Button onClick={handleGenericNewImport} className="gap-2 bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-white h-11 sm:h-10 w-full sm:w-auto" data-testid="button-gi-new">
                     <Upload className="h-4 w-4" /> New Import
                   </Button>
                 </div>
@@ -1727,66 +1859,84 @@ export default function ThirdPartyPaymentProcessing() {
       </div>
 
       <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><Search className="h-4 w-4" /> Search & Link Account</DialogTitle>
             <DialogDescription>Find the correct consumer account to link to this transaction.</DialogDescription>
           </DialogHeader>
           {searchIdx !== null && transactions.find(t => t.index === searchIdx) && (
             <div className="bg-[#F7F7F7] rounded-lg p-3 text-sm border mb-2">
-              <div className="grid grid-cols-2 gap-2">
-                <div><span className="text-muted-foreground">Imported Account:</span> <span className="font-mono font-medium">{transactions.find(t => t.index === searchIdx)!.importedAccountNumber}</span></div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="flex flex-wrap gap-1"><span className="text-muted-foreground">Imported Account:</span> <span className="font-mono font-medium break-all">{transactions.find(t => t.index === searchIdx)!.importedAccountNumber}</span></div>
                 <div><span className="text-muted-foreground">Amount:</span> <span className="font-medium">R {transactions.find(t => t.index === searchIdx)!.amount.toFixed(2)}</span></div>
-                <div><span className="text-muted-foreground">Reference:</span> <span className="font-mono">{transactions.find(t => t.index === searchIdx)!.importedReference || '-'}</span></div>
-                <div><span className="text-muted-foreground">Current Match:</span> {matchStatusBadge(transactions.find(t => t.index === searchIdx)!.matchStatus)}</div>
+                <div className="flex flex-wrap gap-1"><span className="text-muted-foreground">Reference:</span> <span className="font-mono break-all">{transactions.find(t => t.index === searchIdx)!.importedReference || '-'}</span></div>
+                <div className="flex flex-wrap items-center gap-1"><span className="text-muted-foreground">Current Match:</span> {matchStatusBadge(transactions.find(t => t.index === searchIdx)!.matchStatus)}</div>
               </div>
             </div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
             <div className="space-y-1">
               <Label className="text-xs">Account No</Label>
-              <Input value={searchAccountNo} onChange={(e) => setSearchAccountNo(e.target.value)} placeholder="e.g. 123456" className="h-8 text-sm" data-testid="input-search-account" onKeyDown={(e) => e.key === 'Enter' && handleAccountSearch()} />
+              <Input value={searchAccountNo} onChange={(e) => setSearchAccountNo(e.target.value)} placeholder="e.g. 123456" className="h-11 sm:h-8 text-sm" data-testid="input-search-account" onKeyDown={(e) => e.key === 'Enter' && handleAccountSearch()} />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Owner Name</Label>
-              <Input value={searchName} onChange={(e) => setSearchName(e.target.value)} placeholder="e.g. Smith" className="h-8 text-sm" data-testid="input-search-name" onKeyDown={(e) => e.key === 'Enter' && handleAccountSearch()} />
+              <Input value={searchName} onChange={(e) => setSearchName(e.target.value)} placeholder="e.g. Smith" className="h-11 sm:h-8 text-sm" data-testid="input-search-name" onKeyDown={(e) => e.key === 'Enter' && handleAccountSearch()} />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Street</Label>
-              <Input value={searchStreet} onChange={(e) => setSearchStreet(e.target.value)} placeholder="e.g. Main" className="h-8 text-sm" data-testid="input-search-street" onKeyDown={(e) => e.key === 'Enter' && handleAccountSearch()} />
+              <Input value={searchStreet} onChange={(e) => setSearchStreet(e.target.value)} placeholder="e.g. Main" className="h-11 sm:h-8 text-sm" data-testid="input-search-street" onKeyDown={(e) => e.key === 'Enter' && handleAccountSearch()} />
             </div>
           </div>
-          <Button onClick={handleAccountSearch} disabled={searching} size="sm" className="gap-1 mb-4" data-testid="button-do-search">
+          <Button onClick={handleAccountSearch} disabled={searching} size="sm" className="gap-1 mb-4 h-11 sm:h-8 w-full sm:w-auto" data-testid="button-do-search">
             {searching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
             Search
           </Button>
           {searchResults.length > 0 ? (
-            <div className="max-h-[300px] overflow-auto border rounded">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-[#F7F7F7] text-xs">
-                    <TableHead>Account</TableHead>
-                    <TableHead>Owner</TableHead>
-                    <TableHead>Address</TableHead>
-                    <TableHead className="w-[80px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {searchResults.map((acc, i) => (
-                    <TableRow key={i} className="text-xs cursor-pointer hover:bg-[var(--pos-accent-tint)]" onClick={() => handleSelectAccount(acc)}>
-                      <TableCell className="font-mono font-medium">{acc.accountNumber || acc.accountNo || acc.account_Number || '-'}</TableCell>
-                      <TableCell>{acc.ownerName || acc.name || acc.owner || '-'}</TableCell>
-                      <TableCell className="truncate max-w-[200px]">{acc.propertyAddress || acc.address || acc.street || '-'}</TableCell>
-                      <TableCell>
-                        <Button size="sm" variant="default" className="h-6 text-xs gap-1" data-testid={`button-select-account-${i}`}>
-                          <Link2 className="h-3 w-3" /> Link
-                        </Button>
-                      </TableCell>
+            <>
+              <div className="max-h-[300px] overflow-auto border rounded hidden sm:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-[#F7F7F7] text-xs">
+                      <TableHead>Account</TableHead>
+                      <TableHead>Owner</TableHead>
+                      <TableHead>Address</TableHead>
+                      <TableHead className="w-[80px]"></TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {searchResults.map((acc, i) => (
+                      <TableRow key={i} className="text-xs cursor-pointer hover:bg-[var(--pos-accent-tint)]" onClick={() => handleSelectAccount(acc)}>
+                        <TableCell className="font-mono font-medium">{acc.accountNumber || acc.accountNo || acc.account_Number || '-'}</TableCell>
+                        <TableCell>{acc.ownerName || acc.name || acc.owner || '-'}</TableCell>
+                        <TableCell className="truncate max-w-[200px]">{acc.propertyAddress || acc.address || acc.street || '-'}</TableCell>
+                        <TableCell>
+                          <Button size="sm" variant="default" className="h-6 text-xs gap-1" data-testid={`button-select-account-${i}`}>
+                            <Link2 className="h-3 w-3" /> Link
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="sm:hidden max-h-[300px] overflow-auto divide-y divide-[#E5E7EB] border rounded">
+                {searchResults.map((acc, i) => (
+                  <div key={i} className="p-3 space-y-2 active:bg-[var(--pos-accent-tint)]" data-testid={`card-search-result-${i}`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="space-y-0.5 min-w-0">
+                        <div className="font-mono text-sm font-medium break-all">{acc.accountNumber || acc.accountNo || acc.account_Number || '-'}</div>
+                        <div className="text-xs text-slate-600">{acc.ownerName || acc.name || acc.owner || '-'}</div>
+                        <div className="text-xs text-muted-foreground break-words">{acc.propertyAddress || acc.address || acc.street || '-'}</div>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="default" className="h-11 w-full text-sm gap-1.5" onClick={() => handleSelectAccount(acc)} data-testid={`button-select-account-mobile-${i}`}>
+                      <Link2 className="h-4 w-4" /> Link This Account
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </>
           ) : searching ? (
             <div className="text-center py-6 text-muted-foreground text-sm">
               <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
@@ -1801,14 +1951,14 @@ export default function ThirdPartyPaymentProcessing() {
       </Dialog>
 
       <Dialog open={viewOpen} onOpenChange={setViewOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><Eye className="h-4 w-4" /> Transaction Details</DialogTitle>
             <DialogDescription>Full details for this imported transaction.</DialogDescription>
           </DialogHeader>
           {viewTxn && (
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                 <div className="bg-[#F7F7F7] rounded p-2.5 border">
                   <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Imported Account</div>
                   <div className="font-mono font-medium">{viewTxn.importedAccountNumber}</div>

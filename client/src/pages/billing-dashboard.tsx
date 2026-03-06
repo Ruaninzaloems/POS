@@ -424,8 +424,8 @@ function DetailTable({ endpoint, label }: { endpoint: string; label?: string }) 
 
     return (
         <div className="border rounded-lg overflow-hidden bg-white shadow-sm">
-            <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-emerald-50 to-teal-50 border-b">
-                <span className="text-xs font-medium text-slate-600">
+            <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-emerald-50 to-teal-50 border-b gap-2">
+                <span className="text-xs font-medium text-slate-600 shrink-0">
                     {totalCount.toLocaleString()} record{totalCount !== 1 ? 's' : ''} found
                 </span>
                 <div className="flex items-center gap-1">
@@ -434,11 +434,11 @@ function DetailTable({ endpoint, label }: { endpoint: string; label?: string }) 
                             variant="ghost"
                             size="sm"
                             onClick={handleExportPage}
-                            className="h-7 gap-1.5 text-xs text-slate-600 hover:text-emerald-700 hover:bg-emerald-100"
+                            className="h-11 sm:h-7 gap-1.5 text-xs text-slate-600 hover:text-emerald-700 hover:bg-emerald-100"
                             data-testid="btn-export-page"
                         >
                             <Download className="w-3.5 h-3.5" />
-                            Page
+                            <span className="hidden sm:inline">Page</span>
                         </Button>
                     )}
                     <Button
@@ -446,15 +446,15 @@ function DetailTable({ endpoint, label }: { endpoint: string; label?: string }) 
                         size="sm"
                         onClick={handleExportAll}
                         disabled={exporting}
-                        className="h-7 gap-1.5 text-xs text-emerald-700 hover:bg-emerald-100 font-medium"
+                        className="h-11 sm:h-7 gap-1.5 text-xs text-emerald-700 hover:bg-emerald-100 font-medium"
                         data-testid="btn-export-excel"
                     >
                         {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileSpreadsheet className="w-3.5 h-3.5" />}
-                        {exporting ? 'Exporting...' : totalPages > 1 ? 'Export All' : 'Export Excel'}
+                        {exporting ? 'Exporting...' : totalPages > 1 ? 'Export All' : 'Export'}
                     </Button>
                 </div>
             </div>
-            <div className="overflow-x-auto overflow-y-auto max-h-[400px]">
+            <div className="hidden sm:block overflow-x-auto overflow-y-auto max-h-[400px]">
                 <Table className="w-full table-auto">
                     <TableHeader className="sticky top-0 z-10 bg-white">
                         <TableRow className="bg-[#F7F7F7]">
@@ -486,17 +486,39 @@ function DetailTable({ endpoint, label }: { endpoint: string; label?: string }) 
                     </TableBody>
                 </Table>
             </div>
+            <div className="sm:hidden divide-y divide-[#E5E5E5] max-h-[400px] overflow-y-auto">
+                {items.map((row, idx) => (
+                    <div key={idx} className="p-3 space-y-1.5" data-testid={`card-detail-row-${idx}`}>
+                        {columns.map(col => {
+                            const val = row[col];
+                            const isAmount = typeof val === 'number' && /amount|balance|total|value/i.test(col);
+                            return (
+                                <div key={col} className="flex items-start justify-between gap-2">
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 shrink-0">{friendlyLabel(col)}</span>
+                                    <span className="text-xs text-right text-slate-700 break-words min-w-0">
+                                        {val === null || val === undefined ? '—'
+                                            : isAmount ? `R ${val.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`
+                                            : typeof val === 'boolean' ? (val ? 'Yes' : 'No')
+                                            : typeof val === 'number' ? val.toLocaleString()
+                                            : String(val)}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                ))}
+            </div>
             <div className="flex items-center justify-between px-3 py-2 border-t bg-[#F7F7F7]/50">
                 <span className="text-xs text-muted-foreground" data-testid="text-table-range">
                     {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, totalCount)} of {totalCount.toLocaleString()}
                 </span>
                 {totalPages > 1 && (
-                    <div className="flex items-center gap-0.5">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page <= 1} onClick={() => setPage(1)} data-testid="btn-page-first"><ChevronsLeft className="w-3.5 h-3.5" /></Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page <= 1} onClick={() => setPage(p => p - 1)} data-testid="btn-page-prev"><ChevronLeft className="w-3.5 h-3.5" /></Button>
+                    <div className="flex items-center gap-0.5 sm:gap-0.5">
+                        <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-7 sm:w-7" disabled={page <= 1} onClick={() => setPage(1)} data-testid="btn-page-first"><ChevronsLeft className="w-4 h-4 sm:w-3.5 sm:h-3.5" /></Button>
+                        <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-7 sm:w-7" disabled={page <= 1} onClick={() => setPage(p => p - 1)} data-testid="btn-page-prev"><ChevronLeft className="w-4 h-4 sm:w-3.5 sm:h-3.5" /></Button>
                         <span className="text-xs font-medium px-2" data-testid="text-page-indicator">{page}/{totalPages}</span>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} data-testid="btn-page-next"><ChevronRight className="w-3.5 h-3.5" /></Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page >= totalPages} onClick={() => setPage(totalPages)} data-testid="btn-page-last"><ChevronsRight className="w-3.5 h-3.5" /></Button>
+                        <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-7 sm:w-7" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} data-testid="btn-page-next"><ChevronRight className="w-4 h-4 sm:w-3.5 sm:h-3.5" /></Button>
+                        <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-7 sm:w-7" disabled={page >= totalPages} onClick={() => setPage(totalPages)} data-testid="btn-page-last"><ChevronsRight className="w-4 h-4 sm:w-3.5 sm:h-3.5" /></Button>
                     </div>
                 )}
             </div>
@@ -540,16 +562,16 @@ function GraphsPanel() {
         const cols = Object.keys(items[0]).filter(k => !k.startsWith('_'));
         return (
             <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <div className={`w-7 h-7 rounded-lg ${color} text-white flex items-center justify-center`}>{icon}</div>
-                        <h4 className="font-semibold text-sm text-slate-700">{title}</h4>
+                <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <div className={`w-7 h-7 rounded-lg ${color} text-white flex items-center justify-center shrink-0`}>{icon}</div>
+                        <h4 className="font-semibold text-sm text-slate-700 truncate">{title}</h4>
                     </div>
                     <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => exportToExcel(items, title, `${title} - ${new Date().toLocaleDateString('en-GB')}`)}
-                        className="h-7 gap-1.5 text-xs text-emerald-700 hover:bg-emerald-100 font-medium"
+                        className="h-11 sm:h-7 gap-1.5 text-xs text-emerald-700 hover:bg-emerald-100 font-medium"
                         data-testid={`btn-export-${title.toLowerCase().replace(/\s+/g, '-')}`}
                     >
                         <FileSpreadsheet className="w-3.5 h-3.5" />
@@ -557,7 +579,7 @@ function GraphsPanel() {
                     </Button>
                 </div>
                 <div className="border rounded-lg overflow-hidden bg-white">
-                    <div className="overflow-x-auto overflow-y-auto max-h-[250px]">
+                    <div className="hidden sm:block overflow-x-auto overflow-y-auto max-h-[250px]">
                         <Table className="w-full table-auto">
                             <TableHeader className="sticky top-0 z-10 bg-white">
                                 <TableRow className="bg-[#F7F7F7]">
@@ -576,6 +598,20 @@ function GraphsPanel() {
                                 ))}
                             </TableBody>
                         </Table>
+                    </div>
+                    <div className="sm:hidden divide-y divide-[#E5E5E5] max-h-[250px] overflow-y-auto">
+                        {items.map((row: any, i: number) => (
+                            <div key={i} className="p-3 space-y-1.5">
+                                {cols.slice(0, 6).map(c => (
+                                    <div key={c} className="flex items-start justify-between gap-2">
+                                        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 shrink-0">{friendlyLabel(c)}</span>
+                                        <span className="text-xs text-right text-slate-700 break-words min-w-0">
+                                            {typeof row[c] === 'number' ? row[c].toLocaleString('en-ZA', row[c] % 1 !== 0 ? { minimumFractionDigits: 2 } : {}) : String(row[c] ?? '')}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>
@@ -652,7 +688,7 @@ function CategoryPanel({ category, subItems, isLoading }: { category: CategoryCo
                         variant="ghost"
                         size="sm"
                         onClick={handleExportSummary}
-                        className="h-7 gap-1.5 text-xs text-emerald-700 hover:bg-emerald-100 font-medium"
+                        className="h-11 sm:h-7 gap-1.5 text-xs text-emerald-700 hover:bg-emerald-100 font-medium"
                         data-testid="btn-export-summary"
                     >
                         <FileSpreadsheet className="w-3.5 h-3.5" />
@@ -666,7 +702,7 @@ function CategoryPanel({ category, subItems, isLoading }: { category: CategoryCo
                 return (
                     <div key={item.key}>
                         <button
-                            className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group ${
+                            className={`w-full text-left flex items-center gap-3 px-3 py-2.5 min-h-[44px] rounded-lg transition-all group ${
                                 isExpanded ? 'bg-[var(--pos-accent-tint)] ring-1 ring-[var(--pos-accent-shadow)]' : 'hover:bg-[#F7F7F7]'
                             }`}
                             onClick={() => setExpandedItem(isExpanded ? null : item.key)}
@@ -821,7 +857,7 @@ export default function BillingDashboard() {
                                 {!platinumUser ? 'Waiting for authentication...' : loading ? 'Loading notification data...' : `${totalNotifications.toLocaleString()} total notifications across ${Object.keys(counts).length} categories`}
                             </p>
                         </div>
-                        <Button variant="outline" size="sm" onClick={refreshAll} disabled={loading} className="gap-2 self-start sm:self-auto" data-testid="btn-refresh-dashboard">
+                        <Button variant="outline" size="sm" onClick={refreshAll} disabled={loading} className="h-11 sm:h-auto gap-2 self-start sm:self-auto" data-testid="btn-refresh-dashboard">
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                             Refresh
                         </Button>
@@ -879,7 +915,7 @@ export default function BillingDashboard() {
                             <div className="flex-1 h-px bg-gradient-to-r from-[#D6D6D6] to-transparent" />
                         </div>
 
-                        <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-4" data-testid="category-pills">
+                        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-1.5 sm:gap-2 mb-4" data-testid="category-pills">
                             {CATEGORIES.map(cat => {
                                 const count = counts[cat.key] ?? 0;
                                 const isActive = activeCategory === cat.key;
@@ -888,7 +924,7 @@ export default function BillingDashboard() {
                                     <button
                                         key={cat.key}
                                         onClick={() => setActiveCategory(cat.key)}
-                                        className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all ${
+                                        className={`inline-flex items-center gap-1.5 px-3 py-2 min-h-[44px] sm:min-h-0 rounded-xl text-xs sm:text-sm font-medium transition-all ${
                                             isActive
                                                 ? `bg-gradient-to-r ${cat.gradient} text-white shadow-lg scale-[1.02]`
                                                 : `bg-white border ${hasData ? 'border-[#D6D6D6] text-slate-700' : 'border-[#E5E5E5] text-slate-400'} hover:border-[#D6D6D6] hover:shadow-sm`
@@ -896,10 +932,9 @@ export default function BillingDashboard() {
                                         data-testid={`pill-${cat.key}`}
                                     >
                                         {cat.icon}
-                                        <span className="hidden sm:inline">{cat.label}</span>
-                                        <span className="sm:hidden">{cat.label.length > 7 ? cat.label.slice(0, 5) + '..' : cat.label}</span>
+                                        <span className="truncate">{cat.label}</span>
                                         {cat.key !== 'graphs' && (
-                                            <span className={`inline-flex items-center justify-center min-w-[22px] h-5 px-1.5 rounded-full text-[10px] font-bold ${
+                                            <span className={`inline-flex items-center justify-center min-w-[22px] h-5 px-1.5 rounded-full text-[10px] font-bold ml-auto ${
                                                 isActive ? 'bg-white/25 text-white'
                                                     : hasData ? `${cat.badgeColor} text-white` : 'bg-[#F2F4F7] text-slate-400'
                                             }`}>

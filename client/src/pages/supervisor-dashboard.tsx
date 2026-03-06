@@ -962,7 +962,79 @@ export default function SupervisorDashboard() {
       );
     }
     return (
-      <div className="border rounded-md overflow-auto max-h-[300px]">
+      <>
+      <div className="sm:hidden space-y-2 max-h-[300px] overflow-auto">
+        {receipts.map((item, idx) => {
+          const receiptId = item.id || item.receiptId || item.receipt_id;
+          const isCancelled = item.isCancelled === 1 || item.isCancelled === true;
+          return (
+            <div key={idx} className="bg-white border rounded-xl p-3 space-y-2" data-testid={`mobile-receipt-card-${type}-${idx}`}>
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="font-mono font-bold text-slate-900 text-sm">{item.receiptNo || item.receipt_no || item.receiptNumber || '-'}</span>
+                  <p className="text-xs text-muted-foreground font-mono mt-0.5">{item.accountNumber || item.accountId || item.invoiceNumber || item.account || '-'}</p>
+                </div>
+                <div className="text-right">
+                  <span className="font-mono font-bold text-slate-900">R {Number(item.amount || item.totalAmount || 0).toFixed(2)}</span>
+                  {isCancelled && <Badge variant="destructive" className="text-[9px] ml-1">Voided</Badge>}
+                </div>
+              </div>
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>{item.receiptDate || item.receiptDateTime || item.date || '-'}</span>
+                <span>#{idx + 1}</span>
+              </div>
+              {!isCancelled && receiptId && (
+                directCancelId === receiptId ? (
+                  <div className="flex flex-col gap-2">
+                    <Input
+                      className="h-11 text-sm"
+                      placeholder="Reason for cancellation..."
+                      value={directCancelReason}
+                      onChange={e => setDirectCancelReason(e.target.value)}
+                      data-testid={`input-cancel-reason-${receiptId}`}
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-11 flex-1"
+                        onClick={() => { setDirectCancelId(null); setDirectCancelReason(''); }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="h-11 flex-1"
+                        onClick={() => {
+                          handleDirectCancelReceipt(receiptId, directCancelReason);
+                          setDirectCancelId(null);
+                          setDirectCancelReason('');
+                        }}
+                        disabled={!directCancelReason.trim()}
+                        data-testid={`button-confirm-cancel-${receiptId}`}
+                      >
+                        Confirm Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="w-full h-11 text-red-600 hover:text-red-700 hover:bg-red-50 active:scale-[0.99]"
+                    onClick={() => setDirectCancelId(receiptId)}
+                    data-testid={`button-cancel-receipt-${receiptId}`}
+                  >
+                    <Trash2 className="w-3.5 h-3.5 mr-1" /> Cancel Receipt
+                  </Button>
+                )
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div className="hidden sm:block border rounded-md overflow-auto max-h-[300px]">
         <Table>
           <TableHeader className="bg-[#F7F7F7] sticky top-0">
             <TableRow>
@@ -1048,6 +1120,7 @@ export default function SupervisorDashboard() {
           </TableBody>
         </Table>
       </div>
+      </>
     );
   };
 
@@ -1822,6 +1895,107 @@ export default function SupervisorDashboard() {
 
                   {!perOfficeLoading && perOfficeData && perOfficeData.cashierSummary.length > 0 && (
                       <>
+                          <div className="sm:hidden space-y-2 p-3">
+                              {perOfficeData.cashierSummary.map((cs: any) => {
+                                  const cId = cs.cashierId || cs.cashier_ID || cs.id;
+                                  const cName = cs.cashierName || cs.name || `Cashier ${cId}`;
+                                  const cStatus = cs.statusDesc || cs.status || 'Pending';
+                                  const isVerified = cStatus.toLowerCase().includes('verif');
+                                  const isReturned = cStatus.toLowerCase().includes('return');
+                                  const isPending = !isVerified && !isReturned;
+                                  return (
+                                      <div key={`mobile-po-${cId}`} className="bg-white border rounded-xl p-3 space-y-3" data-testid={`mobile-po-card-${cId}`}>
+                                          <div className="flex items-center justify-between">
+                                              <span className="font-bold text-slate-900">{cName}</span>
+                                              <Badge variant="outline" className={cn(
+                                                  'text-[10px]',
+                                                  isVerified && 'bg-green-50 text-green-700 border-green-200',
+                                                  isReturned && 'bg-amber-50 text-amber-700 border-amber-200',
+                                                  isPending && 'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)] border-[#D6D6D6]'
+                                              )}>
+                                                  {cStatus}
+                                              </Badge>
+                                          </div>
+                                          <div className="flex flex-wrap gap-2">
+                                              <Button
+                                                  size="sm"
+                                                  variant="outline"
+                                                  className="flex-1 h-11 active:scale-[0.99]"
+                                                  onClick={() => {
+                                                      const fakeShift: CashierShift = {
+                                                          id: String(cId),
+                                                          userId: null,
+                                                          cashierName: cName,
+                                                          cashOffice: perOfficeList.find(o => (o.cashOffice_ID || o.id) === perOfficeSelectedId)?.cashOfficeDesc || '',
+                                                          cashOfficeId: perOfficeSelectedId,
+                                                          groupCashiers: true,
+                                                          startTime: new Date().toISOString(),
+                                                          status: isVerified ? 'COMPLETED' : isReturned ? 'RETURNED' : 'PENDING_APPROVAL',
+                                                          systemTotals: { cash: 0, card: 0, total: 0 },
+                                                          variance: { cash: 0, card: 0, total: 0 },
+                                                          transactionCount: 0,
+                                                          reconcileId: null,
+                                                          hasActiveSession: false,
+                                                      };
+                                                      handleReview(fakeShift);
+                                                  }}
+                                                  data-testid={`button-review-po-${cId}`}
+                                              >
+                                                  <Eye className="w-3.5 h-3.5 mr-1" /> Review
+                                              </Button>
+                                              {isPending && (
+                                                  <Button
+                                                      size="sm"
+                                                      className="flex-1 h-11 bg-green-600 hover:bg-green-700 text-white active:scale-[0.99]"
+                                                      disabled={perOfficeVerifying === cId}
+                                                      onClick={() => handlePerOfficeVerifyCashier(Number(cId))}
+                                                      data-testid={`button-verify-po-${cId}`}
+                                                  >
+                                                      {perOfficeVerifying === cId ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <CheckCircle2 className="w-3.5 h-3.5 mr-1" />}
+                                                      Verify
+                                                  </Button>
+                                              )}
+                                              {isPending && (
+                                                  <Popover>
+                                                      <PopoverTrigger asChild>
+                                                          <Button size="sm" variant="outline" className="flex-1 h-11 text-amber-600 border-amber-300 active:scale-[0.99]" data-testid={`button-return-po-${cId}`}>
+                                                              <RotateCcw className="w-3.5 h-3.5 mr-1" /> Return
+                                                          </Button>
+                                                      </PopoverTrigger>
+                                                      <PopoverContent className="w-72">
+                                                          <div className="space-y-2">
+                                                              <Label className="text-xs font-medium">Return Reason</Label>
+                                                              <Input
+                                                                  className="h-11"
+                                                                  placeholder="e.g. Cash count mismatch"
+                                                                  value={returnReason}
+                                                                  onChange={(e) => setReturnReason(e.target.value)}
+                                                                  data-testid={`input-return-reason-po-${cId}`}
+                                                              />
+                                                              <Button
+                                                                  size="sm"
+                                                                  className="w-full h-11"
+                                                                  disabled={!returnReason}
+                                                                  onClick={async () => {
+                                                                      const reconcileId = cs.cashierReconcileId || cs.reconcileId || cId;
+                                                                      await handlePerOfficeReturn(Number(reconcileId), returnReason);
+                                                                      setReturnReason('');
+                                                                  }}
+                                                                  data-testid={`button-confirm-return-po-${cId}`}
+                                                              >
+                                                                  Confirm Return
+                                                              </Button>
+                                                          </div>
+                                                      </PopoverContent>
+                                                  </Popover>
+                                              )}
+                                              {isVerified && <Badge className="bg-green-100 text-green-700 border-green-200 text-[10px]"><CheckCircle2 className="w-3 h-3 mr-1" />Verified</Badge>}
+                                          </div>
+                                      </div>
+                                  );
+                              })}
+                          </div>
+                          <div className="hidden sm:block">
                           <Table>
                               <TableHeader>
                                   <TableRow>
@@ -1870,6 +2044,7 @@ export default function SupervisorDashboard() {
                                                                   variance: { cash: 0, card: 0, total: 0 },
                                                                   transactionCount: 0,
                                                                   reconcileId: null,
+                                                                  hasActiveSession: false,
                                                               };
                                                               handleReview(fakeShift);
                                                           }}
@@ -1930,16 +2105,18 @@ export default function SupervisorDashboard() {
                                   })}
                               </TableBody>
                           </Table>
+                          </div>
 
                           {perOfficeData.allVerified && (
-                              <div className="p-4 border-t bg-green-50 flex flex-col sm:flex-row items-center justify-between gap-3">
-                                  <div className="text-sm text-green-800 font-medium">
+                              <div className="p-3 sm:p-4 border-t bg-green-50 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                                  <div className="text-sm text-green-800 font-medium text-center sm:text-left">
                                       All cashiers verified. Ready for final office-level submission.
                                   </div>
-                                  <div className="flex gap-2">
+                                  <div className="flex flex-col sm:flex-row gap-2">
                                       <Button
                                           size="sm"
                                           variant="outline"
+                                          className="h-11 sm:h-9"
                                           onClick={() => perOfficeSelectedId && handlePerOfficePrintCashReport(perOfficeSelectedId)}
                                           data-testid="button-po-print-cash-report"
                                       >
@@ -1948,13 +2125,14 @@ export default function SupervisorDashboard() {
                                       <Button
                                           size="sm"
                                           variant="outline"
+                                          className="h-11 sm:h-9"
                                           onClick={() => perOfficeSelectedId && handlePerOfficePrintDepositSlip(perOfficeSelectedId)}
                                           data-testid="button-po-print-deposit-slip"
                                       >
                                           <Printer className="w-3.5 h-3.5 mr-1" /> Deposit Slip
                                       </Button>
                                       <Button
-                                          className="bg-gradient-to-r from-green-600 to-emerald-600 text-white font-bold px-6"
+                                          className="bg-gradient-to-r from-green-600 to-emerald-600 text-white font-bold px-6 h-11 sm:h-9"
                                           disabled={perOfficeSubmitting}
                                           onClick={handlePerOfficeSubmitAll}
                                           data-testid="button-submit-per-office"
@@ -1998,23 +2176,23 @@ export default function SupervisorDashboard() {
       )}
 
       <Dialog open={showVarianceHistory} onOpenChange={setShowVarianceHistory}>
-        <DialogContent className="max-w-5xl h-[90vh] flex flex-col">
+        <DialogContent className="max-w-[95vw] sm:max-w-5xl h-[90vh] flex flex-col">
             <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
+                <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
                     <TrendingUp className="w-5 h-5 text-[var(--pos-accent)]" />
                     Cashier Variance Statistics
                 </DialogTitle>
-                <DialogDescription>
+                <DialogDescription className="text-xs sm:text-sm">
                     Analyze historical shortages and surpluses per cashier
                 </DialogDescription>
             </DialogHeader>
 
-            <div className="flex flex-col gap-6 py-4 flex-1 overflow-hidden">
-                <div className="flex flex-wrap items-end gap-4 bg-[#F7F7F7] p-4 rounded-lg border">
+            <div className="flex flex-col gap-4 sm:gap-6 py-4 flex-1 overflow-hidden">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 bg-[#F7F7F7] p-3 sm:p-4 rounded-lg border">
                     <div className="flex flex-col gap-1.5">
-                        <Label>Financial Year</Label>
+                        <Label className="text-xs sm:text-sm">Financial Year</Label>
                         <Select value={statsFinancialYear} onValueChange={(val) => updateStatsPeriod(val, statsMonth)}>
-                            <SelectTrigger className="w-[140px] bg-white">
+                            <SelectTrigger className="w-full bg-white h-11 sm:h-9">
                                 <SelectValue placeholder="All Years" />
                             </SelectTrigger>
                             <SelectContent>
@@ -2027,13 +2205,13 @@ export default function SupervisorDashboard() {
                     </div>
 
                     <div className="flex flex-col gap-1.5">
-                        <Label>Month</Label>
+                        <Label className="text-xs sm:text-sm">Month</Label>
                         <Select 
                             value={statsMonth} 
                             onValueChange={(val) => updateStatsPeriod(statsFinancialYear, val)}
                             disabled={statsFinancialYear === 'All'}
                         >
-                            <SelectTrigger className="w-[140px] bg-white">
+                            <SelectTrigger className="w-full bg-white h-11 sm:h-9">
                                 <SelectValue placeholder="All Months" />
                             </SelectTrigger>
                             <SelectContent>
@@ -2046,9 +2224,9 @@ export default function SupervisorDashboard() {
                     </div>
 
                     <div className="flex flex-col gap-1.5">
-                        <Label>Cashier</Label>
+                        <Label className="text-xs sm:text-sm">Cashier</Label>
                         <Select value={statsCashier} onValueChange={setStatsCashier}>
-                            <SelectTrigger className="w-[180px] bg-white">
+                            <SelectTrigger className="w-full bg-white h-11 sm:h-9">
                                 <SelectValue placeholder="All Cashiers" />
                             </SelectTrigger>
                             <SelectContent>
@@ -2061,13 +2239,13 @@ export default function SupervisorDashboard() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                     <Card className="bg-red-50 border-red-200 shadow-sm">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium text-red-800">Total Shortage</CardTitle>
+                        <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
+                            <CardTitle className="text-xs sm:text-sm font-medium text-red-800">Total Shortage</CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-red-600">
+                        <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+                            <div className="text-lg sm:text-2xl font-bold text-red-600">
                                 {formatCurrency(varianceStats?.totalShortage || 0)}
                             </div>
                             <p className="text-xs text-red-700 mt-1">
@@ -2077,11 +2255,11 @@ export default function SupervisorDashboard() {
                     </Card>
 
                     <Card className="bg-green-50 border-green-200 shadow-sm">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium text-green-800">Total Surplus</CardTitle>
+                        <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
+                            <CardTitle className="text-xs sm:text-sm font-medium text-green-800">Total Surplus</CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-green-600">
+                        <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+                            <div className="text-lg sm:text-2xl font-bold text-green-600">
                                 {formatCurrency(varianceStats?.totalSurplus || 0)}
                             </div>
                             <p className="text-xs text-green-700 mt-1">
@@ -2091,11 +2269,11 @@ export default function SupervisorDashboard() {
                     </Card>
 
                     <Card className="bg-[var(--pos-accent-tint)] border-[#D6D6D6] shadow-sm">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium text-[#2E2E2E]">Net Variance</CardTitle>
+                        <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
+                            <CardTitle className="text-xs sm:text-sm font-medium text-[#2E2E2E]">Net Variance</CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <div className={`text-2xl font-bold ${
+                        <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+                            <div className={`text-lg sm:text-2xl font-bold ${
                                 (varianceStats?.netVariance || 0) >= 0 ? 'text-green-600' : 'text-red-600'
                             }`}>
                                 {formatCurrency(varianceStats?.netVariance || 0)}
@@ -2107,11 +2285,11 @@ export default function SupervisorDashboard() {
                     </Card>
                     
                     <Card className="bg-[#F7F7F7] border-[#D6D6D6] shadow-sm">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium text-slate-800">Performance Rating</CardTitle>
+                        <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
+                            <CardTitle className="text-xs sm:text-sm font-medium text-slate-800">Performance Rating</CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-slate-700">
+                        <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+                            <div className="text-lg sm:text-2xl font-bold text-slate-700">
                                 {varianceStats?.shiftCount ? 
                                     `${(100 - (((varianceStats.shortageCount + varianceStats.surplusCount) / varianceStats.shiftCount) * 100)).toFixed(0)}%` 
                                     : 'N/A'
@@ -2125,6 +2303,46 @@ export default function SupervisorDashboard() {
                 </div>
 
                 <div className="border rounded-md flex-1 overflow-auto">
+                    <div className="sm:hidden space-y-2 p-2">
+                        {varianceStats?.history.length === 0 ? (
+                            <div className="text-center py-8 text-muted-foreground text-sm">
+                                No historical data found for this period
+                            </div>
+                        ) : (
+                            varianceStats?.history.map(shift => (
+                                <div key={shift.id} className="bg-white border rounded-xl p-3 space-y-2" data-testid={`mobile-variance-card-${shift.id}`}>
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-medium text-slate-900 text-sm">{shift.cashierName}</span>
+                                        <span className="text-xs text-muted-foreground">{new Date(shift.startTime).toLocaleDateString('en-GB', { timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit' })}</span>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2 text-xs">
+                                        <div>
+                                            <span className="text-muted-foreground block">System</span>
+                                            <span className="font-mono">{formatCurrency(shift.systemTotals.total)}</span>
+                                        </div>
+                                        <div>
+                                            <span className="text-muted-foreground block">Declared</span>
+                                            <span className="font-mono">{formatCurrency(shift.declaredTotals?.total || 0)}</span>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-muted-foreground block">Variance</span>
+                                            <span className={`font-mono font-bold ${(shift.variance?.total || 0) !== 0 ? ((shift.variance?.total || 0) < 0 ? 'text-red-600' : 'text-green-600') : 'text-slate-400'}`}>
+                                                {formatCurrency(shift.variance?.total || 0)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-end">
+                                        <Badge variant="outline" className={
+                                            (shift.variance?.total || 0) === 0 ? "bg-green-50 text-green-700 border-green-200" : "bg-yellow-50 text-yellow-700 border-yellow-200"
+                                        }>
+                                            {(shift.variance?.total || 0) === 0 ? 'Balanced' : 'Variance'}
+                                        </Badge>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                    <div className="hidden sm:block">
                     <Table>
                         <TableHeader className="bg-[#F7F7F7] sticky top-0">
                             <TableRow>
@@ -2165,6 +2383,7 @@ export default function SupervisorDashboard() {
                             )}
                         </TableBody>
                     </Table>
+                    </div>
                 </div>
             </div>
         </DialogContent>
@@ -2197,41 +2416,41 @@ export default function SupervisorDashboard() {
                           <div className="space-y-4">
                               <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground border-b pb-2">System Totals</h3>
                               
-                              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 bg-gray-50 rounded-lg gap-1">
                                   <div className="flex items-center gap-2">
-                                      <Banknote className="w-4 h-4 text-gray-500" />
-                                      <span className="text-sm">Total Cash on Hand + Drop Box (R)</span>
+                                      <Banknote className="w-4 h-4 text-gray-500 shrink-0" />
+                                      <span className="text-xs sm:text-sm">Cash on Hand + Drop Box</span>
                                   </div>
-                                  <span className="font-mono font-medium">{formatCurrency(Number(reviewData.details?.totalCashAmt || reviewData.details?.cashAmount || selectedShift.systemTotals.cash || 0) + Number(reviewData.details?.totalDropBoxAmt || reviewData.details?.dropBoxAmount || 0))}</span>
+                                  <span className="font-mono font-medium text-sm sm:text-base ml-6 sm:ml-0">{formatCurrency(Number(reviewData.details?.totalCashAmt || reviewData.details?.cashAmount || selectedShift.systemTotals.cash || 0) + Number(reviewData.details?.totalDropBoxAmt || reviewData.details?.dropBoxAmount || 0))}</span>
                               </div>
 
-                              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 bg-gray-50 rounded-lg gap-1">
                                   <div className="flex items-center gap-2">
-                                      <CreditCard className="w-4 h-4 text-gray-500" />
-                                      <span className="text-sm">Total Debit/Credit Card Receipts (R)</span>
+                                      <CreditCard className="w-4 h-4 text-gray-500 shrink-0" />
+                                      <span className="text-xs sm:text-sm">Debit/Credit Card</span>
                                   </div>
-                                  <span className="font-mono font-medium">{formatCurrency(Number(reviewData.details?.totalCreditAmt || reviewData.details?.cardAmount || selectedShift.systemTotals.card || 0))}</span>
+                                  <span className="font-mono font-medium text-sm sm:text-base ml-6 sm:ml-0">{formatCurrency(Number(reviewData.details?.totalCreditAmt || reviewData.details?.cardAmount || selectedShift.systemTotals.card || 0))}</span>
                               </div>
 
-                              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 bg-gray-50 rounded-lg gap-1">
                                   <div className="flex items-center gap-2">
-                                      <FileText className="w-4 h-4 text-gray-500" />
-                                      <span className="text-sm">Total Cheque Receipts (R)</span>
+                                      <FileText className="w-4 h-4 text-gray-500 shrink-0" />
+                                      <span className="text-xs sm:text-sm">Cheque Receipts</span>
                                   </div>
-                                  <span className="font-mono font-medium">{formatCurrency(Number(reviewData.details?.totalChequeAmt || reviewData.details?.chequeAmount || 0))}</span>
+                                  <span className="font-mono font-medium text-sm sm:text-base ml-6 sm:ml-0">{formatCurrency(Number(reviewData.details?.totalChequeAmt || reviewData.details?.chequeAmount || 0))}</span>
                               </div>
 
-                              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 bg-gray-50 rounded-lg gap-1">
                                   <div className="flex items-center gap-2">
-                                      <Mail className="w-4 h-4 text-gray-500" />
-                                      <span className="text-sm">Total Postal Order Receipts (R)</span>
+                                      <Mail className="w-4 h-4 text-gray-500 shrink-0" />
+                                      <span className="text-xs sm:text-sm">Postal Order Receipts</span>
                                   </div>
-                                  <span className="font-mono font-medium">{formatCurrency(Number(reviewData.details?.totalPostalOrderAmt || reviewData.details?.postalOrderAmount || 0))}</span>
+                                  <span className="font-mono font-medium text-sm sm:text-base ml-6 sm:ml-0">{formatCurrency(Number(reviewData.details?.totalPostalOrderAmt || reviewData.details?.postalOrderAmount || 0))}</span>
                               </div>
 
-                              <div className="flex justify-between items-center p-3 bg-gray-100 rounded-lg border border-gray-200">
-                                  <span className="font-bold text-gray-700">Grand Total (R)</span>
-                                  <span className="font-mono font-bold text-lg">{formatCurrency(Number(reviewData.details?.totalAmt || reviewData.details?.totalAmount || selectedShift.systemTotals.total || 0))}</span>
+                              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 bg-gray-100 rounded-lg border border-gray-200 gap-1">
+                                  <span className="font-bold text-gray-700 text-sm sm:text-base">Grand Total (R)</span>
+                                  <span className="font-mono font-bold text-base sm:text-lg">{formatCurrency(Number(reviewData.details?.totalAmt || reviewData.details?.totalAmount || selectedShift.systemTotals.total || 0))}</span>
                               </div>
                           </div>
 
@@ -2239,25 +2458,25 @@ export default function SupervisorDashboard() {
                               <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground border-b pb-2">Cashier Declared Totals</h3>
                               {reviewData.reconcile ? (
                                 <>
-                                  <div className="flex justify-between items-center p-3 bg-[var(--pos-accent-tint)] rounded-lg border border-[#D6D6D6]">
-                                      <span className="text-sm text-[#2E2E2E]">Total Cash on Hand + Drop Box (R)</span>
-                                      <span className="font-mono font-bold">{formatCurrency(Number(reviewData.reconcile.totalCashAmt || reviewData.reconcile.cashDeclared || 0) + Number(reviewData.reconcile.totalDropBoxAmt || reviewData.reconcile.dropBoxDeclared || 0))}</span>
+                                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 bg-[var(--pos-accent-tint)] rounded-lg border border-[#D6D6D6] gap-1">
+                                      <span className="text-xs sm:text-sm text-[#2E2E2E]">Cash on Hand + Drop Box</span>
+                                      <span className="font-mono font-bold text-sm sm:text-base">{formatCurrency(Number(reviewData.reconcile.totalCashAmt || reviewData.reconcile.cashDeclared || 0) + Number(reviewData.reconcile.totalDropBoxAmt || reviewData.reconcile.dropBoxDeclared || 0))}</span>
                                   </div>
-                                  <div className="flex justify-between items-center p-3 bg-[var(--pos-accent-tint)] rounded-lg border border-[#D6D6D6]">
-                                      <span className="text-sm text-[#2E2E2E]">Total Debit/Credit Card Receipts (R)</span>
-                                      <span className="font-mono font-bold">{formatCurrency(Number(reviewData.reconcile.totalCreditAmt || reviewData.reconcile.cardDeclared || 0))}</span>
+                                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 bg-[var(--pos-accent-tint)] rounded-lg border border-[#D6D6D6] gap-1">
+                                      <span className="text-xs sm:text-sm text-[#2E2E2E]">Debit/Credit Card</span>
+                                      <span className="font-mono font-bold text-sm sm:text-base">{formatCurrency(Number(reviewData.reconcile.totalCreditAmt || reviewData.reconcile.cardDeclared || 0))}</span>
                                   </div>
-                                  <div className="flex justify-between items-center p-3 bg-[var(--pos-accent-tint)] rounded-lg border border-[#D6D6D6]">
-                                      <span className="text-sm text-[#2E2E2E]">Total Cheque Receipts (R)</span>
-                                      <span className="font-mono font-bold">{formatCurrency(Number(reviewData.reconcile.totalChequeAmt || reviewData.reconcile.chequeDeclared || 0))}</span>
+                                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 bg-[var(--pos-accent-tint)] rounded-lg border border-[#D6D6D6] gap-1">
+                                      <span className="text-xs sm:text-sm text-[#2E2E2E]">Cheque Receipts</span>
+                                      <span className="font-mono font-bold text-sm sm:text-base">{formatCurrency(Number(reviewData.reconcile.totalChequeAmt || reviewData.reconcile.chequeDeclared || 0))}</span>
                                   </div>
-                                  <div className="flex justify-between items-center p-3 bg-[var(--pos-accent-tint)] rounded-lg border border-[#D6D6D6]">
-                                      <span className="text-sm text-[#2E2E2E]">Total Postal Order Receipts (R)</span>
-                                      <span className="font-mono font-bold">{formatCurrency(Number(reviewData.reconcile.totalPostalOrderAmt || reviewData.reconcile.postalOrderDeclared || 0))}</span>
+                                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 bg-[var(--pos-accent-tint)] rounded-lg border border-[#D6D6D6] gap-1">
+                                      <span className="text-xs sm:text-sm text-[#2E2E2E]">Postal Order Receipts</span>
+                                      <span className="font-mono font-bold text-sm sm:text-base">{formatCurrency(Number(reviewData.reconcile.totalPostalOrderAmt || reviewData.reconcile.postalOrderDeclared || 0))}</span>
                                   </div>
-                                  <div className="flex justify-between items-center p-3 bg-[var(--pos-accent-tint-strong)] rounded-lg border border-[#D6D6D6]">
-                                      <span className="font-bold text-[#2E2E2E]">Grand Total (R)</span>
-                                      <span className="font-mono font-bold text-lg">{formatCurrency(Number(reviewData.reconcile.totalAmt || reviewData.reconcile.totalDeclared || 0))}</span>
+                                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 bg-[var(--pos-accent-tint-strong)] rounded-lg border border-[#D6D6D6] gap-1">
+                                      <span className="font-bold text-[#2E2E2E] text-sm sm:text-base">Grand Total (R)</span>
+                                      <span className="font-mono font-bold text-base sm:text-lg">{formatCurrency(Number(reviewData.reconcile.totalAmt || reviewData.reconcile.totalDeclared || 0))}</span>
                                   </div>
                                   {Number(reviewData.reconcile.cashFloat || reviewData.reconcile.float || 0) > 0 && (
                                     <div className="flex justify-between items-center p-2.5 bg-[#F7F7F7] rounded-lg border border-[#D6D6D6] text-sm">
@@ -2282,10 +2501,33 @@ export default function SupervisorDashboard() {
 
                       {reviewData.systemVsCashier.length > 0 && (
                         <div className="border rounded-lg overflow-hidden">
-                          <div className="bg-gray-50 px-4 py-2 border-b text-xs font-semibold text-muted-foreground">
+                          <div className="bg-gray-50 px-3 sm:px-4 py-2 border-b text-xs font-semibold text-muted-foreground">
                             SYSTEM VS CASHIER COMPARISON
                           </div>
-                          <div className="max-h-[200px] overflow-y-auto">
+                          <div className="sm:hidden space-y-2 p-2 max-h-[200px] overflow-y-auto">
+                            {reviewData.systemVsCashier.map((row: any, idx: number) => (
+                              <div key={idx} className="bg-white border rounded-lg p-2.5 space-y-1.5">
+                                <span className="text-xs font-medium text-slate-900">{row.description || row.paymentType || row.type || `Row ${idx + 1}`}</span>
+                                <div className="grid grid-cols-3 gap-2 text-xs">
+                                  <div>
+                                    <span className="text-muted-foreground block">System</span>
+                                    <span className="font-mono">{formatCurrency(Number(row.systemAmount || row.systemTotal || 0))}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground block">Cashier</span>
+                                    <span className="font-mono">{formatCurrency(Number(row.cashierAmount || row.cashierTotal || 0))}</span>
+                                  </div>
+                                  <div className="text-right">
+                                    <span className="text-muted-foreground block">Variance</span>
+                                    <span className={`font-mono font-bold ${Number(row.variance || row.difference || 0) !== 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                      {formatCurrency(Number(row.variance || row.difference || 0))}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="hidden sm:block max-h-[200px] overflow-y-auto">
                             <Table>
                               <TableHeader className="bg-[#F7F7F7] sticky top-0">
                                 <TableRow>
@@ -2348,6 +2590,7 @@ export default function SupervisorDashboard() {
                       <div className="space-y-2">
                         <Label className="text-xs">Return Reason (required to return)</Label>
                         <Input 
+                          className="h-11 sm:h-9"
                           value={returnReason} 
                           onChange={(e) => setReturnReason(e.target.value)} 
                           placeholder="Enter reason for returning to cashier..."
@@ -2363,20 +2606,20 @@ export default function SupervisorDashboard() {
                           This cashier belongs to a grouped office ({selectedShift.cashOffice}). All cashiers in this office must be reconciled together. Use the "Per Cash Office" view to approve the entire office at once.
                       </div>
                   )}
-                  <div className="flex flex-wrap items-center gap-2 border-t pt-3 mb-2">
-                    <Button variant="outline" size="sm" onClick={() => handlePrintCashReport(selectedShift.id)} data-testid="button-print-cash-report">
+                  <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 border-t pt-3 mb-2">
+                    <Button variant="outline" size="sm" className="h-11 sm:h-9" onClick={() => handlePrintCashReport(selectedShift.id)} data-testid="button-print-cash-report">
                       <Printer className="w-3.5 h-3.5 mr-1.5" /> Cash Report
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => handlePrintDepositSlip(selectedShift.id)} data-testid="button-print-deposit-slip">
+                    <Button variant="outline" size="sm" className="h-11 sm:h-9" onClick={() => handlePrintDepositSlip(selectedShift.id)} data-testid="button-print-deposit-slip">
                       <Printer className="w-3.5 h-3.5 mr-1.5" /> Deposit Slip
                     </Button>
                     <HelpTip text="Generate printable PDF reports for this cashier's shift." />
                   </div>
-                  <DialogFooter className="gap-2 sm:gap-0">
-                      <div className="flex items-center gap-1 mr-auto">
+                  <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0">
+                      <div className="flex items-center gap-1 sm:mr-auto w-full sm:w-auto">
                         <Button 
                             variant="destructive" 
-                            className="w-32"
+                            className="flex-1 sm:flex-initial sm:w-32 h-11 sm:h-9"
                             onClick={handleReturn}
                             disabled={!returnReason.trim() || actionLoading}
                         >
@@ -2384,10 +2627,10 @@ export default function SupervisorDashboard() {
                         </Button>
                         <HelpTip text="Send this submission back to the cashier for correction." />
                       </div>
-                      <Button variant="outline" onClick={() => { setSelectedShift(null); setReviewData(null); }}>Cancel</Button>
-                      <div className="flex items-center gap-1">
+                      <Button variant="outline" className="w-full sm:w-auto h-11 sm:h-9" onClick={() => { setSelectedShift(null); setReviewData(null); }}>Cancel</Button>
+                      <div className="flex items-center gap-1 w-full sm:w-auto">
                         <Button 
-                            className="bg-green-600 hover:bg-green-700 w-32"
+                            className="bg-green-600 hover:bg-green-700 flex-1 sm:flex-initial sm:w-32 h-11 sm:h-9"
                             onClick={() => handleApprove(selectedShift.id)}
                             disabled={actionLoading}
                         >

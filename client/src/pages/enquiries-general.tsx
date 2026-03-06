@@ -352,7 +352,7 @@ function FieldAutocompleteInput({ fieldKey, placeholder, value, onChange, onSele
         onChange={(e) => handleChange(e.target.value)}
         onFocus={() => { if (suggestions.length > 0) setOpen(true); }}
         onKeyDown={(e) => { if (e.key === 'Enter') { setOpen(false); onEnter(); } if (e.key === 'Escape') setOpen(false); }}
-        className="w-full h-9 sm:h-8 px-2.5 sm:px-2 text-xs rounded-lg sm:rounded border border-slate-300 bg-white placeholder:text-slate-400 focus:outline-none focus:ring-2 sm:focus:ring-1 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] transition-colors"
+        className="w-full h-11 sm:h-8 px-2.5 sm:px-2 text-xs rounded-lg sm:rounded border border-slate-300 bg-white placeholder:text-slate-400 focus:outline-none focus:ring-2 sm:focus:ring-1 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] transition-colors"
         data-testid={`input-field-${fieldKey}`}
       />
       {loading && <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[var(--pos-accent)] animate-spin" />}
@@ -362,7 +362,7 @@ function FieldAutocompleteInput({ fieldKey, placeholder, value, onChange, onSele
             <button
               key={`${s.accountId}-${i}`}
               onClick={() => handleSelect(s)}
-              className="w-full text-left px-2.5 py-2 sm:py-1.5 text-xs text-slate-700 hover:bg-[var(--pos-accent-tint)] active:bg-[var(--pos-accent-tint-strong)] transition-colors border-b border-[#E5E5E5] last:border-0"
+              className="w-full text-left px-2.5 py-2.5 sm:py-1.5 text-xs text-slate-700 hover:bg-[var(--pos-accent-tint)] active:bg-[var(--pos-accent-tint-strong)] transition-colors border-b border-[#E5E5E5] last:border-0 min-h-[44px] sm:min-h-0 flex items-center"
               data-testid={`suggestion-${fieldKey}-${i}`}
             >
               {s.displayItem}
@@ -867,7 +867,7 @@ function GeneralEnquiriesContent() {
             <div className="flex items-center gap-2 sm:gap-3">
               <button
                 onClick={() => setSelectedAccount(null)}
-                className="inline-flex items-center gap-1 text-slate-500 hover:text-[var(--pos-accent)] text-sm font-medium transition-colors group shrink-0"
+                className="inline-flex items-center gap-1 h-11 sm:h-auto px-2 sm:px-0 rounded-lg sm:rounded-none text-slate-500 hover:text-[var(--pos-accent)] hover:bg-[#F2F4F7] sm:hover:bg-transparent text-sm font-medium transition-colors group shrink-0"
                 data-testid="button-back-to-results"
               >
                 <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
@@ -976,7 +976,7 @@ function GeneralEnquiriesContent() {
                         <>
                           <button
                             onClick={() => setMobileTabMenuOpen(!mobileTabMenuOpen)}
-                            className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border ${currentColors.activeBg} ${currentColors.activeBorder} ${currentColors.activeText}`}
+                            className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 min-h-[44px] rounded-lg border ${currentColors.activeBg} ${currentColors.activeBorder} ${currentColors.activeText}`}
                             data-testid="button-mobile-tab-selector"
                           >
                             <div className="flex items-center gap-2 min-w-0">
@@ -1007,7 +1007,7 @@ function GeneralEnquiriesContent() {
                                             value={tab.value}
                                             onClick={() => setMobileTabMenuOpen(false)}
                                             className={`
-                                              flex flex-col items-center gap-0.5 px-1 py-2 rounded-lg border text-[10px] font-medium cursor-pointer transition-all active:scale-[0.97]
+                                              flex flex-col items-center gap-0.5 px-1 py-2.5 min-h-[52px] rounded-lg border text-[10px] font-medium cursor-pointer transition-all active:scale-[0.97]
                                               ${isTabActive
                                                 ? `${colors.activeBg} ${colors.activeBorder} ${colors.activeText} font-semibold shadow-sm`
                                                 : `bg-white border-[#D6D6D6] text-slate-600 hover:bg-[#F7F7F7]`
@@ -1093,7 +1093,7 @@ function GeneralEnquiriesContent() {
             {recentSearches.length > 0 && (
               <button
                 onClick={() => { setShowDropdown(true); inputRef.current?.focus(); }}
-                className="sm:hidden p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-[#F2F4F7] transition-colors"
+                className="sm:hidden p-2.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-[#F2F4F7] transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                 aria-label="Recent searches"
                 data-testid="button-recent-mobile"
               >
@@ -1175,7 +1175,7 @@ function GeneralEnquiriesContent() {
               <button
                 onClick={handleFullSearch}
                 disabled={searching || (quickQuery.trim().length < 2 && !Object.values(criteria).some(v => v && String(v).trim()))}
-                className="h-8 w-8 sm:h-8 sm:w-auto sm:px-3 rounded-lg sm:rounded-md bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] active:bg-[var(--pos-accent-dark)] disabled:bg-slate-300 text-white flex items-center justify-center gap-1.5 text-xs font-medium transition-colors shadow-sm"
+                className="h-11 w-11 sm:h-8 sm:w-auto sm:px-3 rounded-lg sm:rounded-md bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] active:bg-[var(--pos-accent-dark)] disabled:bg-slate-300 text-white flex items-center justify-center gap-1.5 text-xs font-medium transition-colors shadow-sm"
                 data-testid="button-search"
                 aria-label="Search"
                 tabIndex={0}
@@ -1198,7 +1198,7 @@ function GeneralEnquiriesContent() {
                 {detectedType.label}
               </span>
               <button
-                className="p-1 rounded-md text-slate-400 hover:text-slate-600 transition-colors"
+                className="p-2 rounded-md text-slate-400 hover:text-slate-600 hover:bg-[#F2F4F7] transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                 title="Scan ID / Barcode"
                 data-testid="button-scan-barcode-mobile"
               >
@@ -1213,7 +1213,7 @@ function GeneralEnquiriesContent() {
                 setFieldSearchOpen(prev => !prev);
                 setMobileFormCollapsed(prev => !prev);
               }}
-              className="w-full flex items-center justify-between gap-1.5 px-3 py-2.5 sm:px-2.5 sm:py-2 hover:bg-[#F2F4F7]/70 active:bg-[#F2F4F7] transition-colors"
+              className="w-full flex items-center justify-between gap-1.5 px-3 py-3 sm:px-2.5 sm:py-2 min-h-[44px] sm:min-h-0 hover:bg-[#F2F4F7]/70 active:bg-[#F2F4F7] transition-colors"
               data-testid="button-toggle-filters"
             >
               <div className="flex items-center gap-1.5">
@@ -1277,7 +1277,7 @@ function GeneralEnquiriesContent() {
                     </div>
                     <button
                       onClick={() => setShowAllFields(prev => !prev)}
-                      className="sm:hidden mt-1.5 text-[10px] text-[var(--pos-accent)] hover:text-[var(--pos-accent-dark)] font-medium flex items-center gap-1"
+                      className="sm:hidden mt-1.5 text-[10px] text-[var(--pos-accent)] hover:text-[var(--pos-accent-dark)] font-medium flex items-center gap-1 min-h-[44px] px-2 -ml-2 rounded-lg hover:bg-[var(--pos-accent-tint)]"
                       data-testid="button-toggle-more-fields"
                     >
                       <SlidersHorizontal className="w-3 h-3" />
@@ -1290,7 +1290,7 @@ function GeneralEnquiriesContent() {
                 <button
                   onClick={handleFullSearch}
                   disabled={searching || (quickQuery.trim().length < 2 && !Object.values(criteria).some(v => v && String(v).trim()))}
-                  className="h-8 sm:h-7 px-4 sm:px-3 rounded-lg sm:rounded bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] active:bg-[var(--pos-accent-dark)] disabled:bg-slate-300 text-white flex items-center gap-1.5 text-xs sm:text-[11px] font-medium transition-colors shadow-sm"
+                  className="h-11 sm:h-7 px-4 sm:px-3 rounded-lg sm:rounded bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] active:bg-[var(--pos-accent-dark)] disabled:bg-slate-300 text-white flex items-center gap-1.5 text-xs sm:text-[11px] font-medium transition-colors shadow-sm"
                   data-testid="button-field-search"
                 >
                   {searching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-4 h-4" />}
@@ -1298,21 +1298,21 @@ function GeneralEnquiriesContent() {
                 </button>
                 <button
                   onClick={() => { setCriteria({}); setQuickQuery(''); setResults([]); setHasSearched(false); setSearchError(null); setFieldSearchOpen(false); setMobileFormCollapsed(true); }}
-                  className="h-8 sm:h-7 px-4 sm:px-3 rounded-lg sm:rounded bg-[#F2F4F7] hover:bg-[#D6D6D6] active:bg-[#D6D6D6] text-slate-700 text-xs sm:text-[11px] font-medium transition-colors"
+                  className="h-11 sm:h-7 px-4 sm:px-3 rounded-lg sm:rounded bg-[#F2F4F7] hover:bg-[#D6D6D6] active:bg-[#D6D6D6] text-slate-700 text-xs sm:text-[11px] font-medium transition-colors"
                   data-testid="button-field-clear"
                 >
                   Clear
                 </button>
                 <button
                   onClick={() => setShowFiltersPanel(prev => !prev)}
-                  className="sm:hidden h-8 px-3 rounded-lg border border-[#D6D6D6] bg-white text-slate-600 hover:bg-[#F7F7F7] active:bg-[#F2F4F7] text-[10px] font-medium flex items-center gap-1 transition-colors ml-auto"
+                  className="sm:hidden h-11 px-3 rounded-lg border border-[#D6D6D6] bg-white text-slate-600 hover:bg-[#F7F7F7] active:bg-[#F2F4F7] text-[10px] font-medium flex items-center gap-1 transition-colors ml-auto"
                   data-testid="button-toggle-advanced-mobile"
                 >
                   <SlidersHorizontal className="w-3 h-3" />
                   More
                 </button>
                 {activeFilterCount > 0 && (
-                  <button onClick={() => setCriteria({})} className="sm:hidden text-[10px] text-[var(--pos-accent)] hover:text-[var(--pos-accent-dark)] underline underline-offset-2" data-testid="button-clear-field-filters-mobile">
+                  <button onClick={() => setCriteria({})} className="sm:hidden text-[10px] text-[var(--pos-accent)] hover:text-[var(--pos-accent-dark)] underline underline-offset-2 min-h-[44px] px-2 rounded-lg" data-testid="button-clear-field-filters-mobile">
                     Clear Filters ({activeFilterCount})
                   </button>
                 )}
@@ -1329,7 +1329,8 @@ function GeneralEnquiriesContent() {
                 className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 sm:py-1 rounded-full text-[11px] font-medium border transition-all whitespace-nowrap active:scale-95
                   ${quickFilters.has(chip.key)
                     ? 'bg-[var(--pos-accent)] text-white border-[var(--pos-accent)] shadow-sm'
-                    : 'bg-white text-slate-500 border-[#D6D6D6] hover:bg-[#F7F7F7] hover:border-[#BFBFBF]'}`}
+                    : 'bg-white text-slate-500 border-[#D6D6D6] hover:bg-[#F7F7F7] hover:border-[#BFBFBF]'}
+                  min-h-[44px] sm:min-h-0`}
                 data-testid={`chip-filter-${chip.key}`}
                 aria-pressed={quickFilters.has(chip.key)}
                 tabIndex={0}
@@ -1563,7 +1564,7 @@ function GeneralEnquiriesContent() {
                 {!fieldSearchOpen && (
                   <button
                     onClick={() => { setFieldSearchOpen(true); setMobileFormCollapsed(false); }}
-                    className="text-[10px] text-[var(--pos-accent)] hover:text-[var(--pos-accent-dark)] flex items-center gap-0.5 font-medium active:text-[var(--pos-accent-dark)]"
+                    className="text-[10px] text-[var(--pos-accent)] hover:text-[var(--pos-accent-dark)] flex items-center gap-1 font-medium active:text-[var(--pos-accent-dark)] min-h-[44px] px-2 rounded-lg hover:bg-[var(--pos-accent-tint)]"
                     data-testid="button-show-filters-mobile"
                   >
                     <Filter className="w-2.5 h-2.5" />
@@ -1572,7 +1573,7 @@ function GeneralEnquiriesContent() {
                 )}
                 <button
                   onClick={handleClear}
-                  className="text-[10px] text-slate-400 hover:text-slate-600 flex items-center gap-0.5"
+                  className="text-[10px] text-slate-400 hover:text-slate-600 flex items-center gap-1 min-h-[44px] px-2 rounded-lg hover:bg-[#F2F4F7]"
                   data-testid="button-new-search-mobile"
                 >
                   <Search className="w-2.5 h-2.5" />
@@ -1692,7 +1693,7 @@ function GeneralEnquiriesContent() {
               </div>
               <button
                 onClick={() => setShowFiltersPanel(false)}
-                className="p-2 sm:p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-[#F2F4F7] active:bg-[#E5E5E5] transition-colors"
+                className="p-2.5 sm:p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-[#F2F4F7] active:bg-[#E5E5E5] transition-colors min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center"
                 aria-label="Close filters panel"
               >
                 <X className="w-4 h-4" />

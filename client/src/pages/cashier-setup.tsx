@@ -342,19 +342,19 @@ export default function CashierSetup() {
     };
 
     const StepIndicator = ({ step, label, status }: { step: number; label: string; status: StepStatus }) => (
-        <div className="flex items-center gap-3 text-sm" data-testid={`step-${step}-indicator`}>
-            <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${status === 'loading' ? 'bg-[var(--pos-accent-tint)] border-[var(--pos-accent)]' : status === 'success' ? 'bg-emerald-100 border-emerald-300' : status === 'error' ? 'bg-red-100 border-red-300' : 'bg-[#F2F4F7] border-[#D6D6D6]'}`}>
+        <div className="flex items-center gap-2 sm:gap-3 text-sm min-h-[44px] py-1" data-testid={`step-${step}-indicator`}>
+            <div className={`w-9 h-9 sm:w-8 sm:h-8 rounded-full border-2 flex items-center justify-center shrink-0 ${status === 'loading' ? 'bg-[var(--pos-accent-tint)] border-[var(--pos-accent)]' : status === 'success' ? 'bg-emerald-100 border-emerald-300' : status === 'error' ? 'bg-red-100 border-red-300' : 'bg-[#F2F4F7] border-[#D6D6D6]'}`}>
                 {status === 'loading' && <Loader2 className="h-4 w-4 animate-spin text-[var(--pos-accent)]" />}
                 {status === 'success' && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
                 {status === 'error' && <AlertTriangle className="h-4 w-4 text-red-500" />}
                 {status === 'pending' && <Circle className="h-4 w-4 text-slate-300" />}
             </div>
-            <span className="font-semibold text-sm text-slate-700">
+            <span className="font-semibold text-xs sm:text-sm text-slate-700 flex-1 min-w-0">
                 Step {step}: {label}
             </span>
-            {status === 'loading' && <Badge variant="outline" className="text-xs text-[var(--pos-accent)] border-[var(--pos-accent-shadow)]">In Progress</Badge>}
-            {status === 'success' && <Badge variant="outline" className="text-xs text-emerald-500 border-emerald-200">Done</Badge>}
-            {status === 'error' && <Badge variant="outline" className="text-xs text-red-500 border-red-200">Failed</Badge>}
+            {status === 'loading' && <Badge variant="outline" className="text-[10px] sm:text-xs text-[var(--pos-accent)] border-[var(--pos-accent-shadow)] shrink-0">In Progress</Badge>}
+            {status === 'success' && <Badge variant="outline" className="text-[10px] sm:text-xs text-emerald-500 border-emerald-200 shrink-0">Done</Badge>}
+            {status === 'error' && <Badge variant="outline" className="text-[10px] sm:text-xs text-red-500 border-red-200 shrink-0">Failed</Badge>}
         </div>
     );
 
@@ -375,7 +375,7 @@ export default function CashierSetup() {
         return (
             <div className="min-h-screen bg-[#F2F4F7] flex items-center justify-center p-4" data-testid="cashier-setup-loading">
                 <Card className="w-full max-w-4xl rounded-2xl shadow-xl shadow-black/5 border-[#D6D6D6]/80 bg-white overflow-hidden">
-                    <CardContent className="p-12 flex flex-col items-center gap-4">
+                    <CardContent className="p-6 sm:p-12 flex flex-col items-center gap-4">
                         <Loader2 className="h-8 w-8 animate-spin text-[var(--pos-accent)]" />
                         <p className="text-slate-600">
                             {sessionLoading ? 'Checking session status...' : 'Validating cashier registration...'}
@@ -421,12 +421,12 @@ export default function CashierSetup() {
                             <div className="flex items-center gap-2 text-sm">
                                 <Calendar className="h-4 w-4 text-[#6B6B6B] shrink-0" />
                                 <span className="text-[#6B6B6B]">Date:</span>
-                                <span className="font-medium text-[#2E2E2E]">{new Date().toLocaleDateString('en-ZA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                                <span className="font-medium text-[#2E2E2E] break-words">{new Date().toLocaleDateString('en-ZA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
                             </div>
                         </div>
                         <Button
                             variant="outline"
-                            className="gap-2"
+                            className="gap-2 h-11 w-full sm:w-auto"
                             onClick={() => setLocation('/')}
                             data-testid="button-back-dashboard"
                         >
@@ -445,7 +445,7 @@ export default function CashierSetup() {
                     <CardTitle className="text-white text-lg">Cashier Setup</CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 sm:p-8 bg-white">
-                    <div className="mb-6 p-4 bg-[#F7F7F7] border border-[#D6D6D6] rounded-xl space-y-3" data-testid="step-indicators">
+                    <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-[#F7F7F7] border border-[#D6D6D6] rounded-xl space-y-1 sm:space-y-3" data-testid="step-indicators">
                         <StepIndicator step={1} label="Validate Cashier" status={step1Status} />
                         <StepIndicator step={2} label="Load Cash Offices" status={step2Status} />
                         <StepIndicator step={3} label="Start Session" status={step3Status} />
@@ -522,15 +522,17 @@ export default function CashierSetup() {
                                 <div className="flex-1">
                                     <p className="font-medium text-[#2E2E2E]">Active Session Found</p>
                                     <p className="text-xs text-[#6B6B6B] mt-0.5">Verified via validate-cashier API (POS_Cashier.IsActive = 1)</p>
-                                    <p className="text-sm text-[#6B6B6B] mt-1">
-                                        Office: <strong>{cashierDetails.const_CashOffice?.cashOfficeDesc || 'Unknown'}</strong>
-                                        {' | '}Float: <strong>R {(cashierDetails.cashFloat ?? 0).toFixed(2)}</strong>
-                                    </p>
+                                    <div className="text-sm text-[#6B6B6B] mt-1 space-y-0.5 sm:space-y-0">
+                                        <span>Office: <strong>{cashierDetails.const_CashOffice?.cashOfficeDesc || 'Unknown'}</strong></span>
+                                        <span className="hidden sm:inline">{' | '}</span>
+                                        <br className="sm:hidden" />
+                                        <span>Float: <strong>R {(cashierDetails.cashFloat ?? 0).toFixed(2)}</strong></span>
+                                    </div>
                                     <div className="mt-3 flex gap-2">
                                         <Button
                                             type="button"
                                             onClick={handleResumeSession}
-                                            className="bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] hover:from-[var(--pos-accent-dark)] hover:to-[var(--pos-accent-dark)] shadow-lg shadow-[var(--pos-accent-shadow)] text-white font-bold rounded-xl"
+                                            className="bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] hover:from-[var(--pos-accent-dark)] hover:to-[var(--pos-accent-dark)] shadow-lg shadow-[var(--pos-accent-shadow)] text-white font-bold rounded-xl h-11 w-full sm:w-auto"
                                             data-testid="button-resume-session"
                                         >
                                             Resume Session
@@ -548,7 +550,7 @@ export default function CashierSetup() {
                             <Input
                                 value={firstName}
                                 disabled
-                                className="bg-[#F2F4F7] border-slate-300 text-slate-800 font-medium"
+                                className="bg-[#F2F4F7] border-slate-300 text-slate-800 font-medium h-11"
                                 data-testid="input-cashier-name"
                             />
                         </div>
@@ -558,7 +560,7 @@ export default function CashierSetup() {
                             <Input
                                 value={lastName}
                                 disabled
-                                className="bg-[#F2F4F7] border-slate-300 text-slate-800 font-medium"
+                                className="bg-[#F2F4F7] border-slate-300 text-slate-800 font-medium h-11"
                                 data-testid="input-cashier-surname"
                             />
                         </div>
@@ -568,7 +570,7 @@ export default function CashierSetup() {
                             <Input
                                 value={String(userId)}
                                 disabled
-                                className="bg-[#F2F4F7] border-slate-300 text-slate-800 font-mono"
+                                className="bg-[#F2F4F7] border-slate-300 text-slate-800 font-mono h-11"
                                 data-testid="input-cashier-id"
                             />
                         </div>
@@ -614,7 +616,7 @@ export default function CashierSetup() {
                                     value={ledgerVoteDisplay}
                                     disabled
                                     title={ledgerVoteDisplay}
-                                    className={`bg-[#F7F7F7] rounded-xl border border-[#D6D6D6] font-mono text-[11px] ${hasValidVote ? 'text-slate-800 font-medium' : selectedOffice ? 'text-amber-600 border-amber-300' : 'text-slate-400'}`}
+                                    className={`bg-[#F7F7F7] rounded-xl border border-[#D6D6D6] font-mono text-[11px] h-11 truncate ${hasValidVote ? 'text-slate-800 font-medium' : selectedOffice ? 'text-amber-600 border-amber-300' : 'text-slate-400'}`}
                                     placeholder="Select a cash office to view ledger vote"
                                     data-testid="input-ledger-vote"
                                 />
@@ -638,7 +640,7 @@ export default function CashierSetup() {
                                                 type="button"
                                                 variant="ghost"
                                                 size="sm"
-                                                className="h-7 px-2 text-xs text-[var(--pos-accent)] hover:text-[var(--pos-accent-dark)]"
+                                                className="h-11 sm:h-7 px-3 sm:px-2 text-xs text-[var(--pos-accent)] hover:text-[var(--pos-accent-dark)]"
                                                 onClick={() => {
                                                     setConfigError('');
                                                     setPaymentOptions([]);
@@ -675,7 +677,7 @@ export default function CashierSetup() {
                                     </div>
                                 )}
 
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                     <div className="bg-[#F7F7F7] border border-[#D6D6D6] rounded-xl p-4" data-testid="card-payment-options">
                                         <div className="flex items-center justify-between mb-3">
                                             <div className="flex items-center gap-2">
