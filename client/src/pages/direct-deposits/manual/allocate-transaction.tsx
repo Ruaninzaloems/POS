@@ -382,7 +382,7 @@ export default function AllocateTransaction() {
         return;
       }
 
-      const costScheduleID = rawItem.costScheduleID || rawItem.costSchedule_ID || rawItem.id || rawItem.clearanceId || result.accountId || 0;
+      const costScheduleID = rawItem.costScheduleID || rawItem.costSchedule_ID || rawItem.id || rawItem.clearanceId || rawItem.clearanceFormattedId || rawItem.clearanceStaging_ID || result.accountId || 0;
       const accountID = rawItem.account_ID || rawItem.accountId || rawItem.accountID || result.accountId || 0;
 
       console.log(`[Clearance] Falling back to legacy endpoints: costScheduleID=${costScheduleID}, accountID=${accountID}`);
