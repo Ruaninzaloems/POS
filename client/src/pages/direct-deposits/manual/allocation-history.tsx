@@ -205,6 +205,17 @@ export default function AllocationHistory() {
 
   const isManual = (item: AllocationRecord) => item.fileName === 'Manual Allocation' || item.fileName === 'Not applicable';
 
+  const getPaymentTypeName = (id: number) => {
+      switch(id) {
+          case 1: return 'Cash';
+          case 2: return 'Cheque';
+          case 3: return 'Credit Card';
+          case 4: return 'Postal Order';
+          case 5: return 'EFT';
+          default: return `Type ${id}`;
+      }
+  };
+
   const formatDate = (d: string | null) => {
       if (!d) return '-';
       try { return new Date(d).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric' }); } catch { return '-'; }
