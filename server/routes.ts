@@ -3548,21 +3548,39 @@ export async function registerRoutes(
         delete payload.reference;
       }
 
-      if (payload.receiptDate && payload.receiptDate.includes('T')) {
-        const d = new Date(payload.receiptDate);
-        if (!isNaN(d.getTime())) {
-          const dd = String(d.getDate()).padStart(2, '0');
-          const mm = String(d.getMonth() + 1).padStart(2, '0');
-          const yyyy = d.getFullYear();
-          payload.receiptDate = `${dd}/${mm}/${yyyy}`;
-        }
-      }
-
       if (payload.accountId && !payload.accountNumber) {
         payload.accountNumber = String(payload.accountId).padStart(12, '0');
       }
 
-      console.log(`[DD Submit] billType=${payload.billType}, posItemId=${payload.posItemId}, reconId=${payload.reconId}, userId=${payload.userId}, cashierId=${payload.cashierId}, cashOfficeId=${payload.cashOfficeId}, paidAmount=${payload.paidAmount}, paymentTypeId=${payload.paymentTypeId}, paymentReference=${payload.paymentReference}, receiptDate=${payload.receiptDate}, accountNumber=${payload.accountNumber}`);
+      const billType = String(payload.billType);
+      if (billType === '1' && payload.accountId && payload.posItemId) {
+        try {
+          const loadBody = {
+            posItemID: payload.posItemId,
+            accountID: payload.accountId,
+            transactionAmount: payload.amount || payload.paidAmount,
+          };
+          console.log('[DD Submit] Calling load-details-consumer-services first:', JSON.stringify(loadBody));
+          const loadResult = await platinumPost(session, "/api/billing-direct-deposit-allocation/load-details-consumer-services", loadBody, undefined, { timeout: 30000 });
+          console.log('[DD Submit] load-details-consumer-services result:', loadResult?._error ? `ERROR: ${JSON.stringify(loadResult)}` : 'OK');
+        } catch (loadErr: any) {
+          console.warn('[DD Submit] load-details-consumer-services failed (continuing):', loadErr.message);
+        }
+      } else if (billType === '1' && payload.posItemId) {
+        try {
+          const loadBody = {
+            posItemID: payload.posItemId,
+            transactionAmount: payload.amount || payload.paidAmount,
+          };
+          console.log('[DD Submit] Calling load-details-consumer-services (no accountId):', JSON.stringify(loadBody));
+          const loadResult = await platinumPost(session, "/api/billing-direct-deposit-allocation/load-details-consumer-services", loadBody, undefined, { timeout: 30000 });
+          console.log('[DD Submit] load-details-consumer-services result:', loadResult?._error ? `ERROR: ${JSON.stringify(loadResult)}` : 'OK');
+        } catch (loadErr: any) {
+          console.warn('[DD Submit] load-details-consumer-services failed (continuing):', loadErr.message);
+        }
+      }
+
+      console.log(`[DD Submit] billType=${billType}, posItemId=${payload.posItemId}, reconId=${payload.reconId}, userId=${payload.userId}, cashierId=${payload.cashierId}, cashOfficeId=${payload.cashOfficeId}, paidAmount=${payload.paidAmount}, paymentTypeId=${payload.paymentTypeId}, paymentReference=${payload.paymentReference}, receiptDate=${payload.receiptDate}, accountNumber=${payload.accountNumber}`);
       console.log('[DD Submit] Full payload:', JSON.stringify(payload));
       const data = await platinumPost(session, "/api/billing-direct-deposit-allocation/submit-details-data", payload, undefined, { timeout: 55000 });
       console.log('[DD Submit] API response:', data?._error ? `ERROR: ${JSON.stringify(data)}` : JSON.stringify(data));
