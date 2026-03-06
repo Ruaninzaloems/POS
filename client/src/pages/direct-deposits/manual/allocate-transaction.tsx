@@ -1131,7 +1131,8 @@ export default function AllocateTransaction() {
           });
           const saParts = saFormatter.formatToParts(now);
           const getPart = (type: string) => saParts.find(p => p.type === type)?.value || '';
-          const receiptDate = `${getPart('year')}-${getPart('month')}-${getPart('day')}T${getPart('hour')}:${getPart('minute')}:${getPart('second')}`;
+          const receiptDateISO = `${getPart('year')}-${getPart('month')}-${getPart('day')}T${getPart('hour')}:${getPart('minute')}:${getPart('second')}`;
+          const receiptDate = `${getPart('day')}/${getPart('month')}/${getPart('year')}`;
           const transactionDate = transaction.dateOfTransaction || receiptDate;
 
           const ALLOC_TYPE_ORDER: Record<string, number> = {
@@ -1297,6 +1298,7 @@ export default function AllocateTransaction() {
                       billType,
                       paymentTypeId: 5,
                       accountId,
+                      totalAmount: line.amount,
                       amount: line.amount,
                       outstandingAmount: line.outstandingAmount ?? line.amount,
                       description: line.description || transaction.note || '',
@@ -1305,20 +1307,6 @@ export default function AllocateTransaction() {
                       receiptDate,
                       cashFloat: 0,
                   };
-              }
-
-              if (billType === '1' && submitData) {
-                  try {
-                      console.log(`[Direct Deposit] Calling load-details-consumer-services for account ${submitData.accountId}...`);
-                      await platinumLoadDetailsConsumerServices({
-                          posItemID: posItemId,
-                          accountID: submitData.accountId,
-                          transactionAmount: submitData.amount || submitData.paidAmount,
-                      });
-                      console.log(`[Direct Deposit] load-details-consumer-services completed for account ${submitData.accountId}`);
-                  } catch (loadErr: any) {
-                      console.warn(`[Direct Deposit] load-details-consumer-services failed (continuing):`, loadErr?.message);
-                  }
               }
 
               try {
