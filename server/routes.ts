@@ -3543,7 +3543,26 @@ export async function registerRoutes(
         payload.cashOfficeId = resolvedCashOfficeId;
       }
 
-      console.log(`[DD Submit] billType=${payload.billType}, posItemId=${payload.posItemId}, reconId=${payload.reconId}, userId=${payload.userId}, cashierId=${payload.cashierId}, paidAmount=${payload.paidAmount}, paymentTypeId=${payload.paymentTypeId}`);
+      if (payload.reference !== undefined && payload.paymentReference === undefined) {
+        payload.paymentReference = payload.reference;
+        delete payload.reference;
+      }
+
+      if (payload.receiptDate && payload.receiptDate.includes('T')) {
+        const d = new Date(payload.receiptDate);
+        if (!isNaN(d.getTime())) {
+          const dd = String(d.getDate()).padStart(2, '0');
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          const yyyy = d.getFullYear();
+          payload.receiptDate = `${dd}/${mm}/${yyyy}`;
+        }
+      }
+
+      if (payload.accountId && !payload.accountNumber) {
+        payload.accountNumber = String(payload.accountId).padStart(12, '0');
+      }
+
+      console.log(`[DD Submit] billType=${payload.billType}, posItemId=${payload.posItemId}, reconId=${payload.reconId}, userId=${payload.userId}, cashierId=${payload.cashierId}, cashOfficeId=${payload.cashOfficeId}, paidAmount=${payload.paidAmount}, paymentTypeId=${payload.paymentTypeId}, paymentReference=${payload.paymentReference}, receiptDate=${payload.receiptDate}, accountNumber=${payload.accountNumber}`);
       console.log('[DD Submit] Full payload:', JSON.stringify(payload));
       const data = await platinumPost(session, "/api/billing-direct-deposit-allocation/submit-details-data", payload, undefined, { timeout: 55000 });
       console.log('[DD Submit] API response:', data?._error ? `ERROR: ${JSON.stringify(data)}` : JSON.stringify(data));
