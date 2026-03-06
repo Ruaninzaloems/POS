@@ -1,0 +1,407 @@
+Francois Naude Bhargav Reddy
+ 
+Please review below for submit-details-data and Francois Naude please let me know if any issue.
+ 
+Always Required (all BillTypes)
+ 
+ 
+BillType = "1" — Consumer Services Payment
+ 
+ 
+ 
+BillType = "4" — Miscellaneous Payment
+ 
+ 
+BillType = "6" — Clearance Payment
+ 
+ 
+Must Required
+ 
+Im validating that i send requried info from front end will give report once done
+ 
+Kiransinh Chavada can you work on those 2 above pelase
+ 
+Francois Naude
+Kiransinh Chavada can you work on those 2 above pelase
+Bug 2 - release request body and Now I am looking Bug 3
+ 
+Bugs 1-3 (existing, from before):
+paymentTypeID always stored as 3 (Credit Card) instead of the 5 (EFT) we send ? WHY FOR DIRECT DEPOSITS? 
+paymentReference built from lastName+initials instead of the reference field
+Account details endpoint returns empty for completed jobs
+Bug 4 (new — from this payload audit):
+billType "3" (Group Payment) is not documented in the API spec at all. We're sending it and it seems to work, but needs official confirmation from the Platinum dev on whether it's valid and what fields are required.
+Bug 5 (new — generic import):
+Asking the Platinum developer to confirm whether submit-generic-import accepts receiptDate, paymentTypeId, and postToCashbook in the JSON payload, and what CSV columns beyond AccountNumber and Amount the parser supports.
+POS-Side Fixes Applied (documented in same file):
+posItemId and reconId now validated > 0 before submission (blocked with error if invalid)
+accountId validated > 0 for billType "1" and "6"
+clearanceId validated > 0 for billType "6"
+miscPaymentGroupId validated > 0 for billType "4"
+initials no longer sent as empty string — always has a value now
+totalAmount now sent for billType "6" (was missing)
+Removed extra costScheduleId field from billType "6" (not in spec)
+Removed duplicate PaymentTypeId (capital P) — only paymentTypeId sent now
+Each billType now has its own payload branch instead of sharing a generic one
+ 
+Francois Naude
+Bug 2: paymentReference constructed from lastName + initials instead of reference field  Endpoint: POST /api/billing-direct-deposit-allocation/submit-details-data  For Miscellaneous Payment (billType 4 / Direct Income) allocations, the API constructs the paymentReference stored in the job record fr…
+Bug 3 - Fixed - Pull request 25822: job-account-details/{jobId} - Repos
+ 
+Francois Naude 
+ 
+GET /api/BulkProgress/job-account-details/{jobId}
+ 
+  Request
+ 
+  Route parameter:
+ 
+  
+ 
+  No request body. Requires Authorization: Bearer <token> header.
+ 
+  GET /api/BulkProgress/job-account-details/26134
+
+  Authorization: Bearer <token>
+ 
+  ---
+
+  Response Cases
+ 
+  200 OK — Consumer Services job (all successful)
+ 
+  Account number is a valid non-zero integer string → joins Cons_Account + Cons_Name.
+ 
+  [
+
+    {
+
+      "accountNo": "100234",
+
+      "accountName": "J VAN DER MERWE",
+
+      "allocatedAmount": 1500.00,
+
+      "status": "Success",
+
+      "errorMessage": null
+
+    },
+
+    {
+
+      "accountNo": "100891",
+
+      "accountName": "P SMITH",
+
+      "allocatedAmount": 320.50,
+
+      "status": "Success",
+
+      "errorMessage": null
+
+    }
+
+  ]
+ 
+  ---
+
+  200 OK — Miscellaneous Payment job (all successful)
+ 
+  AccountNumber = "0" → joins Const_MiscPaymentGroup via GroupID for name; accountNo is null.
+ 
+  [
+
+    {
+
+      "accountNo": null,
+
+      "accountName": "Building Control - Building Plan Fees",
+
+      "allocatedAmount": 448.75,
+
+      "status": "Success",
+
+      "errorMessage": null
+
+    }
+
+  ]
+ 
+  ---
+
+  200 OK — Mixed job (some success, some error)
+ 
+  Rows with IsAllocated = 0 and an error message get status: "Error".
+ 
+  [
+
+    {
+
+      "accountNo": "100234",
+
+      "accountName": "J VAN DER MERWE",
+
+      "allocatedAmount": 1500.00,
+
+      "status": "Success",
+
+      "errorMessage": null
+
+    },
+
+    {
+
+      "accountNo": "100999",
+
+      "accountName": null,
+
+      "allocatedAmount": 750.00,
+
+      "status": "Error",
+
+      "errorMessage": "Account not found"
+
+    },
+
+    {
+
+      "accountNo": null,
+
+      "accountName": "Building Control - Building Plan Fees",
+
+      "allocatedAmount": 448.75,
+
+      "status": "Success",
+
+      "errorMessage": null
+
+    }
+
+  ]
+ 
+  accountName can be null on error rows if the account number does not exist in Cons_Account (no join match).
+ 
+  ---
+
+  200 OK — Job with no detail records
+ 
+  Returns an empty array — no 404, the endpoint always returns 200.
+ 
+  []
+ 
+  ---
+
+  500 Internal Server Error
+ 
+  Unhandled exception in service/repo (e.g. DB connection failure). No explicit try/catch in the controller — framework default error response.
+ 
+  {
+
+    "type": "https://tools.ietf.org/html/rfc7231#section-6.6.1",
+
+    "title": "Internal Server Error",
+
+    "status": 500
+
+  }
+ 
+  ---
+
+  Response Field Reference
+ 
+ 
+ 
+Francois Naude
+Bugs 1-3 (existing, from before):    paymentTypeID always stored as 3 (Credit Card) instead of the 5 (EFT) we send ? WHY FOR DIRECT DEPOSITS? paymentReference built from lastName+initials instead of the reference fieldAccount details endpoint returns empty for completed jobs  Bug 4 (new — from this…
+Bhargav Reddy please look into this endpoints issue
+ 
+Bug 1: paymentTypeID always stored as 3 (Credit Card) — should be 5 (EFT)
+Severity: High
+Endpoint: POST /api/billing-direct-deposit-allocation/submit-details-data
+Also visible in: GET /api/BulkProgress/get-bulk-allocation-list
+Problem:
+When the POS submits a direct deposit allocation via submit-details-data, we send paymentTypeId: 5 (EFT) in the request body. However, the job record stored by the API always has paymentTypeID: 3 (Credit Card). Direct deposits are bank EFT transactions by definition — they can never be credit card payments. The API appears to ignore the paymentTypeId field in the submission payload and default to 3.
+What we send:
+{  "posItemId": 2692,  "reconId": 16858,  "userId": 209,  "paymentTypeId": 5,  "billType": "4",  "reference": "0",  "financialYear": "2025/2026",  "transactionDate": "2026-03-06T09:15:00",  "paidAmount": 448.75}
+What the API stores:
+{  "directDepositJob_ID": 26135,  "paymentTypeID": 3,  "process": "Miscellaneous Payment",  "posItemID": 2692}
+Expected: The API should store paymentTypeID: 5 (EFT) when paymentTypeId: 5 is sent. All direct deposit allocations are EFT by nature.
+Questions:
+Does submit-details-data expect the field as paymentTypeId (camelCase), PaymentTypeId (PascalCase), or paymentTypeID (with capital ID)?
+Is the paymentTypeID hardcoded to 3 somewhere in the allocation processing logic?
+If the field is intentionally ignored, should all direct deposit jobs default to 5 (EFT) instead of 3 (Credit Card)?
+Bug 2: paymentReference constructed from lastName + initials instead of reference field
+Severity: High
+Endpoint: POST /api/billing-direct-deposit-allocation/submit-details-data
+Also visible in: GET /api/BulkProgress/get-bulk-allocation-list
+Problem:
+For Miscellaneous Payment (billType "4" / Direct Income) allocations, the API constructs the paymentReference stored in the job record from the initials and lastName fields of the submission, rather than from the reference field. This produces garbage references. For example, when we submit an allocation to "Building Control - Additional Tariff - Penalty", the name derivation produces lastName: "Building" and initials: "C-AT-P", and the API stores paymentReference: "C-AT-P Building" instead of the actual bank reference.
+What we send:
+{  "posItemId": 2692,  "reference": "0",  "lastName": "MAGTAPE CREDIT USER 9663 SEQ/Erf Number: 1925 Area: GEORGE",  "initials": "N",  "description": "Building Control - Additional Tariff - Penalty"}
+What the API stores:
+{  "directDepositJob_ID": 26135,  "paymentReference": "C-AT-P Building"}
+Expected: The paymentReference in the job record should come from the reference field in the submission payload — NOT from initials + lastName.
+POS-side fix already applied:
+We now send reference = the actual POS item bank reference
+We send lastName = the bank note/description
+We send initials = always populated (never empty string)
+
+This mitigates the worst of the garbage, but the API should still be fixed to use the reference field as the canonical source for paymentReference.
+Bug 3: DirectDepositErrors/account-details/{jobId} returns empty for completed jobs
+Severity: High
+Endpoint: GET /api/DirectDepositErrors/account-details/{jobId}
+Problem:
+The existing endpoint only returns data for jobs that have error status. When called for successfully completed jobs, it returns an empty array []. The POS Allocation History needs to display the full list of allocated accounts for any job — regardless of whether it completed successfully, partially, or with errors. This is required for audit trails.
+Test cases:
+Job ID 26134, POS Item 2675 — completed Consumer Services allocation, returns []
+Job ID 26135, POS Item 2692 — completed Miscellaneous Payment allocation, returns []
+Recommended fix — new endpoint:
+GET /api/BulkProgress/job-account-details/{jobId}
+Why a new endpoint:
+DirectDepositErrors/account-details has a clear semantic meaning (errors only). Changing it could break other consumers.
+BulkProgress is the correct service group (it already hosts direct-deposit/{jobId}, get-bulk-allocation-list, etc.).
+Expected response format:
+[  {    "accountNo": "100234",    "accountName": "J VAN DER MERWE",    "allocatedAmount": 1500.00,    "status": "Success",    "errorMessage": null  },  {    "accountNo": "200891",    "accountName": "M JACOBS",    "allocatedAmount": 500.00,    "status": "Error",    "errorMessage": "Account suspended — cannot allocate"  }]
+The POS front-end is already coded to consume this data. The only change needed on our side is updating the API URL.
+Bug 4: submit-generic-import — Confirm accepted payload fields
+Severity: Medium
+Endpoint: POST /api/billing-direct-deposit-allocation/submit-generic-import
+Context:
+The POS now sends the following JSON payload to submit-generic-import:
+{  "fileContent": "AccountNumber,Amount,ReceiptDate,PaymentTypeId\n100001234,1500.00,2026-03-06,5\n100005678,750.50,2026-03-06,5",  "fileName": "generic_import.csv",  "paymentReference": "Batch 2026-03",  "cashBookId": 1,  "userId": 209,  "finYear": "2025/2026",  "receiptDate": "2026-03-06T00:00:00",  "paymentTypeId": 5,  "postToCashbook": true}
+Questions:
+Does the API accept receiptDate in the JSON payload? If so, does it apply to all rows in the CSV, or is it ignored in favour of per-row ReceiptDate in the CSV?
+Does the API accept paymentTypeId in the JSON payload? Should it be paymentTypeId (camelCase), PaymentTypeId (PascalCase), or paymentTypeID?
+Does the API accept postToCashbook (boolean)? If yes, what is the default when not sent?
+Does the API CSV parser support ReceiptDate and PaymentTypeId as optional columns? If not, what columns are supported beyond AccountNumber and Amount?
+What is the full list of accepted CSV columns? Please provide the complete CSV schema so we can generate an accurate import template.
+Summary
+ 
+#	Issue	Severity	Action Required
+1	paymentTypeID stored as 3 instead of 5	High	Respect paymentTypeId from request, or default to 5 (EFT)
+2	paymentReference built from name fields	High	Use reference field as source
+3	Account details empty for completed jobs	High	New endpoint BulkProgress/job-account-details/{jobId}
+4	Generic import fields undocumented	Medium	 
+ 
+ 
+Above my list
+ 
+So please if you ahve done already ignore it
+ 
+but still need the others
+ 
+Kiransinh Chavada
+Bhargav Reddy please look into this endpoints issue
+Currently It's Default value, so you want me to use the PaymentTypeId sent from the request body?
+ 
+Bhargav Reddy
+Currently It's Default value, so you want me to use the PaymentTypeId sent from the request body?
+please check V1 logic and based on make changes
+ 
+Francois Naude
+Bug 1: paymentTypeID always stored as 3 (Credit Card) — should be 5 (EFT)  Severity: High  Endpoint: POST /api/billing-direct-deposit-allocation/submit-details-data  Also visible in: GET /api/BulkProgress/get-bulk-allocation-list  Problem:  When the POS submits a direct deposit allocation via submi…
+Bhargav Reddy Are you currently working on the Direct Deposit endpoints issue?
+ 
+Was all of the above bugs sorted?
+ 
+Kiransinh Chavada 
+Bhargav Reddy Are you currently working on the Direct Deposit endpoints issue?
+
+Yes working on 1 and 2
+ 
+Bug 4: submit-generic-import — Confirm accepted payload fields .,  Bug 3: DirectDepositErrors/account-details/{jobId} returns empty for completed jobs , Bug 2: paymentReference constructed from lastName + initials instead of reference field, Bug 1: paymentTypeID always stored as 3 (Credit Card) — should be 5 (EFT)
+ 
+Francois Naude
+Was all of the above bugs sorted?
+its' Direct Deposit issue?
+ 
+yes and one generic import
+ 
+Pull request 25824: POS Direct Deposit Issues - Repos
+ 
+PR for the Bug 1 and Bug 2
+ 
+
+	
+            Azure DevOps Services | Sign In
+        
+
+ 
+Hi Francois Naude, for the Submit-generic-import. below is the request body format. please check and try like that
+ 
+Request URL
+https://localhost:7019/api/billing-direct-deposit-allocation/submit-generic-import
+ 
+ 
+Request Body: 
+{  "cashOfficeId": 1,  "cashierId": 9495,  "userId": 209,  "finYear": "2025/2026",  "postToCashbook": false,  "payments": [    {      "receiptDate": "27/02/2026",      "accountNumber": "000000013088",      "amount": 300.00,      "paymentTypeId": 1    },    {      "receiptDate": "27/02/2026",      "accountNumber": "000000022906",      "amount": 1500.00,      "paymentTypeId": 3    },    {      "receiptDate": "15/01/2026",      "accountNumber": "000000045123",      "amount": 750.50,      "paymentTypeId": 4    }  ]}
+ 
+ 
+
+Response body
+ 
+{
+  "isSuccess": true,
+  "jobId": 25896,
+  "message": "Import accepted — processing has started",
+  "totalCount": 3
+}
+ 
+ 
+ 
+Francois Naude
+Bug 1: paymentTypeID always stored as 3 (Credit Card) — should be 5 (EFT)  Severity: High  Endpoint: POST /api/billing-direct-deposit-allocation/submit-details-data  Also visible in: GET /api/BulkProgress/get-bulk-allocation-list  Problem:  When the POS submits a direct deposit allocation via submi…
+its Done - Bug 3: DirectDepositErrors/account-details/{jobId} returns empty for completed jobs
+ 
+Bhargav Reddy
+Hi Francois Naude, for the Submit-generic-import. below is the request body format. please check and try like that
+Check this for Bug 4
+ 
+Bug 5:
+ 
+Request Endpoint: /api/billing-payment/print-receipt
+ 
+ 
+Response Data: {
+  "ids": [
+    0
+  ],
+  "receiptNos": [
+    "string"
+  ],
+  "isReprint": true
+}
+The above request will give you the PDF output,
+ 
+ 
+Request URL: api/billing-payment/pos-multi-receipt-print?receiptId=12434
+ 
+the above endpoint will give you the json data
+ 
+Response Data: {
+  "id": 0,
+  "receiptNo": "string",
+  "receiptDate": "string",
+  "cashierName": "string",
+  "cashOfficeName": "string",
+  "amount": 0.0,
+  "vatAmount": 0.0,
+  "tenderAmount": 0.0,
+  "changeAmount": 0.0,
+  "paymentTypeId": 0,
+  "accName": "string",
+  "accountId": "string",
+  "billType": "string",
+  "isMiscPayment": false,
+  "description": "string"
+}
+ 
+Bhargav Reddy
+Check this for Bug 4
+Just waiting for deploy
+ 
+And bugs 1 and 2?
+ 
+also sorted
+ 

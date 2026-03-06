@@ -1242,7 +1242,6 @@ export default function AllocateTransaction() {
                       reference: actualReference,
                       note: line.note || transaction.note || '',
                       receiptDate,
-                      cashFloat: 0,
                   };
               } else if (billType === '6') {
                   const accountId = line.accountId || 0;
@@ -1279,7 +1278,6 @@ export default function AllocateTransaction() {
                       reference: actualReference,
                       note: line.note || transaction.note || '',
                       receiptDate,
-                      cashFloat: 0,
                   };
               } else if (billType === '1') {
                   const accountId = line.accountId || 0;

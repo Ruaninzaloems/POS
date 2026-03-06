@@ -3519,7 +3519,9 @@ export async function registerRoutes(
       if (!payload.userId || payload.userId <= 0) {
         payload.userId = session.userId;
       }
-      console.log('[DD Submit] Request body (userId resolved to ' + payload.userId + '):', JSON.stringify(payload));
+      delete payload.cashierId;
+      console.log(`[DD Submit] billType=${payload.billType}, posItemId=${payload.posItemId}, reconId=${payload.reconId}, userId=${payload.userId}, paidAmount=${payload.paidAmount}, paymentTypeId=${payload.paymentTypeId}`);
+      console.log('[DD Submit] Full payload:', JSON.stringify(payload));
       const data = await platinumPost(session, "/api/billing-direct-deposit-allocation/submit-details-data", payload, undefined, { timeout: 55000 });
       console.log('[DD Submit] API response:', data?._error ? `ERROR: ${JSON.stringify(data)}` : JSON.stringify(data));
       handlePlatinumResult(res, data);
