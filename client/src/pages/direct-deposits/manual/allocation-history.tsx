@@ -174,8 +174,53 @@ export default function AllocationHistory() {
       setJobAccountDetails(null);
       setDetailsLoading(true);
       try {
-          const accountDetails = await fetchDirectDepositJobAccountDetails(tx.directDepositJob_ID);
-          setJobAccountDetails(Array.isArray(accountDetails) ? accountDetails : accountDetails?.items || accountDetails?.data || null);
+          const [accountDetails, bulkProgressDetails, jobDetails] = await Promise.allSettled([
+              fetchDirectDepositJobAccountDetails(tx.directDepositJob_ID),
+              fetchBulkProgressDirectDeposit(tx.directDepositJob_ID),
+              fetchDirectDepositJobDetails(tx.directDepositJob_ID),
+          ]);
+
+          console.log('[AllocationHistory] account-details response:', accountDetails.status === 'fulfilled' ? accountDetails.value : accountDetails.reason?.message);
+          console.log('[AllocationHistory] bulk-progress-dd response:', bulkProgressDetails.status === 'fulfilled' ? bulkProgressDetails.value : bulkProgressDetails.reason?.message);
+          console.log('[AllocationHistory] job-details response:', jobDetails.status === 'fulfilled' ? jobDetails.value : jobDetails.reason?.message);
+
+          let details: any[] | null = null;
+
+          if (accountDetails.status === 'fulfilled') {
+              const ad = accountDetails.value;
+              const items = Array.isArray(ad) ? ad : ad?.items || ad?.data || null;
+              if (items && items.length > 0) {
+                  details = items;
+              }
+          }
+
+          if (!details && bulkProgressDetails.status === 'fulfilled') {
+              const bp = bulkProgressDetails.value;
+              const items = bp?.accountDetails || bp?.accounts || bp?.items || bp?.data || (Array.isArray(bp) ? bp : null);
+              if (items && items.length > 0) {
+                  details = items;
+              } else if (bp && typeof bp === 'object' && !Array.isArray(bp)) {
+                  const accountNo = bp.accountNo || bp.accountNumber || bp.account_No;
+                  if (accountNo) {
+                      details = [bp];
+                  }
+              }
+          }
+
+          if (!details && jobDetails.status === 'fulfilled') {
+              const jd = jobDetails.value;
+              const items = jd?.accountDetails || jd?.accounts || jd?.items || jd?.data || (Array.isArray(jd) ? jd : null);
+              if (items && items.length > 0) {
+                  details = items;
+              } else if (jd && typeof jd === 'object' && !Array.isArray(jd)) {
+                  const accountNo = jd.accountNo || jd.accountNumber || jd.account_No;
+                  if (accountNo) {
+                      details = [jd];
+                  }
+              }
+          }
+
+          setJobAccountDetails(details);
       } catch (err) {
           console.error('[AllocationHistory] Failed to load job account details:', err);
       } finally {
