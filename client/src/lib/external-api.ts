@@ -630,32 +630,24 @@ export interface InstitutionSearchResult {
 }
 
 export async function searchInstitutions(query: string): Promise<InstitutionSearchResult[]> {
-    try {
-        const params = new URLSearchParams();
-        params.append('name', query);
-        const res = await apiFetch(`/api/platinum/const-institutions/search?${params.toString()}`);
-        if (res.ok) {
-            const data = await res.json();
-            return Array.isArray(data) ? data : [];
-        }
-    } catch (e) {
-        console.error("Failed to search institutions", e);
+    const params = new URLSearchParams();
+    params.append('name', query);
+    const res = await apiFetch(`/api/platinum/const-institutions/search?${params.toString()}`);
+    if (!res.ok) {
+        throw new Error(`Failed to search institutions from API (status ${res.status})`);
     }
-    return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
 }
 
 export async function fetchAccountsByGroup(institutionId: number): Promise<any[]> {
-    try {
-        const res = await apiFetch(`/api/platinum/receipting-account-group-payment/search-accounts-by-group?institutionId=${institutionId}`);
-        if (res.ok) {
-            const data = await res.json();
-            const arr = Array.isArray(data) ? data : (data?.value && Array.isArray(data.value) ? data.value : []);
-            return arr;
-        }
-    } catch (e) {
-        console.error("[fetchAccountsByGroup] Failed to fetch accounts for institution", institutionId, e);
+    const res = await apiFetch(`/api/platinum/receipting-account-group-payment/search-accounts-by-group?institutionId=${institutionId}`);
+    if (!res.ok) {
+        throw new Error(`Failed to fetch accounts for institution ${institutionId} (status ${res.status})`);
     }
-    return [];
+    const data = await res.json();
+    const arr = Array.isArray(data) ? data : (data?.value && Array.isArray(data.value) ? data.value : []);
+    return arr;
 }
 
 export async function fetchAccounts(criteria: any): Promise<any[]> {

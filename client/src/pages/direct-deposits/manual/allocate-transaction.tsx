@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { ArrowLeft, Plus, Trash2, CheckCircle, AlertCircle, Upload, X, Loader2, Search, Banknote, Building2, FileCheck, Receipt, CreditCard, RotateCcw, FileSpreadsheet, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Download, Eye, Zap } from 'lucide-react';
-import { AllocationLine, Account, ClearanceCostSchedule, platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, platinumLoadDetailsPaymentGrouping, platinumLoadDetailsPaymentGroupingInstitutionData, platinumLoadDetailsConsumerServices, platinumLoadConfirmPaymentDetails, platinumLoadDetailsClearance, platinumGetClearanceDetailsInfo, platinumGetConsumerDetailsData, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, platinumDDClearanceAutocomplete, platinumSearchClearanceIds, platinumGetClearanceData, platinumGetGroupPaymentDetails, fetchMiscPaymentGroups, rebuildFullAccount, platinumSearchAccountsPayment, fetchActiveFinYear, fetchPlatinumUserInfo } from '@/lib/external-api';
+import { ArrowLeft, Plus, Trash2, CheckCircle, AlertCircle, Upload, X, Loader2, Search, Banknote, Building2, FileCheck, Receipt, CreditCard, RotateCcw, FileSpreadsheet, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Download, Eye, Zap, Landmark } from 'lucide-react';
+import { AllocationLine, Account, ClearanceCostSchedule, platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, platinumLoadDetailsPaymentGrouping, platinumLoadDetailsPaymentGroupingInstitutionData, platinumLoadDetailsConsumerServices, platinumLoadConfirmPaymentDetails, platinumLoadDetailsClearance, platinumGetClearanceDetailsInfo, platinumGetConsumerDetailsData, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, platinumDDClearanceAutocomplete, platinumSearchClearanceIds, platinumGetClearanceData, platinumGetGroupPaymentDetails, fetchMiscPaymentGroups, rebuildFullAccount, platinumSearchAccountsPayment, fetchActiveFinYear, fetchPlatinumUserInfo, searchInstitutions, fetchAccountsByGroup } from '@/lib/external-api';
 import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import { AccountEnquiryDialog } from '@/components/account-enquiry-dialog';
@@ -33,7 +33,7 @@ interface DDSearchResult {
   name: string;
   oldAccountCode?: string;
   outstandingAmount?: number;
-  type: 'ACCOUNT' | 'CLEARANCE' | 'DIRECT' | 'GROUP';
+  type: 'ACCOUNT' | 'CLEARANCE' | 'DIRECT' | 'GROUP' | 'INSTITUTION';
   description?: string;
   rawData?: any;
 }
@@ -60,7 +60,7 @@ export default function AllocateTransaction() {
   const [linesPage, setLinesPage] = useState(1);
   const LINES_PER_PAGE = 10;
   
-  const [searchScope, setSearchScope] = useState<'ALL' | 'ACCOUNT' | 'PREPAID' | 'CLEARANCE' | 'DIRECT' | 'GROUP'>('ALL');
+  const [searchScope, setSearchScope] = useState<'ALL' | 'ACCOUNT' | 'PREPAID' | 'INSTITUTION' | 'CLEARANCE' | 'DIRECT' | 'GROUP'>('ALL');
   
   const [selectedAccount, setSelectedAccount] = useState<{accountNo: string, name: string, description?: string, accountId?: number, allocationType?: string, miscPaymentGroupId?: number} | null>(null);
   const [newLineAmount, setNewLineAmount] = useState('');
@@ -283,6 +283,31 @@ export default function AllocateTransaction() {
             });
           }
         }
+      }
+
+      if (searchScope === 'ALL' || searchScope === 'INSTITUTION') {
+        parallelTasks.push((async () => {
+          try {
+            const institutionResults = await searchInstitutions(query);
+            for (const inst of institutionResults.slice(0, 10)) {
+              const instId = inst.institution_ID || inst.institutionID || 0;
+              if (instId && !seen.has(instId + 200000)) {
+                seen.add(instId + 200000);
+                results.push({
+                  accountId: instId,
+                  accountNo: `INST-${instId}`,
+                  name: inst.institutionDesc || inst.institutionName || 'Institution',
+                  type: 'INSTITUTION',
+                  description: `Institution: ${inst.institutionDesc || inst.institutionName || ''}`,
+                  rawData: inst,
+                });
+              }
+            }
+          } catch (err) {
+            console.error('[AllocateTransaction] Failed to search institutions:', err);
+            toast({ title: "Institution Search Failed", description: "Failed to search institutions from API.", variant: "destructive" });
+          }
+        })());
       }
 
       await Promise.all(parallelTasks);
@@ -520,12 +545,94 @@ export default function AllocateTransaction() {
       });
       setNewLineAmount("0.00");
       setSelectedClearance(null);
+    } else if (result.type === 'INSTITUTION') {
+      handleSelectInstitution(result);
     } else if (result.type === 'CLEARANCE') {
       setSelectedAccount(null);
       setNewLineAmount('');
       setClearanceAllocations({});
       setClearanceLoadError(null);
       loadClearanceDetails(result);
+    }
+  };
+
+  const [loadingInstitution, setLoadingInstitution] = useState(false);
+
+  const handleSelectInstitution = async (result: DDSearchResult) => {
+    const instId = result.rawData?.institution_ID || result.rawData?.institutionID || result.accountId;
+    if (!instId || !transaction) return;
+
+    setLoadingInstitution(true);
+    try {
+      const accounts = await fetchAccountsByGroup(instId);
+      if (!accounts || accounts.length === 0) {
+        toast({ title: "No Linked Accounts", description: `No accounts found linked to institution "${result.name}".`, variant: "destructive" });
+        return;
+      }
+
+      const validAccounts = accounts.filter(acc => {
+        const accId = acc.account_ID || acc.accountID || acc.id || 0;
+        return accId > 0;
+      });
+
+      if (validAccounts.length === 0) {
+        toast({ title: "No Valid Accounts", description: `No accounts with valid IDs found for institution "${result.name}".`, variant: "destructive" });
+        return;
+      }
+
+      let budgetRemaining = transaction.amount - allocatedTotal;
+      if (budgetRemaining <= 0) {
+        toast({ title: "Fully Allocated", description: "The transaction is already fully allocated. Remove or reduce existing lines first.", variant: "destructive" });
+        return;
+      }
+
+      const newLines: AllocationLine[] = [];
+      for (const acc of validAccounts) {
+        if (budgetRemaining <= 0) break;
+
+        const accId = acc.account_ID || acc.accountID || acc.id;
+        const accNo = acc.accountNumber || acc.accountNo || String(accId);
+        const accName = acc.name || acc.accountDesc || [acc.initials, acc.lastName].filter(Boolean).join(' ') || 'Unknown';
+        const outstanding = acc.outStandingAmt || acc.outstandingAmount || 0;
+
+        let lineAmount: number;
+        if (outstanding > 0) {
+          lineAmount = Math.min(outstanding, budgetRemaining);
+        } else {
+          lineAmount = Math.round((budgetRemaining / (validAccounts.length - newLines.length)) * 100) / 100;
+        }
+        lineAmount = Math.min(lineAmount, budgetRemaining);
+
+        if (lineAmount <= 0) continue;
+
+        newLines.push({
+          id: Math.random().toString(36).substr(2, 9),
+          accountNo: accNo,
+          amount: lineAmount,
+          description: `${result.name} — ${accName}`,
+          allocationType: 'ACCOUNT',
+          accountId: accId,
+        });
+
+        budgetRemaining -= lineAmount;
+      }
+
+      if (newLines.length === 0) {
+        toast({ title: "No Allocations", description: "Could not allocate any amount to the linked accounts.", variant: "destructive" });
+        return;
+      }
+
+      setLines(prev => [...prev, ...newLines]);
+      const skipped = validAccounts.length - newLines.length;
+      const msg = skipped > 0
+        ? `Added ${newLines.length} account(s) from "${result.name}" (${skipped} skipped — budget exhausted). Adjust amounts as needed.`
+        : `Added ${newLines.length} account(s) from "${result.name}". Adjust amounts as needed.`;
+      toast({ title: "Institution Accounts Added", description: msg });
+    } catch (err: any) {
+      console.error('[AllocateTransaction] Failed to fetch institution accounts:', err);
+      toast({ title: "Institution Load Failed", description: err.message || "Failed to load accounts for this institution.", variant: "destructive" });
+    } finally {
+      setLoadingInstitution(false);
     }
   };
 
@@ -1394,6 +1501,7 @@ export default function AllocateTransaction() {
     { value: 'ALL', label: 'All', icon: Search },
     { value: 'ACCOUNT', label: 'Account', icon: Building2 },
     { value: 'PREPAID', label: 'Prepaid', icon: Zap },
+    { value: 'INSTITUTION', label: 'Institution', icon: Landmark },
     { value: 'GROUP', label: 'Grouping', icon: CreditCard },
     { value: 'CLEARANCE', label: 'Clearance', icon: FileCheck },
     { value: 'DIRECT', label: 'Income', icon: Receipt },
@@ -1595,6 +1703,7 @@ export default function AllocateTransaction() {
                                 searchScope === 'ALL' ? "Search account, name, old code..." :
                                 searchScope === 'ACCOUNT' ? "Search account number or name..." :
                                 searchScope === 'PREPAID' ? "Search account for prepaid recharge..." :
+                                searchScope === 'INSTITUTION' ? "Search institution name..." :
                                 searchScope === 'GROUP' ? "Search payment grouping..." :
                                 searchScope === 'CLEARANCE' ? "Search clearance certificate..." :
                                 "Search direct income group..."
@@ -1621,11 +1730,13 @@ export default function AllocateTransaction() {
                                     >
                                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                                             result.type === 'ACCOUNT' ? 'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)]' :
+                                            result.type === 'INSTITUTION' ? 'bg-indigo-50 text-indigo-600' :
                                             result.type === 'GROUP' ? 'bg-purple-50 text-purple-600' :
                                             result.type === 'CLEARANCE' ? 'bg-amber-50 text-amber-600' :
                                             'bg-emerald-50 text-emerald-600'
                                         }`}>
                                             {result.type === 'ACCOUNT' ? <Building2 className="w-3.5 h-3.5" /> :
+                                             result.type === 'INSTITUTION' ? <Landmark className="w-3.5 h-3.5" /> :
                                              result.type === 'GROUP' ? <CreditCard className="w-3.5 h-3.5" /> :
                                              result.type === 'CLEARANCE' ? <FileCheck className="w-3.5 h-3.5" /> :
                                              <Receipt className="w-3.5 h-3.5" />}
@@ -1720,6 +1831,18 @@ export default function AllocateTransaction() {
                             <div>
                                 <div className="text-sm font-medium text-slate-700">Loading clearance details...</div>
                                 <div className="text-xs text-slate-500">Fetching cost schedule and linked accounts</div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {loadingInstitution && (
+                    <div className="px-3 sm:px-5 py-4 bg-gradient-to-r from-indigo-50 to-blue-50/30 border-b border-indigo-100 animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="flex items-center gap-3">
+                            <Loader2 className="w-5 h-5 text-indigo-600 animate-spin" />
+                            <div>
+                                <div className="text-sm font-medium text-slate-700">Loading institution accounts...</div>
+                                <div className="text-xs text-slate-500">Fetching linked accounts for this institution</div>
                             </div>
                         </div>
                     </div>
