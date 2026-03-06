@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { ArrowLeft, Plus, Trash2, CheckCircle, AlertCircle, Upload, X, Loader2, Search, Banknote, Building2, FileCheck, Receipt, CreditCard, RotateCcw, FileSpreadsheet, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Download, Eye } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, CheckCircle, AlertCircle, Upload, X, Loader2, Search, Banknote, Building2, FileCheck, Receipt, CreditCard, RotateCcw, FileSpreadsheet, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Download, Eye, Zap } from 'lucide-react';
 import { AllocationLine, Account, ClearanceCostSchedule, platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, platinumLoadDetailsPaymentGrouping, platinumLoadDetailsPaymentGroupingInstitutionData, platinumLoadDetailsConsumerServices, platinumLoadConfirmPaymentDetails, platinumLoadDetailsClearance, platinumGetClearanceDetailsInfo, platinumGetConsumerDetailsData, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, platinumDDClearanceAutocomplete, platinumSearchClearanceIds, platinumGetClearanceData, platinumGetGroupPaymentDetails, fetchMiscPaymentGroups, rebuildFullAccount, platinumSearchAccountsPayment, fetchActiveFinYear, fetchPlatinumUserInfo } from '@/lib/external-api';
 import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
@@ -60,7 +60,7 @@ export default function AllocateTransaction() {
   const [linesPage, setLinesPage] = useState(1);
   const LINES_PER_PAGE = 10;
   
-  const [searchScope, setSearchScope] = useState<'ALL' | 'ACCOUNT' | 'CLEARANCE' | 'DIRECT' | 'GROUP'>('ALL');
+  const [searchScope, setSearchScope] = useState<'ALL' | 'ACCOUNT' | 'PREPAID' | 'CLEARANCE' | 'DIRECT' | 'GROUP'>('ALL');
   
   const [selectedAccount, setSelectedAccount] = useState<{accountNo: string, name: string, description?: string, accountId?: number, allocationType?: string, miscPaymentGroupId?: number} | null>(null);
   const [newLineAmount, setNewLineAmount] = useState('');
@@ -139,7 +139,9 @@ export default function AllocateTransaction() {
 
       const parallelTasks: Promise<void>[] = [];
 
-      if (searchScope === 'ALL' || searchScope === 'ACCOUNT') {
+      if (searchScope === 'ALL' || searchScope === 'ACCOUNT' || searchScope === 'PREPAID') {
+        const resultType: 'ACCOUNT' | 'CLEARANCE' | 'DIRECT' | 'GROUP' = searchScope === 'PREPAID' ? 'ACCOUNT' : 'ACCOUNT';
+        const allocType = searchScope === 'PREPAID' ? 'PREPAID' : 'ACCOUNT';
         parallelTasks.push((async () => {
           const searchBody: Record<string, any> = {};
           if (isNumeric) {
@@ -169,8 +171,8 @@ export default function AllocateTransaction() {
                 name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || 'Unknown',
                 oldAccountCode: item.oldAccountCode || '',
                 outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
-                type: 'ACCOUNT',
-                rawData: item,
+                type: resultType,
+                rawData: { ...item, _allocationType: allocType },
               });
             }
           }
@@ -186,9 +188,9 @@ export default function AllocateTransaction() {
                   name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || 'Unknown',
                   oldAccountCode: item.oldAccountCode || query,
                   outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
-                  type: 'ACCOUNT',
+                  type: resultType,
                   description: `Found via old account code: ${query}`,
-                  rawData: item,
+                  rawData: { ...item, _allocationType: allocType },
                 });
               }
             }
@@ -481,12 +483,13 @@ export default function AllocateTransaction() {
     setDdSearchResults([]);
 
     if (result.type === 'ACCOUNT') {
+      const allocType = result.rawData?._allocationType || 'ACCOUNT';
       setSelectedAccount({
         accountNo: result.accountNo,
         name: result.name,
         description: result.oldAccountCode ? `${result.name} (Old: ${result.oldAccountCode})` : result.name,
         accountId: result.accountId,
-        allocationType: 'ACCOUNT',
+        allocationType: allocType,
       });
       setNewLineAmount("0.00");
       setSelectedClearance(null);
@@ -942,6 +945,10 @@ export default function AllocateTransaction() {
       setLines(prev => prev.filter(l => l.id !== id));
   };
 
+  const handleUpdateLineAmount = (id: string, newAmount: number) => {
+      setLines(prev => prev.map(l => l.id === id ? { ...l, amount: newAmount } : l));
+  };
+
   const handlePost = async () => {
       if (!isFullyAllocated) {
           toast({ title: "Validation Error", description: "Allocated total must equal transaction amount.", variant: "destructive" });
@@ -1373,6 +1380,7 @@ export default function AllocateTransaction() {
   const scopeOptions = [
     { value: 'ALL', label: 'All', icon: Search },
     { value: 'ACCOUNT', label: 'Account', icon: Building2 },
+    { value: 'PREPAID', label: 'Prepaid', icon: Zap },
     { value: 'GROUP', label: 'Grouping', icon: CreditCard },
     { value: 'CLEARANCE', label: 'Clearance', icon: FileCheck },
     { value: 'DIRECT', label: 'Income', icon: Receipt },
@@ -1573,6 +1581,7 @@ export default function AllocateTransaction() {
                             placeholder={
                                 searchScope === 'ALL' ? "Search account, name, old code..." :
                                 searchScope === 'ACCOUNT' ? "Search account number or name..." :
+                                searchScope === 'PREPAID' ? "Search account for prepaid recharge..." :
                                 searchScope === 'GROUP' ? "Search payment grouping..." :
                                 searchScope === 'CLEARANCE' ? "Search clearance certificate..." :
                                 "Search direct income group..."
@@ -1959,7 +1968,18 @@ export default function AllocateTransaction() {
                                                 <div className="text-xs text-muted-foreground font-mono">{line.accountNo}</div>
                                             )}
                                         </div>
-                                        <span className="font-mono text-sm font-semibold text-slate-800 shrink-0">R {line.amount.toFixed(2)}</span>
+                                        <div className="shrink-0 flex items-center gap-1">
+                                            <span className="text-xs text-muted-foreground">R</span>
+                                            <Input
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                className="w-24 h-7 text-right font-mono text-sm font-semibold text-slate-800 px-2"
+                                                value={line.amount}
+                                                onChange={(e) => handleUpdateLineAmount(line.id, parseFloat(e.target.value) || 0)}
+                                                data-testid={`input-mobile-amount-${idx}`}
+                                            />
+                                        </div>
                                         {(line.allocationType === 'ACCOUNT' || line.allocationType === 'PREPAID') && (
                                             <Button variant="outline" size="icon" className="h-7 w-7 text-[var(--pos-accent-dark)] border-[var(--pos-accent-light)] hover:bg-[var(--pos-accent-tint)] shrink-0 rounded-lg" onClick={() => setEnquiryAccountId(String(line.accountNo))} data-testid={`mobile-line-enquiry-btn-${idx}`}>
                                                 <Search className="w-3 h-3" />
@@ -2005,16 +2025,29 @@ export default function AllocateTransaction() {
                                                     line.allocationType === 'CLEARANCE' ? 'bg-amber-50 text-amber-700' :
                                                     line.allocationType === 'DIRECT' ? 'bg-emerald-50 text-emerald-700' :
                                                     line.allocationType === 'GROUP' ? 'bg-purple-50 text-purple-700' :
+                                                    line.allocationType === 'PREPAID' ? 'bg-yellow-50 text-yellow-700' :
                                                     'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)]'
                                                 }`}>
                                                     {line.allocationType === 'CASHBOOK' ? 'Return' :
                                                      line.allocationType === 'CLEARANCE' ? 'Clearance' :
                                                      line.allocationType === 'DIRECT' ? 'Income' :
-                                                     line.allocationType === 'GROUP' ? 'Grouping' : 'Account'}
+                                                     line.allocationType === 'GROUP' ? 'Grouping' :
+                                                     line.allocationType === 'PREPAID' ? 'Prepaid' : 'Account'}
                                                 </Badge>
                                             </td>
                                             <td className="px-5 py-3 text-right">
-                                                <span className="font-mono text-sm font-semibold text-slate-800">R {line.amount.toFixed(2)}</span>
+                                                <div className="flex items-center gap-1 justify-end">
+                                                    <span className="text-xs text-muted-foreground">R</span>
+                                                    <Input
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        className="w-28 h-7 text-right font-mono text-sm font-semibold text-slate-800 px-2"
+                                                        value={line.amount}
+                                                        onChange={(e) => handleUpdateLineAmount(line.id, parseFloat(e.target.value) || 0)}
+                                                        data-testid={`input-line-amount-${idx}`}
+                                                    />
+                                                </div>
                                             </td>
                                             <td className="px-3 py-3">
                                                 <div className="flex items-center gap-1 justify-end">
