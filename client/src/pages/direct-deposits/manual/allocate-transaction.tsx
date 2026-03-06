@@ -1163,9 +1163,7 @@ export default function AllocateTransaction() {
               const lineLabel = `${allocType} ${line.accountNo || ''} (R ${line.amount.toFixed(2)})`;
 
               let billType = '1';
-              if (allocType === 'GROUP') {
-                  billType = '3';
-              } else if (allocType === 'DIRECT') {
+              if (allocType === 'DIRECT') {
                   billType = '4';
               } else if (allocType === 'CLEARANCE') {
                   billType = '6';
@@ -1301,31 +1299,6 @@ export default function AllocateTransaction() {
                       billType,
                       paymentTypeId: 5,
                       accountId,
-                      amount: line.amount,
-                      outstandingAmount: line.outstandingAmount ?? line.amount,
-                      description: line.description || transaction.note || '',
-                      reference: actualReference,
-                      note: line.note || transaction.note || '',
-                      receiptDate,
-                      cashFloat: 0,
-                  };
-              } else {
-                  const accountId = line.accountId || 0;
-                  submitData = {
-                      posItemId,
-                      reconId,
-                      userId: allocatingUserId,
-                      financialYear: finYear,
-                      transactionDate,
-                      paidAmount: line.amount,
-                      billType,
-                      paymentTypeId: 5,
-                      accountId,
-                      miscPaymentGroupId: line.miscPaymentGroupId || 0,
-                      groupId: line.groupId || line.miscPaymentGroupId || 0,
-                      lastName: derivedLastName,
-                      initials: derivedInitials,
-                      totalAmount: line.amount,
                       amount: line.amount,
                       outstandingAmount: line.outstandingAmount ?? line.amount,
                       description: line.description || transaction.note || '',
