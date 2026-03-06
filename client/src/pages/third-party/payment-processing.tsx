@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { PosLayout } from '@/components/layout/pos-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -23,8 +23,13 @@ import {
   platinumThirdPartyValidateAccount,
   platinumThirdPartyCashierDetails,
   fetchBatchAccountNames,
+  submitGenericImport,
+  fetchGenericImportStatus,
+  fetchGenericImportResults,
+  fetchGenericImportErrors,
 } from '@/lib/external-api';
 import { usePos } from '@/lib/pos-state';
+import { useToast } from '@/hooks/use-toast';
 
 interface ThirdPartyType {
   id: number;
@@ -82,10 +87,47 @@ function matchStatusBadge(status: MatchStatus) {
   }
 }
 
+type PageTab = 'third-party' | 'generic-import';
+
+type GenericStep = 'upload' | 'processing' | 'results';
+
+interface GenericImportResult {
+  accountNo?: string;
+  accountName?: string;
+  allocatedAmount?: number;
+  status?: string;
+  errorMessage?: string;
+  [key: string]: any;
+}
+
 export default function ThirdPartyPaymentProcessing() {
   const posState = usePos();
+  const { toast } = useToast();
+  const [pageTab, setPageTab] = useState<PageTab>('third-party');
   const [step, setStep] = useState<Step>('import');
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
+
+  const [giStep, setGiStep] = useState<GenericStep>('upload');
+  const [giFile, setGiFile] = useState<File | null>(null);
+  const [giPaymentRef, setGiPaymentRef] = useState('');
+  const [giSubmitting, setGiSubmitting] = useState(false);
+  const [giJobId, setGiJobId] = useState<string>('');
+  const [giStatus, setGiStatus] = useState<any>(null);
+  const [giPolling, setGiPolling] = useState(false);
+  const [giResults, setGiResults] = useState<GenericImportResult[]>([]);
+  const [giErrors, setGiErrors] = useState<GenericImportResult[]>([]);
+  const [giLoadingResults, setGiLoadingResults] = useState(false);
+  const [giError, setGiError] = useState<string>('');
+  const giPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (giPollRef.current) {
+        clearInterval(giPollRef.current);
+        giPollRef.current = null;
+      }
+    };
+  }, []);
 
   const [thirdPartyTypes, setThirdPartyTypes] = useState<ThirdPartyType[]>([]);
   const [loadingTypes, setLoadingTypes] = useState(true);
@@ -583,6 +625,130 @@ export default function ThirdPartyPaymentProcessing() {
     setActiveFilter('all');
   };
 
+  const handleGenericImportSubmit = async () => {
+    if (!giFile) {
+      toast({ title: 'Missing File', description: 'Please select a file to import.', variant: 'destructive' });
+      return;
+    }
+    const userId = posState?.platinumUser?.user_ID;
+    const finYear = posState?.platinumUser?.finYear;
+    if (!finYear) {
+      toast({ title: 'Session Error', description: 'Financial year missing from your session. Please log in again.', variant: 'destructive' });
+      return;
+    }
+
+    setGiSubmitting(true);
+    setGiError('');
+    try {
+      const fileContent = await giFile.text();
+      const result = await submitGenericImport({
+        fileContent,
+        fileName: giFile.name,
+        paymentReference: giPaymentRef || '',
+        cashBookId: cashierInfo?.cashOfficeId ? Number(cashierInfo.cashOfficeId) : 0,
+        userId: userId || 0,
+        finYear,
+      });
+
+      if (result && !result._error) {
+        const jobId = result.jobId || result.job_ID || result.directDepositJob_ID || result.id || result;
+        if (jobId) {
+          setGiJobId(String(jobId));
+          setGiStep('processing');
+          startPolling(String(jobId));
+        } else {
+          toast({ title: 'Import Submitted', description: 'File submitted but no job ID was returned. Check allocation progress for results.' });
+          setGiStep('results');
+        }
+      } else {
+        const detail = result?.detail || result?.message || 'Import submission failed.';
+        setGiError(typeof detail === 'string' ? detail : JSON.stringify(detail));
+      }
+    } catch (e: any) {
+      console.error('[GenericImport] Submit failed:', e);
+      setGiError(e.message || 'Failed to submit generic import.');
+    } finally {
+      setGiSubmitting(false);
+    }
+  };
+
+  const stopPolling = () => {
+    if (giPollRef.current) {
+      clearInterval(giPollRef.current);
+      giPollRef.current = null;
+    }
+    setGiPolling(false);
+  };
+
+  const startPolling = (jobId: string) => {
+    stopPolling();
+    setGiPolling(true);
+    giPollRef.current = setInterval(async () => {
+      try {
+        const status = await fetchGenericImportStatus(jobId);
+        setGiStatus(status);
+        const statusStr = (status?.status || status?.job_Status || status?.jobStatus || '').toLowerCase();
+        const isComplete = statusStr.includes('complete') || statusStr.includes('done') || statusStr.includes('finished');
+        const isFailed = statusStr.includes('fail') || statusStr.includes('error');
+
+        if (isComplete || isFailed) {
+          stopPolling();
+          await loadGenericResults(jobId);
+        }
+      } catch (e: any) {
+        console.error('[GenericImport] Status poll failed:', e);
+        stopPolling();
+        setGiError(`Failed to check job status: ${e.message}`);
+      }
+    }, 3000);
+  };
+
+  const loadGenericResults = async (jobId: string) => {
+    setGiLoadingResults(true);
+    try {
+      const [results, errors] = await Promise.all([
+        fetchGenericImportResults(jobId),
+        fetchGenericImportErrors(jobId),
+      ]);
+      setGiResults(Array.isArray(results) ? results : []);
+      setGiErrors(Array.isArray(errors) ? errors : []);
+      setGiStep('results');
+    } catch (e: any) {
+      console.error('[GenericImport] Failed to load results:', e);
+      setGiError(`Failed to load results: ${e.message}`);
+      setGiStep('results');
+    } finally {
+      setGiLoadingResults(false);
+    }
+  };
+
+  const handleGenericNewImport = () => {
+    stopPolling();
+    setGiStep('upload');
+    setGiFile(null);
+    setGiPaymentRef('');
+    setGiJobId('');
+    setGiStatus(null);
+    setGiResults([]);
+    setGiErrors([]);
+    setGiError('');
+  };
+
+  const giStatusText = useMemo(() => {
+    if (!giStatus) return 'Waiting...';
+    return giStatus.status || giStatus.job_Status || giStatus.jobStatus || giStatus.message || 'Processing...';
+  }, [giStatus]);
+
+  const giProgressPercent = useMemo(() => {
+    if (!giStatus) return 0;
+    if (giStatus.progress !== undefined) return Number(giStatus.progress);
+    if (giStatus.percentComplete !== undefined) return Number(giStatus.percentComplete);
+    const s = (giStatus.status || giStatus.job_Status || '').toLowerCase();
+    if (s.includes('complete') || s.includes('done')) return 100;
+    if (s.includes('progress') || s.includes('processing')) return 50;
+    return 10;
+  }, [giStatus]);
+
   const counts = useMemo(() => {
     const autoMatched = transactions.filter(t => t.matchStatus === 'Auto-Matched').length;
     const manuallyMatched = transactions.filter(t => t.matchStatus === 'Manually Matched').length;
@@ -620,16 +786,37 @@ export default function ThirdPartyPaymentProcessing() {
                 <p className="text-xs sm:text-sm text-[#6B6B6B] mt-0.5">Import and process bulk payment files from banks and external payment providers</p>
               </div>
             </div>
-            {step !== 'import' && (
-              <Button variant="outline" onClick={handleNewImport} className="gap-2" data-testid="button-new-import">
-                <ChevronLeft className="h-4 w-4" /> New Import
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              {pageTab === 'third-party' && step !== 'import' && (
+                <Button variant="outline" onClick={handleNewImport} className="gap-2" data-testid="button-new-import">
+                  <ChevronLeft className="h-4 w-4" /> New Import
+                </Button>
+              )}
+              {pageTab === 'generic-import' && giStep !== 'upload' && (
+                <Button variant="outline" onClick={handleGenericNewImport} className="gap-2" data-testid="button-gi-new-import">
+                  <ChevronLeft className="h-4 w-4" /> New Import
+                </Button>
+              )}
+            </div>
+          </div>
+          <div className="mt-4">
+            <Tabs value={pageTab} onValueChange={(v) => setPageTab(v as PageTab)}>
+              <TabsList className="bg-[#F2F4F7] h-9">
+                <TabsTrigger value="third-party" className="text-sm h-8 px-4" data-testid="tab-third-party">
+                  Third Party Import
+                </TabsTrigger>
+                <TabsTrigger value="generic-import" className="text-sm h-8 px-4" data-testid="tab-generic-import">
+                  Generic Import
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
         </div>
 
         <div className="flex-1 overflow-auto bg-[#F2F4F7] p-4 sm:p-6">
           <div className="space-y-4 sm:space-y-6">
+
+          {pageTab === 'third-party' && (<>
 
           {step === 'import' && (
             <Card className="border-t-4 border-t-[var(--pos-accent)] shadow-sm">
@@ -1082,6 +1269,274 @@ export default function ThirdPartyPaymentProcessing() {
               </CardContent>
             </Card>
           )}
+
+          </>)}
+
+          {pageTab === 'generic-import' && (<>
+
+            {giStep === 'upload' && (
+              <Card className="border-t-4 border-t-[var(--pos-accent)] shadow-sm">
+                <CardHeader className="bg-[#F2F4F7]/50 pb-4 border-b">
+                  <div className="flex items-center gap-2">
+                    <div className="h-6 w-1 bg-[var(--pos-accent)] rounded-full"></div>
+                    <CardTitle className="text-lg font-medium text-slate-800">
+                      Generic Import — Upload File
+                    </CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-6 space-y-6">
+
+                  {giError && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>Import Error</AlertTitle>
+                      <AlertDescription>{giError}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="gi-file" className="text-sm font-medium text-slate-700">Import File (CSV)</Label>
+                      <div className="mt-1.5 border-2 border-dashed border-[var(--pos-accent-light)] rounded-lg p-6 text-center hover:bg-[var(--pos-accent-tint)] transition-colors">
+                        <Input
+                          id="gi-file"
+                          type="file"
+                          accept=".csv,.txt"
+                          className="hidden"
+                          data-testid="input-gi-file"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0] || null;
+                            setGiFile(f);
+                            setGiError('');
+                          }}
+                        />
+                        <label htmlFor="gi-file" className="cursor-pointer flex flex-col items-center gap-2">
+                          <Upload className="h-8 w-8 text-[var(--pos-accent)]" />
+                          {giFile ? (
+                            <span className="text-sm font-medium text-slate-700">{giFile.name} <span className="text-muted-foreground">({(giFile.size / 1024).toFixed(1)} KB)</span></span>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">Click to select a CSV file</span>
+                          )}
+                        </label>
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="gi-payment-ref" className="text-sm font-medium text-slate-700">Payment Reference (optional)</Label>
+                      <Input
+                        id="gi-payment-ref"
+                        className="mt-1.5"
+                        placeholder="e.g. Batch 2026-03"
+                        value={giPaymentRef}
+                        onChange={(e) => setGiPaymentRef(e.target.value)}
+                        data-testid="input-gi-payment-ref"
+                      />
+                    </div>
+
+                    {cashierInfo && (
+                      <div className="bg-[#F7F7F7] rounded-lg p-3 text-sm border">
+                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Cash Office</div>
+                        <div className="font-medium text-slate-700">{cashierInfo.cashOfficeName || cashierInfo.cashOfficeId || '-'}</div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-end pt-2 border-t">
+                    <Button
+                      onClick={handleGenericImportSubmit}
+                      disabled={!giFile || giSubmitting}
+                      className="gap-2 bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-white"
+                      data-testid="button-gi-submit"
+                    >
+                      {giSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                      {giSubmitting ? 'Submitting...' : 'Submit Import'}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {giStep === 'processing' && (
+              <Card className="border-t-4 border-t-[var(--pos-accent)] shadow-sm">
+                <CardHeader className="bg-[#F2F4F7]/50 pb-4 border-b">
+                  <div className="flex items-center gap-2">
+                    <div className="h-6 w-1 bg-[var(--pos-accent)] rounded-full"></div>
+                    <CardTitle className="text-lg font-medium text-slate-800">
+                      Generic Import — Processing
+                    </CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-6 space-y-6">
+
+                  {giError && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>Processing Error</AlertTitle>
+                      <AlertDescription>{giError}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  <div className="text-center py-8 space-y-4">
+                    <div className="flex justify-center">
+                      <Loader2 className="h-12 w-12 animate-spin text-[var(--pos-accent)]" />
+                    </div>
+                    <div>
+                      <p className="text-base font-semibold text-slate-800" data-testid="text-gi-status">{giStatusText}</p>
+                      <p className="text-sm text-muted-foreground mt-1">Job ID: <span className="font-mono" data-testid="text-gi-job-id">{giJobId}</span></p>
+                    </div>
+                    <div className="max-w-md mx-auto">
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div
+                          className="bg-[var(--pos-accent)] h-2.5 rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(giProgressPercent, 100)}%` }}
+                          data-testid="progress-gi"
+                        ></div>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">{giProgressPercent}% complete</p>
+                    </div>
+                    {giPolling && (
+                      <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                        <RefreshCw className="h-3 w-3 animate-spin" /> Checking status every 3 seconds...
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {giStep === 'results' && (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <Card className="shadow-sm">
+                    <CardContent className="py-4 px-5 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                        <FileCheck className="h-5 w-5 text-blue-700" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Total Records</p>
+                        <p className="text-xl font-bold text-slate-800" data-testid="text-gi-total">{giResults.length + giErrors.length}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className="shadow-sm">
+                    <CardContent className="py-4 px-5 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                        <CheckCircle2 className="h-5 w-5 text-green-700" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Successful</p>
+                        <p className="text-xl font-bold text-green-700" data-testid="text-gi-success">{giResults.length}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className="shadow-sm">
+                    <CardContent className="py-4 px-5 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
+                        <AlertTriangle className="h-5 w-5 text-red-700" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Errors</p>
+                        <p className="text-xl font-bold text-red-700" data-testid="text-gi-errors">{giErrors.length}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {giLoadingResults && (
+                  <div className="text-center py-8 text-muted-foreground text-sm">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" /> Loading results...
+                  </div>
+                )}
+
+                {giResults.length > 0 && (
+                  <Card className="shadow-sm">
+                    <CardHeader className="bg-[#F2F4F7]/50 pb-3 border-b">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        <CardTitle className="text-sm font-medium text-slate-800">Successful Allocations</CardTitle>
+                        <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200">{giResults.length}</Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <div className="max-h-[300px] overflow-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-[#F7F7F7] text-[10px] uppercase tracking-wider">
+                              <TableHead>Account</TableHead>
+                              <TableHead>Name</TableHead>
+                              <TableHead className="text-right">Amount</TableHead>
+                              <TableHead>Status</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {giResults.map((r, i) => (
+                              <TableRow key={i} className="text-xs" data-testid={`row-gi-result-${i}`}>
+                                <TableCell className="font-mono">{r.accountNo || r.accountNumber || r.account_Number || '-'}</TableCell>
+                                <TableCell>{r.accountName || r.name || r.ownerName || '-'}</TableCell>
+                                <TableCell className="text-right font-mono">{r.allocatedAmount !== undefined ? `R ${Number(r.allocatedAmount).toFixed(2)}` : r.amount !== undefined ? `R ${Number(r.amount).toFixed(2)}` : '-'}</TableCell>
+                                <TableCell><Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200">{r.status || 'Allocated'}</Badge></TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {giErrors.length > 0 && (
+                  <Card className="shadow-sm border-red-200">
+                    <CardHeader className="bg-red-50/50 pb-3 border-b border-red-200">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-red-600" />
+                        <CardTitle className="text-sm font-medium text-red-800">Import Errors</CardTitle>
+                        <Badge variant="outline" className="text-[10px] bg-red-50 text-red-700 border-red-200">{giErrors.length}</Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <div className="max-h-[300px] overflow-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-red-50/50 text-[10px] uppercase tracking-wider">
+                              <TableHead>Account</TableHead>
+                              <TableHead>Error</TableHead>
+                              <TableHead className="text-right">Amount</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {giErrors.map((e, i) => (
+                              <TableRow key={i} className="text-xs" data-testid={`row-gi-error-${i}`}>
+                                <TableCell className="font-mono">{e.accountNo || e.accountNumber || e.account_Number || '-'}</TableCell>
+                                <TableCell className="text-red-700">{e.errorMessage || e.error || e.message || '-'}</TableCell>
+                                <TableCell className="text-right font-mono">{e.allocatedAmount !== undefined ? `R ${Number(e.allocatedAmount).toFixed(2)}` : e.amount !== undefined ? `R ${Number(e.amount).toFixed(2)}` : '-'}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {!giLoadingResults && giResults.length === 0 && giErrors.length === 0 && (
+                  <Card className="shadow-sm">
+                    <CardContent className="py-12 text-center">
+                      <FileCheck className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                      <p className="text-sm text-muted-foreground">No results or errors returned for this import.</p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                <div className="flex justify-end">
+                  <Button onClick={handleGenericNewImport} className="gap-2 bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-white" data-testid="button-gi-new">
+                    <Upload className="h-4 w-4" /> New Import
+                  </Button>
+                </div>
+              </>
+            )}
+
+          </>)}
+
           </div>
         </div>
       </div>

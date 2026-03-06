@@ -1600,6 +1600,35 @@ export async function platinumSubmitDirectDepositAllocation(data: any): Promise<
     });
 }
 
+// --- Generic Import (Direct Deposit Allocation) ---
+
+export async function submitGenericImport(data: {
+    fileContent: string;
+    fileName: string;
+    paymentReference?: string;
+    cashBookId?: number;
+    userId?: number;
+    finYear?: string;
+}): Promise<any> {
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/submit-generic-import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function fetchGenericImportStatus(jobId: number | string): Promise<any> {
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/generic-import-status/${jobId}`);
+}
+
+export async function fetchGenericImportResults(jobId: number | string): Promise<any> {
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/generic-import-results/${jobId}`);
+}
+
+export async function fetchGenericImportErrors(jobId: number | string): Promise<any> {
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/generic-import-errors/${jobId}`);
+}
+
 // --- Direct Deposit Bulk ---
 
 export async function platinumGetBulkUnprocessed(data: any): Promise<any[]> {

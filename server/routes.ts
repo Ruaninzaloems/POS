@@ -3539,6 +3539,56 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/platinum/direct-deposit-allocation/submit-generic-import", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const payload = { ...req.body };
+      if (!payload.userId || payload.userId <= 0) {
+        payload.userId = session.userId;
+      }
+      console.log('[Generic Import] Submit request (userId resolved to ' + payload.userId + ')');
+      const data = await platinumPost(session, "/api/billing-direct-deposit-allocation/submit-generic-import", payload, undefined, { timeout: 55000 });
+      console.log('[Generic Import] Submit response:', data?._error ? `ERROR: ${JSON.stringify(data)}` : 'OK');
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      console.error('[Generic Import] Submit EXCEPTION:', e.message);
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/direct-deposit-allocation/generic-import-status/:jobId", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, `/api/billing-direct-deposit-allocation/generic-import-status/${req.params.jobId}`);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      console.error('[Generic Import] Status EXCEPTION:', e.message);
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/direct-deposit-allocation/generic-import-results/:jobId", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, `/api/billing-direct-deposit-allocation/generic-import-results/${req.params.jobId}`);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      console.error('[Generic Import] Results EXCEPTION:', e.message);
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/direct-deposit-allocation/generic-import-errors/:jobId", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, `/api/billing-direct-deposit-allocation/generic-import-errors/${req.params.jobId}`);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      console.error('[Generic Import] Errors EXCEPTION:', e.message);
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   app.post("/api/platinum/view-receipt/search-by-eft-description", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;

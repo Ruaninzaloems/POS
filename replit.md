@@ -64,6 +64,9 @@ The post-payment receipt flow is optimized for speed:
 ### Direct Deposit Allocation
 Direct deposit manual allocations always use `VirtualCashierUserId = -1` as the cashier ID in the Platinum API submission payload. The real logged-in user ID is validated (user must be authenticated) but is only used for audit/logging — not passed to the Platinum API. All `/direct-deposits` paths are exempt from active cashier session enforcement; users can access and process direct deposit allocations without having an open cashier session. The allocation submission order is: Account/Prepaid → Group → Clearance → Direct Income → Cashbook.
 
+### Generic Import (Direct Deposit Allocation)
+The Third Party Payment Processing page (`client/src/pages/third-party/payment-processing.tsx`) has a "Generic Import" tab alongside the existing "Third Party Import" tab. This feature allows uploading CSV files for generic direct deposit allocation via the Platinum API. The flow is: **Upload → Processing (polling) → Results**. Four server proxy routes handle the Platinum API integration: `submit-generic-import` (POST, 55s timeout), `generic-import-status/{jobId}` (GET, polled every 3s), `generic-import-results/{jobId}` (GET), and `generic-import-errors/{jobId}` (GET). All routes go through `billing-direct-deposit-allocation` on the Platinum API side. Polling uses a `useRef`-based interval with deterministic cleanup on unmount, tab switch, and new import reset.
+
 ### MANDATORY: API Is The Single Source Of Truth
 **This is the #1 system design rule. It overrides all other considerations.**
 
