@@ -608,7 +608,7 @@ export default function AllocationHistory() {
                                 </div>
                                 <div className="grid grid-cols-3">
                                     <dt className="text-muted-foreground">Payment Type:</dt>
-                                    <dd className="col-span-2 font-medium">EFT</dd>
+                                    <dd className="col-span-2 font-medium">{getPaymentTypeName(selectedTx.paymentTypeID)}</dd>
                                 </div>
                                 <div className="grid grid-cols-3">
                                     <dt className="text-muted-foreground">File Date:</dt>
@@ -705,31 +705,6 @@ export default function AllocationHistory() {
                                                 </TableCell>
                                             </TableRow>
                                         ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                        ) : selectedTx ? (
-                            <div className="border border-[#D6D6D6] rounded-lg overflow-hidden">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow className="bg-[#F7F7F7]">
-                                            <TableHead className="text-xs">Type</TableHead>
-                                            <TableHead className="text-xs">Description</TableHead>
-                                            <TableHead className="text-xs text-right">Amount</TableHead>
-                                            <TableHead className="text-xs text-center">Status</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        <TableRow>
-                                            <TableCell className="text-xs font-medium">{selectedTx.process || 'Allocation'}</TableCell>
-                                            <TableCell className="text-xs">{selectedTx.paymentReference && selectedTx.paymentReference !== '0' ? selectedTx.paymentReference : selectedTx.fileName || '-'}</TableCell>
-                                            <TableCell className="text-right font-mono text-xs">R {Number(selectedTx.allocatedAmount ?? 0).toFixed(2)}</TableCell>
-                                            <TableCell className="text-center">
-                                                <Badge className={`shadow-none border text-[10px] ${selectedTx.job_Status === 'Bulk allocations complete' ? 'bg-green-100 text-green-700 border-green-200' : isErrorStatus(selectedTx.job_Status) ? 'bg-red-100 text-red-700 border-red-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>
-                                                    {selectedTx.job_Status === 'Bulk allocations complete' ? 'Completed' : selectedTx.job_Status || 'Unknown'}
-                                                </Badge>
-                                            </TableCell>
-                                        </TableRow>
                                     </TableBody>
                                 </Table>
                             </div>
