@@ -992,7 +992,7 @@ export default function AllocateTransaction() {
               setPostingStatus('');
               return;
           }
-          console.log(`[Direct Deposit] Allocating as user ${allocatingUserId}, submitting with VirtualCashierUserId=${VIRTUAL_CASHIER_USER_ID}`);
+          console.log(`[Direct Deposit] Allocating as userId=${allocatingUserId} (logged-in user), VirtualCashierUserId=${VIRTUAL_CASHIER_USER_ID} (not sent in payload)`);
 
           const now = new Date();
           const saFormatter = new Intl.DateTimeFormat('en-ZA', {
@@ -1081,7 +1081,7 @@ export default function AllocateTransaction() {
                   submitData = {
                       posItemId: transaction.posItem_ID,
                       reconId: transaction.bankReconID || 0,
-                      userId: VIRTUAL_CASHIER_USER_ID,
+                      userId: allocatingUserId,
                       financialYear: finYear,
                       transactionDate,
                       paidAmount: line.amount,
@@ -1100,12 +1100,13 @@ export default function AllocateTransaction() {
                       reference: actualReference,
                       note: line.note || transaction.note || '',
                       receiptDate: receiptDate,
+                      cashFloat: 0,
                   };
               } else {
                   submitData = {
                       posItemId: transaction.posItem_ID,
                       reconId: transaction.bankReconID || 0,
-                      userId: VIRTUAL_CASHIER_USER_ID,
+                      userId: allocatingUserId,
                       financialYear: finYear,
                       transactionDate,
                       paidAmount: line.amount,
@@ -1120,6 +1121,7 @@ export default function AllocateTransaction() {
                       note: line.note || transaction.note || '',
                       outstandingAmount: line.outstandingAmount ?? line.amount,
                       receiptDate: receiptDate,
+                      cashFloat: 0,
                   };
 
                   if (allocType === 'CLEARANCE') {
