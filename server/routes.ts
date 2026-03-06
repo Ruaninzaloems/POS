@@ -3723,17 +3723,48 @@ export async function registerRoutes(
     }
   });
 
+  function transformBulkBatchForApi(batch: any) {
+    if (!batch || typeof batch !== 'object') return batch;
+    const transformed = { ...batch };
+    if ('billingAllocated' in transformed && typeof transformed.billingAllocated === 'number') {
+      transformed.billingAllocated = transformed.billingAllocated > 0;
+    }
+    if (Array.isArray(transformed.items)) {
+      transformed.items = transformed.items.map((item: any) => {
+        if (!item || typeof item !== 'object') return item;
+        const ti = { ...item };
+        if ('billingAllocated' in ti && typeof ti.billingAllocated !== 'boolean') {
+          ti.billingAllocated = !!ti.billingAllocated;
+        }
+        return ti;
+      });
+    }
+    if (Array.isArray(transformed.rejectedItems)) {
+      transformed.rejectedItems = transformed.rejectedItems.map((item: any) => {
+        if (!item || typeof item !== 'object') return item;
+        const ti = { ...item };
+        if ('billingAllocated' in ti && typeof ti.billingAllocated !== 'boolean') {
+          ti.billingAllocated = !!ti.billingAllocated;
+        }
+        return ti;
+      });
+    }
+    return transformed;
+  }
+
   app.post("/api/platinum/direct-deposit-bulk/get-processed", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const unprocessedBatches = req.body?.unProcessedBatches || req.body?.UnProcessedData || [];
-      const processedBatches = req.body?.processedBatches || req.body?.ProcessedData || [];
+      const rawUnprocessed = req.body?.unProcessedBatches || req.body?.UnProcessedData || [];
+      const rawProcessed = req.body?.processedBatches || req.body?.ProcessedData || [];
+      const unprocessedBatches = (Array.isArray(rawUnprocessed) ? rawUnprocessed : rawUnprocessed?.items || []).map(transformBulkBatchForApi);
+      const processedBatches = (Array.isArray(rawProcessed) ? rawProcessed : rawProcessed?.items || []).map(transformBulkBatchForApi);
       const payload = {
         UnProcessedData: { items: unprocessedBatches, totalCount: unprocessedBatches.length },
         ProcessedData: { items: processedBatches, totalCount: processedBatches.length },
       };
       console.log(`[dd-bulk-processed] Sending payload with ${unprocessedBatches.length} unprocessed, ${processedBatches.length} processed batches`);
-      console.log(`[dd-bulk-processed] Payload structure: UnProcessedData={items: ${unprocessedBatches.length}, totalCount: ${unprocessedBatches.length}}, ProcessedData={items: ${processedBatches.length}, totalCount: ${processedBatches.length}}`);
+      console.log(`[dd-bulk-processed] Sample batch billingAllocated types:`, unprocessedBatches.slice(0, 1).map((b: any) => ({ num: b.num, billingAllocated: b.billingAllocated, type: typeof b.billingAllocated })));
       const data = await platinumPost(session, "/api/billing/direct-deposit-bulk-allocation/get-processed-deposits", payload);
       console.log(`[dd-bulk-processed] Response type: ${typeof data}, isArray: ${Array.isArray(data)}, keys: ${data && typeof data === 'object' ? Object.keys(data).join(', ') : 'N/A'}`);
       handlePlatinumResult(res, data);
@@ -3745,12 +3776,14 @@ export async function registerRoutes(
   app.post("/api/platinum/direct-deposit-bulk/reconcile", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const selectedItem = req.body?.selectedItem || req.body?.SelectedItem;
+      const selectedItem = transformBulkBatchForApi(req.body?.selectedItem || req.body?.SelectedItem);
       const batchNum = selectedItem?.num || 'unknown';
       const unallocCount = selectedItem?.billingUnAllocated || 0;
       const userId = req.body?.userId || req.body?.UserId;
-      const unprocessedBatches = req.body?.unProcessedBatches || req.body?.UnProcessedData || [];
-      const processedBatches = req.body?.processedBatches || req.body?.ProcessedData || [];
+      const rawUnprocessed = req.body?.unProcessedBatches || req.body?.UnProcessedData || [];
+      const rawProcessed = req.body?.processedBatches || req.body?.ProcessedData || [];
+      const unprocessedBatches = (Array.isArray(rawUnprocessed) ? rawUnprocessed : rawUnprocessed?.items || []).map(transformBulkBatchForApi);
+      const processedBatches = (Array.isArray(rawProcessed) ? rawProcessed : rawProcessed?.items || []).map(transformBulkBatchForApi);
       console.log(`[dd-bulk-reconcile] Processing batch ${batchNum} — ${unallocCount} unallocated items, userId=${userId}`);
       const payload = {
         UserId: userId,
