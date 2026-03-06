@@ -3520,7 +3520,22 @@ export async function registerRoutes(
         payload.userId = session.userId;
       }
 
-      console.log('[DD Submit] Request body (userId=' + payload.userId + '):', JSON.stringify(payload));
+      if (!payload.cashierId || payload.cashierId <= 0) {
+        try {
+          const finYear = payload.financialYear || '';
+          const vcData = await platinumGet(session, "/api/ReceiptPrepaid/validate-cashier", { userId: String(payload.userId), finYear });
+          if (vcData?.cashier?.id) {
+            payload.cashierId = vcData.cashier.id;
+            console.log(`[DD Submit] Resolved cashierId=${payload.cashierId} from validate-cashier`);
+          } else {
+            console.warn('[DD Submit] Could not resolve cashierId from validate-cashier');
+          }
+        } catch (vcErr: any) {
+          console.warn('[DD Submit] Failed to resolve cashierId:', vcErr.message);
+        }
+      }
+
+      console.log('[DD Submit] Final payload (userId=' + payload.userId + ', cashierId=' + payload.cashierId + '):', JSON.stringify(payload));
       const data = await platinumPost(session, "/api/billing-direct-deposit-allocation/submit-details-data", payload, undefined, { timeout: 55000 });
       console.log('[DD Submit] API response:', data?._error ? `ERROR: ${JSON.stringify(data)}` : JSON.stringify(data));
       handlePlatinumResult(res, data);
