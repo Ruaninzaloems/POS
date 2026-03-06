@@ -1131,8 +1131,7 @@ export default function AllocateTransaction() {
           });
           const saParts = saFormatter.formatToParts(now);
           const getPart = (type: string) => saParts.find(p => p.type === type)?.value || '';
-          const receiptDateISO = `${getPart('year')}-${getPart('month')}-${getPart('day')}T${getPart('hour')}:${getPart('minute')}:${getPart('second')}`;
-          const receiptDate = `${getPart('day')}/${getPart('month')}/${getPart('year')}`;
+          const receiptDate = `${getPart('year')}-${getPart('month')}-${getPart('day')}T${getPart('hour')}:${getPart('minute')}:${getPart('second')}`;
           const transactionDate = transaction.dateOfTransaction || receiptDate;
 
           const ALLOC_TYPE_ORDER: Record<string, number> = {
@@ -1298,11 +1297,10 @@ export default function AllocateTransaction() {
                       billType,
                       paymentTypeId: 5,
                       accountId,
-                      totalAmount: line.amount,
                       amount: line.amount,
                       outstandingAmount: line.outstandingAmount ?? line.amount,
                       description: line.description || transaction.note || '',
-                      reference: actualReference,
+                      reference: "0",
                       note: line.note || transaction.note || '',
                       receiptDate,
                       cashFloat: 0,
