@@ -110,6 +110,13 @@ export default function ThirdPartyPaymentProcessing() {
   const [giStep, setGiStep] = useState<GenericStep>('upload');
   const [giFile, setGiFile] = useState<File | null>(null);
   const [giPaymentRef, setGiPaymentRef] = useState('');
+  const [giReceiptDate, setGiReceiptDate] = useState(() => {
+    const now = new Date();
+    const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit' });
+    return fmt.format(now);
+  });
+  const [giPaymentTypeId, setGiPaymentTypeId] = useState('5');
+  const [giPostToCashbook, setGiPostToCashbook] = useState(true);
   const [giSubmitting, setGiSubmitting] = useState(false);
   const [giJobId, setGiJobId] = useState<string>('');
   const [giStatus, setGiStatus] = useState<any>(null);
@@ -641,6 +648,7 @@ export default function ThirdPartyPaymentProcessing() {
     setGiError('');
     try {
       const fileContent = await giFile.text();
+      const receiptDateISO = giReceiptDate ? `${giReceiptDate}T00:00:00` : undefined;
       const result = await submitGenericImport({
         fileContent,
         fileName: giFile.name,
@@ -648,6 +656,9 @@ export default function ThirdPartyPaymentProcessing() {
         cashBookId: cashierInfo?.cashOfficeId ? Number(cashierInfo.cashOfficeId) : 0,
         userId: userId || 0,
         finYear,
+        receiptDate: receiptDateISO,
+        paymentTypeId: Number(giPaymentTypeId) || 5,
+        postToCashbook: giPostToCashbook,
       });
 
       if (result && !result._error) {
@@ -1304,9 +1315,10 @@ export default function ThirdPartyPaymentProcessing() {
                           className="h-7 gap-1.5 text-xs text-[var(--pos-accent-dark)] hover:text-[var(--pos-accent-dark)] hover:bg-[var(--pos-accent-tint)]"
                           data-testid="button-gi-download-template"
                           onClick={() => {
-                            const header = 'AccountNumber,Amount';
-                            const sample1 = '100001234,1500.00';
-                            const sample2 = '100005678,750.50';
+                            const header = 'AccountNumber,Amount,ReceiptDate,PaymentTypeId';
+                            const today = giReceiptDate || new Date().toISOString().slice(0, 10);
+                            const sample1 = `100001234,1500.00,${today},5`;
+                            const sample2 = `100005678,750.50,${today},5`;
                             const csv = [header, sample1, sample2].join('\r\n');
                             const blob = new Blob([csv], { type: 'text/csv' });
                             const url = URL.createObjectURL(blob);
@@ -1357,6 +1369,50 @@ export default function ThirdPartyPaymentProcessing() {
                         onChange={(e) => setGiPaymentRef(e.target.value)}
                         data-testid="input-gi-payment-ref"
                       />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="gi-receipt-date" className="text-sm font-medium text-slate-700">Receipt Date</Label>
+                        <Input
+                          id="gi-receipt-date"
+                          type="date"
+                          className="mt-1.5"
+                          value={giReceiptDate}
+                          onChange={(e) => setGiReceiptDate(e.target.value)}
+                          data-testid="input-gi-receipt-date"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="gi-payment-type" className="text-sm font-medium text-slate-700">Payment Method</Label>
+                        <Select value={giPaymentTypeId} onValueChange={setGiPaymentTypeId}>
+                          <SelectTrigger id="gi-payment-type" className="mt-1.5" data-testid="select-gi-payment-type">
+                            <SelectValue placeholder="Select payment method" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">Cash</SelectItem>
+                            <SelectItem value="2">Cheque</SelectItem>
+                            <SelectItem value="3">Credit Card</SelectItem>
+                            <SelectItem value="4">Postal Order</SelectItem>
+                            <SelectItem value="5">EFT</SelectItem>
+                            <SelectItem value="6">Third Party Payment</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setGiPostToCashbook(!giPostToCashbook)}
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${giPostToCashbook ? 'bg-[var(--pos-accent)]' : 'bg-slate-200'}`}
+                        data-testid="toggle-gi-post-to-cashbook"
+                      >
+                        <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${giPostToCashbook ? 'translate-x-4' : 'translate-x-0'}`} />
+                      </button>
+                      <Label className="text-sm font-medium text-slate-700 cursor-pointer" onClick={() => setGiPostToCashbook(!giPostToCashbook)}>
+                        Post to Cashbook
+                      </Label>
                     </div>
 
                     {cashierInfo && (

@@ -3546,7 +3546,7 @@ export async function registerRoutes(
       if (!payload.userId || payload.userId <= 0) {
         payload.userId = session.userId;
       }
-      console.log('[Generic Import] Submit request (userId resolved to ' + payload.userId + ')');
+      console.log('[Generic Import] Submit request (userId=' + payload.userId + ', paymentTypeId=' + (payload.paymentTypeId || 'not set') + ', receiptDate=' + (payload.receiptDate || 'not set') + ', postToCashbook=' + (payload.postToCashbook ?? 'not set') + ')');
       const data = await platinumPost(session, "/api/billing-direct-deposit-allocation/submit-generic-import", payload, undefined, { timeout: 55000 });
       console.log('[Generic Import] Submit response:', data?._error ? `ERROR: ${JSON.stringify(data)}` : 'OK');
       handlePlatinumResult(res, data);

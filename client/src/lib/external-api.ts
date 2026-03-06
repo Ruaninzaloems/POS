@@ -1601,6 +1601,9 @@ export async function submitGenericImport(data: {
     cashBookId?: number;
     userId?: number;
     finYear?: string;
+    receiptDate?: string;
+    paymentTypeId?: number;
+    postToCashbook?: boolean;
 }): Promise<any> {
     return platinumFetch(`/api/platinum/direct-deposit-allocation/submit-generic-import`, {
         method: 'POST',
