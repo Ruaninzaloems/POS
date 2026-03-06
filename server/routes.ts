@@ -3521,7 +3521,7 @@ export async function registerRoutes(
       }
 
       const token = await refreshSessionToken(session);
-      const apiUrl = getApiUrlForSession(session);
+      const apiUrl = getPlatinumApiUrl(session);
       const url = `${apiUrl}/api/billing-direct-deposit-allocation/submit-details-data`;
       const bodyStr = JSON.stringify(payload);
 
