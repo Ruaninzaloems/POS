@@ -1307,6 +1307,20 @@ export default function AllocateTransaction() {
                   };
               }
 
+              if (billType === '1' && submitData) {
+                  try {
+                      console.log(`[Direct Deposit] Calling load-details-consumer-services for account ${submitData.accountId}...`);
+                      await platinumLoadDetailsConsumerServices({
+                          posItemID: posItemId,
+                          accountID: submitData.accountId,
+                          transactionAmount: submitData.amount || submitData.paidAmount,
+                      });
+                      console.log(`[Direct Deposit] load-details-consumer-services completed for account ${submitData.accountId}`);
+                  } catch (loadErr: any) {
+                      console.warn(`[Direct Deposit] load-details-consumer-services failed (continuing):`, loadErr?.message);
+                  }
+              }
+
               try {
                   console.log(`[Direct Deposit] submit-details-data (${allocType}, billType=${billType}):`, submitData);
                   const result = await platinumSubmitDirectDepositAllocation(submitData);
