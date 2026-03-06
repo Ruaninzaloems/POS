@@ -310,9 +310,12 @@ export async function registerRoutes(
       const session = requireAuth(req, res);
       if (!session) return;
       const userId = req.query.userid as string;
-      const finYear = (req.query.finYear as string) || '2025/2026';
+      const finYear = req.query.finYear as string;
       if (!userId) {
         return res.status(400).json({ message: "userid is required" });
+      }
+      if (!finYear) {
+        return res.status(400).json({ message: "finYear is required" });
       }
 
       console.log(`[active-cashier] Using validate-cashier API as single source of truth — userId=${userId}, finYear=${finYear}`);
@@ -1470,7 +1473,10 @@ export async function registerRoutes(
       const session = requireAuth(req, res); if (!session) return;
       const cashierId = req.query.cashierId as string;
       const userId = session.userData?.user_ID ? String(session.userData.user_ID) : '';
-      const finYear = session.userData?.finYear || '2025/2026';
+      const finYear = session.userData?.finYear;
+      if (!finYear) {
+        return res.status(400).json({ message: "Financial year missing from session. Please log in again." });
+      }
       console.log(`[receipt-discovery] Starting — cashierId=${cashierId}, userId=${userId}`);
 
       const allReceipts: any[] = [];
@@ -1958,7 +1964,7 @@ export async function registerRoutes(
         userId: Number(miscBody.userId),
         cashierId: Number(miscBody.cashierId ?? 0),
         cashOfficeId: Number(miscBody.cashOfficeId ?? 0),
-        finYear: miscBody.finYear || '2025/2026',
+        finYear: miscBody.finYear,
         cardNo: miscBody.cardNo || '',
         expiryDate: miscBody.expiryDate || '',
         chequeNo: miscBody.chequeNo || '',
@@ -2062,7 +2068,7 @@ export async function registerRoutes(
         bankBranchCode: null,
         accHolderName: null,
         userId: Number(userId),
-        finYear: finYear || "2025/2026",
+        finYear: finYear,
       };
 
       console.log(`[drop-box] Trying misc submit with payload:`, JSON.stringify(payload));
@@ -2638,7 +2644,10 @@ export async function registerRoutes(
 
         console.log(`[dayend-save] Now verifying: calling validate-cashier to check if cashierReconcile was created...`);
         try {
-          const finYear = req.body.finyear || '2025/2026';
+          const finYear = req.body.finyear || session.userData?.finYear;
+          if (!finYear) {
+            console.warn('[dayend-save] Financial year missing from request and session');
+          }
           const vcData = await platinumGet(session, "/api/ReceiptPrepaid/validate-cashier", { userId, finYear });
           const hasReconcile = vcData?.cashierReconcile != null;
           console.log(`[dayend-save] Post-save verify: cashierReconcile=${hasReconcile ? 'PRESENT' : 'NULL'} — ${hasReconcile ? 'DB WRITE CONFIRMED' : 'DB WRITE FAILED — record was not created!'}`);
@@ -3338,10 +3347,10 @@ export async function registerRoutes(
       console.log(`[Bank Notes] Found ${eftReceipts.length} EFT receipts out of ${receipts.length} total for account ${accountId}`);
 
       const results: Record<string, string> = {};
-      const now = new Date();
-      const finYear = now.getMonth() >= 6
-        ? `${now.getFullYear()}/${now.getFullYear() + 1}`
-        : `${now.getFullYear() - 1}/${now.getFullYear()}`;
+      const finYear = session.userData?.finYear || session.platinumUser?.finYear;
+      if (!finYear) {
+        return res.status(400).json({ message: "Financial year missing from session." });
+      }
 
       const batchSize = 3;
       const limited = eftReceipts.slice(0, 20);
@@ -4425,7 +4434,10 @@ export async function registerRoutes(
     try {
       const session = requireAuth(req, res); if (!session) return;
       const { accountId, financialYear } = req.query as Record<string, string>;
-      const finYear = financialYear || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
+      if (!financialYear) {
+        return res.status(400).json({ message: "financialYear query parameter is required" });
+      }
+      const finYear = financialYear;
 
       try {
         console.log(`[billed-vs-paid] Trying AccountInquiries for accountId=${accountId}, finYear=${finYear}`);
@@ -5062,7 +5074,10 @@ export async function registerRoutes(
   app.get("/api/platinum/const-institutions", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const finYear = session.platinumUser?.finYear || req.query.finYear || '2025/2026';
+      const finYear = session.platinumUser?.finYear || req.query.finYear;
+      if (!finYear) {
+        return res.status(400).json({ message: "Financial year missing from session. Please log in again." });
+      }
 
       const endpoints = [
         { url: "/api/receipting-account-group/search", params: {} },
@@ -5114,10 +5129,10 @@ export async function registerRoutes(
         activeServiceCount: g.activeServiceCount || 0,
       });
 
-      const finYear = session.platinumUser?.finYear || '2025/2026';
+      const finYear = session.platinumUser?.finYear;
       const endpoints = [
         { url: "/api/receipting-account-group/search", params: {} },
-        { url: "/api/receipting-account-group/get-account-groups", params: { finYear: String(finYear) } },
+        ...(finYear ? [{ url: "/api/receipting-account-group/get-account-groups", params: { finYear: String(finYear) } }] : []),
       ];
 
       for (const ep of endpoints) {

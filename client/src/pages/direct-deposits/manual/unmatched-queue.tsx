@@ -363,10 +363,14 @@ export default function UnmatchedQueue() {
     if (e) e.stopPropagation();
     setCheckingItemId(posItemId);
     try {
-      let finYear = '2025/2026';
+      let finYear: string;
       try {
         finYear = await fetchActiveFinYear();
-      } catch {}
+      } catch (e: any) {
+        toast({ title: 'Financial Year Error', description: `Could not fetch active financial year from API: ${e?.message || 'Unknown error'}.`, variant: 'destructive' });
+        setCheckingItemId(null);
+        return;
+      }
 
       const checkUserId = currentUser?.id ? Number(currentUser.id) : -1;
       const result = await platinumCheckSelectedItemProcessed(

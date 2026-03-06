@@ -235,7 +235,12 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
     try {
       const userId = platinumUser?.user_ID || Number(currentUser?.id) || 213;
       const cashierId = platinumCashierId || 0;
-      const finYear = platinumUser?.finYear || '2025/2026';
+      const finYear = platinumUser?.finYear;
+      if (!finYear) {
+        toast({ title: 'Session Error', description: 'Financial year missing from your session. Please log in again.', variant: 'destructive' });
+        setStep('confirm');
+        return;
+      }
 
       const denomsToSend = cashEntryMode === 'denominations' ? denominations : INITIAL_DENOMINATIONS;
 

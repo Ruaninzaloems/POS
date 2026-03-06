@@ -48,7 +48,7 @@ export default function AllocationHistory() {
   const [filterQuery, setFilterQuery] = useState('');
   const [methodFilter, setMethodFilter] = useState('ALL');
   
-  const [financialYear, setFinancialYear] = useState('2025/2026');
+  const [financialYear, setFinancialYear] = useState(platinumUser?.finYear || '');
   const [billingMonth, setBillingMonth] = useState('All');
   const [processFilter, setProcessFilter] = useState('All');
   const [allocDateFrom, setAllocDateFrom] = useState<Date | undefined>();
@@ -66,7 +66,7 @@ export default function AllocationHistory() {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [jobAccountDetails, setJobAccountDetails] = useState<any[] | null>(null);
   
-  const [financialYears, setFinancialYears] = useState<string[]>(['2025/2026', '2024/2025']);
+  const [financialYears, setFinancialYears] = useState<string[]>(platinumUser?.finYear ? [platinumUser.finYear] : []);
   const [monthList, setMonthList] = useState<{id: number; name: string}[]>([]);
   const [processList, setProcessList] = useState<string[]>([]);
 
@@ -76,10 +76,16 @@ export default function AllocationHistory() {
       fetchBulkProgressMonthList(),
       fetchBulkProgressProcessList(),
     ]).then(([years, months, processes]) => {
-      if (years.length > 0) setFinancialYears(years);
+      if (years.length > 0) {
+        setFinancialYears(years);
+        if (!financialYear && years.length > 0) setFinancialYear(years[0]);
+      }
       if (months.length > 0) setMonthList(months);
       if (processes.length > 0) setProcessList(processes);
-    }).catch(() => {});
+    }).catch((e) => {
+      console.error('Failed to load filter options from API:', e);
+      toast({ title: 'Error', description: 'Failed to load filter options from API.', variant: 'destructive' });
+    });
   }, []);
 
   const loadData = useCallback(async () => {

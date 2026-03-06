@@ -426,7 +426,8 @@ export async function getAccountBalance(accountId: number): Promise<any> {
 }
 
 export async function getServiceTypeBalance(accountId: number, financialYear?: string): Promise<any[]> {
-  const yr = financialYear || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
+  if (!financialYear) throw new Error('Financial year is required for service type balance');
+  const yr = financialYear;
   return deduplicatedFetch(`svc-type-bal-${accountId}-${yr}`,
     async () => normalizeArray(await fetchWithTimeout(`/api/platinum/billing-enquiry/service-type-balance?accountId=${accountId}&financialYear=${encodeURIComponent(yr)}`)),
     SHORT_CACHE_TTL);
@@ -485,10 +486,8 @@ export async function getSectionalTitleScheme(accountId: number): Promise<any> {
 }
 
 export async function getPropertyNotification(accountId: number, finYear?: string): Promise<any> {
-  const now = new Date();
-  const yr = finYear || (now.getMonth() >= 6
-    ? `${now.getFullYear()}/${now.getFullYear() + 1}`
-    : `${now.getFullYear() - 1}/${now.getFullYear()}`);
+  if (!finYear) throw new Error('Financial year is required for property notification');
+  const yr = finYear;
   const cacheKey = `property-notification-${accountId}-${yr}`;
   const cached = getCached(cacheKey);
   if (cached) return cached;
@@ -1064,7 +1063,8 @@ export async function getChequeWriteBackDetail(chequeId: number): Promise<any> {
 
 // === BILLED VS PAID ===
 export async function getBilledVsPaidAmounts(accountId: number, financialYear?: string): Promise<any[]> {
-  const yr = financialYear || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
+  if (!financialYear) throw new Error('Financial year is required for billed vs paid');
+  const yr = financialYear;
   const cacheKey = `billed-vs-paid-${accountId}-${yr}`;
   const cached = getCached(cacheKey);
   if (cached) return cached;

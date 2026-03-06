@@ -399,7 +399,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
     if (!platinumUser) return;
     const checkActiveSession = async () => {
       try {
-        const res = await fetchActiveCashierByUserId(platinumUser.user_ID, platinumUser.finYear || '2025/2026').catch(() => null);
+        if (!platinumUser.finYear) {
+          console.error('[Session] Financial year missing from user session — cannot check active session');
+          setSessionLoading(false);
+          return;
+        }
+        const res = await fetchActiveCashierByUserId(platinumUser.user_ID, platinumUser.finYear).catch(() => null);
         if (!res) {
           setCashierRegistered(false);
           setSessionLoading(false);
@@ -432,7 +437,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
 
             let resolvedCashierId = receiptCashierId;
             try {
-              const vcResult = await platinumValidateCashier(platinumUser.user_ID, platinumUser.finYear || '2025/2026');
+              const vcResult = await platinumValidateCashier(platinumUser.user_ID, platinumUser.finYear);
               const vcCashierId = vcResult?.cashier?.id;
               if (vcCashierId) {
                 console.log(`[Session] validate-cashier returned active cashier ID: ${vcCashierId} (overriding ${receiptCashierId})`);
@@ -737,7 +742,14 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
     if (!platinumUser?.user_ID) return;
     try {
       const userId = platinumUser.user_ID;
-      const finYear = platinumUser.finYear || '2025/2026';
+      const finYear = platinumUser.finYear;
+      if (!finYear) {
+        console.error('[SessionEnforcement] Financial year missing from user session');
+        setActiveSession(false);
+        setSessionDetails(undefined);
+        toast({ title: "Session Error", description: "Financial year missing from your session. Please log in again.", variant: "destructive" });
+        return;
+      }
       let result: any;
       try {
         result = await fetchActiveCashierByUserId(userId, finYear);
@@ -1099,12 +1111,15 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
     setTransactionProcessing(true);
     setProcessingStep('Validating cashier session...');
 
-    let resolvedFinYear = platinumUser?.finYear || '2025/2026';
-    if (!resolvedFinYear || resolvedFinYear === '2025/2026') {
+    let resolvedFinYear = platinumUser?.finYear;
+    if (!resolvedFinYear) {
         try {
             resolvedFinYear = await fetchActiveFinYear();
-        } catch (e) {
-            console.warn("[Payment] Failed to fetch active fin year for receipt range validation, using default");
+        } catch (e: any) {
+            console.error("[Payment] Failed to fetch active financial year from API:", e?.message);
+            toast({ title: 'Financial Year Error', description: 'Could not determine the active financial year. Please log in again.', variant: 'destructive' });
+            setTransactionProcessing(false);
+            return;
         }
     }
     const receiptOfficeId = sessionDetails?.officeId ? Number(sessionDetails.officeId) : undefined;

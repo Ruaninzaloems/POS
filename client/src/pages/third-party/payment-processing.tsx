@@ -129,8 +129,8 @@ export default function ThirdPartyPaymentProcessing() {
 
   useEffect(() => {
     const userId = posState?.platinumUser?.user_ID;
-    const finYear = posState?.platinumUser?.finYear || '2025/2026';
-    if (!userId) return;
+    const finYear = posState?.platinumUser?.finYear;
+    if (!userId || !finYear) return;
     platinumThirdPartyCashierDetails(userId, finYear)
       .then((details) => {
         if (details && !details._error) {
@@ -545,7 +545,12 @@ export default function ThirdPartyPaymentProcessing() {
     try {
       const selectedType = thirdPartyTypes.find(t => String(t.id) === selectedTypeId);
       const userId = posState?.platinumUser?.user_ID || 0;
-      const finYear = posState?.platinumUser?.finYear || '2025/2026';
+      const finYear = posState?.platinumUser?.finYear;
+      if (!finYear) {
+        toast({ title: 'Session Error', description: 'Financial year missing from your session. Please log in again.', variant: 'destructive' });
+        setCommitting(false);
+        return;
+      }
       const result = await platinumThirdPartyCommit(importId, {
         groupId: selectedType?.id || Number(selectedTypeId) || 0,
         cashBookId: Number(cashBookId),

@@ -62,7 +62,12 @@ export function DropBoxModal({ isOpen, onClose, triggerReason }: DropBoxModalPro
         setStep('submitting');
         try {
             const userId = platinumUser?.user_ID || Number(currentUser?.id) || 213;
-            const finYear = platinumUser?.finYear || '2025/2026';
+            const finYear = platinumUser?.finYear;
+            if (!finYear) {
+                toast({ title: 'Session Error', description: 'Financial year missing from your session. Please log in again.', variant: 'destructive' });
+                setStep('form');
+                return;
+            }
 
             const result = await platinumSubmitDropBox({
                 amount: parsedAmount,

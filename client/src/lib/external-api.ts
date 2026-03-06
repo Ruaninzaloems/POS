@@ -2453,16 +2453,15 @@ export async function getEftBankStatementNotes(accountId: number | string): Prom
 }
 
 export async function fetchActiveFinYear(): Promise<string> {
-    try {
-        const res = await apiFetch('/api/platinum/active-fin-year');
-        if (res.ok) {
-            const data = await res.json();
-            if (data) return data;
-        }
-    } catch (e) {
-        console.warn('Failed to fetch active fin year', e);
+    const res = await apiFetch('/api/platinum/active-fin-year');
+    if (!res.ok) {
+        throw new Error(`Failed to fetch active financial year: HTTP ${res.status}`);
     }
-    return `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
+    const data = await res.json();
+    if (!data) {
+        throw new Error('Active financial year API returned empty response');
+    }
+    return data;
 }
 
 export async function fetchActiveCashierByUserId(userId: number, finYear: string): Promise<any> {

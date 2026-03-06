@@ -64,8 +64,25 @@ The post-payment receipt flow is optimized for speed:
 ### Direct Deposit Allocation
 Direct deposit manual allocations always use `VirtualCashierUserId = -1` as the cashier ID in the Platinum API submission payload. The real logged-in user ID is validated (user must be authenticated) but is only used for audit/logging — not passed to the Platinum API. All `/direct-deposits` paths are exempt from active cashier session enforcement; users can access and process direct deposit allocations without having an open cashier session. The allocation submission order is: Account/Prepaid → Group → Clearance → Direct Income → Cashbook.
 
-### No Silent Fallbacks
-All API calls must fail explicitly with clear error messages shown to the user. No hardcoded default data is used as a fallback when the Platinum API returns errors. This applies to payment types, payment options, bank lists, and all other configuration data.
+### MANDATORY: No Fallbacks — API Is The Only Data Source
+**This is the #1 system design rule. It overrides all other considerations.**
+
+ALL data displayed or processed in this system MUST come exclusively from the Platinum Inzalo EMS API. There are zero exceptions:
+
+1. **If an API call fails, it fails explicitly** — show a clear error to the user. Never silently return default/empty data.
+2. **No hardcoded default data** — No hardcoded financial years, payment types, bank lists, service names, or any other business data used as fallbacks when the API is unavailable or returns errors.
+3. **No mock data, placeholder data, or workarounds** — If the API doesn't provide the data, the feature cannot work. Document the missing API capability and report it to the Platinum developer.
+4. **No silent catch blocks** — Every `catch` must either re-throw the error or display an explicit error message to the user. Never swallow errors and return `[]`, `{}`, `null`, or hardcoded defaults.
+5. **No constructed/derived data** — Don't construct data that should come from the API (e.g. building references from unrelated fields, deriving names from descriptions).
+6. **Financial year must come from the API** — The user's session provides `platinumUser.finYear` from the login API. If it's missing, the operation must fail with an error — never fall back to a hardcoded year like `'2025/2026'`.
+7. **Configuration data must come from the API** — Payment types, payment options, groups, banks, institutions, cashiers — all fetched from API. If the fetch fails, show the error.
+
+**Protocol constants are NOT fallbacks** — Internal mappings like billType codes (`1`=Account, `3`=Group, `4`=Direct, `6`=Clearance), HTTP methods, route paths, and API field names are structural protocol that define HOW to talk to the API. These are not "data" and are acceptable as code constants.
+
+**When the API has a bug or missing feature:**
+- Document the issue in `docs/API_SPEC_Job_Account_Details.md`
+- Report it to the Platinum developer with clear test cases
+- Do NOT work around it with fallback data
 
 ### Account Enquiry Dialog
 A reusable `AccountEnquiryDialog` component (`client/src/components/account-enquiry-dialog.tsx`) provides a pop-out dialog with the full account enquiry tab system (Account, Balance/Debt, Transactions, Services, Property, etc.). It accepts an account number/ID, searches for the account via `searchAccounts`, and renders all enquiry tabs inside a large modal. Currently integrated into `view-receipts.tsx` — Bank Statement and EFT by Account tabs show an "Enquiry" button on account allocation rows, and the Receipt Search tab has clickable account numbers. The dialog does not require an active cashier session.

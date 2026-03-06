@@ -167,7 +167,15 @@ function mapCashierToShift(c: any, index: number, officeConfigs?: Record<string,
   };
 }
 
-const FINANCIAL_YEARS = ['2025/2026', '2024/2025', '2023/2024', '2022/2023'];
+const generateFinancialYears = (currentFinYear?: string): string[] => {
+  if (currentFinYear) {
+    const startYear = parseInt(currentFinYear.split('/')[0]);
+    if (!isNaN(startYear)) {
+      return Array.from({ length: 4 }, (_, i) => `${startYear - i}/${startYear - i + 1}`);
+    }
+  }
+  return [];
+};
 const MONTHS = [
     { value: '0', label: 'January' },
     { value: '1', label: 'February' },
@@ -2011,7 +2019,7 @@ export default function SupervisorDashboard() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="All">All Years</SelectItem>
-                                {FINANCIAL_YEARS.map(fy => (
+                                {generateFinancialYears(platinumUser?.finYear).map(fy => (
                                     <SelectItem key={fy} value={fy}>{fy}</SelectItem>
                                 ))}
                             </SelectContent>

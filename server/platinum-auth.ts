@@ -209,7 +209,7 @@ async function fetchTokenForUser(username: string, password: string, dbName: str
                 enabled: userData.enabled ?? true,
                 superUser: userData.superUser ?? false,
                 cashFloat: userData.cashFloat ?? 0,
-                finYear: userData.finYear || data.finYear || "2026/2027"
+                finYear: userData.finYear || data.finYear
               };
               console.log(`[PlatinumAuth] Token obtained via createToken. User: ${user.firstName} ${user.lastName} (user_ID: ${user.user_ID})`);
               return { token: data.token, userData: user, authMode: 'direct' as const };
@@ -263,7 +263,11 @@ async function fetchTokenForUser(username: string, password: string, dbName: str
     const cachedUser = getCachedUser(username);
     if (cachedUser) {
       console.log(`[PlatinumAuth] Using cached user data for "${username}" (user_ID: ${cachedUser.user_ID})`);
-      return { token: data.token, userData: { ...cachedUser, finYear: apiUserData.finYear || data.finYear || cachedUser.finYear || "2025/2026" }, authMode: 'azure' as const };
+      const resolvedFinYear = apiUserData.finYear || data.finYear || cachedUser.finYear;
+      if (!resolvedFinYear) {
+        throw new Error('Financial year not returned by API. Cannot proceed without financial year.');
+      }
+      return { token: data.token, userData: { ...cachedUser, finYear: resolvedFinYear }, authMode: 'azure' as const };
     }
 
     console.log(`[PlatinumAuth] Token resolved to ${tokenUserName} (ID:${apiUserId}), looking up actual user "${username}"...`);
@@ -383,7 +387,7 @@ async function fetchTokenForUser(username: string, password: string, dbName: str
           enabled: matchedUser.enabled ?? true,
           superUser: matchedUser.superUser ?? false,
           cashFloat: matchedUser.cashFloat ?? 0,
-          finYear: apiUserData.finYear || data.finYear || "2025/2026",
+          finYear: apiUserData.finYear || data.finYear,
           authMode: 'azure' as const
         };
         setCachedUser(username, user);
@@ -408,7 +412,7 @@ async function fetchTokenForUser(username: string, password: string, dbName: str
       enabled: apiUserData.enabled ?? true,
       superUser: apiUserData.superUser ?? false,
       cashFloat: apiUserData.cashFloat ?? 0,
-      finYear: apiUserData.finYear || data.finYear || "2025/2026"
+      finYear: apiUserData.finYear || data.finYear
     };
     console.log(`[PlatinumAuth] Token obtained. User: ${user.firstName} ${user.lastName} (user_ID: ${user.user_ID})`);
     return { token: data.token, userData: user, authMode: 'azure' as const };
@@ -423,7 +427,7 @@ async function fetchTokenForUser(username: string, password: string, dbName: str
     enabled: true,
     superUser: false,
     cashFloat: 0,
-    finYear: apiUserData.finYear || data.finYear || "2025/2026"
+    finYear: apiUserData.finYear || data.finYear
   };
 
   console.log(`[PlatinumAuth] Token obtained. API returned generic user (ID:${apiUserId}) — overriding with Francois Naude (user_ID: 213)`);

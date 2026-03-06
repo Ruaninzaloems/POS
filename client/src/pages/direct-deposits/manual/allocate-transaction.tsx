@@ -964,10 +964,15 @@ export default function AllocateTransaction() {
           };
 
           updateProgress('Fetching financial year...');
-          let finYear = '2025/2026';
+          let finYear: string;
           try {
               finYear = await fetchActiveFinYear();
-          } catch {}
+          } catch (e: any) {
+              toast({ title: 'Financial Year Error', description: `Could not fetch active financial year from API: ${e?.message || 'Unknown error'}. Cannot proceed.`, variant: 'destructive' });
+              setPosting(false);
+              setPostingStatus('');
+              return;
+          }
 
           updateProgress('Verifying user session...');
           const VIRTUAL_CASHIER_USER_ID = -1;
