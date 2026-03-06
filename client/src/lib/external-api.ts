@@ -1595,15 +1595,17 @@ export async function platinumSubmitDirectDepositAllocation(data: any): Promise<
 // --- Generic Import (Direct Deposit Allocation) ---
 
 export async function submitGenericImport(data: {
-    fileContent: string;
-    fileName: string;
-    paymentReference?: string;
-    cashBookId?: number;
-    userId?: number;
-    finYear?: string;
-    receiptDate?: string;
-    paymentTypeId?: number;
-    postToCashbook?: boolean;
+    cashOfficeId: number;
+    cashierId: number;
+    userId: number;
+    finYear: string;
+    postToCashbook: boolean;
+    payments: Array<{
+        receiptDate: string;
+        accountNumber: string;
+        amount: number;
+        paymentTypeId: number;
+    }>;
 }): Promise<any> {
     return platinumFetch(`/api/platinum/direct-deposit-allocation/submit-generic-import`, {
         method: 'POST',

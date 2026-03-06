@@ -632,6 +632,86 @@ export default function ThirdPartyPaymentProcessing() {
     setActiveFilter('all');
   };
 
+  const parseCsvLine = (line: string): string[] => {
+    const fields: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQuotes) {
+        if (ch === '"' && i + 1 < line.length && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else if (ch === '"') {
+          inQuotes = false;
+        } else {
+          current += ch;
+        }
+      } else {
+        if (ch === '"') {
+          inQuotes = true;
+        } else if (ch === ',') {
+          fields.push(current.trim());
+          current = '';
+        } else {
+          current += ch;
+        }
+      }
+    }
+    fields.push(current.trim());
+    return fields;
+  };
+
+  const parseGenericImportCsv = (csvText: string, defaultReceiptDate: string, defaultPaymentTypeId: number): Array<{ receiptDate: string; accountNumber: string; amount: number; paymentTypeId: number }> => {
+    const lines = csvText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length < 2) throw new Error('CSV must have a header row and at least one data row.');
+
+    const header = parseCsvLine(lines[0]).map(h => h.toLowerCase().replace(/[^a-z0-9]/g, ''));
+    const accIdx = header.findIndex(h => h === 'accountnumber' || h === 'accountno' || h === 'account');
+    const amtIdx = header.findIndex(h => h === 'amount' || h === 'amt');
+    const dateIdx = header.findIndex(h => h === 'receiptdate' || h === 'date');
+    const ptIdx = header.findIndex(h => h === 'paymenttypeid' || h === 'paymenttype' || h === 'paytype');
+
+    if (accIdx === -1) throw new Error('CSV missing required column: AccountNumber');
+    if (amtIdx === -1) throw new Error('CSV missing required column: Amount');
+
+    const formatDateDDMMYYYY = (dateStr: string): string => {
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) return dateStr;
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return defaultReceiptDate;
+      return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+    };
+
+    const skippedRows: string[] = [];
+    const payments: Array<{ receiptDate: string; accountNumber: string; amount: number; paymentTypeId: number }> = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cols = parseCsvLine(lines[i]);
+      const rawAcc = cols[accIdx] || '';
+      const rawAmt = cols[amtIdx] || '';
+      if (!rawAcc || !rawAmt) { skippedRows.push(`Row ${i + 1}: empty account or amount`); continue; }
+
+      const digits = rawAcc.replace(/\D/g, '');
+      if (digits.length === 0 || digits.length > 12) { skippedRows.push(`Row ${i + 1}: invalid account number "${rawAcc}"`); continue; }
+
+      const amount = parseFloat(rawAmt.replace(/[^0-9.\-]/g, ''));
+      if (isNaN(amount) || amount <= 0) { skippedRows.push(`Row ${i + 1}: invalid amount "${rawAmt}"`); continue; }
+
+      const receiptDate = dateIdx !== -1 && cols[dateIdx] ? formatDateDDMMYYYY(cols[dateIdx]) : defaultReceiptDate;
+      const paymentTypeId = ptIdx !== -1 && cols[ptIdx] ? (parseInt(cols[ptIdx]) || defaultPaymentTypeId) : defaultPaymentTypeId;
+
+      payments.push({
+        receiptDate,
+        accountNumber: digits.padStart(12, '0'),
+        amount,
+        paymentTypeId,
+      });
+    }
+    if (skippedRows.length > 0) {
+      console.warn(`[GenericImport] Skipped ${skippedRows.length} row(s):`, skippedRows.slice(0, 10).join('; '));
+    }
+    return payments;
+  };
+
   const handleGenericImportSubmit = async () => {
     if (!giFile) {
       toast({ title: 'Missing File', description: 'Please select a file to import.', variant: 'destructive' });
@@ -643,32 +723,54 @@ export default function ThirdPartyPaymentProcessing() {
       toast({ title: 'Session Error', description: 'Financial year missing from your session. Please log in again.', variant: 'destructive' });
       return;
     }
+    if (!userId) {
+      toast({ title: 'Session Error', description: 'User ID not available. Please log in again.', variant: 'destructive' });
+      return;
+    }
+    const cashOfficeId = cashierInfo?.cashOfficeId ? Number(cashierInfo.cashOfficeId) : 0;
+    const cashierId = posState?.platinumCashierId || 0;
+    if (!cashOfficeId || !cashierId) {
+      toast({ title: 'Session Error', description: 'Cashier session details not available. Please start a session first.', variant: 'destructive' });
+      return;
+    }
 
     setGiSubmitting(true);
     setGiError('');
     try {
       const fileContent = await giFile.text();
-      const receiptDateISO = giReceiptDate ? `${giReceiptDate}T00:00:00` : undefined;
+
+      const defaultDateParts = giReceiptDate ? giReceiptDate.split('-') : [];
+      const defaultReceiptDate = defaultDateParts.length === 3
+        ? `${defaultDateParts[2]}/${defaultDateParts[1]}/${defaultDateParts[0]}`
+        : new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date());
+      const defaultPaymentTypeId = Number(giPaymentTypeId) || 5;
+
+      const payments = parseGenericImportCsv(fileContent, defaultReceiptDate, defaultPaymentTypeId);
+      if (payments.length === 0) {
+        setGiError('No valid payment rows found in CSV. Check the file format.');
+        setGiSubmitting(false);
+        return;
+      }
+
       const result = await submitGenericImport({
-        fileContent,
-        fileName: giFile.name,
-        paymentReference: giPaymentRef || '',
-        cashBookId: cashierInfo?.cashOfficeId ? Number(cashierInfo.cashOfficeId) : 0,
-        userId: userId || 0,
+        cashOfficeId,
+        cashierId,
+        userId,
         finYear,
-        receiptDate: receiptDateISO,
-        paymentTypeId: Number(giPaymentTypeId) || 5,
         postToCashbook: giPostToCashbook,
+        payments,
       });
 
-      if (result && !result._error) {
-        const jobId = result.jobId || result.job_ID || result.directDepositJob_ID || result.id || result;
+      if (result && !result._error && result.isSuccess !== false) {
+        const jobId = result.jobId || result.job_ID || result.directDepositJob_ID || result.id;
+        const totalCount = result.totalCount || payments.length;
         if (jobId) {
           setGiJobId(String(jobId));
           setGiStep('processing');
+          toast({ title: 'Import Accepted', description: result.message || `${totalCount} payment(s) submitted for processing.` });
           startPolling(String(jobId));
         } else {
-          toast({ title: 'Import Submitted', description: 'File submitted but no job ID was returned. Check allocation progress for results.' });
+          toast({ title: 'Import Submitted', description: result.message || `${totalCount} payment(s) submitted. Check allocation progress for results.` });
           setGiStep('results');
         }
       } else {
@@ -1316,9 +1418,10 @@ export default function ThirdPartyPaymentProcessing() {
                           data-testid="button-gi-download-template"
                           onClick={() => {
                             const header = 'AccountNumber,Amount,ReceiptDate,PaymentTypeId';
-                            const today = giReceiptDate || new Date().toISOString().slice(0, 10);
-                            const sample1 = `100001234,1500.00,${today},5`;
-                            const sample2 = `100005678,750.50,${today},5`;
+                            const dateParts = (giReceiptDate || new Date().toISOString().slice(0, 10)).split('-');
+                            const todayFormatted = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : giReceiptDate;
+                            const sample1 = `000000013088,1500.00,${todayFormatted},5`;
+                            const sample2 = `000000022906,750.50,${todayFormatted},3`;
                             const csv = [header, sample1, sample2].join('\r\n');
                             const blob = new Blob([csv], { type: 'text/csv' });
                             const url = URL.createObjectURL(blob);

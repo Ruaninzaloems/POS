@@ -3542,13 +3542,21 @@ export async function registerRoutes(
   app.post("/api/platinum/direct-deposit-allocation/submit-generic-import", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const payload = { ...req.body };
-      if (!payload.userId || payload.userId <= 0) {
-        payload.userId = session.userId;
+      const { cashOfficeId, cashierId, finYear, postToCashbook, payments } = req.body;
+      const payload = {
+        cashOfficeId: cashOfficeId || 0,
+        cashierId: cashierId || 0,
+        userId: session.userId,
+        finYear: finYear || '',
+        postToCashbook: postToCashbook ?? false,
+        payments: Array.isArray(payments) ? payments : [],
+      };
+      console.log(`[Generic Import] Submit request — userId=${payload.userId}, cashOfficeId=${payload.cashOfficeId}, cashierId=${payload.cashierId}, finYear=${payload.finYear}, postToCashbook=${payload.postToCashbook}, payments=${payload.payments.length} rows`);
+      if (payload.payments.length > 0) {
+        console.log(`[Generic Import] First payment sample:`, JSON.stringify(payload.payments[0]));
       }
-      console.log('[Generic Import] Submit request (userId=' + payload.userId + ', paymentTypeId=' + (payload.paymentTypeId || 'not set') + ', receiptDate=' + (payload.receiptDate || 'not set') + ', postToCashbook=' + (payload.postToCashbook ?? 'not set') + ')');
       const data = await platinumPost(session, "/api/billing-direct-deposit-allocation/submit-generic-import", payload, undefined, { timeout: 55000 });
-      console.log('[Generic Import] Submit response:', data?._error ? `ERROR: ${JSON.stringify(data)}` : 'OK');
+      console.log('[Generic Import] Submit response:', data?._error ? `ERROR: ${JSON.stringify(data)}` : JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       console.error('[Generic Import] Submit EXCEPTION:', e.message);
@@ -5418,8 +5426,8 @@ export async function registerRoutes(
 
       const tryMultiPrint = async (id: string): Promise<any[]> => {
         try {
-          console.log(`[pos-multi-receipt-print] Calling Platinum API: pos-multi-receipt-print?receiptId=${id}`);
-          const data = await platinumGet(session, "/api/pos-multi-receipt-print", { receiptId: id });
+          console.log(`[pos-multi-receipt-print] Calling Platinum API: billing-payment/pos-multi-receipt-print?receiptId=${id}`);
+          const data = await platinumGet(session, "/api/billing-payment/pos-multi-receipt-print", { receiptId: id });
           const items = Array.isArray(data) ? data : (data && !data._error ? [] : []);
           console.log(`[pos-multi-receipt-print] API returned ${items.length} items for receiptId=${id}`);
           if (items.length > 0) {
@@ -5644,7 +5652,7 @@ export async function registerRoutes(
           const baseProbe = 1041300;
           const probeIds = [baseProbe + 200, baseProbe + 150, baseProbe + 100, baseProbe + 50, baseProbe, baseProbe - 20];
           for (const probeId of probeIds) {
-            const data = await platinumGet(session, "/api/pos-multi-receipt-print", { receiptId: String(probeId) });
+            const data = await platinumGet(session, "/api/billing-payment/pos-multi-receipt-print", { receiptId: String(probeId) });
             if (Array.isArray(data) && data.length > 0) {
               highestKnownId = probeId;
               break;
@@ -5653,7 +5661,7 @@ export async function registerRoutes(
           if (!highestKnownId) {
             let probeId = baseProbe;
             while (probeId > baseProbe - 100) {
-              const data = await platinumGet(session, "/api/pos-multi-receipt-print", { receiptId: String(probeId) });
+              const data = await platinumGet(session, "/api/billing-payment/pos-multi-receipt-print", { receiptId: String(probeId) });
               if (Array.isArray(data) && data.length > 0) {
                 highestKnownId = probeId;
                 break;
@@ -5680,7 +5688,7 @@ export async function registerRoutes(
         const batchIds = ids.slice(batch, batch + batchSize);
         const fetchOne = async (id: number) => {
           try {
-            const data = await platinumGet(session, "/api/pos-multi-receipt-print", { receiptId: String(id) });
+            const data = await platinumGet(session, "/api/billing-payment/pos-multi-receipt-print", { receiptId: String(id) });
             if (Array.isArray(data) && data.length > 0) {
               const item = data[0];
               if (item.cashierName && item.cashierName.toLowerCase() === cashierName.toLowerCase()) {
@@ -5718,7 +5726,7 @@ export async function registerRoutes(
       try {
         const probeIds = [1041500, 1041450, 1041400, 1041350, 1041300, 1041280];
         for (const probeId of probeIds) {
-          const data = await platinumGet(session, "/api/pos-multi-receipt-print", { receiptId: String(probeId) });
+          const data = await platinumGet(session, "/api/billing-payment/pos-multi-receipt-print", { receiptId: String(probeId) });
           if (Array.isArray(data) && data.length > 0) {
             highestKnownId = probeId;
             break;
@@ -5727,7 +5735,7 @@ export async function registerRoutes(
         if (!highestKnownId) {
           let probeId = 1041300;
           while (probeId > 1041200) {
-            const data = await platinumGet(session, "/api/pos-multi-receipt-print", { receiptId: String(probeId) });
+            const data = await platinumGet(session, "/api/billing-payment/pos-multi-receipt-print", { receiptId: String(probeId) });
             if (Array.isArray(data) && data.length > 0) {
               highestKnownId = probeId;
               break;
@@ -5753,7 +5761,7 @@ export async function registerRoutes(
         const batchIds = ids.slice(batch, batch + batchSize);
         const fetchOne = async (id: number) => {
           try {
-            const data = await platinumGet(session, "/api/pos-multi-receipt-print", { receiptId: String(id) });
+            const data = await platinumGet(session, "/api/billing-payment/pos-multi-receipt-print", { receiptId: String(id) });
             if (Array.isArray(data) && data.length > 0) {
               const item = data[0];
               let matches = true;
@@ -5810,7 +5818,7 @@ export async function registerRoutes(
 
       const fetchOne = async (id: number) => {
         try {
-          const data = await platinumGet(session, "/api/pos-multi-receipt-print", { receiptId: String(id) });
+          const data = await platinumGet(session, "/api/billing-payment/pos-multi-receipt-print", { receiptId: String(id) });
           if (Array.isArray(data) && data.length > 0) {
             return data.map((item: any) => ({ ...item, _receiptId: id }));
           }

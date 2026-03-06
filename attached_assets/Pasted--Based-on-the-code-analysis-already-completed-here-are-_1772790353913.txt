@@ -1,0 +1,45 @@
+ 
+Based on the code analysis already completed, here are direct answers:
+ 
+  ---
+  1. Is the receipt PDF generation service currently down or experiencing issues?
+ 
+  No. QuestPDF is not the problem — the error happens before QuestPDF is even reached. The exception occurs during the SP call (POS_MultiReceiptPrint_sp) or the
+  receipt ID lookup that follows it, both of which ran outside the try/catch. The PDF generation layer never executes.
+ 
+  ---
+  2. Does this affect all receipts or only new ones created today?
+ 
+  It depends on the root cause. Two scenarios:
+ 
+  - If Bug B is the cause (duplicate receipt numbers in GetReceiptIdsByNosAsync): only receipts whose receipt number matches a row from a prior financial year are
+  affected. Receipt numbers follow the pattern ddMMyyyy/sequence. Any cashier that had sequence number 460027 on March 6 of a prior year would collide with today's
+   06032026/460027. This would be intermittent — some receipts print fine, others don't, depending on whether the number existed before.
+  - If the SP itself is failing (e.g. schema change, missing object): all receipts would be affected regardless of date.
+ 
+  The fix to GetReceiptIdsByNosAsync is now deployed. After that fix, call print-receipt again. If it now returns a meaningful error message in the 500 body
+  (instead of the generic problem details), it means Bug B was NOT the issue and the SP itself is failing — the message will say exactly why.
+ 
+  ---
+  3. Can you check the API server logs for errors related to receipt ID 1275181?
+ 
+  No server log access from this environment. However, the code fix just deployed means the next call to POST /api/billing-payment/print-receipt with
+  {"Ids":[1275181]} will now return 500 "actual error message here" in the response body rather than the opaque {"title":"Internal Server Error","status":500}.
+  That response body is the effective log entry — retry the call and read the message.
+ 
+  ---
+  4. Has anything changed on the Platinum API side since yesterday (05 March 2026)?
+ 
+  Yes — from the git log, four commits have been merged since yesterday:
+ 
+Commit   - b9e0b0ce │ Fixed Shuttle.Esb/Shuttle.Core.Contract version conflict (Version="20.0.0") 
+Commit   - 9d7501e7 │ Fixed rebuild issue with API + Azure Service Bus queue creation 
+Commit   - 3cd4848a │ Fixed rebuild issue with API                                                
+Commit   - 9a6745a8 │ 11 endpoints fixed 
+ 
+None of these directly touch receipt printing code. However, b9e0b0ce is a package version fix — if the wrong Shuttle.Esb version caused an assembly load or DI
+  resolution failure at startup, it could have corrupted the entire service scope in a way that surfaces as 500s on unrelated endpoints. This is unlikely but worth
+   noting.
+ 
+  The most actionable next step: redeploy with today's fixes, retry POST /api/billing-payment/print-receipt with receipt ID 1275181, and read the actual error
+  message from the 500 response body. That message will definitively identify whether it's a DB/SP issue or was the duplicate-key bug.
