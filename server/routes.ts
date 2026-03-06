@@ -3570,6 +3570,67 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/platinum/direct-deposit-allocation/test-kiran-payload", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const token = await refreshSessionToken(session);
+      const apiUrl = getPlatinumApiUrl(session);
+      const url = `${apiUrl}/api/billing-direct-deposit-allocation/submit-details-data`;
+
+      const kiranPayload = {
+        posItemId: 2876,
+        reconId: 1,
+        userId: 209,
+        financialYear: "2025/2026",
+        transactionDate: "2025-11-03T00:00:00",
+        paidAmount: 56,
+        billType: "1",
+        paymentTypeId: 5,
+        accountId: 20787,
+        amount: 56,
+        outstandingAmount: 56,
+        description: "Du Plessis Cornelius Adriaan & Susan (Old: 1002521605)",
+        reference: "0",
+        note: "MAGTAPE CREDIT USER 9524 SEQ/ABSA BANK Erf nr 226/16",
+        receiptDate: "2026-03-06T12:47:18",
+        cashFloat: 0
+      };
+
+      const bodyStr = JSON.stringify(kiranPayload);
+      console.log(`[DD TEST-KIRAN] URL: ${url}`);
+      console.log(`[DD TEST-KIRAN] Token (first 20): ${token?.substring(0, 20)}...`);
+      console.log(`[DD TEST-KIRAN] Body (Kiran's exact payload): ${bodyStr}`);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 55000);
+      const rawRes = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Accept": "*/*",
+          "Content-Type": "application/json",
+        },
+        body: bodyStr,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      const responseText = await rawRes.text();
+      console.log(`[DD TEST-KIRAN] HTTP ${rawRes.status} ${rawRes.statusText}`);
+      console.log(`[DD TEST-KIRAN] Response: ${responseText}`);
+
+      try {
+        const data = JSON.parse(responseText);
+        res.json({ kiranPayload, apiResponse: data, httpStatus: rawRes.status });
+      } catch {
+        res.json({ kiranPayload, apiResponse: responseText, httpStatus: rawRes.status });
+      }
+    } catch (e: any) {
+      console.error('[DD TEST-KIRAN] EXCEPTION:', e.message);
+      res.status(502).json({ message: "Test failed", detail: e.message });
+    }
+  });
+
   app.get("/api/platinum/direct-deposit-allocation/get-misc-receipt-data", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;

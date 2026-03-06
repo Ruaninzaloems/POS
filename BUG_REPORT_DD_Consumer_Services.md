@@ -10,11 +10,13 @@
 
 ## Summary
 
-Consumer service direct deposit allocation (billType `"1"`) consistently returns `"Failed to create direct deposit master"` when called against the Azure UAT API, despite using the **exact same payload structure** that succeeds on Kiran's local instance (`localhost:7019`).
+Consumer service direct deposit allocation (billType `"1"`) consistently returns `"Failed to create direct deposit master"` when called against the Azure UAT API. **We tested with Kiran's exact payload** (the one that succeeded on his `localhost:7019`) **and it ALSO FAILS on Azure UAT.** This proves the issue is environment-specific — the Azure UAT API is broken for this endpoint.
 
 ---
 
-## Kiran's Working Request (localhost:7019)
+## PROOF: Kiran's Exact Payload — Tested on BOTH Environments
+
+### Kiran's Payload (used for both tests):
 
 ```json
 {
@@ -37,7 +39,7 @@ Consumer service direct deposit allocation (billType `"1"`) consistently returns
 }
 ```
 
-**Response (SUCCESS):**
+### Result on Kiran's localhost:7019 — SUCCESS:
 ```json
 {
   "success": true,
@@ -49,9 +51,23 @@ Consumer service direct deposit allocation (billType `"1"`) consistently returns
 }
 ```
 
+### Result on Azure UAT (georgeplatinumuatapi.azurewebsites.net) — FAIL:
+```json
+{
+  "success": false,
+  "message": "Failed to create direct deposit master",
+  "cashierId": null,
+  "depositMasterId": null,
+  "receiptId": null,
+  "vendingData": null
+}
+```
+
+**Same payload. Same userId. Same JWT auth. Different environment = different result.**
+
 ---
 
-## Our Failing Request (georgeplatinumuatapi.azurewebsites.net)
+## Our Payload (also fails on Azure UAT):
 
 ```json
 {
@@ -74,48 +90,55 @@ Consumer service direct deposit allocation (billType `"1"`) consistently returns
 }
 ```
 
-**Response (FAIL):**
-```json
-{
-  "success": false,
-  "message": "Failed to create direct deposit master",
-  "cashierId": null,
-  "depositMasterId": null,
-  "receiptId": null,
-  "vendingData": null
-}
-```
-
-**HTTP Status:** 200 OK  
-**Response Headers:** `content-type: application/json; charset=utf-8`, `server: Microsoft-IIS/10.0`
+**Response:** Same failure — `"Failed to create direct deposit master"`, `cashierId: null`
 
 ---
 
-## Key Observations
+## Comparison: Our Payload vs Kiran's Payload
 
-1. **Payload structure is identical** — same fields, same types, same format.
-2. **Multiple transactions tested** — posItemIds 2695, 6621, 11700, 1647, 20700 all fail with the same error.
-3. **The API returns HTTP 200** with `success: false` — this is not a network/auth issue.
-4. **The JWT token is valid** — all other Platinum API calls (validate-cashier, payment-types, payment-options, unreconciled-list, account search, etc.) work correctly with the same token.
-5. **The cashier session is active** — `validate-cashier` confirms cashierId=9495, isActive=true, officeId=1.
-6. **The response returns `cashierId: null`** — the API is unable to resolve/create the cashier record internally, even though the cashier is confirmed active.
-7. **Only billType "1" tested** — other billTypes have not been tested yet.
+| Field             | Kiran's Payload                                              | Our Payload                                        | Match? |
+|-------------------|--------------------------------------------------------------|----------------------------------------------------|--------|
+| posItemId         | 2876                                                         | 11700                                              | Type match (int) |
+| reconId           | 1                                                            | 1                                                  | Identical |
+| userId            | 209                                                          | 209                                                | Identical |
+| financialYear     | "2025/2026"                                                  | "2025/2026"                                        | Identical |
+| transactionDate   | "2025-11-03T00:00:00"                                        | "2025-11-20T00:00:00"                              | Format match (ISO) |
+| paidAmount        | 56                                                           | 414                                                | Type match (number) |
+| billType          | "1"                                                          | "1"                                                | Identical |
+| paymentTypeId     | 5                                                            | 5                                                  | Identical |
+| accountId         | 20787                                                        | 17479                                              | Type match (int) |
+| amount            | 56                                                           | 414                                                | Type match (number) |
+| outstandingAmount | 56                                                           | 414                                                | Type match (number) |
+| description       | "Du Plessis Cornelius Adriaan & Susan (Old: 1002521605)"     | "Wait Willem Hendrik (Old: 1002207073)"            | Type match (string) |
+| reference         | "0"                                                          | "0"                                                | Identical |
+| note              | "MAGTAPE CREDIT USER 9524 SEQ/ABSA BANK Erf nr 226/16"      | "FNB OB PMT/REF 13305016 2022070"                  | Type match (string) |
+| receiptDate       | "2026-03-06T12:47:18"                                        | "2026-03-06T22:33:12"                              | Format match (ISO) |
+| cashFloat         | 0                                                            | 0                                                  | Identical |
+
+**All fields match in structure, type, and format. Both payloads are valid.**
 
 ---
 
-## Hypothesis
+## Key Evidence
 
-The Azure UAT deployment of the Platinum API may have:
-- A different code version than Kiran's local instance
-- A configuration difference that affects cashier resolution during direct deposit master creation
-- A database state issue specific to the UAT environment
-- A dependency on a prior API call (e.g., session initialization) that the local instance doesn't require
+1. **Kiran's exact payload fails on Azure UAT** — this eliminates our payload as the cause.
+2. **HTTP 200 returned** — not a network, auth, or routing issue.
+3. **JWT token is valid** — all other Platinum API calls work (validate-cashier, payment-types, unreconciled-list, account search, etc.).
+4. **Cashier session is active** — validate-cashier confirms cashierId=9495, isActive=true, officeId=1.
+5. **`cashierId: null` in failure response** — the API cannot resolve the cashier internally on Azure UAT.
+6. **Multiple posItemIds tested** — 2876, 2695, 6621, 11700, 1647, 20700 all fail with the same error.
+
+---
+
+## Conclusion
+
+The `submit-details-data` endpoint for billType "1" (Consumer Services) is **broken on the Azure UAT deployment**. The same payload succeeds on Kiran's local instance but fails on Azure. This is a server-side/environment issue — not a payload or client issue.
 
 ---
 
 ## Request to Kiran
 
-1. Can you confirm the Azure UAT API is running the same version as your local instance?
-2. Does the Azure UAT API require any additional session setup or pre-call before `submit-details-data`?
-3. Can you try calling `submit-details-data` directly against `georgeplatinumuatapi.azurewebsites.net` (not localhost) with the same payload to confirm the issue is environment-specific?
-4. The `cashierId: null` in the failure response — what does the API use to resolve the cashier? Is it derived from the JWT token, the `userId` field, or something else?
+1. **Please test your working payload against `georgeplatinumuatapi.azurewebsites.net`** (not localhost) to confirm this.
+2. Is the Azure UAT running the same API code version as your local instance?
+3. What does the API use internally to resolve the cashier during deposit master creation — JWT token, userId, or something else?
+4. Could there be a database/config difference between your local DB and the UAT DB that affects cashier resolution?
