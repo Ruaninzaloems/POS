@@ -202,11 +202,22 @@ function AutoAllocationContent() {
     setError(null);
     const beforeUnallocated = batch.billingUnAllocated;
     try {
+      let currentProcessed = processedBatches;
+      if (currentProcessed.length === 0) {
+        const processedData = await platinumGetBulkProcessed({
+          unProcessedBatches: unprocessedBatches,
+          processedBatches: [],
+        });
+        const fetchedProcessed = Array.isArray(processedData) ? processedData : (processedData as any)?.items || (processedData as any)?.processedBatches || (processedData as any)?.value || (processedData as any)?.results || [];
+        currentProcessed = fetchedProcessed;
+        setProcessedBatches(fetchedProcessed);
+      }
+
       const payload = {
         userId: userId,
         selectedItem: batch,
         unProcessedBatches: unprocessedBatches,
-        processedBatches: processedBatches,
+        processedBatches: currentProcessed,
       };
       const result = await platinumBulkReconcile(payload);
       console.log('[DD-Auto] Reconcile API response:', JSON.stringify(result).substring(0, 2000));
