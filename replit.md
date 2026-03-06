@@ -64,22 +64,38 @@ The post-payment receipt flow is optimized for speed:
 ### Direct Deposit Allocation
 Direct deposit manual allocations always use `VirtualCashierUserId = -1` as the cashier ID in the Platinum API submission payload. The real logged-in user ID is validated (user must be authenticated) but is only used for audit/logging — not passed to the Platinum API. All `/direct-deposits` paths are exempt from active cashier session enforcement; users can access and process direct deposit allocations without having an open cashier session. The allocation submission order is: Account/Prepaid → Group → Clearance → Direct Income → Cashbook.
 
-### MANDATORY: No Fallbacks — API Is The Only Data Source
+### MANDATORY: API Is The Single Source Of Truth
 **This is the #1 system design rule. It overrides all other considerations.**
 
-ALL data displayed or processed in this system MUST come exclusively from the Platinum Inzalo EMS API. There are zero exceptions:
+The Platinum Inzalo EMS API must be the single source of truth for ALL data in the system. There are zero exceptions.
 
-1. **If an API call fails, it fails explicitly** — show a clear error to the user. Never silently return default/empty data.
-2. **No hardcoded default data** — No hardcoded financial years, payment types, bank lists, service names, or any other business data used as fallbacks when the API is unavailable or returns errors.
-3. **No mock data, placeholder data, or workarounds** — If the API doesn't provide the data, the feature cannot work. Document the missing API capability and report it to the Platinum developer.
-4. **No silent catch blocks** — Every `catch` must either re-throw the error or display an explicit error message to the user. Never swallow errors and return `[]`, `{}`, `null`, or hardcoded defaults.
-5. **No constructed/derived data** — Don't construct data that should come from the API (e.g. building references from unrelated fields, deriving names from descriptions).
-6. **Financial year must come from the API** — The user's session provides `platinumUser.finYear` from the login API. If it's missing, the operation must fail with an error — never fall back to a hardcoded year like `'2025/2026'`.
-7. **Configuration data must come from the API** — Payment types, payment options, groups, banks, institutions, cashiers — all fetched from API. If the fetch fails, show the error.
+#### Core Rules
 
-**Protocol constants are NOT fallbacks** — Internal mappings like billType codes (`1`=Account, `3`=Group, `4`=Direct, `6`=Clearance), HTTP methods, route paths, and API field names are structural protocol that define HOW to talk to the API. These are not "data" and are acceptable as code constants.
+1. **No fallbacks** — Do not use fallbacks, mock data, hardcoded values, or workarounds anywhere in the application.
+2. **API-only data** — All screens, workflows, and calculations must depend only on real API responses. ALL data displayed or processed MUST come exclusively from the Platinum API.
+3. **Explicit failure** — If an API call fails, the system must fail explicitly and show a clear error state rather than substituting data or continuing as if the request succeeded. Never silently return default/empty data.
+4. **No silent catch blocks** — Every `catch` must either re-throw the error or display an explicit error message to the user. Never swallow errors and return `[]`, `{}`, `null`, or hardcoded defaults. Empty `catch {}` blocks are forbidden.
+5. **Response validation** — The frontend must validate API responses and treat missing or malformed data as an error, not as a reason to substitute defaults.
+6. **Visible errors** — Errors must be visible in the UI (toast notifications, error states, inline messages) and logged properly to the console for debugging.
+7. **No constructed/derived business data** — Don't construct data that should come from the API (e.g. building references from unrelated fields, deriving financial years from the current date).
+8. **Financial year from API only** — The user's session provides `platinumUser.finYear` from the login API. If it's missing, the operation must fail with an error — never fall back to a hardcoded year.
+9. **Configuration data from API only** — Payment types, payment options, groups, banks, institutions, cashiers — all fetched from API. If the fetch fails, show the error.
+10. **No hardcoded display fallbacks** — Do not use patterns like `|| 'Cash Office'` or `|| 'Active'` to mask missing API data. Show the raw value or a dash (`-`) when data is absent.
 
-**When the API has a bug or missing feature:**
+#### What Is NOT a Fallback
+
+**Protocol constants are acceptable** — Internal mappings like billType codes (`1`=Account, `3`=Group, `4`=Direct, `6`=Clearance), HTTP methods, route paths, API field names, and UI labels for known enum values are structural protocol that define HOW to talk to the API. These are not "data" and are acceptable as code constants.
+
+**Loading state placeholders are acceptable** — Showing "Loading..." or skeleton UI while waiting for an API response is not a fallback. It becomes a violation only if the loading state persists after a failed API call without showing the error.
+
+#### Testing Requirements
+
+- Testing must always include both the success scenario AND the failure scenario.
+- Confirm that real API data loads correctly and that when the API fails, the system displays the correct error state without inserting fallback values.
+- A feature should only be considered complete once it has been tested against the real API and verified to fail clearly when the API fails.
+
+#### When the API Has a Bug or Missing Feature
+
 - Document the issue in `docs/API_SPEC_Job_Account_Details.md`
 - Report it to the Platinum developer with clear test cases
 - Do NOT work around it with fallback data

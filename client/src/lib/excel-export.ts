@@ -131,7 +131,7 @@ export async function downloadExcel(options: ExcelExportOptions): Promise<void> 
 
   let resolvedMuniName = municipalityName;
   if (!resolvedMuniName) {
-    try { const mi = await fetchMunicipalityInfo(); resolvedMuniName = mi.name; } catch {}
+    try { const mi = await fetchMunicipalityInfo(); resolvedMuniName = mi.name; } catch (err) { console.error('[excel-export] Failed to fetch municipality info:', err); }
   }
   const muniRow: any[] = [{ v: `${resolvedMuniName || 'Municipality'} - Official Report`, t: 's', s: STYLES.municipalityBar }];
   for (let c = 1; c < colCount; c++) {
@@ -254,7 +254,7 @@ export async function downloadTransactionExcel(options: {
 
   let resolvedMuniName2 = options.municipalityName;
   if (!resolvedMuniName2) {
-    try { const mi = await fetchMunicipalityInfo(); resolvedMuniName2 = mi.name; } catch {}
+    try { const mi = await fetchMunicipalityInfo(); resolvedMuniName2 = mi.name; } catch (err) { console.error('[excel-export] Failed to fetch municipality info:', err); }
   }
   const muniRow: any[] = [{ v: `${resolvedMuniName2 || 'Municipality'} - Official Report`, t: 's', s: STYLES.municipalityBar }];
   for (let c = 1; c < colCount; c++) muniRow.push({ v: '', t: 's', s: STYLES.municipalityBar });
@@ -371,7 +371,7 @@ export async function downloadSummaryExcel(options: {
 
   let resolvedMuniName3 = options.municipalityName;
   if (!resolvedMuniName3) {
-    try { const mi = await fetchMunicipalityInfo(); resolvedMuniName3 = mi.name; } catch {}
+    try { const mi = await fetchMunicipalityInfo(); resolvedMuniName3 = mi.name; } catch (err) { console.error('[excel-export] Failed to fetch municipality info:', err); }
   }
   const muniRow: any[] = [{ v: `${resolvedMuniName3 || 'Municipality'} - Official Report`, t: 's', s: STYLES.municipalityBar }];
   for (let c = 1; c < colCount; c++) muniRow.push({ v: '', t: 's', s: STYLES.municipalityBar });

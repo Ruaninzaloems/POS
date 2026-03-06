@@ -366,7 +366,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-1.5">
           <div><div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Meter</div><div className="text-[11px] text-slate-700 font-mono mt-0.5">{meterDisplay}</div></div>
-          <div><div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Frequency</div><div className="text-[11px] text-slate-700 mt-0.5">{svc.frequency || 'Monthly'}</div></div>
+          <div><div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Frequency</div><div className="text-[11px] text-slate-700 mt-0.5">{svc.frequency || '-'}</div></div>
           {svc.meterConnectionSize && <div><div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Connection</div><div className="text-[11px] text-slate-700 mt-0.5">{svc.meterConnectionSize}</div></div>}
           <div><div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Factor / Qty</div><div className="text-[11px] text-slate-700 font-mono mt-0.5">{svc.factorQuantity ?? svc.tarifffactor ?? '-'}</div></div>
           <div><div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Commencement</div><div className="text-[11px] text-slate-700 mt-0.5">{commencementDate}</div></div>
@@ -469,7 +469,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-2">
                       <div><div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Tariff</div><div className="text-[12px] text-slate-700 mt-0.5 leading-snug">{group.services[0].tariff || group.services[0].tariffDesc || '-'}</div></div>
                       <div><div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Meter</div><div className="text-[12px] text-slate-700 font-mono mt-0.5">{group.services[0].physicalMeterNo || group.services[0].physicalMeterNumber || group.services[0].meterNo || group.services[0].meterNumber || 'No Meter'}</div></div>
-                      <div><div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Frequency</div><div className="text-[12px] text-slate-700 mt-0.5">{group.services[0].frequency || 'Monthly'}</div></div>
+                      <div><div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Frequency</div><div className="text-[12px] text-slate-700 mt-0.5">{group.services[0].frequency || '-'}</div></div>
                       <div><div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Factor / Qty</div><div className="text-[12px] text-slate-700 font-mono mt-0.5">{group.services[0].factorQuantity ?? group.services[0].tarifffactor ?? '-'}</div></div>
                     </div>
                     {(() => { const ti = parseTariffRateData(group.services[0]); return ti.blocks.length > 0 ? (
@@ -1933,7 +1933,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
               lastReceiptNo: latest.receiptNo,
             };
           }
-        } catch {}
+        } catch (err) { console.error('[ServiceMeterTab] Failed to fetch prepaid recharge details for meter:', err); }
         return m;
       }));
       setPrepaidMeters(enrichedPrepaid);

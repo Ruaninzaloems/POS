@@ -183,7 +183,7 @@ export function UnifiedSearch({ onSearchActiveChange }: { onSearchActiveChange?:
                 }),
                 platinumGetClearanceData({
                     clearanceId: String(clearanceId),
-                }).catch(() => null),
+                }).catch((err) => { console.error('[UnifiedSearch] Failed to get clearance data:', err); return null; }),
             ]);
 
             const accounts = (accountsResult as any)?.items || accountsResult || [];
@@ -273,7 +273,7 @@ export function UnifiedSearch({ onSearchActiveChange }: { onSearchActiveChange?:
           email: emailMatch ? emailMatch[1] : '',
           mobile: parseMobileFromContactDetails(acc.contactDetails),
           accountType: acc.accountType || 'Consumer',
-          status: acc.accountStatus || 'Active',
+          status: acc.accountStatus || '-',
           oldCode: acc.oldAccountCode || '',
           prepaidMeterNo: '',
           unitId: acc.unitID?.toString(),
@@ -359,7 +359,7 @@ export function UnifiedSearch({ onSearchActiveChange }: { onSearchActiveChange?:
                                           <td className="px-3 py-2 text-right font-mono">R {(acc.outStandingAmount || 0).toFixed(2)}</td>
                                           <td className="px-3 py-2 text-center">
                                               <span className={`text-xs px-2 py-0.5 rounded-full ${acc.accountStatus === 'Active' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                                                  {acc.accountStatus || 'Active'}
+                                                  {acc.accountStatus || '-'}
                                               </span>
                                           </td>
                                       </tr>

@@ -119,7 +119,7 @@ export function AccountEnquiryDialog({ open, onClose, accountId }: AccountEnquir
                 const total = bal?.totalBalance ?? bal?.outstandingBalance ?? bal?.outStandingAmt ?? null;
                 if (total !== null) setHeaderBalance(Number(total));
               })
-              .catch(() => {});
+              .catch((err) => { console.error('[AccountEnquiryDialog] Failed to fetch account balance:', err); });
           }
         } else {
           setError(`No account found for "${key}"`);

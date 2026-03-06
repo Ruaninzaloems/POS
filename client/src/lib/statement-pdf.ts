@@ -26,7 +26,7 @@ export async function generateStatementPdf(
   municipalityName?: string,
 ): Promise<void> {
   if (!municipalityName) {
-    try { const mi = await fetchMunicipalityInfo(); municipalityName = mi.name; } catch {}
+    try { const mi = await fetchMunicipalityInfo(); municipalityName = mi.name; } catch (e) { console.error('Failed to fetch municipality info for statement PDF:', e); }
   }
 
   const [balanceData, serviceData, propResult, consResult] = await Promise.allSettled([
@@ -45,9 +45,9 @@ export async function generateStatementPdf(
   if (month) {
     try {
       transactions = await getBillingPeriodTransactions(accountId, financialYear, month);
-    } catch { transactions = []; }
+    } catch (e) { console.error('Failed to fetch billing period transactions:', e); transactions = []; }
   } else {
-    const monthFetches = MONTHS.map(m => getBillingPeriodTransactions(accountId, financialYear, m).catch(() => []));
+    const monthFetches = MONTHS.map(m => getBillingPeriodTransactions(accountId, financialYear, m).catch((e) => { console.error(`Failed to fetch billing period transactions for month ${m}:`, e); return []; }));
     const results = await Promise.allSettled(monthFetches);
     results.forEach(r => { if (r.status === 'fulfilled') transactions.push(...r.value); });
   }

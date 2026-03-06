@@ -504,7 +504,8 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
         setSelectedMonth(calendarMonths[now.getMonth()] || 'January');
       }
       setInitialised(true);
-    }).catch(() => {
+    }).catch((err) => {
+      console.error('[BillingPeriodTab] Failed to fetch billing processing month:', err);
       const now = new Date();
       setSelectedMonth(calendarMonths[now.getMonth()] || 'January');
       setInitialised(true);
@@ -1165,9 +1166,9 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
     setError(null);
     try {
       const [receiptResult, billingResult, detailedResult] = await Promise.all([
-        getTransactionHistory(accountNumber, accountId).catch(() => []),
-        getAllBillingPeriodTransactions(accountId, getFinYearOptions()[0]).catch(() => []),
-        getDetailedTransactionResults(accountId, getFinYearOptions()[0]).catch(() => []),
+        getTransactionHistory(accountNumber, accountId).catch((err) => { console.error('[TransactionHistoryTab] Failed to fetch transaction history:', err); return []; }),
+        getAllBillingPeriodTransactions(accountId, getFinYearOptions()[0]).catch((err) => { console.error('[TransactionHistoryTab] Failed to fetch billing period transactions:', err); return []; }),
+        getDetailedTransactionResults(accountId, getFinYearOptions()[0]).catch((err) => { console.error('[TransactionHistoryTab] Failed to fetch detailed transaction results:', err); return []; }),
       ]);
       setData(receiptResult);
       setBillingPeriodTxns(billingResult);
@@ -1176,12 +1177,12 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
 
       getBankStatementNotesByAccount(accountId).then(notes => {
         if (Object.keys(notes).length > 0) setBankNotes(notes);
-      }).catch(() => {});
+      }).catch((err) => { console.error('[TransactionHistoryTab] Failed to fetch bank statement notes:', err); });
 
       setEftNotesLoading(true);
       getEftBankStatementNotesForAccount(accountId).then(notes => {
         setEftBankNotes(notes);
-      }).catch(() => {}).finally(() => setEftNotesLoading(false));
+      }).catch((err) => { console.error('[TransactionHistoryTab] Failed to fetch EFT bank statement notes:', err); }).finally(() => setEftNotesLoading(false));
     } catch (e: any) {
       setError(e.message || 'Failed to load transaction history');
     } finally {

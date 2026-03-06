@@ -712,7 +712,7 @@ export async function registerRoutes(
       console.log(`[cash-offices] Calling Platinum cash-offices with params:`, JSON.stringify(query));
       const [primaryData, dayEndOfficeList] = await Promise.all([
         platinumGet(session, "/api/ReceiptPrepaid/cash-offices", query),
-        platinumGet(session, "/api/billing/auth-day-end-reconcile/cash-office-list").catch(() => null),
+        platinumGet(session, "/api/billing/auth-day-end-reconcile/cash-office-list").catch((err) => { console.error('[cash-offices] Failed to fetch day-end office list:', err); return null; }),
       ]);
 
       const voteMap = new Map<number, { voteID: number; vote: string; vote1: string }>();
@@ -772,7 +772,7 @@ export async function registerRoutes(
             try {
               const office = await platinumGet(session, "/api/ReceiptPrepaid/active-cashOffice-details", { cashierId: String(id) });
               if (office && !office._error && office.cashOffice_ID) return office;
-            } catch {}
+            } catch (err) { console.error('[cash-offices] Probe failed for office ID:', err); }
             return null;
           })
         );
@@ -1212,7 +1212,7 @@ export async function registerRoutes(
         });
 
         if (!pdfRes.ok) {
-          const errorText = await pdfRes.text().catch(() => "");
+          const errorText = await pdfRes.text().catch((err) => { console.error('[print-receipt] Failed to read error response text:', err); return ""; });
           console.error(`[print-receipt] Platinum returned ${pdfRes.status}: ${errorText}`);
           return res.status(pdfRes.status).json({ message: "Failed to fetch receipt PDF from Platinum", detail: errorText });
         }
@@ -1262,7 +1262,7 @@ export async function registerRoutes(
           body: JSON.stringify(bulkPayload),
         });
         if (!pdfRes.ok) {
-          const errorText = await pdfRes.text().catch(() => "");
+          const errorText = await pdfRes.text().catch((err) => { console.error('[print-receipt] Failed to read error response text:', err); return ""; });
           return res.status(pdfRes.status).json({ message: "Failed to fetch receipt PDF", detail: errorText });
         }
         const rawBuf = Buffer.from(await pdfRes.arrayBuffer());
@@ -2687,7 +2687,7 @@ export async function registerRoutes(
       console.log(`[auth-dayend-cashier-list] Fetching cashier list and cash office list in parallel...`);
       const [cashierData, officeData] = await Promise.all([
         platinumGet(session, "/api/billing/auth-day-end-reconcile/cashier-list"),
-        platinumGet(session, "/api/billing/auth-day-end-reconcile/cash-office-list").catch(() => null),
+        platinumGet(session, "/api/billing/auth-day-end-reconcile/cash-office-list").catch((err) => { console.error('[auth-dayend-cashier-list] Failed to fetch cash office list:', err); return null; }),
       ]);
       console.log(`[auth-dayend-cashier-list] Cashier response (first 2000 chars):`, JSON.stringify(cashierData).substring(0, 2000));
       console.log(`[auth-dayend-cashier-list] Office response:`, JSON.stringify(officeData).substring(0, 500));
@@ -3318,7 +3318,7 @@ export async function registerRoutes(
                 results[String(id)] = item.note;
               }
             }
-          } catch {}
+          } catch (err) { console.error('[POS Item Notes] Failed to fetch note for posItemId:', err); }
         });
         await Promise.all(promises);
       }
@@ -3384,7 +3384,7 @@ export async function registerRoutes(
                 }
               }
             }
-          } catch {}
+          } catch (err) { console.error('[Bank Notes] Failed to trace receipt:', err); }
         });
         await Promise.all(promises);
       }
@@ -5233,8 +5233,8 @@ export async function registerRoutes(
       const results: any = { account: accountData };
 
       const [nameData, unitData] = await Promise.all([
-        accountData.nameId ? platinumGet(session, "/api/cons-names/" + accountData.nameId).catch(() => null) : null,
-        accountData.unitId ? platinumGet(session, "/api/cons-units/" + accountData.unitId).catch(() => null) : null,
+        accountData.nameId ? platinumGet(session, "/api/cons-names/" + accountData.nameId).catch((err) => { console.error('[account-details] Failed to fetch name data:', err); return null; }) : null,
+        accountData.unitId ? platinumGet(session, "/api/cons-units/" + accountData.unitId).catch((err) => { console.error('[account-details] Failed to fetch unit data:', err); return null; }) : null,
       ]);
 
       if (nameData && !nameData._error) results.name = nameData;
@@ -5555,7 +5555,7 @@ export async function registerRoutes(
               probeId -= 5;
             }
           }
-        } catch {}
+        } catch (err) { console.error('[by-cashier] Receipt ID probe failed:', err); }
         if (!highestKnownId) highestKnownId = 1041300;
       }
 
@@ -5581,7 +5581,7 @@ export async function registerRoutes(
                 return data.map((d: any) => ({ ...d, _receiptId: id }));
               }
             }
-          } catch {}
+          } catch (err) { console.error('[by-cashier] Failed to fetch receipt:', err); }
           return null;
         };
 
@@ -5629,7 +5629,7 @@ export async function registerRoutes(
             probeId -= 5;
           }
         }
-      } catch {}
+      } catch (err) { console.error('[receipt-search] Receipt ID probe failed:', err); }
       if (!highestKnownId) highestKnownId = 1041280;
 
       const scanStartId = highestKnownId + 30;
@@ -5671,7 +5671,7 @@ export async function registerRoutes(
                 return data.map((d: any) => ({ ...d, _receiptId: id }));
               }
             }
-          } catch {}
+          } catch (err) { console.error('[receipt-search] Failed to fetch receipt:', err); }
           return null;
         };
 
@@ -5708,7 +5708,7 @@ export async function registerRoutes(
           if (Array.isArray(data) && data.length > 0) {
             return data.map((item: any) => ({ ...item, _receiptId: id }));
           }
-        } catch {}
+        } catch (err) { console.error('[batch] Failed to fetch receipt:', err); }
         return null;
       };
 

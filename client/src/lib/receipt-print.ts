@@ -44,7 +44,8 @@ function fmtDate(dateStr: string | undefined | null): string {
     const mi = String(d.getMinutes()).padStart(2, '0');
     const ss = String(d.getSeconds()).padStart(2, '0');
     return `${dd}/${mm}/${yyyy} ${hh}:${mi}:${ss}`;
-  } catch {
+  } catch (err) {
+    console.warn('[receipt-print] Failed to format date:', dateStr, err);
     return dateStr;
   }
 }
@@ -467,7 +468,7 @@ export function openReceiptPrintWindow(data: ReceiptPrintData, isReprint: boolea
 
 export async function openReceiptFromMultiPrint(items: PosMultiReceiptPrintItem[], isReprint: boolean = true, muniInfo?: MunicipalityInfo): Promise<Window | null> {
   if (!muniInfo) {
-    try { muniInfo = await fetchMunicipalityInfo(); } catch {}
+    try { muniInfo = await fetchMunicipalityInfo(); } catch (err) { console.error('[receipt-print] Failed to fetch municipality info:', err); }
   }
   const data = buildReceiptDataFromMultiPrint(items, muniInfo);
   return openReceiptPrintWindow(data, isReprint);

@@ -123,7 +123,7 @@ export default function CashierSetup() {
                             if (userInfo?.cashFloat != null && userInfo.cashFloat > 0) {
                                 setFloatInput(String(userInfo.cashFloat));
                             }
-                        } catch {}
+                        } catch (err) { console.error('[CashierSetup] Failed to fetch Platinum user info for cash float:', err); }
                     }
                 } else {
                     setIsCashierRegistered(false);

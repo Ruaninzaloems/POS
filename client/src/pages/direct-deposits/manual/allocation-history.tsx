@@ -176,7 +176,8 @@ export default function AllocationHistory() {
       try {
           const accountDetails = await fetchDirectDepositJobAccountDetails(tx.directDepositJob_ID);
           setJobAccountDetails(Array.isArray(accountDetails) ? accountDetails : accountDetails?.items || accountDetails?.data || null);
-      } catch {
+      } catch (err) {
+          console.error('[AllocationHistory] Failed to load job account details:', err);
       } finally {
           setDetailsLoading(false);
       }

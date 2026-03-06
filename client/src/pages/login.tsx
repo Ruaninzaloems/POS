@@ -78,7 +78,7 @@ export default function LoginPage({ onLoginSuccess }: LoginProps) {
                     setDbName(data[0].id === 'george' ? 'George' : 'Site02');
                 }
             })
-            .catch(() => {})
+            .catch((err) => { console.error('[Login] Failed to fetch sites:', err); })
             .finally(() => setLoadingSites(false));
     }, []);
 

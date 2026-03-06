@@ -63,7 +63,7 @@ function parseApiErrorMessage(rawMsg: string): string {
       const detail = parsed.detail || parsed.message || '';
       return typeof detail === 'string' ? detail.replace(/^["']|["']$/g, '').trim() : rawMsg;
     }
-  } catch {}
+  } catch (err) { console.error('[PaymentProcessing] Failed to parse API error message:', err); }
   return rawMsg;
 }
 

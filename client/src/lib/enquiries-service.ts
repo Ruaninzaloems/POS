@@ -103,7 +103,7 @@ async function fetchWithTimeout(url: string, options?: RequestInit): Promise<any
 
 function normalizeArray(data: any): any[] {
   if (typeof data === 'string') {
-    try { data = JSON.parse(data); } catch { return []; }
+    try { data = JSON.parse(data); } catch (e) { console.error('[normalizeArray] Failed to parse JSON string:', e); return []; }
   }
   if (Array.isArray(data)) return data;
   if (data?.value && Array.isArray(data.value)) return data.value;
@@ -646,7 +646,7 @@ function normalizeDetailResponse(data: any): any[] | string {
     if (trimmed.startsWith('<') || trimmed.includes('<table')) {
       return trimmed;
     }
-    try { data = JSON.parse(trimmed); } catch { return []; }
+    try { data = JSON.parse(trimmed); } catch (e) { console.error('[normalizeDetailResponse] Failed to parse JSON string:', e); return []; }
   }
   return normalizeArray(data);
 }
@@ -758,7 +758,9 @@ export async function getTransactionHistory(accountNumber: string, accountId?: n
         setCache(cacheKey, result);
         return result;
       }
-    } catch {}
+    } catch (e) {
+      console.error('[getTransactionHistory] Failed to fetch payment-amount-by-account-ids:', e);
+    }
   }
 
   const fromDate = new Date();
@@ -772,18 +774,16 @@ export async function getTransactionHistory(accountNumber: string, accountId?: n
     orderby: 'receiptDate',
     shortDirection: 'desc',
   };
-  try {
-    const data = await fetchWithTimeout('/api/platinum/view-receipt/get-receipt-list', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    const items = normalizeArray(data);
-    if (items.length > 0) {
-      setCache(cacheKey, items);
-      return items;
-    }
-  } catch {}
+  const data = await fetchWithTimeout('/api/platinum/view-receipt/get-receipt-list', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const items = normalizeArray(data);
+  if (items.length > 0) {
+    setCache(cacheKey, items);
+    return items;
+  }
 
   return [];
 }
@@ -793,17 +793,15 @@ export async function getBankStatementNotes(posItemIds: number[]): Promise<Recor
   const cacheKey = `bank-notes-${posItemIds.sort().join(',')}`;
   const cached = getCached(cacheKey, SHORT_CACHE_TTL);
   if (cached) return cached;
-  try {
-    const data = await fetchWithTimeout('/api/platinum/bank-statement-notes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ posItemIds }),
-    });
-    if (data && typeof data === 'object') {
-      setCache(cacheKey, data);
-      return data;
-    }
-  } catch {}
+  const data = await fetchWithTimeout('/api/platinum/bank-statement-notes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ posItemIds }),
+  });
+  if (data && typeof data === 'object') {
+    setCache(cacheKey, data);
+    return data;
+  }
   return {};
 }
 
@@ -811,13 +809,11 @@ export async function getBankStatementNotesByAccount(accountId: number): Promise
   const cacheKey = `bank-notes-acct-${accountId}`;
   const cached = getCached(cacheKey, SHORT_CACHE_TTL);
   if (cached) return cached;
-  try {
-    const data = await fetchWithTimeout(`/api/platinum/bank-statement-notes-by-account?accountId=${accountId}`);
-    if (data && typeof data === 'object' && !data.message) {
-      setCache(cacheKey, data);
-      return data;
-    }
-  } catch {}
+  const data = await fetchWithTimeout(`/api/platinum/bank-statement-notes-by-account?accountId=${accountId}`);
+  if (data && typeof data === 'object' && !data.message) {
+    setCache(cacheKey, data);
+    return data;
+  }
   return {};
 }
 
@@ -825,16 +821,12 @@ export async function getEftBankStatementNotesForAccount(accountId: number): Pro
   const cacheKey = `eft-bank-notes-acct-${accountId}`;
   const cached = getCached(cacheKey, SHORT_CACHE_TTL);
   if (cached) return cached;
-  try {
-    const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/get-eft-bank-statement-notes?accountId=${accountId}`);
-    const result = normalizeArray(data);
-    if (result.length > 0) {
-      setCache(cacheKey, result);
-    }
-    return result;
-  } catch {
-    return [];
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/get-eft-bank-statement-notes?accountId=${accountId}`);
+  const result = normalizeArray(data);
+  if (result.length > 0) {
+    setCache(cacheKey, result);
   }
+  return result;
 }
 
 // === PAYMENTS ===

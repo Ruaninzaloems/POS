@@ -544,7 +544,7 @@ export default function SupervisorDashboard() {
   const handlePerOfficePrintCashReport = useCallback(async (cashOfficeId: number) => {
     try {
       toast({ title: 'Generating...', description: 'Preparing cash report...' });
-      const officeName = perOfficeList.find((o: any) => (o.cashOffice_ID || o.id) === cashOfficeId)?.cashOfficeDesc || 'Office';
+      const officeName = perOfficeList.find((o: any) => (o.cashOffice_ID || o.id) === cashOfficeId)?.cashOfficeDesc || '-';
       const reconcileDate = new Date().toISOString().split('T')[0];
       const result = await platinumPerOfficePrintCashReport({ cashierId: cashOfficeId, cashierName: officeName, reconcileDate });
       if (result && typeof result === 'string' && result.startsWith('JVB')) {
@@ -571,7 +571,7 @@ export default function SupervisorDashboard() {
   const handlePerOfficePrintDepositSlip = useCallback(async (cashOfficeId: number) => {
     try {
       toast({ title: 'Generating...', description: 'Preparing deposit slip...' });
-      const officeName = perOfficeList.find((o: any) => (o.cashOffice_ID || o.id) === cashOfficeId)?.cashOfficeDesc || 'Office';
+      const officeName = perOfficeList.find((o: any) => (o.cashOffice_ID || o.id) === cashOfficeId)?.cashOfficeDesc || '-';
       const reconcileDate = new Date().toISOString().split('T')[0];
       const result = await platinumPerOfficePrintDepositSlip({ cashierId: cashOfficeId, cashierName: officeName, reconcileDate });
       if (result && typeof result === 'string' && result.startsWith('JVB')) {
@@ -693,15 +693,15 @@ export default function SupervisorDashboard() {
     setReviewTab('cash');
     try {
       const [detailsRes, reconcileRes, cashRes, cardRes, chequeRes, postalRes, dropboxRes, offlineRes, sysVsCashierRes] = await Promise.all([
-        platinumGetAuthDayEndCashierDetails({ id: cashierId }).catch(() => null),
-        platinumGetAuthDayEndCashierReconcile({ cashierId }).catch(() => null),
-        apiRequest('POST', `/api/platinum/auth-day-end/cashier-receipt-cash-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch(() => []),
-        apiRequest('POST', `/api/platinum/auth-day-end/cashier-receipt-card-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch(() => []),
-        apiRequest('POST', `/api/platinum/auth-day-end/cashier-receipt-cheque-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch(() => []),
-        apiRequest('POST', `/api/platinum/auth-day-end/cashier-receipt-postal-order-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch(() => []),
-        apiRequest('POST', `/api/platinum/auth-day-end/cashier-receipt-drop-box-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch(() => []),
-        apiRequest('POST', `/api/platinum/auth-day-end/cashier-receipt-offline-data-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch(() => []),
-        apiRequest('POST', `/api/platinum/auth-day-end/system-vs-cashier-data-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch(() => []),
+        platinumGetAuthDayEndCashierDetails({ id: cashierId }).catch((err) => { console.error('[SupervisorDashboard] Failed to fetch cashier details:', err); return null; }),
+        platinumGetAuthDayEndCashierReconcile({ cashierId }).catch((err) => { console.error('[SupervisorDashboard] Failed to fetch cashier reconcile:', err); return null; }),
+        apiRequest('POST', `/api/platinum/auth-day-end/cashier-receipt-cash-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch((err) => { console.error('[SupervisorDashboard] Failed to fetch cash receipt list:', err); return []; }),
+        apiRequest('POST', `/api/platinum/auth-day-end/cashier-receipt-card-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch((err) => { console.error('[SupervisorDashboard] Failed to fetch card receipt list:', err); return []; }),
+        apiRequest('POST', `/api/platinum/auth-day-end/cashier-receipt-cheque-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch((err) => { console.error('[SupervisorDashboard] Failed to fetch cheque receipt list:', err); return []; }),
+        apiRequest('POST', `/api/platinum/auth-day-end/cashier-receipt-postal-order-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch((err) => { console.error('[SupervisorDashboard] Failed to fetch postal order receipt list:', err); return []; }),
+        apiRequest('POST', `/api/platinum/auth-day-end/cashier-receipt-drop-box-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch((err) => { console.error('[SupervisorDashboard] Failed to fetch drop box receipt list:', err); return []; }),
+        apiRequest('POST', `/api/platinum/auth-day-end/cashier-receipt-offline-data-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch((err) => { console.error('[SupervisorDashboard] Failed to fetch offline data list:', err); return []; }),
+        apiRequest('POST', `/api/platinum/auth-day-end/system-vs-cashier-data-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch((err) => { console.error('[SupervisorDashboard] Failed to fetch system vs cashier data list:', err); return []; }),
       ]);
 
       console.log('[Supervisor] Review details:', detailsRes);

@@ -65,7 +65,7 @@ async function loadPropertyData(accountId: number) {
     try {
       const v = await getSupplementaryValuations(propertyId);
       valuations = Array.isArray(v) ? v : v ? [v] : [];
-    } catch { valuations = []; }
+    } catch (err) { console.error('[PropertyLetters] Failed to load supplementary valuations:', err); valuations = []; }
   }
 
   return { prop: prop || {}, cu: cu || {}, valuations, propertyId };

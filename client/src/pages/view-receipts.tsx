@@ -89,7 +89,7 @@ export default function ViewReceipts() {
     const [cashiers, setCashiers] = useState<ViewReceiptCashier[]>([]);
     const { platinumCashierId } = usePos();
     const [muniInfo, setMuniInfo] = useState<MunicipalityInfo | null>(null);
-    useEffect(() => { fetchMunicipalityInfo().then(setMuniInfo).catch(() => {}); }, []);
+    useEffect(() => { fetchMunicipalityInfo().then(setMuniInfo).catch((err) => { console.error('[ViewReceipts] Failed to fetch municipality info:', err); }); }, []);
     const [cashierFilter, setCashierFilter] = useState("");
     const [fromDate, setFromDate] = useState<Date | undefined>(() => {
         const now = new Date();
@@ -195,7 +195,8 @@ export default function ViewReceipts() {
                     monthNum
                 );
                 setCashbookSuggestions(results.slice(0, 8));
-            } catch {
+            } catch (err) {
+                console.error('[ViewReceipts] Failed to fetch cashbook transaction suggestions:', err);
                 setCashbookSuggestions([]);
             } finally {
                 setSuggestionsLoading(false);
@@ -1777,7 +1778,7 @@ export default function ViewReceipts() {
                                                                 )}
                                                             </div>
                                                         ) : (
-                                                            <Badge variant="outline" className="rounded-sm px-1.5 py-0.5 text-[10px] text-green-700 border-green-300 bg-green-50">{cancelField || 'Active'}</Badge>
+                                                            <Badge variant="outline" className="rounded-sm px-1.5 py-0.5 text-[10px] text-green-700 border-green-300 bg-green-50">{cancelField || '-'}</Badge>
                                                         )}
                                                     </TableCell>
                                                 </TableRow>

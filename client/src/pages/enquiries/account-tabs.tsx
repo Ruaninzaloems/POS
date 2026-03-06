@@ -106,11 +106,11 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
       const rawUnitId = bas?.unitPartitionID || propData?.propertyId;
       const unitId = rawUnitId ? parseInt(String(rawUnitId), 10) : null;
       if (unitId && !isNaN(unitId)) {
-        getUnitPartitionOwner(unitId).then(owner => setPartitionOwner(owner)).catch(() => {});
-        getSupplementaryValuations(unitId).then(vals => setSuppValuations(Array.isArray(vals) ? vals : vals ? [vals] : [])).catch(() => {});
+        getUnitPartitionOwner(unitId).then(owner => setPartitionOwner(owner)).catch((err) => { console.error('[AccountInfoTab] Failed to fetch unit partition owner:', err); });
+        getSupplementaryValuations(unitId).then(vals => setSuppValuations(Array.isArray(vals) ? vals : vals ? [vals] : [])).catch((err) => { console.error('[AccountInfoTab] Failed to fetch supplementary valuations:', err); });
         getPartitionDetailsByUnit(unitId).then(pd => {
           if (pd) setPartition(Array.isArray(pd) ? pd[0] : pd);
-        }).catch(() => {});
+        }).catch((err) => { console.error('[AccountInfoTab] Failed to fetch partition details by unit:', err); });
       }
 
       const secondaryPromises = Promise.allSettled([
@@ -151,7 +151,7 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
         const cu = val(secResults[10]);
         setConsUnit(Array.isArray(cu) ? cu[0] : cu);
         setSecondaryLoaded(true);
-      }).catch(() => setSecondaryLoaded(true));
+      }).catch((err) => { console.error('[AccountInfoTab] Failed to load secondary account data:', err); setSecondaryLoaded(true); });
 
       loaded.current = true;
     } catch (e: any) {
@@ -208,7 +208,7 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
   const consumerRpp = f(rppArr[0] || 'N/A');
   const deptAccount = deptAccounts.length > 0 ? 'Active' : 'Inactive';
 
-  const rebateStatus = 'No Rebate on Account';
+  const rebateStatus = f(inc.rebateStatus || inc.rebateDescription || inc.rebateCode);
   const handoverStatus = f(typeof handover === 'string' ? handover : handover?.status || handover?.handoverStatus);
   const loanRpp = f(rppArr[1] || 'N/A');
 
@@ -221,7 +221,7 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
   const registrationStatus = cu.registrationStatus ? 'Registered' : f(p.rollNumber ? 'Registered' : '');
 
   const propertyId = f(p.propertyId || b.propertyID);
-  const propertyStatus = f(b.accountStatus || 'Active');
+  const propertyStatus = f(b.accountStatus);
   const allotmentArea = f(p.town);
   const farmName = f(p.farmName);
   const propertyType = f(p.flatReferenceNumber ? 'Sectional Title' : p.propertyId ? 'Erf' : '');
@@ -878,7 +878,7 @@ async function generateBalanceDebtPdf(
   getVal: (item: any, keys: string[]) => any,
   sumField: (arr: any[], ...keys: string[]) => number,
 ) {
-  const muniInfo = await fetchMunicipalityInfo().catch(() => null);
+  const muniInfo = await fetchMunicipalityInfo().catch((err) => { console.error('[BalanceDebtTab] Failed to fetch municipality info:', err); return null; });
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
   const margin = 12;

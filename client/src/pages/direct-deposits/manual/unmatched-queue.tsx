@@ -156,7 +156,7 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
   for (const accNum of clues.accountNumbers.slice(0, 3)) {
     searchPromises.push(
       platinumSearchAccountsPayment({ accountNo: accNum })
-        .catch(() => [])
+        .catch((err) => { console.error('[UnmatchedQueue] Failed to search accounts by accountNo:', err); return []; })
         .then((rawData: any) => {
           const items = Array.isArray(rawData) ? rawData : rawData?.value || [];
           for (const item of items.slice(0, 3)) {
@@ -178,14 +178,14 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
             }
           }
         })
-        .catch(() => {})
+        .catch((err) => { console.error('[UnmatchedQueue] Failed to process account number search results:', err); })
     );
   }
 
   for (const accNum of clues.accountNumbers.slice(0, 2)) {
     searchPromises.push(
       platinumSearchAccountsPayment({ oldAccountCode: accNum })
-        .catch(() => [])
+        .catch((err) => { console.error('[UnmatchedQueue] Failed to search accounts by oldAccountCode:', err); return []; })
         .then((rawData: any) => {
           const items = Array.isArray(rawData) ? rawData : rawData?.value || [];
           for (const item of items.slice(0, 2)) {
@@ -205,7 +205,7 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
             }
           }
         })
-        .catch(() => {})
+        .catch((err) => { console.error('[UnmatchedQueue] Failed to process old account code search results:', err); })
     );
   }
 
@@ -216,7 +216,7 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
     for (const erfSearch of erfSearches) {
       searchPromises.push(
         platinumSearchAccountsPayment({ name: erfSearch })
-          .catch(() => [])
+          .catch((err) => { console.error('[UnmatchedQueue] Failed to search accounts by ERF number:', err); return []; })
           .then((rawData: any) => {
             const items = Array.isArray(rawData) ? rawData : rawData?.value || [];
             for (const item of items.slice(0, 3)) {
@@ -240,7 +240,7 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
               }
             }
           })
-          .catch(() => {})
+          .catch((err) => { console.error('[UnmatchedQueue] Failed to process ERF search results:', err); })
       );
     }
   }
@@ -249,7 +249,7 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
     for (const keyword of clues.keywords.slice(0, 2)) {
       searchPromises.push(
         platinumSearchAccountsPayment({ name: keyword })
-          .catch(() => [])
+          .catch((err) => { console.error('[UnmatchedQueue] Failed to search accounts by keyword:', err); return []; })
           .then((rawData: any) => {
             const items = Array.isArray(rawData) ? rawData : rawData?.value || [];
             for (const item of items.slice(0, 2)) {
@@ -269,7 +269,7 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
               }
             }
           })
-          .catch(() => {})
+          .catch((err) => { console.error('[UnmatchedQueue] Failed to process keyword search results:', err); })
       );
     }
   }

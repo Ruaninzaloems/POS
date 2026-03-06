@@ -129,7 +129,8 @@ function App() {
         }
         setAuthChecked(true);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('[App] Failed to check auth status:', err);
         setAuthenticated(false);
         setAuthChecked(true);
       });

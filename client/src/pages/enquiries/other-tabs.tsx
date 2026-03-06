@@ -1984,7 +1984,7 @@ export function OccupiersTab({ accountId }: { accountId: number }) {
   const loaded = useRef(false);
   const printRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { fetchMunicipalityInfo().then(setMuniInfo).catch(() => {}); }, []);
+  useEffect(() => { fetchMunicipalityInfo().then(setMuniInfo).catch((err) => { console.error('[OccupiersTab] Failed to fetch municipality info:', err); }); }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -2045,7 +2045,8 @@ export function OccupiersTab({ accountId }: { accountId: number }) {
       const nameResp = nameSettled.status === 'fulfilled' ? nameSettled.value : null;
       setProofData({ property: propResp, nameInfo: nameResp });
       setShowProofModal(true);
-    } catch {
+    } catch (err) {
+      console.error('[ProofOfResidence] Failed to load property details:', err);
       alert('Failed to load property details for proof of residence');
     } finally {
       setProofLoading(false);
@@ -2261,7 +2262,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
 
   const loadedRef = useRef(false);
 
-  useEffect(() => { fetchMunicipalityInfo().then(setMuniInfo).catch(() => {}); }, []);
+  useEffect(() => { fetchMunicipalityInfo().then(setMuniInfo).catch((err) => { console.error('[EmailStatementTab] Failed to fetch municipality info:', err); }); }, []);
 
   const loadContactInfo = useCallback(async () => {
     setContactLoading(true);
@@ -2293,7 +2294,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
           addEmails = (Array.isArray(addResult) ? addResult : [])
             .map((e: any) => e?.email || e?.emailAddress || e?.Email || (typeof e === 'string' ? e : ''))
             .filter((e: string) => e && e.includes('@') && e !== email);
-        } catch {}
+        } catch (err) { console.error('[EmailStatementTab] Failed to fetch additional emails:', err); }
       }
       setAdditionalEmails(addEmails);
 

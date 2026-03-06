@@ -57,7 +57,7 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
     setMiscGroupsError(false);
     Promise.all([
       fetchMiscPaymentGroups(),
-      fetchMiscPaymentVatRate().catch(() => 15),
+      fetchMiscPaymentVatRate().catch((err) => { console.error('[SearchComponent] Failed to fetch VAT rate:', err); throw err; }),
     ])
       .then(([groups, vatRate]) => {
         setMiscGroups(groups);
@@ -65,7 +65,7 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
         console.log(`[Misc] Loaded ${groups.length} groups, VAT rate: ${vatRate}%`);
       })
       .catch(err => {
-        console.warn('Failed to load misc payment groups:', err);
+        console.error('[SearchComponent] Failed to load misc payment groups/VAT rate:', err);
         setMiscGroupsError(true);
       })
       .finally(() => setMiscGroupsLoading(false));
@@ -170,19 +170,20 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
           const primarySearches: Promise<any>[] = [
               platinumSearchAccountsWithSignal(searchBody, controller.signal).catch((err: any) => {
                   if (err.name === 'AbortError') return null;
+                  console.error('[SearchComponent] Failed to search accounts:', err);
                   return null;
               }),
-              searchInstitutions(query).catch(() => []),
+              searchInstitutions(query).catch((err) => { console.error('[SearchComponent] Failed to search institutions:', err); return []; }),
           ];
 
           if (isNumeric) {
               primarySearches.push(
-                  platinumSearchAccountsWithSignal({ userId: userId || null, finYear: finYear || null, oldAccountCode: query }, controller.signal).catch(() => null)
+                  platinumSearchAccountsWithSignal({ userId: userId || null, finYear: finYear || null, oldAccountCode: query }, controller.signal).catch((err) => { console.error('[SearchComponent] Failed to search by old account code:', err); return null; })
               );
           }
 
           if (scope === 'ALL' || scope === 'CLEARANCE') {
-              primarySearches.push(platinumGetClearanceIds({ clearanceId: query }).catch(() => []));
+              primarySearches.push(platinumGetClearanceIds({ clearanceId: query }).catch((err) => { console.error('[SearchComponent] Failed to get clearance IDs:', err); return []; }));
           }
 
           const [searchData, institutionResults, oldAccData, clearanceResults] = await Promise.all(primarySearches);
@@ -214,7 +215,9 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                           if (existing) existing._foundViaOldCode = true;
                       }
                   }
-              } catch {}
+              } catch (err) {
+                  console.error('[SearchComponent] Failed to merge old account code results:', err);
+              }
           }
 
           if (allAccountData.length === 0 && isNumeric && !controller.signal.aborted) {
@@ -226,7 +229,9 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                   if (Array.isArray(meterData) && meterData.length > 0) {
                       allAccountData = meterData;
                   }
-              } catch {}
+              } catch (err) {
+                  console.error('[SearchComponent] Failed to search by physical meter number:', err);
+              }
           }
 
           if (controller.signal.aborted) return;
@@ -242,7 +247,7 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                       idNo: '-',
                       address: item.deliveryAddress || item.streetName || '',
                       outstandingAmount: item.outStandingAmt || 0,
-                      status: item.statusDesc || 'Active',
+                      status: item.statusDesc || '-',
                       email: '',
                       mobile: '',
                       accountType: item.typeOfUseDesc || 'Consumer',

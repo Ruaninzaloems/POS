@@ -297,7 +297,7 @@ async function fetchTokenForUser(username: string, password: string, dbName: str
               if (matchedUser) break;
             }
           }
-        } catch {}
+        } catch (err) { console.error('[PlatinumAuth] User search endpoint failed:', err); }
       }
 
       if (!matchedUser) {
@@ -334,7 +334,7 @@ async function fetchTokenForUser(username: string, password: string, dbName: str
                     reader.cancel();
                     break;
                   }
-                } catch {}
+                } catch (err) { console.error('[PlatinumAuth] Failed to parse streamed user JSON chunk:', err); }
               }
 
               if (totalBytes > maxBytes) {
@@ -362,7 +362,7 @@ async function fetchTokenForUser(username: string, password: string, dbName: str
                       if (matchedUser.userName?.toLowerCase() !== lowerUsername && matchedUser.email?.toLowerCase() !== lowerUsername) {
                         matchedUser = null;
                       }
-                    } catch {}
+                    } catch (err) { console.error('[PlatinumAuth] Failed to parse user object from stream:', err); }
                   }
                 }
               }

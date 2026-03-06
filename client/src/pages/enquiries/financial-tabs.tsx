@@ -37,7 +37,7 @@ export function IncentivesTab({ accountId }: { accountId: number }) {
     try {
       const [result, journalResult] = await Promise.all([
         getPaymentIncentive(accountId),
-        getPaymentIncentiveJournals(accountId).catch(() => []),
+        getPaymentIncentiveJournals(accountId).catch((e) => { console.error('Failed to fetch payment incentive journals:', e); return []; }),
       ]);
       setData(result);
       setJournals(Array.isArray(journalResult) ? journalResult : journalResult ? [journalResult] : []);
@@ -171,8 +171,8 @@ export function DepositsTab({ accountId }: { accountId: number }) {
     setError(null);
     try {
       const [depsResult, amtResult] = await Promise.all([
-        getDeposits(accountId).catch(() => []),
-        getDepositAmount(accountId).catch(() => null),
+        getDeposits(accountId).catch((e) => { console.error('Failed to fetch deposits:', e); return []; }),
+        getDepositAmount(accountId).catch((e) => { console.error('Failed to fetch deposit amount:', e); return null; }),
       ]);
       setDeposits(Array.isArray(depsResult) ? depsResult : []);
       setDepositAmount(amtResult);
@@ -324,11 +324,11 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
     setError(null);
     try {
       const [pl, rc, rs, ext, pa] = await Promise.all([
-        getPaymentPlansByAccountId(accountId).catch(() => []),
-        getPaymentPlanRemainingCapital(accountId).catch(() => null),
-        getRepaymentPlanStatus(accountId).catch(() => []),
-        getPaymentExtensionSearchResults(accountId).catch(() => []),
-        getPaymentAmountByAccountIds(accountId).catch(() => []),
+        getPaymentPlansByAccountId(accountId).catch((e) => { console.error('Failed to fetch payment plans:', e); return []; }),
+        getPaymentPlanRemainingCapital(accountId).catch((e) => { console.error('Failed to fetch remaining capital:', e); return null; }),
+        getRepaymentPlanStatus(accountId).catch((e) => { console.error('Failed to fetch repayment plan status:', e); return []; }),
+        getPaymentExtensionSearchResults(accountId).catch((e) => { console.error('Failed to fetch payment extensions:', e); return []; }),
+        getPaymentAmountByAccountIds(accountId).catch((e) => { console.error('Failed to fetch payment amounts:', e); return []; }),
       ]);
       setPlans(Array.isArray(pl) ? pl : pl ? [pl] : []);
       setRemainingCapital(rc);
@@ -769,8 +769,8 @@ export function DebitOrdersTab({ accountId }: { accountId: number }) {
     setError(null);
     try {
       const [ded, dob] = await Promise.all([
-        getDebitOrderDeductionByAccount(accountId).catch(() => []),
-        getDebitOrderDeduction(accountId).catch(() => []),
+        getDebitOrderDeductionByAccount(accountId).catch((e) => { console.error('Failed to fetch debit order deductions by account:', e); return []; }),
+        getDebitOrderDeduction(accountId).catch((e) => { console.error('Failed to fetch debit order deductions:', e); return []; }),
       ]);
       setDeductions(Array.isArray(ded) ? ded : ded ? [ded] : []);
       setDebitOrders(Array.isArray(dob) ? dob : dob ? [dob] : []);
@@ -1380,7 +1380,7 @@ export function RatesValuationsTab({ accountId, propertyId }: { accountId: numbe
               </div>
               <div className="bg-[#F7F7F7] rounded-lg p-3 border border-[#D6D6D6]">
                 <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Frequency</div>
-                <div className="text-lg font-bold text-slate-800">{ratesDetails.frequency || 'Monthly'}</div>
+                <div className="text-lg font-bold text-slate-800">{ratesDetails.frequency || '-'}</div>
               </div>
               <div className="bg-[#F7F7F7] rounded-lg p-3 border border-[#D6D6D6]">
                 <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Remaining Instalments</div>

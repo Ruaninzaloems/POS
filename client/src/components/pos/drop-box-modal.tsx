@@ -99,7 +99,8 @@ export function DropBoxModal({ isOpen, onClose, triggerReason }: DropBoxModalPro
         try {
             const result = await platinumGetDropBoxList(cashierId);
             setDropHistory(result?.items || []);
-        } catch {
+        } catch (err) {
+            console.error('[DropBoxModal] Failed to load drop box history:', err);
             setDropHistory([]);
         } finally {
             setHistoryLoading(false);

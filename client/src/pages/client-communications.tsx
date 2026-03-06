@@ -177,7 +177,7 @@ export default function ClientCommunications() {
         searchBody.name = query;
       }
 
-      const rawData: any = await platinumSearchAccountsPayment(searchBody).catch(() => null);
+      const rawData: any = await platinumSearchAccountsPayment(searchBody).catch((err) => { console.error('[ClientCommunications] Failed to search accounts for payment:', err); return null; });
       const data = rawData || [];
       const items: any[] = Array.isArray(data) ? data : (data?.value || []);
       const results = items.slice(0, 20);
@@ -189,15 +189,16 @@ export default function ClientCommunications() {
         if (accId && !contactIndicators[accId]) {
           setContactIndicators(prev => ({ ...prev, [accId]: { email: false, mobile: false, loading: true } }));
           Promise.all([
-            platinumGetContactDetails({ accountId: String(accId) }).catch(() => null),
-            platinumGetNameInfoByAccount(accId).catch(() => null),
+            platinumGetContactDetails({ accountId: String(accId) }).catch((err) => { console.error('[ClientCommunications] Failed to fetch contact details for search result:', err); return null; }),
+            platinumGetNameInfoByAccount(accId).catch((err) => { console.error('[ClientCommunications] Failed to fetch name info for search result:', err); return null; }),
           ]).then(([contactRes, nameRes]) => {
             const { email, mobile } = extractContactInfo(contactRes, nameRes);
             setContactIndicators(prev => ({ ...prev, [accId]: { email: !!email, mobile: !!mobile, loading: false } }));
           });
         }
       });
-    } catch {
+    } catch (err) {
+      console.error('[ClientCommunications] Failed to perform account search:', err);
       setSearchResults([]);
     } finally {
       setSearching(false);
@@ -220,8 +221,8 @@ export default function ClientCommunications() {
 
     try {
       const [contactRes, nameRes, addEmailRes] = await Promise.all([
-        platinumGetContactDetails({ accountId: String(accountId) }).catch(() => null),
-        platinumGetNameInfoByAccount(accountId).catch(() => null),
+        platinumGetContactDetails({ accountId: String(accountId) }).catch((err) => { console.error('[ClientCommunications] Failed to fetch contact details:', err); return null; }),
+        platinumGetNameInfoByAccount(accountId).catch((err) => { console.error('[ClientCommunications] Failed to fetch name info by account:', err); return null; }),
         fetchAdditionalEmailsByAccountId(accountId),
       ]);
 
@@ -235,7 +236,8 @@ export default function ClientCommunications() {
       }
 
       return { email, mobile, additionalEmails };
-    } catch {
+    } catch (err) {
+      console.error('[ClientCommunications] Failed to fetch contact details:', err);
       return { email: '', mobile: '', additionalEmails: [] };
     }
   };
@@ -325,14 +327,15 @@ export default function ClientCommunications() {
 
         const searchPromises = batch.map(async (accNo) => {
           try {
-            const rawData: any = await platinumSearchAccountsPayment({ accountNo: accNo }).catch(() => null);
+            const rawData: any = await platinumSearchAccountsPayment({ accountNo: accNo }).catch((err) => { console.error('[ClientCommunications] Failed to search account during CSV import:', err); return null; });
             const data = rawData || [];
             const items: any[] = Array.isArray(data) ? data : (data?.value || []);
             return items.find((i: any) => {
               const itemAccNo = String(i.accountNumber || i.accountNo || i.account_ID || i.accountID || i.id || '');
               return itemAccNo === accNo || itemAccNo.replace(/^0+/, '') === accNo.replace(/^0+/, '');
             }) || (items.length > 0 ? items[0] : null);
-          } catch {
+          } catch (err) {
+            console.error('[ClientCommunications] Failed to search account during CSV import:', err);
             return null;
           }
         });
@@ -389,7 +392,8 @@ export default function ClientCommunications() {
         setContactEnriching(false);
         toast({ title: 'Contact Details Loaded', description: `Loaded contact info for ${pendingContactIds.length} account(s).` });
       }
-    } catch {
+    } catch (err) {
+      console.error('[ClientCommunications] Failed to import CSV file:', err);
       toast({ title: 'Import Failed', description: 'Could not read the file.', variant: 'destructive' });
     } finally {
       setImporting(false);

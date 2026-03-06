@@ -148,10 +148,10 @@ export default function CashierDayEnd() {
         const id = Number(cashierId);
         try {
             const [cheques, cards, dropBoxes, reconciles] = await Promise.all([
-                platinumGetDayEndChequeList(id).catch(() => []),
-                platinumGetDayEndCardList(id).catch(() => []),
-                platinumGetDayEndDropBoxList(id).catch(() => []),
-                platinumGetDayEndReconcileList({ userId: String(currentUser?.id || 213), id: cashierId }).catch(() => []),
+                platinumGetDayEndChequeList(id).catch((err) => { console.error('[CashierDayEnd] Failed to fetch cheque list:', err); return []; }),
+                platinumGetDayEndCardList(id).catch((err) => { console.error('[CashierDayEnd] Failed to fetch card list:', err); return []; }),
+                platinumGetDayEndDropBoxList(id).catch((err) => { console.error('[CashierDayEnd] Failed to fetch drop box list:', err); return []; }),
+                platinumGetDayEndReconcileList({ userId: String(currentUser?.id || 213), id: cashierId }).catch((err) => { console.error('[CashierDayEnd] Failed to fetch reconcile list:', err); return []; }),
             ]);
 
             const chequeItems = extractItems(cheques);

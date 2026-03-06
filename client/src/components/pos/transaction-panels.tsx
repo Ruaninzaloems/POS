@@ -460,7 +460,7 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
                 idNo: '-',
                 address: item.deliveryAddress || item.streetName || '',
                 outstandingAmount: item.outStandingAmt || 0,
-                status: item.statusDesc || 'Active',
+                status: item.statusDesc || '-',
                 email: '',
                 mobile: '',
                 accountType: item.typeOfUseDesc || 'Consumer',

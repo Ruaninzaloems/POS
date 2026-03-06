@@ -249,7 +249,7 @@ export async function fetchPlatinumUserInfo(): Promise<PlatinumUserInfo> {
     const res = await apiFetch('/api/platinum/auth/user-info');
     if (!res.ok) {
         let detail = '';
-        try { const body = await res.json(); detail = body?.message || body?.error || ''; } catch {}
+        try { const body = await res.json(); detail = body?.message || body?.error || ''; } catch (err) { console.error('[fetchPlatinumUserInfo] Failed to parse error response:', err); }
         throw new Error(`Failed to fetch user info from Platinum API (status ${res.status})${detail ? ': ' + detail : ''}`);
     }
     return await res.json();
@@ -453,18 +453,15 @@ export function mapTransactionTypeToPaymentOptionId(type: string): number | null
 }
 
 export async function fetchBillingStageCashierReceiptDetails(referenceId: string): Promise<any[]> {
-    try {
-        const params = new URLSearchParams();
-        params.append('referenceId', referenceId);
-        const res = await apiFetch(`/api/platinum/billing-stage-cashier-receipt-details/reference?${params.toString()}`);
-        if (res.ok) {
-            const data = await res.json();
-            return Array.isArray(data) ? data : (data.value || []);
-        }
-    } catch (e) {
-        console.warn(`Failed to fetch receipt details for referenceId ${referenceId}`, e);
+    const params = new URLSearchParams();
+    params.append('referenceId', referenceId);
+    const res = await apiFetch(`/api/platinum/billing-stage-cashier-receipt-details/reference?${params.toString()}`);
+    if (res.status === 404) return [];
+    if (!res.ok) {
+        throw new Error(`Failed to fetch receipt details for referenceId ${referenceId} (status ${res.status})`);
     }
-    return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : (data.value || []);
 }
 
 export interface PosMultiReceiptPrintItem {
@@ -525,10 +522,11 @@ export async function fetchPosMultiReceiptPrint(receiptId: string, maxRetries: n
                 await new Promise(r => setTimeout(r, delay));
                 continue;
             }
-            console.warn(`[ReceiptFetch] receiptId ${receiptId} failed after ${maxRetries} attempts`, e);
+            console.error(`[ReceiptFetch] receiptId ${receiptId} failed after ${maxRetries} attempts`, e);
+            throw e instanceof Error ? e : new Error(`Failed to fetch receipt print for receiptId ${receiptId} after ${maxRetries} attempts`);
         }
     }
-    return [];
+    throw new Error(`Failed to fetch receipt print for receiptId ${receiptId}: empty response after ${maxRetries} attempts`);
 }
 
 export async function fetchBillingStagePrepaidRecharge(id: string): Promise<any | null> {
@@ -581,9 +579,9 @@ export async function fetchConsAccountById(id: string): Promise<any | null> {
 
 export async function fetchBanks(): Promise<Bank[]> {
     const res = await apiFetch(`/api/platinum/billing-payment-clearance/get-banks`);
+    if (res.status === 404) return [];
     if (!res.ok) {
-        console.warn('[Banks] Platinum bank endpoints not yet available (status ' + res.status + '). Banks dropdown will be empty until Platinum API is implemented.');
-        return [];
+        throw new Error(`Failed to fetch banks from API (status ${res.status})`);
     }
     const data = await res.json();
     return Array.isArray(data) ? data : [];
@@ -708,10 +706,10 @@ export async function enrichAccountData(account: any): Promise<any> {
 
     try {
         const [consDetails, nameData, contactDetails, balanceDebt] = await Promise.all([
-            platinumGetConsAccountDetails(Number(accountId), true).catch(() => null),
-            platinumFetch(`/api/platinum/billing-enquiry/name-info-by-account?accountId=${accountId}`).catch(() => null),
-            platinumFetch(`/api/platinum/billing-account-management/get-contact-details?accountId=${accountId}`).catch(() => null),
-            fetchTotalBalanceDebt(Number(accountId)).catch(() => null),
+            platinumGetConsAccountDetails(Number(accountId), true).catch((err) => { console.error('[enrichAccountData] Failed to fetch cons account details:', err); return null; }),
+            platinumFetch(`/api/platinum/billing-enquiry/name-info-by-account?accountId=${accountId}`).catch((err) => { console.error('[enrichAccountData] Failed to fetch name info:', err); return null; }),
+            platinumFetch(`/api/platinum/billing-account-management/get-contact-details?accountId=${accountId}`).catch((err) => { console.error('[enrichAccountData] Failed to fetch contact details:', err); return null; }),
+            fetchTotalBalanceDebt(Number(accountId)).catch((err) => { console.error('[enrichAccountData] Failed to fetch balance debt:', err); return null; }),
         ]);
 
         if (consDetails && !consDetails._error) {
@@ -833,7 +831,7 @@ async function platinumFetch(url: string, options?: RequestInit & { timeoutMs?: 
         const res = await apiFetch(url, { ...fetchOpts, signal: mergedSignal });
         if (!res.ok) {
             let text = '';
-            try { text = await res.text(); } catch {}
+            try { text = await res.text(); } catch (err) { console.error('[platinumFetch] Failed to read error response text:', err); }
             let detail = text;
             try {
                 const parsed = JSON.parse(text);
@@ -853,7 +851,7 @@ async function platinumFetch(url: string, options?: RequestInit & { timeoutMs?: 
                 } else {
                     detail = parsed.message || JSON.stringify(raw);
                 }
-            } catch {}
+            } catch (err) { console.error('[platinumFetch] Failed to parse error response JSON:', err); }
             detail = detail?.replace(/<[^>]*>/g, '')?.substring(0, 300) || '';
             throw new Error(detail || `Platinum API error (${res.status})`);
         }
@@ -2513,7 +2511,10 @@ export async function fetchEnquiryResults(payload: any): Promise<any> {
 
 export async function fetchSites(): Promise<any[]> {
     const res = await apiFetch('/api/sites');
-    if (!res.ok) return [];
+    if (res.status === 404) return [];
+    if (!res.ok) {
+        throw new Error(`Failed to fetch sites (status ${res.status})`);
+    }
     return res.json();
 }
 
@@ -2548,7 +2549,9 @@ export async function fetchBatchAccountNames(accountNumbers: string[]): Promise<
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountNumbers }),
     });
-    if (!res.ok) return {};
+    if (!res.ok) {
+        throw new Error(`Failed to fetch batch account names (status ${res.status})`);
+    }
     return res.json();
 }
 
@@ -2558,7 +2561,9 @@ export async function fetchBatchBalances(accountIds: number[]): Promise<Record<s
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountIds }),
     });
-    if (!res.ok) return {};
+    if (!res.ok) {
+        throw new Error(`Failed to fetch batch balances (status ${res.status})`);
+    }
     return res.json();
 }
 
@@ -2569,7 +2574,9 @@ export async function platinumSearchAccountsWithSignal(data: any, signal?: Abort
         body: JSON.stringify(data),
         signal,
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+        throw new Error(`Failed to search accounts (status ${res.status})`);
+    }
     return res.json();
 }
 
@@ -2580,7 +2587,9 @@ export async function fetchEnquiryResultsWithSignal(payload: any, signal?: Abort
         body: JSON.stringify(payload),
         signal,
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+        throw new Error(`Failed to fetch enquiry results (status ${res.status})`);
+    }
     return res.json();
 }
 
@@ -2598,21 +2607,30 @@ export interface BulkProgressSearchQuery {
 
 export async function fetchBulkProgressFinancialYears(): Promise<any[]> {
     const res = await apiFetch('/api/platinum/bulk-progress/get-financial-years');
-    if (!res.ok) return [];
+    if (res.status === 404) return [];
+    if (!res.ok) {
+        throw new Error(`Failed to fetch bulk progress financial years (status ${res.status})`);
+    }
     const data = await res.json();
     return Array.isArray(data) ? data : data?.value ?? [];
 }
 
 export async function fetchBulkProgressMonthList(): Promise<any[]> {
     const res = await apiFetch('/api/platinum/bulk-progress/get-month-list');
-    if (!res.ok) return [];
+    if (res.status === 404) return [];
+    if (!res.ok) {
+        throw new Error(`Failed to fetch bulk progress month list (status ${res.status})`);
+    }
     const data = await res.json();
     return Array.isArray(data) ? data : data?.value ?? [];
 }
 
 export async function fetchBulkProgressProcessList(): Promise<any[]> {
     const res = await apiFetch('/api/platinum/bulk-progress/get-process-list');
-    if (!res.ok) return [];
+    if (res.status === 404) return [];
+    if (!res.ok) {
+        throw new Error(`Failed to fetch bulk progress process list (status ${res.status})`);
+    }
     const data = await res.json();
     return Array.isArray(data) ? data : data?.value ?? [];
 }
@@ -2623,25 +2641,33 @@ export async function fetchBulkAllocationList(query: BulkProgressSearchQuery): P
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(query),
     });
-    if (!res.ok) return { data: [], totalCount: 0 };
+    if (!res.ok) {
+        throw new Error(`Failed to fetch bulk allocation list (status ${res.status})`);
+    }
     return res.json();
 }
 
 export async function fetchBulkProgressDirectDeposit(jobId: number): Promise<any> {
     const res = await apiFetch(`/api/platinum/bulk-progress/direct-deposit/${jobId}`);
-    if (!res.ok) return null;
+    if (!res.ok) {
+        throw new Error(`Failed to fetch bulk progress direct deposit for job ${jobId} (status ${res.status})`);
+    }
     return res.json();
 }
 
 export async function fetchDirectDepositJobDetails(jobId: number): Promise<any> {
     const res = await apiFetch(`/api/platinum/direct-deposit-errors/job-details/${jobId}`);
-    if (!res.ok) return null;
+    if (!res.ok) {
+        throw new Error(`Failed to fetch direct deposit job details for job ${jobId} (status ${res.status})`);
+    }
     return res.json();
 }
 
 export async function fetchDirectDepositJobAccountDetails(jobId: number): Promise<any> {
     const res = await apiFetch(`/api/platinum/direct-deposit-errors/account-details/${jobId}`);
-    if (!res.ok) return null;
+    if (!res.ok) {
+        throw new Error(`Failed to fetch direct deposit job account details for job ${jobId} (status ${res.status})`);
+    }
     return res.json();
 }
 
@@ -2655,5 +2681,8 @@ export async function retryBulkAllocationJob(jobId: number, userId: number): Pro
         const text = await res.text().catch(() => '');
         throw new Error(text || `Retry failed (${res.status})`);
     }
-    return res.json().catch(() => ({}));
+    return res.json().catch((e: unknown) => {
+        console.error('[retryBulkAllocationJob] Failed to parse response JSON', e);
+        return {};
+    });
 }

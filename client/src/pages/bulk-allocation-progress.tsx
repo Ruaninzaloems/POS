@@ -177,7 +177,7 @@ export default function BulkAllocationProgress() {
         });
       }
       setCashierCacheLoaded(true);
-    } catch {}
+    } catch (err) { console.error('[BulkAllocationProgress] Failed to load cashier cache:', err); }
   }, [cashierCacheLoaded]);
 
   function resolveCashierName(id: number | null | undefined): string | null {
@@ -203,7 +203,7 @@ export default function BulkAllocationProgress() {
     try {
       const [data, posItemData] = await Promise.all([
         fetchBulkProgressDirectDeposit(jobId),
-        job.posItemID ? platinumGetPosItemDetails(job.posItemID).catch(() => null) : Promise.resolve(null),
+        job.posItemID ? platinumGetPosItemDetails(job.posItemID).catch((err) => { console.error('[BulkAllocationProgress] Failed to fetch POS item details:', err); return null; }) : Promise.resolve(null),
       ]);
 
       const enriched = { ...(data || job) };
@@ -213,7 +213,8 @@ export default function BulkAllocationProgress() {
         enriched._posItemDate = posItemData.dateOfTransaction || posItemData.dateCaptured;
       }
       setDetailData(enriched);
-    } catch {
+    } catch (err) {
+      console.error('[BulkAllocationProgress] Failed to load job detail:', err);
       setDetailData(job);
     } finally {
       setDetailLoading(false);

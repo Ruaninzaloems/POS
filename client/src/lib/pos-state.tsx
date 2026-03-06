@@ -404,7 +404,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
           setSessionLoading(false);
           return;
         }
-        const res = await fetchActiveCashierByUserId(platinumUser.user_ID, platinumUser.finYear).catch(() => null);
+        const res = await fetchActiveCashierByUserId(platinumUser.user_ID, platinumUser.finYear).catch((e) => { console.error('[Session] Failed to fetch active cashier by user ID:', e?.message || e); return null; });
         if (!res) {
           setCashierRegistered(false);
           setSessionLoading(false);
@@ -1352,7 +1352,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
             return;
         }
 
-        const unreconciledPromise = lookupReceiptNoById(receiptIds[0]).catch(() => null);
+        const unreconciledPromise = lookupReceiptNoById(receiptIds[0]).catch((e) => { console.error(`[Priority 1] lookupReceiptNoById failed for receiptId ${receiptIds[0]}:`, e?.message || e); return null; });
 
         const receiptDataResults = await Promise.all(
             receiptIds.map(async (rid) => {
@@ -1511,7 +1511,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
                 isSelected: null,
                 account_ID: acctId,
                 accountNumber: orig.accountNumber || '',
-                statusDesc: orig.statusDesc || 'Active',
+                statusDesc: orig.statusDesc || '-',
                 accountDesc: orig.accountDesc || '',
                 name: orig.name || orig.accountHolder || item.reference || '',
                 deliveryAddress: orig.deliveryAddress || orig.address || '',
@@ -1670,7 +1670,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
                             sgNumber: acct.erfNumber || '',
                             address: acct.deliveryAddress || '',
                             outstandingAmount: r2(acctOutstanding || acct.outStandingAmt || itemPayment),
-                            accountStatus: acct.statusDesc || 'Active',
+                            accountStatus: acct.statusDesc || '-',
                             accountType: acct.accountDesc || '',
                             paymentAmount: r2(itemPayment),
                             accountNumber: acct.accountNumber || '',
@@ -1956,7 +1956,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
                     rebuildFullAccount(Number(accountId))
                         .then(() => console.log(`[Priority 1] Rebuild completed for account ${accountId}`))
                         .catch(e => console.warn(`[Priority 1] Failed to rebuild account ${accountId}`, e)),
-                ]).catch(() => {});
+                ]).catch((e) => { console.error(`[Priority 1] Legacy receipt post / rebuild batch failed for account:`, e?.message || e); });
 
                 const balanceAndAllocations = (async () => {
                     try {
@@ -2644,7 +2644,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
     setProcessingRecord(null);
     setCompletedPaymentSnapshot(null);
     clearTransaction();
-    loadTransactionsFromApi().catch(() => {});
+    loadTransactionsFromApi().catch((e) => { console.error('[Transactions] Failed to reload transactions after closing receipt modal:', e?.message || e); });
   };
 
   const submitDayEnd = (report: { cashOnHand: number, cardTotal: number }) => {
@@ -2712,7 +2712,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
       ));
 
       setTimeout(() => {
-          loadTransactionsFromApi().catch(() => {});
+          loadTransactionsFromApi().catch((e) => { console.error('[Transactions] Failed to reload transactions after cancellation:', e?.message || e); });
       }, 1500);
   };
   
@@ -2764,7 +2764,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
       ));
 
       setTimeout(() => {
-          loadTransactionsFromApi().catch(() => {});
+          loadTransactionsFromApi().catch((e) => { console.error('[Transactions] Failed to reload transactions after approval/decline:', e?.message || e); });
       }, 1500);
   };
   

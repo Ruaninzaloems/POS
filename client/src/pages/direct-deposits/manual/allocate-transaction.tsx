@@ -105,7 +105,7 @@ export default function AllocateTransaction() {
   useEffect(() => {
     fetchMiscPaymentGroups()
       .then(groups => { setMiscGroups(groups); setMiscGroupsLoaded(true); })
-      .catch(() => setMiscGroupsLoaded(true));
+      .catch((err) => { console.error('[AllocateTransaction] Failed to fetch misc payment groups:', err); setMiscGroupsLoaded(true); });
   }, []);
 
   useEffect(() => {
@@ -147,11 +147,11 @@ export default function AllocateTransaction() {
           }
 
           const searches: Promise<any>[] = [
-            platinumSearchAccountsPayment(searchBody).catch(() => []),
+            platinumSearchAccountsPayment(searchBody).catch((err) => { console.error('[AllocateTransaction] Failed to search accounts:', err); return []; }),
           ];
           if (isNumeric) {
             searches.push(
-              platinumSearchAccountsPayment({ oldAccountCode: query }).catch(() => [])
+              platinumSearchAccountsPayment({ oldAccountCode: query }).catch((err) => { console.error('[AllocateTransaction] Failed to search by old account code:', err); return []; })
             );
           }
 
@@ -225,7 +225,8 @@ export default function AllocateTransaction() {
                   });
                 }
               }
-            } catch {
+            } catch (err) {
+              console.error('[AllocateTransaction] Failed to search clearance IDs:', err);
             }
           })());
         }
@@ -250,7 +251,8 @@ export default function AllocateTransaction() {
                 });
               }
             }
-          } catch {
+          } catch (err) {
+            console.error('[AllocateTransaction] Failed to search group payment details:', err);
           }
         })());
       }
@@ -357,7 +359,7 @@ export default function AllocateTransaction() {
         const costSchedule: ClearanceCostSchedule = {
           scheduleNo,
           costScheduleID: clearanceStagingId,
-          status: item.status || 'Active',
+          status: item.status || '-',
           totalDue,
           linkedAccounts,
           section118_1_Breakdown: section118_1,
@@ -980,7 +982,9 @@ export default function AllocateTransaction() {
           try {
               const userInfo = await fetchPlatinumUserInfo();
               if (userInfo?.user_ID) allocatingUserId = userInfo.user_ID;
-          } catch {}
+          } catch (err) {
+              console.error('[AllocateTransaction] Failed to fetch Platinum user info:', err);
+          }
 
           if (allocatingUserId <= 0) {
               toast({ title: 'User Session Error', description: 'Could not determine your user ID. Please log in again and retry.', variant: 'destructive' });

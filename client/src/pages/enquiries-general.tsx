@@ -82,7 +82,7 @@ function RiskFlagsBanner({ accountId }: { accountId: number }) {
             icon: <Gavel className="w-4 h-4" />,
           });
         }
-      }).catch(() => {}),
+      }).catch((e) => { console.error('Failed to fetch handover info for risk flags:', e); }),
 
       getAccountBalance(accountId).then((bal: any) => {
         const items = Array.isArray(bal) ? bal : bal ? [bal] : [];
@@ -121,7 +121,7 @@ function RiskFlagsBanner({ accountId }: { accountId: number }) {
             icon: <HandCoins className="w-4 h-4" />,
           });
         }
-      }).catch(() => {}),
+      }).catch((e) => { console.error('Failed to fetch account balance for risk flags:', e); }),
 
       getAttpApplicationHistory(accountId).then((data: any) => {
         const records = Array.isArray(data) ? data : data ? [data] : [];
@@ -130,7 +130,7 @@ function RiskFlagsBanner({ accountId }: { accountId: number }) {
           return st.includes('active') || st.includes('approved') || st.includes('registered');
         });
         if (activeIndigent) {
-          const type = activeIndigent.indigentType || activeIndigent.attpType || activeIndigent.type || 'Active';
+          const type = activeIndigent.indigentType || activeIndigent.attpType || activeIndigent.type || '-';
           detected.push({
             id: 'indigent',
             label: 'Indigent',
@@ -139,7 +139,7 @@ function RiskFlagsBanner({ accountId }: { accountId: number }) {
             icon: <ShieldAlert className="w-4 h-4" />,
           });
         }
-      }).catch(() => {}),
+      }).catch((e) => { console.error('Failed to fetch ATTP application history for risk flags:', e); }),
 
       getNameInfo(accountId).then((name: any) => {
         if (!name) return;
@@ -157,7 +157,7 @@ function RiskFlagsBanner({ accountId }: { accountId: number }) {
             icon: <Skull className="w-4 h-4" />,
           });
         }
-      }).catch(() => {}),
+      }).catch((e) => { console.error('Failed to fetch name info for risk flags:', e); }),
 
       getMeteredServicesOnAccount(accountId).then((meters: any) => {
         if (!Array.isArray(meters) || !meters.length) return;
@@ -177,7 +177,7 @@ function RiskFlagsBanner({ accountId }: { accountId: number }) {
             icon: <GaugeCircle className="w-4 h-4" />,
           });
         }
-      }).catch(() => {}),
+      }).catch((e) => { console.error('Failed to fetch metered services for risk flags:', e); }),
 
       getAccountInfoResult(accountId).then((info: any) => {
         if (!info) return;
@@ -193,7 +193,7 @@ function RiskFlagsBanner({ accountId }: { accountId: number }) {
             });
           }
         }
-      }).catch(() => {}),
+      }).catch((e) => { console.error('Failed to fetch account info for risk flags:', e); }),
     ];
 
     Promise.allSettled(checks).then(() => {
@@ -319,7 +319,8 @@ function FieldAutocompleteInput({ fieldKey, placeholder, value, onChange, onSele
         const withIds = items.filter(s => s.accountId && s.accountId > 0);
         const uniqueIds = Array.from(new Set(withIds.map(s => s.accountId))).slice(0, 5);
         if (uniqueIds.length > 0 && onAutoResults) onAutoResults(fieldKey, uniqueIds);
-      } catch {
+      } catch (e) {
+        console.error('Failed to fetch autocomplete suggestions:', e);
         if (tokenRef.current === tok) setSuggestions([]);
       } finally {
         setLoading(false);
@@ -457,7 +458,7 @@ function GeneralEnquiriesContent() {
         const total = bal?.totalBalance ?? bal?.totalDue ?? bal?.balance ?? bal?.outstandingBalance ?? null;
         if (total !== null && total !== undefined) setHeaderBalance(Number(total));
       }
-    }).catch(() => {});
+    }).catch((e) => { console.error('Failed to fetch header balance:', e); });
   }, [selectedAccount]);
 
   const quickSearchTokenRef = useRef(0);
@@ -501,7 +502,7 @@ function GeneralEnquiriesContent() {
               balanceCacheRef.current.set(id, bal);
             }
           }
-        } catch {}
+        } catch (e) { console.error('Failed to fetch balance for account enrichment:', e); }
       }));
       if (tokenRef.current === token) setter(applyCache([...accounts]));
     }
@@ -517,10 +518,10 @@ function GeneralEnquiriesContent() {
     const { field } = detectSearchType(query);
     const token = ++quickSearchTokenRef.current;
     try {
-      let results = await searchAccounts({ [field]: query.trim() } as any).catch(() => [] as EnquirySearchResult[]);
+      let results = await searchAccounts({ [field]: query.trim() } as any).catch((e) => { console.error('Failed to search accounts in quick search:', e); return [] as EnquirySearchResult[]; });
       if (quickSearchTokenRef.current !== token) return;
       if (results.length === 0) {
-        results = await autocompleteSearch(query.trim(), field).catch(() => [] as EnquirySearchResult[]);
+        results = await autocompleteSearch(query.trim(), field).catch((e) => { console.error('Failed to autocomplete search in quick search:', e); return [] as EnquirySearchResult[]; });
         if (quickSearchTokenRef.current !== token) return;
       }
       setDropdownResults(results);
@@ -611,7 +612,7 @@ function GeneralEnquiriesContent() {
       if (fullSearchTokenRef.current !== token) return;
       if (data.length === 0 && hasQuick) {
         const { field } = detectSearchType(quickQuery);
-        data = await autocompleteSearch(quickQuery.trim(), field).catch(() => [] as EnquirySearchResult[]);
+        data = await autocompleteSearch(quickQuery.trim(), field).catch((e) => { console.error('Failed to autocomplete search in full search:', e); return [] as EnquirySearchResult[]; });
         if (fullSearchTokenRef.current !== token) return;
       }
       setResults(data);
@@ -656,7 +657,8 @@ function GeneralEnquiriesContent() {
       setResults(all);
       setSearching(false);
       enrichWithBalances(all, fullSearchTokenRef, token, setResults);
-    } catch {
+    } catch (e) {
+      console.error('Failed to perform full search:', e);
       if (fullSearchTokenRef.current === token) setResults([]);
     } finally {
       setSearching(false);

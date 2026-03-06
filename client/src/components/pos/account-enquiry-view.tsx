@@ -113,14 +113,14 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
         const accountIdStr = String(accountId);
 
         const [consDetails, acctDetails, acctInfo, contactDetails, propEnquiry, nameData, handoverData, incentiveData] = await Promise.all([
-          platinumGetConsAccountDetails(accountId).catch(() => null),
-          platinumGetAccountDetails({ accountId: accountIdStr }).catch(() => null),
-          platinumGetAccountInformation({ accountId: accountIdStr }).catch(() => null),
-          platinumGetContactDetails({ accountId: accountIdStr }).catch(() => null),
-          platinumGetPropertyDetailsByAccount(accountId).catch(() => null),
-          platinumGetNameInfoByAccount(accountId).catch(() => null),
-          platinumGetHandoverByAccount(accountId).catch(() => null),
-          platinumGetPaymentIncentiveByAccount(accountId).catch(() => null),
+          platinumGetConsAccountDetails(accountId).catch((e) => { console.error('Failed to fetch cons account details:', e); return null; }),
+          platinumGetAccountDetails({ accountId: accountIdStr }).catch((e) => { console.error('Failed to fetch account details:', e); return null; }),
+          platinumGetAccountInformation({ accountId: accountIdStr }).catch((e) => { console.error('Failed to fetch account information:', e); return null; }),
+          platinumGetContactDetails({ accountId: accountIdStr }).catch((e) => { console.error('Failed to fetch contact details:', e); return null; }),
+          platinumGetPropertyDetailsByAccount(accountId).catch((e) => { console.error('Failed to fetch property details by account:', e); return null; }),
+          platinumGetNameInfoByAccount(accountId).catch((e) => { console.error('Failed to fetch name info by account:', e); return null; }),
+          platinumGetHandoverByAccount(accountId).catch((e) => { console.error('Failed to fetch handover by account:', e); return null; }),
+          platinumGetPaymentIncentiveByAccount(accountId).catch((e) => { console.error('Failed to fetch payment incentive by account:', e); return null; }),
         ]);
 
         if (cancelled) return;
@@ -198,7 +198,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
         if (unitId) {
           try {
             propMgmtDetails = await platinumGetPropertyDetails({ unitId: String(unitId) });
-          } catch {}
+          } catch (e) { console.error('Failed to fetch property management details:', e); }
         }
 
         if (cancelled) return;
@@ -355,7 +355,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
       });
   };
 
-  const isActive = (account.status || 'Active').toLowerCase() === 'active';
+  const isActive = (account.status || '-').toLowerCase() === 'active';
   const accountName = account.name || 'Unknown';
 
   const Field = ({ label, value }: { label: string, value: string | number | undefined }) => (
@@ -389,7 +389,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                   </h3>
                   <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${isActive ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-[#F2F4F7] text-slate-500 ring-1 ring-[#D6D6D6]'}`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-                    {account.status || 'Active'}
+                    {account.status || '-'}
                   </span>
                 </div>
                 <div className="text-[10px] text-slate-500 font-mono mt-0.5 truncate">
@@ -467,7 +467,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                  </div>
                  <div>
                    <Field label="Name" value={account.name} />
-                   <Field label="Status" value={account.status || 'Active'} />
+                   <Field label="Status" value={account.status || '-'} />
                    <Field label="Address" value={account.deliveryAddress || account.address} />
                    <Field label="Handover" value={account.handoverStatus || handoverStatus} />
                    <Field label="Incentive" value={account.incentiveSchemeCode || incentiveCode} />
