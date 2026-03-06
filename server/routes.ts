@@ -3726,7 +3726,13 @@ export async function registerRoutes(
   app.post("/api/platinum/direct-deposit-bulk/get-processed", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const data = await platinumPost(session, "/api/billing/direct-deposit-bulk-allocation/get-processed-deposits", req.body);
+      const payload = {
+        UnProcessedData: req.body?.unProcessedBatches || req.body?.UnProcessedData || [],
+        ProcessedData: req.body?.processedBatches || req.body?.ProcessedData || [],
+      };
+      console.log(`[dd-bulk-processed] Sending payload with ${(payload.UnProcessedData as any[]).length} unprocessed, ${(payload.ProcessedData as any[]).length} processed batches`);
+      const data = await platinumPost(session, "/api/billing/direct-deposit-bulk-allocation/get-processed-deposits", payload);
+      console.log(`[dd-bulk-processed] Response type: ${typeof data}, isArray: ${Array.isArray(data)}, keys: ${data && typeof data === 'object' ? Object.keys(data).join(', ') : 'N/A'}`);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -3736,10 +3742,17 @@ export async function registerRoutes(
   app.post("/api/platinum/direct-deposit-bulk/reconcile", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const batchNum = req.body?.selectedItem?.num || 'unknown';
-      const unallocCount = req.body?.selectedItem?.billingUnAllocated || 0;
-      console.log(`[dd-bulk-reconcile] Processing batch ${batchNum} — ${unallocCount} unallocated items, userId=${req.body?.userId}`);
-      const data = await platinumPost(session, "/api/billing/direct-deposit-bulk-allocation/reconcile-processed-data", req.body);
+      const batchNum = req.body?.selectedItem?.num || req.body?.SelectedItem?.num || 'unknown';
+      const unallocCount = req.body?.selectedItem?.billingUnAllocated || req.body?.SelectedItem?.billingUnAllocated || 0;
+      console.log(`[dd-bulk-reconcile] Processing batch ${batchNum} — ${unallocCount} unallocated items, userId=${req.body?.userId || req.body?.UserId}`);
+      const payload = {
+        UserId: req.body?.userId || req.body?.UserId,
+        SelectedItem: req.body?.selectedItem || req.body?.SelectedItem,
+        UnProcessedData: req.body?.unProcessedBatches || req.body?.UnProcessedData || [],
+        ProcessedData: req.body?.processedBatches || req.body?.ProcessedData || [],
+      };
+      console.log(`[dd-bulk-reconcile] Payload keys: ${Object.keys(payload).join(', ')}, UnProcessedData: ${(payload.UnProcessedData as any[]).length} batches, ProcessedData: ${(payload.ProcessedData as any[]).length} batches`);
+      const data = await platinumPost(session, "/api/billing/direct-deposit-bulk-allocation/reconcile-processed-data", payload);
       console.log(`[dd-bulk-reconcile] Response type: ${typeof data}, isArray: ${Array.isArray(data)}, keys: ${data && typeof data === 'object' ? Object.keys(data).join(', ') : 'N/A'}`);
       console.log(`[dd-bulk-reconcile] Response (first 2000 chars):`, JSON.stringify(data).substring(0, 2000));
       handlePlatinumResult(res, data);
