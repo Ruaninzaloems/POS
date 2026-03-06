@@ -125,7 +125,7 @@ function StatCard({ label, value, subValue, icon, color, tip }: {
 }
 
 function AutoAllocationContent() {
-  const { currentUser } = usePos();
+  const { currentUser, platinumUser } = usePos();
   const { toast } = useToast();
 
   const [fromDate, setFromDate] = useState<Date>(subDays(new Date(), 30));
@@ -144,8 +144,8 @@ function AutoAllocationContent() {
   const [showRejected, setShowRejected] = useState(false);
   const [processingBatchNum, setProcessingBatchNum] = useState<number | null>(null);
 
-  const userId = currentUser?.id ? Number(currentUser.id) : undefined;
-  const userName = currentUser?.name || 'Cashier';
+  const userId = platinumUser?.user_ID || (currentUser?.id && !isNaN(Number(currentUser.id)) ? Number(currentUser.id) : undefined);
+  const userName = platinumUser ? `${platinumUser.firstName || ''} ${platinumUser.lastName || ''}`.trim() || platinumUser.userName || 'Cashier' : currentUser?.name || 'Cashier';
 
   const handleFetchUnprocessed = useCallback(async () => {
     setLoading(true);
