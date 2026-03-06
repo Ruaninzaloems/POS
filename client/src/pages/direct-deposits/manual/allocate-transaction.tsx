@@ -1039,27 +1039,34 @@ export default function AllocateTransaction() {
               let derivedLastName = line.lastName || '';
               let derivedInitials = line.initials || '';
               if (!derivedLastName) {
-                  const nameSource = line.description || transaction.note || line.accountNo || 'Unknown';
-                  const cleanName = nameSource
-                      .replace(/\s*\(Old:.*\)$/, '')
-                      .replace(/&amp;/g, '&')
-                      .replace(/CSV Import:\s*/i, '')
-                      .replace(/Payment to\s*/i, '')
-                      .replace(/Payment Grouping:\s*/i, '')
-                      .trim();
-                  const nameParts = cleanName.split(/\s+/).filter(p => p && p !== '&');
-                  if (nameParts.length >= 2) {
-                      derivedLastName = nameParts[0];
-                      derivedInitials = nameParts.slice(1).map(p => p.charAt(0).toUpperCase()).join('');
-                  } else if (nameParts.length === 1) {
-                      derivedLastName = nameParts[0];
-                      derivedInitials = nameParts[0].charAt(0).toUpperCase();
+                  if (allocType === 'DIRECT' || allocType === 'GROUP') {
+                      derivedLastName = transaction.note || line.description || 'Direct Deposit';
+                      derivedInitials = '';
+                  } else {
+                      const nameSource = line.description || transaction.note || line.accountNo || 'Unknown';
+                      const cleanName = nameSource
+                          .replace(/\s*\(Old:.*\)$/, '')
+                          .replace(/&amp;/g, '&')
+                          .replace(/CSV Import:\s*/i, '')
+                          .replace(/Payment to\s*/i, '')
+                          .replace(/Payment Grouping:\s*/i, '')
+                          .trim();
+                      const nameParts = cleanName.split(/\s+/).filter(p => p && p !== '&');
+                      if (nameParts.length >= 2) {
+                          derivedLastName = nameParts[0];
+                          derivedInitials = nameParts.slice(1).map(p => p.charAt(0).toUpperCase()).join('');
+                      } else if (nameParts.length === 1) {
+                          derivedLastName = nameParts[0];
+                          derivedInitials = nameParts[0].charAt(0).toUpperCase();
+                      }
                   }
               }
               if (!derivedLastName) derivedLastName = 'N/A';
-              if (!derivedInitials) derivedInitials = 'N';
+              if (!derivedInitials && allocType !== 'DIRECT' && allocType !== 'GROUP') derivedInitials = 'N';
 
               let submitData: any;
+
+              const actualReference = transaction.reference || '';
 
               if (allocType === 'DIRECT') {
                   submitData = {
@@ -1079,8 +1086,9 @@ export default function AllocateTransaction() {
                       totalAmount: line.amount,
                       vatableVote: line.vatableVote ?? 0,
                       vatPercentage: line.vatPercentage ?? 0,
-                      paymentTypeId: line.paymentTypeId ?? 5,
-                      reference: line.reference || transaction.reference || '',
+                      paymentTypeId: 5,
+                      PaymentTypeId: 5,
+                      reference: actualReference,
                       note: line.note || transaction.note || '',
                       receiptDate: receiptDate,
                   };
@@ -1096,9 +1104,10 @@ export default function AllocateTransaction() {
                       accountId: line.accountId || 0,
                       lastName: derivedLastName,
                       initials: derivedInitials,
-                      paymentTypeId: line.paymentTypeId ?? 5,
+                      paymentTypeId: 5,
+                      PaymentTypeId: 5,
                       description: line.description || transaction.note || '',
-                      reference: line.reference || transaction.reference || '',
+                      reference: actualReference,
                       note: line.note || transaction.note || '',
                       outstandingAmount: line.outstandingAmount ?? line.amount,
                       receiptDate: receiptDate,
