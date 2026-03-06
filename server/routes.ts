@@ -5124,26 +5124,29 @@ export async function registerRoutes(
   app.get("/api/platinum/const-institutions", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const finYear = session.platinumUser?.finYear || req.query.finYear;
-      if (!finYear) {
-        return res.status(400).json({ message: "Financial year missing from session. Please log in again." });
-      }
+      const finYear = session.platinumUser?.finYear || req.query.finYear as string | undefined;
 
-      const endpoints = [
+      const endpoints: { url: string; params: Record<string, string> }[] = [
         { url: "/api/receipting-account-group/search", params: {} },
-        { url: "/api/receipting-account-group/get-account-groups", params: { finYear: String(finYear) } },
         { url: "/api/const-institutions", params: {} },
         { url: "/api/BillingEnquiry/GetConstInstitutions", params: {} },
       ];
+      if (finYear) {
+        endpoints.splice(1, 0, { url: "/api/receipting-account-group/get-account-groups", params: { finYear: String(finYear) } });
+      }
 
       for (const ep of endpoints) {
-        const data = await platinumGet(session, ep.url, ep.params);
-        if (data && !data._error) {
-          const arr = Array.isArray(data) ? data : [];
-          if (arr.length > 0) {
-            console.log(`[const-institutions] ${ep.url} returned ${arr.length} groups, sample keys: ${JSON.stringify(Object.keys(arr[0]))}`);
-            return handlePlatinumResult(res, data);
+        try {
+          const data = await platinumGet(session, ep.url, ep.params);
+          if (data && !data._error) {
+            const arr = Array.isArray(data) ? data : [];
+            if (arr.length > 0) {
+              console.log(`[const-institutions] ${ep.url} returned ${arr.length} groups, sample keys: ${JSON.stringify(Object.keys(arr[0]))}`);
+              return handlePlatinumResult(res, data);
+            }
           }
+        } catch (epErr: any) {
+          console.error(`[const-institutions] ${ep.url} threw: ${epErr?.message || epErr}`);
         }
       }
 

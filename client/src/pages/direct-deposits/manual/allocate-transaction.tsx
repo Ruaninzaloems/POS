@@ -945,11 +945,19 @@ export default function AllocateTransaction() {
       setLines(prev => prev.filter(l => l.id !== id));
   };
 
-  const handleUpdateLineAmount = (id: string, newAmount: number) => {
-      setLines(prev => prev.map(l => l.id === id ? { ...l, amount: newAmount } : l));
+  const handleUpdateLineAmount = (id: string, rawValue: string) => {
+      const parsed = parseFloat(rawValue);
+      if (isNaN(parsed)) return;
+      const clamped = Math.max(0, parsed);
+      setLines(prev => prev.map(l => l.id === id ? { ...l, amount: clamped } : l));
   };
 
   const handlePost = async () => {
+      const invalidLines = lines.filter(l => !l.amount || l.amount <= 0 || !isFinite(l.amount));
+      if (invalidLines.length > 0) {
+          toast({ title: "Validation Error", description: "All allocation lines must have an amount greater than zero.", variant: "destructive" });
+          return;
+      }
       if (!isFullyAllocated) {
           toast({ title: "Validation Error", description: "Allocated total must equal transaction amount.", variant: "destructive" });
           return;
@@ -1976,7 +1984,7 @@ export default function AllocateTransaction() {
                                                 min="0"
                                                 className="w-24 h-7 text-right font-mono text-sm font-semibold text-slate-800 px-2"
                                                 value={line.amount}
-                                                onChange={(e) => handleUpdateLineAmount(line.id, parseFloat(e.target.value) || 0)}
+                                                onChange={(e) => handleUpdateLineAmount(line.id, e.target.value)}
                                                 data-testid={`input-mobile-amount-${idx}`}
                                             />
                                         </div>
@@ -2044,7 +2052,7 @@ export default function AllocateTransaction() {
                                                         min="0"
                                                         className="w-28 h-7 text-right font-mono text-sm font-semibold text-slate-800 px-2"
                                                         value={line.amount}
-                                                        onChange={(e) => handleUpdateLineAmount(line.id, parseFloat(e.target.value) || 0)}
+                                                        onChange={(e) => handleUpdateLineAmount(line.id, e.target.value)}
                                                         data-testid={`input-line-amount-${idx}`}
                                                     />
                                                 </div>
