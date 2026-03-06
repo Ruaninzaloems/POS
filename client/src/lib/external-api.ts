@@ -2697,6 +2697,18 @@ export async function fetchDirectDepositJobAccountDetails(jobId: number): Promis
     return res.json();
 }
 
+export async function fetchBankStatementNotes(posItemIds: number[]): Promise<Record<string, string>> {
+    const res = await apiFetch('/api/platinum/bank-statement-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ posItemIds }),
+    });
+    if (!res.ok) {
+        throw new Error(`Failed to fetch bank statement notes (status ${res.status})`);
+    }
+    return res.json();
+}
+
 export async function fetchBulkProgressJobAccountDetails(jobId: number): Promise<any> {
     const res = await apiFetch(`/api/platinum/bulk-progress/job-account-details/${jobId}`);
     if (!res.ok) {

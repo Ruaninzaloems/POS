@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ArrowLeft, Eye, Printer, FileText, Search, User, FileSpreadsheet, FileIcon, Filter, X, RotateCcw, AlertCircle, File, Download, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'wouter';
-import { fetchBulkAllocationList, fetchBulkProgressFinancialYears, fetchBulkProgressMonthList, fetchBulkProgressProcessList, fetchDirectDepositJobAccountDetails, fetchBulkProgressDirectDeposit, fetchDirectDepositJobDetails, fetchBulkProgressJobAccountDetails, retryBulkAllocationJob, BulkProgressSearchQuery } from '@/lib/external-api';
+import { fetchBulkAllocationList, fetchBulkProgressFinancialYears, fetchBulkProgressMonthList, fetchBulkProgressProcessList, fetchDirectDepositJobAccountDetails, fetchBulkProgressDirectDeposit, fetchDirectDepositJobDetails, fetchBulkProgressJobAccountDetails, retryBulkAllocationJob, fetchBankStatementNotes, BulkProgressSearchQuery } from '@/lib/external-api';
 import { usePos } from '@/lib/pos-state';
 import { format, parseISO, isWithinInterval, startOfDay, endOfDay, isValid } from 'date-fns';
 import { Loader2 } from 'lucide-react';
@@ -88,6 +88,8 @@ export default function AllocationHistory() {
     });
   }, []);
 
+  const posItemNoteCache = useRef<Record<number, string>>({});
+
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
@@ -102,8 +104,36 @@ export default function AllocationHistory() {
         shortDirection: 'desc',
       };
       const result = await fetchBulkAllocationList(query);
-      const items = result?.items || result?.data || [];
-      setAllocationData(Array.isArray(items) ? items : []);
+      const items: AllocationRecord[] = Array.isArray(result?.items || result?.data || []) ? (result?.items || result?.data || []) : [];
+
+      const needsNote = items.filter(item =>
+        (!item.paymentReference || item.paymentReference === '0') &&
+        item.posItemID > 0 &&
+        !posItemNoteCache.current[item.posItemID]
+      );
+      const uniquePosItemIds = [...new Set(needsNote.map(i => i.posItemID))];
+
+      if (uniquePosItemIds.length > 0) {
+        try {
+          const notes = await fetchBankStatementNotes(uniquePosItemIds);
+          Object.entries(notes).forEach(([id, note]) => {
+            if (note && note !== '0') {
+              posItemNoteCache.current[Number(id)] = note;
+            }
+          });
+        } catch (err) {
+          console.error('[AllocationHistory] Failed to fetch POS item notes:', err);
+        }
+      }
+
+      const enriched = items.map(item => {
+        if ((!item.paymentReference || item.paymentReference === '0') && posItemNoteCache.current[item.posItemID]) {
+          return { ...item, paymentReference: posItemNoteCache.current[item.posItemID] };
+        }
+        return item;
+      });
+
+      setAllocationData(enriched);
       setTotalCount(result?.totalCount || 0);
     } catch (err) {
       console.error('Failed to load allocation history:', err);
