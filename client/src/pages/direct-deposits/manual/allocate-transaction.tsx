@@ -1171,98 +1171,169 @@ export default function AllocateTransaction() {
                   billType = '6';
               }
 
-              const accountIdStr = line.accountId ? String(line.accountId) : '';
-
               updateProgress(`Line ${lineIdx}/${activeLines.length}: Submitting ${lineLabel}...`);
+
+              const posItemId = transaction.posItem_ID || 0;
+              const reconId = transaction.bankReconID || 0;
+              if (posItemId <= 0) {
+                  lineErrors.push(`${lineLabel}: posItemId is missing or zero`);
+                  setPostingErrors(prev => [...prev, `Validation failed for ${lineLabel}: posItemId must be > 0`]);
+                  console.error(`[Direct Deposit] posItemId=${posItemId} is invalid for ${lineLabel}`);
+                  continue;
+              }
+              if (reconId <= 0) {
+                  lineErrors.push(`${lineLabel}: reconId (bankReconID) is missing or zero`);
+                  setPostingErrors(prev => [...prev, `Validation failed for ${lineLabel}: reconId must be > 0`]);
+                  console.error(`[Direct Deposit] reconId=${reconId} is invalid for ${lineLabel}`);
+                  continue;
+              }
 
               let derivedLastName = line.lastName || '';
               let derivedInitials = line.initials || '';
               if (!derivedLastName) {
-                  if (allocType === 'DIRECT' || allocType === 'GROUP') {
-                      derivedLastName = transaction.note || line.description || 'Direct Deposit';
-                      derivedInitials = '';
-                  } else {
-                      const nameSource = line.description || transaction.note || line.accountNo || 'Unknown';
-                      const cleanName = nameSource
-                          .replace(/\s*\(Old:.*\)$/, '')
-                          .replace(/&amp;/g, '&')
-                          .replace(/CSV Import:\s*/i, '')
-                          .replace(/Payment to\s*/i, '')
-                          .replace(/Payment Grouping:\s*/i, '')
-                          .trim();
-                      const nameParts = cleanName.split(/\s+/).filter(p => p && p !== '&');
-                      if (nameParts.length >= 2) {
-                          derivedLastName = nameParts[0];
-                          derivedInitials = nameParts.slice(1).map(p => p.charAt(0).toUpperCase()).join('');
-                      } else if (nameParts.length === 1) {
-                          derivedLastName = nameParts[0];
-                          derivedInitials = nameParts[0].charAt(0).toUpperCase();
-                      }
+                  const nameSource = line.description || transaction.note || line.accountNo || 'Unknown';
+                  const cleanName = nameSource
+                      .replace(/\s*\(Old:.*\)$/, '')
+                      .replace(/&amp;/g, '&')
+                      .replace(/CSV Import:\s*/i, '')
+                      .replace(/Payment to\s*/i, '')
+                      .replace(/Payment Grouping:\s*/i, '')
+                      .trim();
+                  const nameParts = cleanName.split(/\s+/).filter(p => p && p !== '&');
+                  if (nameParts.length >= 2) {
+                      derivedLastName = nameParts[0];
+                      derivedInitials = nameParts.slice(1).map(p => p.charAt(0).toUpperCase()).join('');
+                  } else if (nameParts.length === 1) {
+                      derivedLastName = nameParts[0];
+                      derivedInitials = nameParts[0].charAt(0).toUpperCase();
                   }
               }
               if (!derivedLastName) derivedLastName = 'N/A';
-              if (!derivedInitials && allocType !== 'DIRECT' && allocType !== 'GROUP') derivedInitials = 'N';
-
-              let submitData: any;
+              if (!derivedInitials) derivedInitials = 'N';
 
               const actualReference = transaction.reference || '';
 
-              if (allocType === 'DIRECT') {
+              let submitData: any;
+
+              if (billType === '4') {
+                  const miscPaymentGroupId = line.miscPaymentGroupId || 0;
+                  if (miscPaymentGroupId <= 0) {
+                      lineErrors.push(`${lineLabel}: miscPaymentGroupId is missing or zero (required for billType "4")`);
+                      setPostingErrors(prev => [...prev, `Validation failed for ${lineLabel}: miscPaymentGroupId must be > 0`]);
+                      console.error(`[Direct Deposit] miscPaymentGroupId=${miscPaymentGroupId} is invalid for billType "4" on ${lineLabel}`);
+                      continue;
+                  }
                   submitData = {
-                      posItemId: transaction.posItem_ID,
-                      reconId: transaction.bankReconID || 0,
+                      posItemId,
+                      reconId,
                       userId: allocatingUserId,
                       financialYear: finYear,
                       transactionDate,
                       paidAmount: line.amount,
                       billType,
-                      miscPaymentGroupId: line.miscPaymentGroupId || 0,
+                      paymentTypeId: 5,
+                      miscPaymentGroupId,
                       lastName: derivedLastName,
                       initials: derivedInitials,
-                      description: line.description || transaction.note || '',
+                      totalAmount: line.amount,
                       amount: line.amount,
                       vatAmount: line.vatAmount ?? 0,
-                      totalAmount: line.amount,
                       vatableVote: line.vatableVote ?? 0,
                       vatPercentage: line.vatPercentage ?? 0,
-                      paymentTypeId: 5,
-                      PaymentTypeId: 5,
+                      description: line.description || transaction.note || '',
                       reference: actualReference,
                       note: line.note || transaction.note || '',
-                      receiptDate: receiptDate,
+                      receiptDate,
+                      cashFloat: 0,
+                  };
+              } else if (billType === '6') {
+                  const accountId = line.accountId || 0;
+                  const clearanceId = line.clearanceId || 0;
+                  if (accountId <= 0) {
+                      lineErrors.push(`${lineLabel}: accountId is missing or zero (required for billType "6")`);
+                      setPostingErrors(prev => [...prev, `Validation failed for ${lineLabel}: accountId must be > 0`]);
+                      console.error(`[Direct Deposit] accountId=${accountId} is invalid for billType "6" on ${lineLabel}`);
+                      continue;
+                  }
+                  if (clearanceId <= 0) {
+                      lineErrors.push(`${lineLabel}: clearanceId is missing or zero (required for billType "6")`);
+                      setPostingErrors(prev => [...prev, `Validation failed for ${lineLabel}: clearanceId must be > 0`]);
+                      console.error(`[Direct Deposit] clearanceId=${clearanceId} is invalid for billType "6" on ${lineLabel}`);
+                      continue;
+                  }
+                  submitData = {
+                      posItemId,
+                      reconId,
+                      userId: allocatingUserId,
+                      financialYear: finYear,
+                      transactionDate,
+                      paidAmount: line.amount,
+                      billType,
+                      paymentTypeId: 5,
+                      accountId,
+                      clearanceId,
+                      outstandingAmount: line.outstandingAmount ?? line.amount,
+                      totalAmount: line.amount,
+                      amount: line.amount,
+                      vatAmount: line.vatAmount ?? 0,
+                      vatableVote: line.vatableVote ?? 0,
+                      vatPercentage: line.vatPercentage ?? 0,
+                      reference: actualReference,
+                      note: line.note || transaction.note || '',
+                      receiptDate,
+                      cashFloat: 0,
+                  };
+              } else if (billType === '1') {
+                  const accountId = line.accountId || 0;
+                  if (accountId <= 0) {
+                      lineErrors.push(`${lineLabel}: accountId is missing or zero (required for billType "1")`);
+                      setPostingErrors(prev => [...prev, `Validation failed for ${lineLabel}: accountId must be > 0`]);
+                      console.error(`[Direct Deposit] accountId=${accountId} is invalid for billType "1" on ${lineLabel}`);
+                      continue;
+                  }
+                  submitData = {
+                      posItemId,
+                      reconId,
+                      userId: allocatingUserId,
+                      financialYear: finYear,
+                      transactionDate,
+                      paidAmount: line.amount,
+                      billType,
+                      paymentTypeId: 5,
+                      accountId,
+                      amount: line.amount,
+                      outstandingAmount: line.outstandingAmount ?? line.amount,
+                      description: line.description || transaction.note || '',
+                      reference: actualReference,
+                      note: line.note || transaction.note || '',
+                      receiptDate,
                       cashFloat: 0,
                   };
               } else {
+                  const accountId = line.accountId || 0;
                   submitData = {
-                      posItemId: transaction.posItem_ID,
-                      reconId: transaction.bankReconID || 0,
+                      posItemId,
+                      reconId,
                       userId: allocatingUserId,
                       financialYear: finYear,
                       transactionDate,
                       paidAmount: line.amount,
                       billType,
-                      accountId: line.accountId || 0,
+                      paymentTypeId: 5,
+                      accountId,
+                      miscPaymentGroupId: line.miscPaymentGroupId || 0,
+                      groupId: line.groupId || line.miscPaymentGroupId || 0,
                       lastName: derivedLastName,
                       initials: derivedInitials,
-                      paymentTypeId: 5,
-                      PaymentTypeId: 5,
+                      totalAmount: line.amount,
+                      amount: line.amount,
+                      outstandingAmount: line.outstandingAmount ?? line.amount,
                       description: line.description || transaction.note || '',
                       reference: actualReference,
                       note: line.note || transaction.note || '',
-                      outstandingAmount: line.outstandingAmount ?? line.amount,
-                      receiptDate: receiptDate,
+                      receiptDate,
                       cashFloat: 0,
                   };
-
-                  if (allocType === 'CLEARANCE') {
-                      submitData.clearanceId = line.clearanceId || 0;
-                      submitData.costScheduleId = line.costScheduleId || line.clearanceId || 0;
-                  }
-
-                  if (allocType === 'GROUP') {
-                      submitData.miscPaymentGroupId = line.miscPaymentGroupId || 0;
-                      submitData.groupId = line.groupId || line.miscPaymentGroupId || 0;
-                  }
               }
 
               try {
