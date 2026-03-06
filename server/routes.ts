@@ -3506,8 +3506,12 @@ export async function registerRoutes(
   app.post("/api/platinum/direct-deposit-allocation/submit-details-data", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      console.log('[DD Submit] Request body:', JSON.stringify(req.body));
-      const data = await platinumPost(session, "/api/billing-direct-deposit-allocation/submit-details-data", req.body, undefined, { timeout: 55000 });
+      const payload = { ...req.body };
+      if (!payload.userId || payload.userId <= 0) {
+        payload.userId = session.userId;
+      }
+      console.log('[DD Submit] Request body (userId resolved to ' + payload.userId + '):', JSON.stringify(payload));
+      const data = await platinumPost(session, "/api/billing-direct-deposit-allocation/submit-details-data", payload, undefined, { timeout: 55000 });
       console.log('[DD Submit] API response:', data?._error ? `ERROR: ${JSON.stringify(data)}` : 'OK');
       handlePlatinumResult(res, data);
     } catch (e: any) {
