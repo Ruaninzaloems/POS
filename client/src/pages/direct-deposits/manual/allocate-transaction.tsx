@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { ArrowLeft, Plus, Trash2, CheckCircle, AlertCircle, Upload, X, Loader2, Search, Banknote, Building2, FileCheck, Receipt, CreditCard, RotateCcw, FileSpreadsheet, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, CheckCircle, AlertCircle, Upload, X, Loader2, Search, Banknote, Building2, FileCheck, Receipt, CreditCard, RotateCcw, FileSpreadsheet, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Download, Eye } from 'lucide-react';
 import { AllocationLine, Account, ClearanceCostSchedule, platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, platinumLoadDetailsPaymentGrouping, platinumLoadDetailsPaymentGroupingInstitutionData, platinumLoadDetailsConsumerServices, platinumLoadConfirmPaymentDetails, platinumLoadDetailsClearance, platinumGetClearanceDetailsInfo, platinumGetConsumerDetailsData, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, platinumDDClearanceAutocomplete, platinumSearchClearanceIds, platinumGetClearanceData, platinumGetGroupPaymentDetails, fetchMiscPaymentGroups, rebuildFullAccount, platinumSearchAccountsPayment, fetchActiveFinYear, fetchPlatinumUserInfo } from '@/lib/external-api';
 import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
@@ -54,6 +54,8 @@ export default function AllocateTransaction() {
   const [postingStep, setPostingStep] = useState(0);
   const [postingTotalSteps, setPostingTotalSteps] = useState(0);
   const [postingErrors, setPostingErrors] = useState<string[]>([]);
+  const [postComplete, setPostComplete] = useState(false);
+  const [completedLines, setCompletedLines] = useState<{ accountNo: string; accountId?: number; description: string; amount: number; allocationType: string }[]>([]);
   const [lines, setLines] = useState<AllocationLine[]>([]);
   const [linesPage, setLinesPage] = useState(1);
   const LINES_PER_PAGE = 10;
@@ -1025,6 +1027,7 @@ export default function AllocateTransaction() {
           let submittedCount = 0;
           let lineIdx = 0;
           const lineErrors: string[] = [];
+          const successfulLines: { accountNo: string; accountId?: number; description: string; amount: number; allocationType: string }[] = [];
           for (const line of sortedLines) {
               if (line.accountNo === 'CASHBOOK-RTN' || line.allocationType === 'CASHBOOK') continue;
               lineIdx++;
@@ -1148,6 +1151,13 @@ export default function AllocateTransaction() {
                       continue;
                   }
                   submittedCount++;
+                  successfulLines.push({
+                      accountNo: line.accountNo,
+                      accountId: line.accountId,
+                      description: line.description,
+                      amount: line.amount,
+                      allocationType: allocType,
+                  });
               } catch (submitErr: any) {
                   const errMsg = submitErr?.message || 'Unknown submit error';
                   lineErrors.push(`${lineLabel}: ${errMsg}`);
@@ -1193,6 +1203,8 @@ export default function AllocateTransaction() {
               }
           }
 
+          setCompletedLines(successfulLines);
+
           if (lineErrors.length > 0) {
               toast({
                   title: `Allocation Partially Complete`,
@@ -1206,7 +1218,7 @@ export default function AllocateTransaction() {
               });
           }
 
-          setLocation('/direct-deposits/manual');
+          setPostComplete(true);
       } catch (e: any) {
           console.error("Failed to submit allocation", e);
           toast({
@@ -1242,6 +1254,119 @@ export default function AllocateTransaction() {
       </div>
     </PosLayout>
   );
+
+  if (postComplete && transaction) {
+    const accountLines = completedLines.filter(l => l.allocationType === 'ACCOUNT' || l.allocationType === 'PREPAID' || l.allocationType === 'CLEARANCE');
+    const totalAllocated = completedLines.reduce((sum, l) => sum + l.amount, 0);
+
+    return (
+      <PosLayout>
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
+                <CheckCircle2 className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-base sm:text-xl font-bold text-[#2E2E2E]" data-testid="text-allocation-complete-title">Allocation Complete</h1>
+                <p className="text-xs sm:text-sm text-[#6B6B6B] mt-0.5">POS Item #{transaction.posItem_ID} — R {transaction.amount.toFixed(2)}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-auto bg-[#F2F4F7] p-4 sm:p-6">
+            <div className="space-y-4 sm:space-y-6">
+
+              <div className="bg-green-50 border border-green-200 rounded-xl p-5 text-center">
+                <CheckCircle2 className="h-10 w-10 text-green-600 mx-auto mb-3" />
+                <h2 className="text-lg font-semibold text-green-800" data-testid="text-post-success">Allocation Posted Successfully</h2>
+                <p className="text-sm text-green-700 mt-1">
+                  {completedLines.length} allocation line{completedLines.length !== 1 ? 's' : ''} submitted — R {totalAllocated.toFixed(2)} allocated
+                </p>
+              </div>
+
+              {postingErrors.length > 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                    <span className="text-sm font-medium text-red-800">Some lines had errors:</span>
+                  </div>
+                  {postingErrors.map((err, i) => (
+                    <p key={i} className="text-xs text-red-700 ml-6">{err}</p>
+                  ))}
+                </div>
+              )}
+
+              {completedLines.length > 0 && (
+                <div className="bg-white rounded-xl border border-[#E0E0E0] shadow-sm overflow-hidden">
+                  <div className="px-4 py-3 bg-[#F7F7F7] border-b flex items-center gap-2">
+                    <div className="h-5 w-1 bg-[var(--pos-accent)] rounded-full"></div>
+                    <h3 className="text-sm font-medium text-slate-800">Allocated Lines</h3>
+                    <span className="text-xs text-muted-foreground">— click View Enquiry to verify the payment on an account</span>
+                  </div>
+                  <div className="divide-y">
+                    {completedLines.map((line, i) => (
+                      <div key={i} className="px-4 py-3 flex items-center justify-between hover:bg-[#FAFAFA]" data-testid={`row-completed-line-${i}`}>
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center shrink-0">
+                            {line.allocationType === 'ACCOUNT' || line.allocationType === 'PREPAID' ? (
+                              <Building2 className="h-4 w-4 text-green-700" />
+                            ) : line.allocationType === 'CLEARANCE' ? (
+                              <FileCheck className="h-4 w-4 text-green-700" />
+                            ) : line.allocationType === 'GROUP' ? (
+                              <CreditCard className="h-4 w-4 text-green-700" />
+                            ) : (
+                              <Receipt className="h-4 w-4 text-green-700" />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-mono font-medium text-slate-800">{line.accountNo || '-'}</span>
+                              <Badge variant="outline" className="text-[10px]">{line.allocationType}</Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate">{line.description || '-'}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className="text-sm font-mono font-semibold text-slate-800">R {line.amount.toFixed(2)}</span>
+                          {(line.allocationType === 'ACCOUNT' || line.allocationType === 'PREPAID' || line.allocationType === 'CLEARANCE') && line.accountNo && line.accountNo !== '-' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1.5 h-7 text-xs border-[var(--pos-accent)] text-[var(--pos-accent-dark)] hover:bg-[var(--pos-accent-tint)]"
+                              onClick={() => setEnquiryAccountId(line.accountNo)}
+                              data-testid={`button-enquiry-${i}`}
+                            >
+                              <Eye className="h-3 w-3" /> View Enquiry
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-center pt-2">
+                <Button
+                  onClick={() => setLocation('/direct-deposits/manual')}
+                  className="gap-2 bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-white px-6"
+                  data-testid="button-back-to-queue"
+                >
+                  <ArrowLeft className="h-4 w-4" /> Back to Queue
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <AccountEnquiryDialog
+          open={enquiryAccountId !== null}
+          onClose={() => setEnquiryAccountId(null)}
+          accountId={enquiryAccountId || ''}
+        />
+      </PosLayout>
+    );
+  }
 
   const allocationPercent = transaction.amount > 0 ? Math.min(100, (allocatedTotal / transaction.amount) * 100) : 0;
 
