@@ -3400,7 +3400,7 @@ export async function registerRoutes(
   app.get("/api/platinum/direct-deposit-allocation/get-clearance-autocomplete", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const data = await platinumGet(session, "/api/billing-direct-deposit-allocation/get-clearence-autocomplete", req.query as Record<string, string>);
+      const data = await platinumGet(session, "/api/billing-direct-deposit-allocation/get-clearence-autocomplete", req.query as Record<string, string>, { timeoutMs: 8000 });
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });

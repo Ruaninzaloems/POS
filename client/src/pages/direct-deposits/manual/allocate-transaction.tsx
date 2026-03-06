@@ -74,6 +74,7 @@ export default function AllocateTransaction() {
   const [ddDropdownOpen, setDdDropdownOpen] = useState(false);
   const ddSearchRef = useRef<HTMLDivElement>(null);
   const ddSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ddSearchVersionRef = useRef(0);
   
   const [miscGroups, setMiscGroups] = useState<any[]>([]);
   const [miscGroupsLoaded, setMiscGroupsLoaded] = useState(false);
@@ -122,6 +123,7 @@ export default function AllocateTransaction() {
       setDdSearchResults([]);
       return;
     }
+    const searchVersion = ++ddSearchVersionRef.current;
     setDdSearching(true);
     try {
       const results: DDSearchResult[] = [];
@@ -133,43 +135,29 @@ export default function AllocateTransaction() {
         return [];
       };
 
+      const parallelTasks: Promise<void>[] = [];
+
       if (searchScope === 'ALL' || searchScope === 'ACCOUNT') {
-        const searchBody: Record<string, any> = {};
-        if (isNumeric) {
-          searchBody.accountNo = query;
-        } else {
-          searchBody.name = query;
-        }
-
-        const searches: Promise<any>[] = [
-          platinumSearchAccountsPayment(searchBody).catch(() => []),
-        ];
-        if (isNumeric) {
-          searches.push(
-            platinumSearchAccountsPayment({ oldAccountCode: query }).catch(() => [])
-          );
-        }
-
-        const [accountResults, oldAccountResults] = await Promise.all(searches);
-
-        for (const item of parseResults(accountResults)) {
-          const accId = item.account_ID || item.accountID || item.id;
-          if (accId && !seen.has(accId)) {
-            seen.add(accId);
-            results.push({
-              accountId: accId,
-              accountNo: item.accountNumber || item.accountNo || String(accId),
-              name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || 'Unknown',
-              oldAccountCode: item.oldAccountCode || '',
-              outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
-              type: 'ACCOUNT',
-              rawData: item,
-            });
+        parallelTasks.push((async () => {
+          const searchBody: Record<string, any> = {};
+          if (isNumeric) {
+            searchBody.accountNo = query;
+          } else {
+            searchBody.name = query;
           }
-        }
 
-        if (oldAccountResults) {
-          for (const item of parseResults(oldAccountResults)) {
+          const searches: Promise<any>[] = [
+            platinumSearchAccountsPayment(searchBody).catch(() => []),
+          ];
+          if (isNumeric) {
+            searches.push(
+              platinumSearchAccountsPayment({ oldAccountCode: query }).catch(() => [])
+            );
+          }
+
+          const [accountResults, oldAccountResults] = await Promise.all(searches);
+
+          for (const item of parseResults(accountResults)) {
             const accId = item.account_ID || item.accountID || item.id;
             if (accId && !seen.has(accId)) {
               seen.add(accId);
@@ -177,73 +165,94 @@ export default function AllocateTransaction() {
                 accountId: accId,
                 accountNo: item.accountNumber || item.accountNo || String(accId),
                 name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || 'Unknown',
-                oldAccountCode: item.oldAccountCode || query,
+                oldAccountCode: item.oldAccountCode || '',
                 outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
                 type: 'ACCOUNT',
-                description: `Found via old account code: ${query}`,
                 rawData: item,
               });
             }
           }
-        }
-      }
 
-      if (searchScope === 'ALL' || searchScope === 'CLEARANCE') {
-        try {
-          const clearanceIds = await platinumSearchClearanceIds(query);
-          if (Array.isArray(clearanceIds)) {
-            for (const formattedId of clearanceIds) {
-              results.push({
-                accountId: 0,
-                accountNo: formattedId,
-                name: `Clearance ${formattedId}`,
-                type: 'CLEARANCE',
-                rawData: { clearanceFormattedId: formattedId },
-              });
-            }
-          }
-        } catch (clrErr: any) {
-          console.error('[DDSearch] Clearance ID search failed:', clrErr?.message || clrErr);
-          try {
-            const clearanceResults = await platinumDDClearanceAutocomplete(query);
-            if (Array.isArray(clearanceResults)) {
-              for (const item of clearanceResults) {
+          if (oldAccountResults) {
+            for (const item of parseResults(oldAccountResults)) {
+              const accId = item.account_ID || item.accountID || item.id;
+              if (accId && !seen.has(accId)) {
+                seen.add(accId);
                 results.push({
-                  accountId: item.account_ID || item.accountId || item.id || 0,
-                  accountNo: item.accountNumber || item.certificateNo || item.displayItem || String(item.id || ''),
-                  name: item.name || item.displayItem || item.description || 'Clearance',
-                  type: 'CLEARANCE',
+                  accountId: accId,
+                  accountNo: item.accountNumber || item.accountNo || String(accId),
+                  name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || 'Unknown',
+                  oldAccountCode: item.oldAccountCode || query,
+                  outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
+                  type: 'ACCOUNT',
+                  description: `Found via old account code: ${query}`,
                   rawData: item,
                 });
               }
             }
-          } catch (fallbackErr: any) {
-            console.error('[DDSearch] Clearance autocomplete fallback also failed:', fallbackErr?.message || fallbackErr);
           }
+        })());
+      }
+
+      if (searchScope === 'ALL' || searchScope === 'CLEARANCE') {
+        if (isNumeric || searchScope === 'CLEARANCE') {
+          parallelTasks.push((async () => {
+            try {
+              if (isNumeric) {
+                const clearanceIds = await platinumSearchClearanceIds(query);
+                if (Array.isArray(clearanceIds)) {
+                  for (const formattedId of clearanceIds) {
+                    results.push({
+                      accountId: 0,
+                      accountNo: formattedId,
+                      name: `Clearance ${formattedId}`,
+                      type: 'CLEARANCE',
+                      rawData: { clearanceFormattedId: formattedId },
+                    });
+                  }
+                  return;
+                }
+              }
+              const clearanceResults = await platinumDDClearanceAutocomplete(query);
+              if (Array.isArray(clearanceResults)) {
+                for (const item of clearanceResults) {
+                  results.push({
+                    accountId: item.account_ID || item.accountId || item.id || 0,
+                    accountNo: item.accountNumber || item.certificateNo || item.displayItem || String(item.id || ''),
+                    name: item.name || item.displayItem || item.description || 'Clearance',
+                    type: 'CLEARANCE',
+                    rawData: item,
+                  });
+                }
+              }
+            } catch {
+            }
+          })());
         }
       }
 
       if (searchScope === 'ALL' || searchScope === 'GROUP') {
-        try {
-          const groupResults = await platinumGetGroupPaymentDetails({ searchTerm: query });
-          const groupArr = Array.isArray(groupResults) ? groupResults : (groupResults?.value || []);
-          for (const g of groupArr.slice(0, 5)) {
-            const gId = g.groupId || g.id || g.group_ID || 0;
-            if (!seen.has(gId + 100000)) {
-              seen.add(gId + 100000);
-              results.push({
-                accountId: g.accountId || g.account_ID || 0,
-                accountNo: g.accountNumber || g.accountNo || `GRP-${gId}`,
-                name: g.name || g.description || g.groupName || 'Payment Group',
-                type: 'GROUP',
-                description: `Payment Grouping: ${g.name || g.description || g.groupName || ''}`,
-                rawData: g,
-              });
+        parallelTasks.push((async () => {
+          try {
+            const groupResults = await platinumGetGroupPaymentDetails({ searchTerm: query });
+            const groupArr = Array.isArray(groupResults) ? groupResults : (groupResults?.value || []);
+            for (const g of groupArr.slice(0, 5)) {
+              const gId = g.groupId || g.id || g.group_ID || 0;
+              if (!seen.has(gId + 100000)) {
+                seen.add(gId + 100000);
+                results.push({
+                  accountId: g.accountId || g.account_ID || 0,
+                  accountNo: g.accountNumber || g.accountNo || `GRP-${gId}`,
+                  name: g.name || g.description || g.groupName || 'Payment Group',
+                  type: 'GROUP',
+                  description: `Payment Grouping: ${g.name || g.description || g.groupName || ''}`,
+                  rawData: g,
+                });
+              }
             }
+          } catch {
           }
-        } catch (grpErr: any) {
-          console.error('[DDSearch] Group payment search failed:', grpErr?.message || grpErr);
-        }
+        })());
       }
 
       if (searchScope === 'ALL' || searchScope === 'DIRECT') {
@@ -265,13 +274,16 @@ export default function AllocateTransaction() {
         }
       }
 
+      await Promise.all(parallelTasks);
+
+      if (searchVersion !== ddSearchVersionRef.current) return;
       setDdSearchResults(results.slice(0, 15));
       setDdDropdownOpen(results.length > 0);
     } catch (err) {
       console.error('DD search error:', err);
-      setDdSearchResults([]);
+      if (searchVersion === ddSearchVersionRef.current) setDdSearchResults([]);
     } finally {
-      setDdSearching(false);
+      if (searchVersion === ddSearchVersionRef.current) setDdSearching(false);
     }
   }, [searchScope, miscGroups, miscGroupsLoaded]);
 
