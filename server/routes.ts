@@ -3726,11 +3726,14 @@ export async function registerRoutes(
   app.post("/api/platinum/direct-deposit-bulk/get-processed", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
+      const unprocessedBatches = req.body?.unProcessedBatches || req.body?.UnProcessedData || [];
+      const processedBatches = req.body?.processedBatches || req.body?.ProcessedData || [];
       const payload = {
-        UnProcessedData: req.body?.unProcessedBatches || req.body?.UnProcessedData || [],
-        ProcessedData: req.body?.processedBatches || req.body?.ProcessedData || [],
+        UnProcessedData: { items: unprocessedBatches, totalCount: unprocessedBatches.length },
+        ProcessedData: { items: processedBatches, totalCount: processedBatches.length },
       };
-      console.log(`[dd-bulk-processed] Sending payload with ${(payload.UnProcessedData as any[]).length} unprocessed, ${(payload.ProcessedData as any[]).length} processed batches`);
+      console.log(`[dd-bulk-processed] Sending payload with ${unprocessedBatches.length} unprocessed, ${processedBatches.length} processed batches`);
+      console.log(`[dd-bulk-processed] Payload structure: UnProcessedData={items: ${unprocessedBatches.length}, totalCount: ${unprocessedBatches.length}}, ProcessedData={items: ${processedBatches.length}, totalCount: ${processedBatches.length}}`);
       const data = await platinumPost(session, "/api/billing/direct-deposit-bulk-allocation/get-processed-deposits", payload);
       console.log(`[dd-bulk-processed] Response type: ${typeof data}, isArray: ${Array.isArray(data)}, keys: ${data && typeof data === 'object' ? Object.keys(data).join(', ') : 'N/A'}`);
       handlePlatinumResult(res, data);
@@ -3742,16 +3745,20 @@ export async function registerRoutes(
   app.post("/api/platinum/direct-deposit-bulk/reconcile", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const batchNum = req.body?.selectedItem?.num || req.body?.SelectedItem?.num || 'unknown';
-      const unallocCount = req.body?.selectedItem?.billingUnAllocated || req.body?.SelectedItem?.billingUnAllocated || 0;
-      console.log(`[dd-bulk-reconcile] Processing batch ${batchNum} — ${unallocCount} unallocated items, userId=${req.body?.userId || req.body?.UserId}`);
+      const selectedItem = req.body?.selectedItem || req.body?.SelectedItem;
+      const batchNum = selectedItem?.num || 'unknown';
+      const unallocCount = selectedItem?.billingUnAllocated || 0;
+      const userId = req.body?.userId || req.body?.UserId;
+      const unprocessedBatches = req.body?.unProcessedBatches || req.body?.UnProcessedData || [];
+      const processedBatches = req.body?.processedBatches || req.body?.ProcessedData || [];
+      console.log(`[dd-bulk-reconcile] Processing batch ${batchNum} — ${unallocCount} unallocated items, userId=${userId}`);
       const payload = {
-        UserId: req.body?.userId || req.body?.UserId,
-        SelectedItem: req.body?.selectedItem || req.body?.SelectedItem,
-        UnProcessedData: req.body?.unProcessedBatches || req.body?.UnProcessedData || [],
-        ProcessedData: req.body?.processedBatches || req.body?.ProcessedData || [],
+        UserId: userId,
+        SelectedItem: selectedItem,
+        UnProcessedData: { items: unprocessedBatches, totalCount: unprocessedBatches.length },
+        ProcessedData: { items: processedBatches, totalCount: processedBatches.length },
       };
-      console.log(`[dd-bulk-reconcile] Payload keys: ${Object.keys(payload).join(', ')}, UnProcessedData: ${(payload.UnProcessedData as any[]).length} batches, ProcessedData: ${(payload.ProcessedData as any[]).length} batches`);
+      console.log(`[dd-bulk-reconcile] Payload keys: ${Object.keys(payload).join(', ')}, UnProcessedData.items: ${unprocessedBatches.length}, ProcessedData.items: ${processedBatches.length}`);
       const data = await platinumPost(session, "/api/billing/direct-deposit-bulk-allocation/reconcile-processed-data", payload);
       console.log(`[dd-bulk-reconcile] Response type: ${typeof data}, isArray: ${Array.isArray(data)}, keys: ${data && typeof data === 'object' ? Object.keys(data).join(', ') : 'N/A'}`);
       console.log(`[dd-bulk-reconcile] Response (first 2000 chars):`, JSON.stringify(data).substring(0, 2000));
