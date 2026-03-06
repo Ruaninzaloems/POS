@@ -1296,8 +1296,34 @@ export default function ThirdPartyPaymentProcessing() {
 
                   <div className="space-y-4">
                     <div>
-                      <Label htmlFor="gi-file" className="text-sm font-medium text-slate-700">Import File (CSV)</Label>
-                      <div className="mt-1.5 border-2 border-dashed border-[var(--pos-accent-light)] rounded-lg p-6 text-center hover:bg-[var(--pos-accent-tint)] transition-colors">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <Label htmlFor="gi-file" className="text-sm font-medium text-slate-700">Import File (CSV)</Label>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 gap-1.5 text-xs text-[var(--pos-accent-dark)] hover:text-[var(--pos-accent-dark)] hover:bg-[var(--pos-accent-tint)]"
+                          data-testid="button-gi-download-template"
+                          onClick={() => {
+                            const header = 'AccountNumber,Amount';
+                            const sample1 = '100001234,1500.00';
+                            const sample2 = '100005678,750.50';
+                            const csv = [header, sample1, sample2].join('\r\n');
+                            const blob = new Blob([csv], { type: 'text/csv' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = 'generic_import_template.csv';
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                          }}
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          Download Template
+                        </Button>
+                      </div>
+                      <div className="border-2 border-dashed border-[var(--pos-accent-light)] rounded-lg p-6 text-center hover:bg-[var(--pos-accent-tint)] transition-colors">
                         <Input
                           id="gi-file"
                           type="file"
