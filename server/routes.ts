@@ -3519,8 +3519,31 @@ export async function registerRoutes(
       if (!payload.userId || payload.userId <= 0) {
         payload.userId = session.userId;
       }
-      delete payload.cashierId;
-      console.log(`[DD Submit] billType=${payload.billType}, posItemId=${payload.posItemId}, reconId=${payload.reconId}, userId=${payload.userId}, paidAmount=${payload.paidAmount}, paymentTypeId=${payload.paymentTypeId}`);
+
+      const userId = payload.userId;
+      const finYear = payload.financialYear || session.userData?.finYear;
+      let resolvedCashierId: number | null = null;
+      let resolvedCashOfficeId: number | null = null;
+      try {
+        const vcData = await platinumGet(session, "/api/ReceiptPrepaid/validate-cashier", { userId: String(userId), finYear });
+        resolvedCashierId = vcData?.cashier?.id || null;
+        resolvedCashOfficeId = vcData?.cashOffice?.cashOffice_ID || vcData?.cashier?.officeId || null;
+        console.log(`[DD Submit] validate-cashier resolved cashierId=${resolvedCashierId}, cashOfficeId=${resolvedCashOfficeId} for userId=${userId}, finYear=${finYear}`);
+      } catch (vcErr: any) {
+        console.error(`[DD Submit] validate-cashier failed: ${vcErr.message}`);
+      }
+
+      if (!resolvedCashierId || resolvedCashierId <= 0) {
+        console.error(`[DD Submit] Cannot resolve cashierId from validate-cashier — userId=${userId}, finYear=${finYear}`);
+        return res.status(400).json({ success: false, message: "Cannot resolve cashier session. Please ensure your cashier session is active.", cashierId: null });
+      }
+
+      payload.cashierId = resolvedCashierId;
+      if (resolvedCashOfficeId && resolvedCashOfficeId > 0) {
+        payload.cashOfficeId = resolvedCashOfficeId;
+      }
+
+      console.log(`[DD Submit] billType=${payload.billType}, posItemId=${payload.posItemId}, reconId=${payload.reconId}, userId=${payload.userId}, cashierId=${payload.cashierId}, paidAmount=${payload.paidAmount}, paymentTypeId=${payload.paymentTypeId}`);
       console.log('[DD Submit] Full payload:', JSON.stringify(payload));
       const data = await platinumPost(session, "/api/billing-direct-deposit-allocation/submit-details-data", payload, undefined, { timeout: 55000 });
       console.log('[DD Submit] API response:', data?._error ? `ERROR: ${JSON.stringify(data)}` : JSON.stringify(data));
