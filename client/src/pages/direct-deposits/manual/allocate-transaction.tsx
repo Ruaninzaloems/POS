@@ -1209,7 +1209,7 @@ export default function AllocateTransaction() {
               if (!derivedLastName) derivedLastName = 'N/A';
               if (!derivedInitials) derivedInitials = 'N';
 
-              const actualReference = transaction.reference || '';
+              const actualReference = transaction.note || transaction.reference || '';
 
               let submitData: any;
 
