@@ -268,6 +268,162 @@ to:
 
 ---
 
+## Bug 4: `submit-details-data` — Payload field validation and `billType "3"` (Group Payment) not documented
+
+**Severity:** Medium
+**Endpoint:** `POST /api/billing-direct-deposit-allocation/submit-details-data`
+
+### Problem
+
+The API spec for `submit-details-data` documents only three `billType` values: `"1"` (Consumer Services), `"4"` (Miscellaneous), and `"6"` (Clearance). However, the POS also submits **Group Payments** with `billType: "3"`. We need confirmation:
+
+1. **Does `billType "3"` work?** We have been sending it and it appears to process, but it's not in the spec. If it does work, what fields are required?
+2. **Does `billType "3"` map to `billType "4"` internally?** If group payments should use `billType "4"` with `miscPaymentGroupId`, please confirm.
+
+### Questions for Developer
+
+1. Is `billType "3"` a valid value for `submit-details-data`? If yes, what are the required fields?
+2. Should group payment allocations use `billType "3"` or `billType "4"` with a `miscPaymentGroupId`?
+3. Is the `groupId` field accepted by the API, or is `miscPaymentGroupId` the only field used?
+
+---
+
+## Bug 5: `submit-generic-import` — Confirm accepted payload fields
+
+**Severity:** Medium
+**Endpoint:** `POST /api/billing-direct-deposit-allocation/submit-generic-import`
+
+### Problem
+
+The POS now sends the following JSON payload to `submit-generic-import`:
+
+```json
+{
+  "fileContent": "AccountNumber,Amount,ReceiptDate,PaymentTypeId\n100001234,1500.00,2026-03-06,5\n...",
+  "fileName": "import.csv",
+  "paymentReference": "Batch 2026-03",
+  "cashBookId": 1,
+  "userId": 209,
+  "finYear": "2025/2026",
+  "receiptDate": "2026-03-06T00:00:00",
+  "paymentTypeId": 5,
+  "postToCashbook": true
+}
+```
+
+### Questions for Developer
+
+1. **Does the API accept `receiptDate` in the JSON payload?** If so, does it apply to all rows in the CSV, or is it ignored in favour of per-row `ReceiptDate` in the CSV?
+2. **Does the API accept `paymentTypeId` in the JSON payload?** Should it be `paymentTypeId` (camelCase), `PaymentTypeId` (PascalCase), or `paymentTypeID`?
+3. **Does the API accept `postToCashbook` (boolean)?** If yes, what is the default when not sent?
+4. **CSV column names:** Does the API CSV parser support `ReceiptDate` and `PaymentTypeId` as optional columns? If not, what columns are supported beyond `AccountNumber` and `Amount`?
+5. **What is the full list of accepted CSV columns?** Please provide the complete CSV schema so we can generate an accurate template.
+
+---
+
+## POS-Side Fixes Applied (06 March 2026) — Payload Audit
+
+The POS payload construction for `submit-details-data` has been corrected to match the documented API spec. Here is what the POS now sends for each `billType`:
+
+### Always Included (all billTypes)
+
+| Field | Source | Validated |
+|---|---|---|
+| `posItemId` | `transaction.posItem_ID` | Must be > 0 (blocked if invalid) |
+| `reconId` | `transaction.bankReconID` | Must be > 0 (blocked if invalid) |
+| `userId` | `fetchPlatinumUserInfo().user_ID` | Must be > 0 (blocked if invalid) |
+| `financialYear` | `fetchActiveFinYear()` | Fetched from API (blocked if fails) |
+| `transactionDate` | `transaction.dateOfTransaction` or current SAST datetime | Always present |
+| `paidAmount` | `line.amount` | Must be > 0 (pre-validated) |
+| `billType` | `"1"`, `"3"`, `"4"`, or `"6"` | Based on `allocationType` |
+| `paymentTypeId` | `5` (EFT) | Always sent |
+
+### BillType "1" — Consumer Services (ACCOUNT / PREPAID)
+
+| Field | Value | Notes |
+|---|---|---|
+| `accountId` | `line.accountId` | **Validated > 0** — submission blocked if missing |
+| `amount` | `line.amount` | Same as paidAmount |
+| `outstandingAmount` | `line.outstandingAmount` or `line.amount` | Optional |
+| `description` | Line description or transaction note | Optional |
+| `reference` | `transaction.reference` | Actual bank reference |
+| `note` | Line note or transaction note | Optional |
+| `receiptDate` | Current SAST datetime | Optional |
+| `cashFloat` | `0` | Always 0 for direct deposits |
+
+**Not sent:** `lastName`, `initials` (not required per spec for billType "1")
+
+### BillType "4" — Miscellaneous (DIRECT Income)
+
+| Field | Value | Notes |
+|---|---|---|
+| `miscPaymentGroupId` | `line.miscPaymentGroupId` | **Validated > 0** — submission blocked if missing |
+| `lastName` | Derived from description/transaction note | Always populated (fallback: "N/A") |
+| `initials` | Derived from name or fallback "N" | Always populated (never empty) |
+| `totalAmount` | `line.amount` | **Required per spec** — now always sent |
+| `amount` | `line.amount` | Optional |
+| `vatAmount` | `line.vatAmount` or 0 | Optional |
+| `vatableVote` | `line.vatableVote` or 0 | Optional |
+| `vatPercentage` | `line.vatPercentage` or 0 | Optional |
+| `description` | Line description | Optional |
+| `reference` | `transaction.reference` | Actual bank reference |
+| `note` | Line note or transaction note | Optional |
+| `receiptDate` | Current SAST datetime | Optional |
+| `cashFloat` | `0` | Always 0 |
+
+**Previous bug (now fixed):** `initials` was being sent as empty string `""` for DIRECT type — spec says required.
+
+### BillType "6" — Clearance
+
+| Field | Value | Notes |
+|---|---|---|
+| `accountId` | `line.accountId` | **Validated > 0** — submission blocked if missing |
+| `clearanceId` | `line.clearanceId` | **Validated > 0** — submission blocked if missing |
+| `outstandingAmount` | `line.outstandingAmount` or `line.amount` | Optional |
+| `totalAmount` | `line.amount` | Optional (now sent) |
+| `amount` | `line.amount` | Optional |
+| `vatAmount` | `line.vatAmount` or 0 | Optional |
+| `vatableVote` | `line.vatableVote` or 0 | Optional |
+| `vatPercentage` | `line.vatPercentage` or 0 | Optional |
+| `reference` | `transaction.reference` | Actual bank reference |
+| `note` | Line note or transaction note | Optional |
+| `receiptDate` | Current SAST datetime | Optional |
+| `cashFloat` | `0` | Always 0 |
+
+**Previous issue (now fixed):** Extra `costScheduleId` field was being sent — removed since it's not in the API spec.
+
+### BillType "3" — Group Payment (UNDOCUMENTED)
+
+| Field | Value | Notes |
+|---|---|---|
+| `accountId` | `line.accountId` or 0 | Not validated (no spec) |
+| `miscPaymentGroupId` | `line.miscPaymentGroupId` or 0 | Sent but not validated |
+| `groupId` | `line.groupId` or `miscPaymentGroupId` | Sent but not validated |
+| `lastName` | Derived | Always populated |
+| `initials` | Derived or "N" | Always populated |
+| `totalAmount` | `line.amount` | Now sent |
+| Other fields | Same as common fields | See above |
+
+**Need confirmation:** Whether billType "3" is valid and what fields it requires.
+
+### Changes Summary
+
+| What Changed | Before | After |
+|---|---|---|
+| `posItemId` validation | Sent without check | Blocked if <= 0 |
+| `reconId` validation | Sent as 0 if missing | Blocked if <= 0 |
+| `accountId` (billType 1, 6) | Sent as 0 if missing | Blocked if <= 0 |
+| `clearanceId` (billType 6) | Sent as 0 if missing | Blocked if <= 0 |
+| `miscPaymentGroupId` (billType 4) | Sent as 0 if missing | Blocked if <= 0 |
+| `initials` (billType 4) | Empty string for DIRECT | Always populated ("N" fallback) |
+| `totalAmount` (billType 4) | Already sent | Confirmed present |
+| `totalAmount` (billType 6) | Not sent | Now sent |
+| `costScheduleId` (billType 6) | Sent (not in spec) | Removed |
+| Duplicate `PaymentTypeId` | Sent both `paymentTypeId` and `PaymentTypeId` | Only `paymentTypeId` sent |
+| Payload structure | Single "else" branch for billTypes 1/3/6 | Separate branches per billType |
+
+---
+
 ## Summary of All Issues
 
 | # | Bug | Endpoint | Severity | Fix Required |
@@ -275,6 +431,8 @@ to:
 | 1 | `paymentTypeID` stored as 3 (Credit Card) instead of 5 (EFT) | `submit-details-data` | High | Respect `paymentTypeId` field from request body, or default direct deposits to 5 (EFT) |
 | 2 | `paymentReference` built from `lastName`+`initials` instead of `reference` field | `submit-details-data` | High | Use `reference` field as source for `paymentReference` |
 | 3 | Account details empty for completed jobs | `account-details/{jobId}` | High | New endpoint `BulkProgress/job-account-details/{jobId}` returning all allocations (success + error) |
+| 4 | `billType "3"` (Group Payment) undocumented | `submit-details-data` | Medium | Confirm if valid and document required fields |
+| 5 | `submit-generic-import` payload fields undocumented | `submit-generic-import` | Medium | Confirm `receiptDate`, `paymentTypeId`, `postToCashbook` acceptance + CSV column spec |
 
 ---
 
