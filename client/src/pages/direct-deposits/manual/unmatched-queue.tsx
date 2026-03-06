@@ -489,11 +489,11 @@ export default function UnmatchedQueue() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" className="text-xs text-slate-500 gap-1.5" onClick={() => setShowHelp(!showHelp)}>
+                <Button variant="ghost" size="sm" className="text-xs text-slate-500 gap-1.5 h-11 sm:h-9" onClick={() => setShowHelp(!showHelp)}>
                     <HelpCircle className="w-3.5 h-3.5" /> Help
                 </Button>
                 <Link href="/direct-deposits/manual/history">
-                    <Button variant="outline" size="sm" className="gap-1.5 text-xs h-9" data-testid="button-allocation-history">
+                    <Button variant="outline" size="sm" className="gap-1.5 text-xs h-11 sm:h-9" data-testid="button-allocation-history">
                         <HistoryIcon className="w-3.5 h-3.5" /> History
                     </Button>
                 </Link>
@@ -529,7 +529,7 @@ export default function UnmatchedQueue() {
           )}
 
           <div className="flex flex-wrap items-center gap-2">
-             <div className="relative flex-1 min-w-[200px] max-w-md">
+             <div className="relative flex-1 min-w-0 sm:min-w-[200px] max-w-md">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <Input
                   placeholder="Search description, ref, amount..."
@@ -575,7 +575,7 @@ export default function UnmatchedQueue() {
                 </PopoverContent>
              </Popover>
 
-             <Button variant="outline" size="sm" className="h-10 px-3 gap-1.5 border-[#D6D6D6]" onClick={() => loadData(page)} disabled={loading} data-testid="button-refresh">
+             <Button variant="outline" size="sm" className="h-11 sm:h-10 px-3 gap-1.5 border-[#D6D6D6]" onClick={() => loadData(page)} disabled={loading} data-testid="button-refresh">
                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
                  <span className="text-xs hidden sm:inline">Refresh</span>
              </Button>
@@ -583,10 +583,10 @@ export default function UnmatchedQueue() {
              <div className="hidden sm:block h-8 w-px bg-[#D6D6D6]" />
 
              <div className="flex gap-1">
-               <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-400 hover:text-emerald-600" title="Export CSV" onClick={() => handleDownload('excel')} data-testid="button-export-excel">
+               <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-9 sm:w-9 text-slate-400 hover:text-emerald-600" title="Export CSV" onClick={() => handleDownload('excel')} data-testid="button-export-excel">
                   <FileSpreadsheet className="w-4 h-4" />
                </Button>
-               <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-400 hover:text-red-600" title="Export PDF" onClick={() => handleDownload('pdf')} data-testid="button-export-pdf">
+               <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-9 sm:w-9 text-slate-400 hover:text-red-600" title="Export PDF" onClick={() => handleDownload('pdf')} data-testid="button-export-pdf">
                   <FileText className="w-4 h-4" />
                </Button>
              </div>
@@ -604,9 +604,10 @@ export default function UnmatchedQueue() {
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <span className="text-slate-400">on this page ({filtered.length} of {totalCount.toLocaleString()})</span>
             </div>
-            <div className="hidden sm:flex items-center gap-1.5 text-muted-foreground ml-auto">
+            <div className="flex items-center gap-1.5 text-muted-foreground ml-auto">
               <Banknote className="w-3 h-3" />
-              <span>Page total: <span className="font-mono font-medium text-slate-700">R {pageTotalAmount.toFixed(2)}</span></span>
+              <span className="hidden sm:inline">Page total: </span>
+              <span className="font-mono font-medium text-slate-700">R {pageTotalAmount.toFixed(2)}</span>
             </div>
           </div>
         </div>
@@ -639,7 +640,7 @@ export default function UnmatchedQueue() {
                   <div className="p-3.5">
                     <div className="flex justify-between items-start gap-2 mb-2">
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm text-slate-800 truncate">{tx.note || '-'}</div>
+                        <div className="font-medium text-sm text-slate-800 break-words">{tx.note || '-'}</div>
                         <div className="text-xs text-muted-foreground font-mono mt-0.5">
                           #{tx.posItem_ID} | {tx.dateOfTransaction ? new Date(tx.dateOfTransaction).toLocaleDateString('en-GB', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'}
                         </div>
@@ -655,12 +656,12 @@ export default function UnmatchedQueue() {
                       <div className="flex items-center gap-2">
                         <span className="font-mono font-bold text-sm text-slate-800">R {(tx.amount || 0).toFixed(2)}</span>
                         {!tx.billingAllocated && (
-                          <div className="flex gap-1">
-                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-amber-500" onClick={(e) => { e.stopPropagation(); toggleSuggestion(tx.posItem_ID, tx.note, tx.reference); }}>
-                              <Sparkles className="w-3.5 h-3.5" />
+                          <div className="flex gap-1.5">
+                            <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-amber-500" onClick={(e) => { e.stopPropagation(); toggleSuggestion(tx.posItem_ID, tx.note, tx.reference); }}>
+                              <Sparkles className="w-4 h-4" />
                             </Button>
-                            <Button size="sm" className="h-7 text-[10px] bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] px-2" disabled={checkingItemId === tx.posItem_ID} onClick={(e) => handleAllocateClick(tx.posItem_ID, e)} data-testid={`button-allocate-mobile-${tx.posItem_ID}`}>
-                              {checkingItemId === tx.posItem_ID ? <Loader2 className="w-3 h-3 animate-spin" /> : <>Allocate <ArrowRight className="ml-1 w-3 h-3" /></>}
+                            <Button size="sm" className="h-11 text-xs bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] px-3" disabled={checkingItemId === tx.posItem_ID} onClick={(e) => handleAllocateClick(tx.posItem_ID, e)} data-testid={`button-allocate-mobile-${tx.posItem_ID}`}>
+                              {checkingItemId === tx.posItem_ID ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <>Allocate <ArrowRight className="ml-1 w-3.5 h-3.5" /></>}
                             </Button>
                           </div>
                         )}
@@ -815,12 +816,12 @@ export default function UnmatchedQueue() {
             {totalPages > 1 && (
               <div className="sm:hidden flex items-center justify-between mt-3">
                 <p className="text-xs text-muted-foreground">Page {page}/{totalPages}</p>
-                <div className="flex gap-1.5">
-                  <Button variant="outline" size="sm" className="h-8 text-xs" disabled={page <= 1 || loading} onClick={() => setPage(p => p - 1)} data-testid="button-prev-page-mobile">
-                    <ChevronLeft className="w-3 h-3" /> Prev
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="h-11 text-xs px-3" disabled={page <= 1 || loading} onClick={() => setPage(p => p - 1)} data-testid="button-prev-page-mobile">
+                    <ChevronLeft className="w-4 h-4" /> Prev
                   </Button>
-                  <Button variant="outline" size="sm" className="h-8 text-xs" disabled={page >= totalPages || loading} onClick={() => setPage(p => p + 1)} data-testid="button-next-page-mobile">
-                    Next <ChevronRight className="w-3 h-3" />
+                  <Button variant="outline" size="sm" className="h-11 text-xs px-3" disabled={page >= totalPages || loading} onClick={() => setPage(p => p + 1)} data-testid="button-next-page-mobile">
+                    Next <ChevronRight className="w-4 h-4" />
                   </Button>
                 </div>
               </div>
@@ -841,11 +842,11 @@ function SuggestionPanel({ posItemId, suggestions, loading, getConfidenceColor, 
   onAllocate: (posId: number, account?: SuggestedMatch) => void;
 }) {
   return (
-    <div className="bg-gradient-to-r from-amber-50/50 to-orange-50/30 border-t border-amber-100 px-5 py-3.5 animate-in fade-in slide-in-from-top-1 duration-200">
+    <div className="bg-gradient-to-r from-amber-50/50 to-orange-50/30 border-t border-amber-100 px-3 sm:px-5 py-3 sm:py-3.5 animate-in fade-in slide-in-from-top-1 duration-200">
       <div className="flex items-center gap-2 mb-2.5">
         <Sparkles className="w-3.5 h-3.5 text-amber-500" />
         <span className="text-xs font-semibold text-amber-800">Smart Suggestions</span>
-        <span className="text-[10px] text-amber-600/70">Based on description analysis</span>
+        <span className="text-[10px] text-amber-600/70 hidden sm:inline">Based on description analysis</span>
       </div>
       {loading ? (
         <div className="flex items-center gap-2 py-3">
@@ -860,34 +861,38 @@ function SuggestionPanel({ posItemId, suggestions, loading, getConfidenceColor, 
       ) : (
         <div className="space-y-1.5">
           {suggestions.map((s, idx) => (
-            <div key={`${s.accountId}-${idx}`} className="flex items-center gap-3 bg-white/70 backdrop-blur-sm rounded-lg px-3 py-2.5 border border-amber-100/60 hover:border-amber-200 transition-colors group">
-              <div className="flex items-center gap-1.5 shrink-0">
-                <Badge variant="outline" className={`text-[10px] px-1.5 py-0 font-bold ${getConfidenceColor(s.confidence)}`}>
-                  {s.confidence}%
-                </Badge>
-              </div>
-              <div className="flex items-center gap-1.5 text-amber-600 shrink-0">
-                {getMatchIcon(s.matchType)}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs font-medium text-slate-700">{s.accountNo}</span>
-                  <span className="text-xs text-slate-500 truncate">{s.name}</span>
+            <div key={`${s.accountId}-${idx}`} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 bg-white/70 backdrop-blur-sm rounded-lg px-3 py-2.5 border border-amber-100/60 hover:border-amber-200 transition-colors group">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Badge variant="outline" className={`text-[10px] px-1.5 py-0 font-bold ${getConfidenceColor(s.confidence)}`}>
+                    {s.confidence}%
+                  </Badge>
                 </div>
-                <div className="text-[10px] text-amber-600/80 truncate">{s.matchDetail}</div>
+                <div className="flex items-center gap-1.5 text-amber-600 shrink-0">
+                  {getMatchIcon(s.matchType)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-medium text-slate-700">{s.accountNo}</span>
+                    <span className="text-xs text-slate-500 break-words sm:truncate">{s.name}</span>
+                  </div>
+                  <div className="text-[10px] text-amber-600/80 break-words sm:truncate">{s.matchDetail}</div>
+                </div>
               </div>
-              {s.outstandingAmount != null && s.outstandingAmount !== 0 && (
-                <span className="text-[10px] font-mono text-slate-500 bg-[#F7F7F7] px-1.5 py-0.5 rounded shrink-0">
-                  R {s.outstandingAmount.toFixed(2)}
-                </span>
-              )}
-              <Button
-                size="sm"
-                className="h-7 text-[10px] bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-white shrink-0 px-2.5 gap-1"
-                onClick={(e) => { e.stopPropagation(); onAllocate(posItemId, s); }}
-              >
-                Allocate <ArrowRight className="w-3 h-3" />
-              </Button>
+              <div className="flex items-center justify-end gap-2 shrink-0">
+                {s.outstandingAmount != null && s.outstandingAmount !== 0 && (
+                  <span className="text-[10px] font-mono text-slate-500 bg-[#F7F7F7] px-1.5 py-0.5 rounded shrink-0">
+                    R {s.outstandingAmount.toFixed(2)}
+                  </span>
+                )}
+                <Button
+                  size="sm"
+                  className="h-9 sm:h-7 text-xs sm:text-[10px] bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-white shrink-0 px-3 sm:px-2.5 gap-1"
+                  onClick={(e) => { e.stopPropagation(); onAllocate(posItemId, s); }}
+                >
+                  Allocate <ArrowRight className="w-3 h-3" />
+                </Button>
+              </div>
             </div>
           ))}
         </div>

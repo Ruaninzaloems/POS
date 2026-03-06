@@ -335,7 +335,7 @@ export default function AllocationHistory() {
              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4">
                  <div className="flex items-center gap-3">
                      <Link href="/direct-deposits/manual">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10">
+                        <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-10 sm:w-10">
                             <ArrowLeft className="w-4 h-4" />
                         </Button>
                      </Link>
@@ -351,10 +351,10 @@ export default function AllocationHistory() {
                  </div>
 
                  <div className="flex gap-2 ml-11 sm:ml-0">
-                    <Button variant="outline" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" onClick={loadData} title="Refresh" disabled={loading}>
+                    <Button variant="outline" size="icon" className="h-10 w-10 sm:h-10 sm:w-10" onClick={loadData} title="Refresh" disabled={loading} data-testid="button-refresh">
                         <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                     </Button>
-                    <Button variant="outline" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" onClick={() => handleDownload('excel')} title="Download CSV">
+                    <Button variant="outline" size="icon" className="h-10 w-10 sm:h-10 sm:w-10" onClick={() => handleDownload('excel')} title="Download CSV" data-testid="button-download-csv">
                         <FileSpreadsheet className="w-4 h-4 text-green-600" />
                     </Button>
                  </div>
@@ -431,7 +431,7 @@ export default function AllocationHistory() {
                                 <SelectItem value="BULK">Bulk Only</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Button variant="ghost" size="icon" onClick={clearFilters} title="Clear all filters">
+                        <Button variant="ghost" size="icon" onClick={clearFilters} title="Clear all filters" className="min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0" data-testid="button-clear-filters">
                             <X className="w-4 h-4 text-muted-foreground" />
                         </Button>
                     </div>
@@ -447,27 +447,27 @@ export default function AllocationHistory() {
                 </div>
             ) : (
             <>
-            <div className="sm:hidden space-y-2">
+            <div className="sm:hidden space-y-3">
               {filteredHistory.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground text-sm">No allocation history found.</div>
               ) : filteredHistory.map(tx => (
-                <Card key={tx.directDepositJob_ID} className="p-3">
+                <Card key={tx.directDepositJob_ID} className="p-4" data-testid={`card-allocation-${tx.directDepositJob_ID}`}>
                   <div className="flex justify-between items-start gap-2 mb-2">
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm truncate">{tx.fileName}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                      <div className="font-medium text-sm break-words">{tx.fileName}</div>
+                      <div className="text-xs text-muted-foreground mt-1 flex flex-wrap items-center gap-1.5">
                         <span>{formatDate(tx.fileDate)}</span>
                         {tx.paymentReference && tx.paymentReference !== '0' && (
                           <>
                             <span className="text-[#D6D6D6]">|</span>
-                            <span className="text-[11px] font-medium tracking-wide text-[var(--pos-accent-dark)] bg-[var(--pos-accent-tint)] px-2 py-px rounded-full truncate max-w-[140px]" title={tx.paymentReference}>{tx.paymentReference}</span>
+                            <span className="text-[11px] font-medium tracking-wide text-[var(--pos-accent-dark)] bg-[var(--pos-accent-tint)] px-2 py-px rounded-full truncate max-w-[180px]" title={tx.paymentReference}>{tx.paymentReference}</span>
                           </>
                         )}
                       </div>
                     </div>
                     <span className="font-mono font-bold text-sm shrink-0">R {tx.allocatedAmount.toFixed(2)}</span>
                   </div>
-                  <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                  <div className="flex flex-wrap items-center gap-1.5 mb-3">
                     <Badge variant="secondary" className={`border text-xs ${getProcessBadgeColor(tx.process)} shadow-none font-normal`}>
                       {tx.process}
                     </Badge>
@@ -478,16 +478,16 @@ export default function AllocationHistory() {
                       {tx.job_Status === 'Bulk allocations complete' ? 'Completed' : tx.job_Status}
                     </Badge>
                   </div>
-                  <div className="flex justify-between items-center text-xs text-muted-foreground">
-                    <span>{tx.records} record{tx.records !== 1 ? 's' : ''}</span>
-                    <div className="flex gap-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-muted-foreground">{tx.records} record{tx.records !== 1 ? 's' : ''}</span>
+                    <div className="flex gap-2">
                       {isErrorStatus(tx.job_Status) && (
-                        <Button variant="outline" size="sm" className="h-7 text-xs px-2 text-amber-600 border-amber-200" onClick={() => handleRetry(tx)} disabled={retrying === tx.directDepositJob_ID}>
-                          {retrying === tx.directDepositJob_ID ? <Loader2 className="w-3 h-3 animate-spin" /> : <><RotateCcw className="w-3 h-3 mr-1" /> Retry</>}
+                        <Button variant="outline" size="sm" className="min-h-[44px] min-w-[44px] text-xs px-3 text-amber-600 border-amber-200" onClick={() => handleRetry(tx)} disabled={retrying === tx.directDepositJob_ID} data-testid={`button-retry-mobile-${tx.directDepositJob_ID}`}>
+                          {retrying === tx.directDepositJob_ID ? <Loader2 className="w-4 h-4 animate-spin" /> : <><RotateCcw className="w-4 h-4 mr-1" /> Retry</>}
                         </Button>
                       )}
-                      <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => openDetails(tx)}>
-                        <Eye className="w-3 h-3 mr-1" /> Details
+                      <Button variant="ghost" size="sm" className="min-h-[44px] min-w-[44px] text-xs px-3" onClick={() => openDetails(tx)} data-testid={`button-view-mobile-${tx.directDepositJob_ID}`}>
+                        <Eye className="w-4 h-4 mr-1" /> Details
                       </Button>
                     </div>
                   </div>
@@ -598,15 +598,15 @@ export default function AllocationHistory() {
             </Card>
 
             {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4 px-2">
-                    <div className="text-sm text-muted-foreground">
+                <div className="flex flex-col sm:flex-row items-center justify-between mt-4 px-2 gap-3">
+                    <div className="text-xs sm:text-sm text-muted-foreground">
                         Page {page} of {totalPages} ({totalCount.toLocaleString()} total)
                     </div>
                     <div className="flex gap-2">
-                        <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>
-                            <ChevronLeft className="w-4 h-4 mr-1" /> Previous
+                        <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className="min-h-[44px] sm:min-h-0 px-4 sm:px-3" data-testid="button-prev-page">
+                            <ChevronLeft className="w-4 h-4 mr-1" /> <span className="hidden sm:inline">Previous</span><span className="sm:hidden">Prev</span>
                         </Button>
-                        <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+                        <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="min-h-[44px] sm:min-h-0 px-4 sm:px-3" data-testid="button-next-page">
                             Next <ChevronRight className="w-4 h-4 ml-1" />
                         </Button>
                     </div>
@@ -627,11 +627,11 @@ export default function AllocationHistory() {
                     </div>
                     <div className="flex gap-2">
                          {selectedTx && isErrorStatus(selectedTx.job_Status) && (
-                             <Button size="sm" variant="outline" className="text-xs sm:text-sm text-amber-600 border-amber-200 hover:bg-amber-50" onClick={() => selectedTx && handleRetry(selectedTx)} disabled={retrying === selectedTx?.directDepositJob_ID} data-testid="button-retry-dialog">
+                             <Button size="sm" variant="outline" className="min-h-[44px] sm:min-h-0 text-xs sm:text-sm text-amber-600 border-amber-200 hover:bg-amber-50" onClick={() => selectedTx && handleRetry(selectedTx)} disabled={retrying === selectedTx?.directDepositJob_ID} data-testid="button-retry-dialog">
                                  {retrying === selectedTx?.directDepositJob_ID ? <Loader2 className="w-4 h-4 animate-spin" /> : <><RotateCcw className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Retry</span></>}
                              </Button>
                          )}
-                         <Button size="sm" variant="outline" className="text-xs sm:text-sm" onClick={handlePrint}>
+                         <Button size="sm" variant="outline" className="min-h-[44px] sm:min-h-0 text-xs sm:text-sm" onClick={handlePrint} data-testid="button-print-dialog">
                             <Printer className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Print</span>
                          </Button>
                     </div>
@@ -640,19 +640,19 @@ export default function AllocationHistory() {
             
             {selectedTx && (
                 <div className="space-y-6 overflow-y-auto p-4 flex-1" ref={receiptRef}>
-                    <div className="flex justify-between items-start border-b pb-4">
-                        <div className="flex gap-4">
-                           <div className="h-12 w-12 bg-[var(--pos-accent)] rounded flex items-center justify-center text-white font-bold text-xl">
+                    <div className="flex flex-col sm:flex-row justify-between items-start border-b pb-4 gap-3">
+                        <div className="flex gap-3 sm:gap-4">
+                           <div className="h-10 w-10 sm:h-12 sm:w-12 bg-[var(--pos-accent)] rounded flex items-center justify-center text-white font-bold text-lg sm:text-xl shrink-0">
                                 M
                            </div>
                            <div>
-                               <h2 className="text-xl font-bold text-[#2E2E2E]">Platinum POS</h2>
-                               <p className="text-sm text-muted-foreground">Direct Deposit Allocation Report</p>
+                               <h2 className="text-lg sm:text-xl font-bold text-[#2E2E2E]">Platinum POS</h2>
+                               <p className="text-xs sm:text-sm text-muted-foreground">Direct Deposit Allocation Report</p>
                            </div>
                         </div>
-                        <div className="text-right">
-                            <div className="text-sm font-medium text-[#6B6B6B]">Report Date</div>
-                            <div className="font-mono text-sm">{new Date().toLocaleString('en-GB', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '')}</div>
+                        <div className="text-left sm:text-right">
+                            <div className="text-xs sm:text-sm font-medium text-[#6B6B6B]">Report Date</div>
+                            <div className="font-mono text-xs sm:text-sm">{new Date().toLocaleString('en-GB', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '')}</div>
                         </div>
                     </div>
 
@@ -744,7 +744,8 @@ export default function AllocationHistory() {
                                 <Loader2 className="w-4 h-4 animate-spin" /> Loading account details...
                             </div>
                         ) : jobAccountDetails && jobAccountDetails.length > 0 ? (
-                            <div className="border border-[#D6D6D6] rounded-lg overflow-hidden">
+                            <>
+                            <div className="hidden sm:block border border-[#D6D6D6] rounded-lg overflow-hidden">
                                 <Table>
                                     <TableHeader>
                                         <TableRow className="bg-[#F7F7F7]">
@@ -770,6 +771,23 @@ export default function AllocationHistory() {
                                     </TableBody>
                                 </Table>
                             </div>
+                            <div className="sm:hidden space-y-2">
+                                {jobAccountDetails.map((acc: any, idx: number) => (
+                                    <div key={idx} className="border border-[#D6D6D6] rounded-lg p-3 bg-[#F7F7F7]" data-testid={`card-account-detail-${idx}`}>
+                                        <div className="flex justify-between items-start gap-2 mb-1">
+                                            <div className="min-w-0 flex-1">
+                                                <div className="font-mono text-xs font-medium">{acc.accountNo || acc.accountNumber || acc.account_No || acc.accountId || '-'}</div>
+                                                <div className="text-xs text-muted-foreground truncate">{acc.name || acc.accountName || acc.surname || acc.description || '-'}</div>
+                                            </div>
+                                            <Badge className={`shadow-none border text-[10px] shrink-0 ${acc.status === 'Error' || acc.errorMessage ? 'bg-red-100 text-red-700 border-red-200' : 'bg-green-100 text-green-700 border-green-200'}`}>
+                                                {acc.status || (acc.errorMessage ? 'Error' : 'OK')}
+                                            </Badge>
+                                        </div>
+                                        <div className="font-mono text-sm font-bold">R {Number(acc.amount ?? acc.allocatedAmount ?? 0).toFixed(2)}</div>
+                                    </div>
+                                ))}
+                            </div>
+                            </>
                         ) : (
                             <p className="text-xs text-muted-foreground py-2">No account allocation details available for this job.</p>
                         )}

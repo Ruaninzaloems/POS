@@ -115,10 +115,10 @@ function StatCard({ label, value, subValue, icon, color, tip }: {
             {tip && <HelpTip text={tip} side="top" />}
           </span>
         </div>
-        <div className="text-lg sm:text-xl font-bold text-slate-900 font-mono mt-1" data-testid={`stat-value-${label.toLowerCase().replace(/\s+/g, '-')}`}>
+        <div className="text-base sm:text-xl font-bold text-slate-900 font-mono mt-1 truncate" data-testid={`stat-value-${label.toLowerCase().replace(/\s+/g, '-')}`}>
           {value}
         </div>
-        {subValue && <div className="text-[10px] sm:text-xs text-slate-400 mt-0.5">{subValue}</div>}
+        {subValue && <div className="text-[10px] sm:text-xs text-slate-400 mt-0.5 truncate">{subValue}</div>}
       </div>
     </div>
   );
@@ -306,31 +306,31 @@ function AutoAllocationContent() {
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
       <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)] shrink-0">
               <RefreshCw className="w-5 h-5 text-white" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h1 className="text-base sm:text-xl font-bold text-[#2E2E2E] flex items-center gap-2" data-testid="text-page-title">
-                Direct Deposits Auto Allocation
+                <span className="truncate">Direct Deposits Auto Allocation</span>
                 <HelpTip text="Automatically allocate EFT and direct deposit payments to consumer accounts in bulk. Select a date range, fetch unprocessed batches, and process them for automatic allocation." side="bottom" />
               </h1>
               <p className="text-xs sm:text-sm text-[#6B6B6B] mt-0.5">Bulk process and reconcile direct deposit payments</p>
             </div>
           </div>
           {hasSearched && unprocessedBatches.length > 0 && (
-            <div className="flex bg-[#F2F4F7] rounded-xl p-1 gap-1 border border-[#D6D6D6]">
+            <div className="flex bg-[#F2F4F7] rounded-xl p-1 gap-1 border border-[#D6D6D6] shrink-0 self-start sm:self-auto">
               <button
                 onClick={() => setActiveView('unprocessed')}
-                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${activeView === 'unprocessed' ? 'bg-white text-[#2E2E2E] shadow-[0_1px_3px_rgba(0,0,0,0.15)]' : 'text-[#6B6B6B] hover:text-[#2E2E2E]'}`}
+                className={`px-4 py-2.5 sm:py-2 rounded-lg text-xs font-semibold transition-all min-h-[44px] sm:min-h-0 ${activeView === 'unprocessed' ? 'bg-white text-[#2E2E2E] shadow-[0_1px_3px_rgba(0,0,0,0.15)]' : 'text-[#6B6B6B] hover:text-[#2E2E2E]'}`}
                 data-testid="tab-unprocessed"
               >
                 Unprocessed
               </button>
               <button
                 onClick={() => { setActiveView('processed'); handleFetchProcessed(); }}
-                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${activeView === 'processed' ? 'bg-white text-[#2E2E2E] shadow-[0_1px_3px_rgba(0,0,0,0.15)]' : 'text-[#6B6B6B] hover:text-[#2E2E2E]'}`}
+                className={`px-4 py-2.5 sm:py-2 rounded-lg text-xs font-semibold transition-all min-h-[44px] sm:min-h-0 ${activeView === 'processed' ? 'bg-white text-[#2E2E2E] shadow-[0_1px_3px_rgba(0,0,0,0.15)]' : 'text-[#6B6B6B] hover:text-[#2E2E2E]'}`}
                 data-testid="tab-processed"
               >
                 Processed
@@ -368,7 +368,7 @@ function AutoAllocationContent() {
             <Button
               onClick={handleFetchUnprocessed}
               disabled={loading}
-              className="h-10 gap-2.5 px-5 bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] shadow-[0_1px_3px_rgba(0,0,0,0.15)] text-white font-semibold text-sm flex-1 sm:flex-none rounded-lg"
+              className="h-11 sm:h-10 gap-2.5 px-5 bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] shadow-[0_1px_3px_rgba(0,0,0,0.15)] text-white font-semibold text-sm flex-1 sm:flex-none rounded-lg"
               data-testid="button-fetch-unprocessed"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
@@ -379,7 +379,7 @@ function AutoAllocationContent() {
                 onClick={handleFetchUnprocessed}
                 variant="outline"
                 size="icon"
-                className="h-10 w-10 border-[#D6D6D6] hover:bg-[var(--pos-accent-tint)] rounded-lg"
+                className="h-11 w-11 sm:h-10 sm:w-10 border-[#D6D6D6] hover:bg-[var(--pos-accent-tint)] rounded-lg"
                 disabled={loading}
                 data-testid="button-refresh"
               >
@@ -524,7 +524,7 @@ function AutoAllocationContent() {
                           </div>
                         </div>
                         <div className="shrink-0 flex items-center gap-2">
-                          <div className="hidden sm:flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 flex-wrap justify-end">
                             <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200">
                               <CheckCircle2 className="w-2.5 h-2.5" /> {batch.billingAllocated}
                             </span>
@@ -597,41 +597,76 @@ function AutoAllocationContent() {
                           </div>
 
                           {batch.items && batch.items.length > 0 && (
-                            <div className="overflow-x-auto rounded-lg border border-[#D6D6D6]">
-                              <table className="w-full text-xs border-collapse min-w-[700px]" data-testid={`table-items-${batch.num}`}>
-                                <thead>
-                                  <tr className="bg-[#F2F4F7] text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
-                                    <th className="text-left px-2 py-2 whitespace-nowrap">POS Item ID</th>
-                                    <th className="text-left px-2 py-2 whitespace-nowrap">Date</th>
-                                    <th className="text-left px-2 py-2 whitespace-nowrap">Reference</th>
-                                    <th className="text-left px-2 py-2 whitespace-nowrap">Note</th>
-                                    <th className="text-right px-2 py-2 whitespace-nowrap">Amount</th>
-                                    <th className="text-center px-2 py-2 whitespace-nowrap">Bank Recon ID</th>
-                                    <th className="text-center px-2 py-2 whitespace-nowrap">Allocated</th>
-                                    <th className="text-left px-2 py-2 whitespace-nowrap">Allocated Date</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {batch.items.map((item, idx) => (
-                                    <tr key={item.posItem_ID || idx} className="border-t border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)] transition-colors" data-testid={`item-row-${item.posItem_ID}`}>
-                                      <td className="px-2 py-2 font-mono text-[var(--pos-accent)] font-medium">{item.posItem_ID}</td>
-                                      <td className="px-2 py-2 whitespace-nowrap">{formatDate(item.dateOfTransaction)}</td>
-                                      <td className="px-2 py-2 max-w-[150px] truncate" title={item.reference}>{item.reference || '-'}</td>
-                                      <td className="px-2 py-2 max-w-[150px] truncate text-slate-500" title={item.note || ''}>{item.note || '-'}</td>
-                                      <td className="px-2 py-2 text-right font-mono font-semibold whitespace-nowrap">{formatCurrency(item.amount)}</td>
-                                      <td className="px-2 py-2 text-center font-mono text-slate-500">{item.bankReconID}</td>
-                                      <td className="px-2 py-2 text-center">
-                                        {item.billingAllocated
-                                          ? <CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto" />
-                                          : <Clock className="w-4 h-4 text-amber-400 mx-auto" />
-                                        }
-                                      </td>
-                                      <td className="px-2 py-2 whitespace-nowrap text-slate-500">{formatDateTime(item.dateAllocated)}</td>
+                            <>
+                              <div className="hidden sm:block overflow-x-auto rounded-lg border border-[#D6D6D6]">
+                                <table className="w-full text-xs border-collapse min-w-[700px]" data-testid={`table-items-${batch.num}`}>
+                                  <thead>
+                                    <tr className="bg-[#F2F4F7] text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
+                                      <th className="text-left px-2 py-2 whitespace-nowrap">POS Item ID</th>
+                                      <th className="text-left px-2 py-2 whitespace-nowrap">Date</th>
+                                      <th className="text-left px-2 py-2 whitespace-nowrap">Reference</th>
+                                      <th className="text-left px-2 py-2 whitespace-nowrap">Note</th>
+                                      <th className="text-right px-2 py-2 whitespace-nowrap">Amount</th>
+                                      <th className="text-center px-2 py-2 whitespace-nowrap">Bank Recon ID</th>
+                                      <th className="text-center px-2 py-2 whitespace-nowrap">Allocated</th>
+                                      <th className="text-left px-2 py-2 whitespace-nowrap">Allocated Date</th>
                                     </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
+                                  </thead>
+                                  <tbody>
+                                    {batch.items.map((item, idx) => (
+                                      <tr key={item.posItem_ID || idx} className="border-t border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)] transition-colors" data-testid={`item-row-${item.posItem_ID}`}>
+                                        <td className="px-2 py-2 font-mono text-[var(--pos-accent)] font-medium">{item.posItem_ID}</td>
+                                        <td className="px-2 py-2 whitespace-nowrap">{formatDate(item.dateOfTransaction)}</td>
+                                        <td className="px-2 py-2 max-w-[150px] truncate" title={item.reference}>{item.reference || '-'}</td>
+                                        <td className="px-2 py-2 max-w-[150px] truncate text-slate-500" title={item.note || ''}>{item.note || '-'}</td>
+                                        <td className="px-2 py-2 text-right font-mono font-semibold whitespace-nowrap">{formatCurrency(item.amount)}</td>
+                                        <td className="px-2 py-2 text-center font-mono text-slate-500">{item.bankReconID}</td>
+                                        <td className="px-2 py-2 text-center">
+                                          {item.billingAllocated
+                                            ? <CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto" />
+                                            : <Clock className="w-4 h-4 text-amber-400 mx-auto" />
+                                          }
+                                        </td>
+                                        <td className="px-2 py-2 whitespace-nowrap text-slate-500">{formatDateTime(item.dateAllocated)}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                              <div className="sm:hidden space-y-2" data-testid={`cards-items-${batch.num}`}>
+                                {batch.items.map((item, idx) => (
+                                  <div key={item.posItem_ID || idx} className="rounded-lg border border-[#D6D6D6] bg-white p-3" data-testid={`item-card-${item.posItem_ID}`}>
+                                    <div className="flex items-start justify-between gap-2 mb-2">
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="text-xs font-mono text-[var(--pos-accent)] font-semibold">#{item.posItem_ID}</span>
+                                          {item.billingAllocated
+                                            ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                                            : <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                                          }
+                                        </div>
+                                        <div className="text-[10px] text-slate-500 mt-0.5">{formatDate(item.dateOfTransaction)}</div>
+                                      </div>
+                                      <div className="text-sm font-mono font-bold text-slate-800 shrink-0">{formatCurrency(item.amount)}</div>
+                                    </div>
+                                    {item.reference && (
+                                      <div className="text-xs text-slate-700 break-words mb-1">
+                                        <span className="text-[10px] text-slate-400 uppercase font-semibold">Ref: </span>{item.reference}
+                                      </div>
+                                    )}
+                                    {item.note && (
+                                      <div className="text-xs text-slate-500 break-words mb-1">
+                                        <span className="text-[10px] text-slate-400 uppercase font-semibold">Note: </span>{item.note}
+                                      </div>
+                                    )}
+                                    <div className="flex items-center gap-3 text-[10px] text-slate-400 mt-1.5 pt-1.5 border-t border-[#E5E5E5]">
+                                      <span>Recon: <span className="font-mono font-semibold text-slate-600">{item.bankReconID}</span></span>
+                                      {item.dateAllocated && <span>Alloc: {formatDateTime(item.dateAllocated)}</span>}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </>
                           )}
 
                           {batch.items && batch.items.length === 0 && (
@@ -644,7 +679,7 @@ function AutoAllocationContent() {
                                 <Ban className="w-3.5 h-3.5" />
                                 Rejected Items ({batch.rejectedItems.length})
                               </h4>
-                              <div className="overflow-x-auto rounded-lg border border-red-200">
+                              <div className="hidden sm:block overflow-x-auto rounded-lg border border-red-200">
                                 <table className="w-full text-xs border-collapse min-w-[600px]" data-testid={`table-rejected-${batch.num}`}>
                                   <thead>
                                     <tr className="bg-red-50 text-[10px] uppercase tracking-wider text-red-600 font-semibold">
@@ -666,11 +701,29 @@ function AutoAllocationContent() {
                                   </tbody>
                                 </table>
                               </div>
+                              <div className="sm:hidden space-y-2" data-testid={`cards-rejected-${batch.num}`}>
+                                {batch.rejectedItems.map((rej, idx) => (
+                                  <div key={idx} className="rounded-lg border border-red-200 bg-red-50/30 p-3">
+                                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                                      <span className="text-xs font-mono text-red-700 font-semibold">#{rej.item?.posItem_ID || '-'}</span>
+                                      <span className="text-sm font-mono font-bold text-slate-800 shrink-0">{rej.item ? formatCurrency(rej.item.amount) : '-'}</span>
+                                    </div>
+                                    {rej.item?.reference && (
+                                      <div className="text-xs text-slate-600 break-words mb-1.5">
+                                        <span className="text-[10px] text-slate-400 uppercase font-semibold">Ref: </span>{rej.item.reference}
+                                      </div>
+                                    )}
+                                    <div className="text-xs text-red-600 font-medium bg-red-50 rounded px-2 py-1">
+                                      <XCircle className="w-3 h-3 inline mr-1" />{rej.rejectionReason || 'Unknown reason'}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           )}
                         </div>
 
-                        <div className="px-3 sm:px-4 py-3 border-t border-[#D6D6D6] bg-[#F7F7F7] flex items-center justify-between gap-2">
+                        <div className="px-3 sm:px-4 py-3 border-t border-[#D6D6D6] bg-[#F7F7F7] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
                           <div className="text-[10px] text-slate-500 flex items-center gap-1">
                             <Info className="w-3 h-3" />
                             {batch.billingUnAllocated > 0
@@ -681,7 +734,7 @@ function AutoAllocationContent() {
                             onClick={(e) => { e.stopPropagation(); handleReconcile(batch); }}
                             disabled={processing || batch.billingUnAllocated === 0}
                             size="sm"
-                            className="h-8 gap-1.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 shadow-sm"
+                            className="h-11 sm:h-8 gap-1.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 shadow-sm text-sm sm:text-xs"
                             data-testid={`button-reconcile-${batch.num}`}
                           >
                             {isProcessingThis ? (
@@ -714,7 +767,7 @@ function AutoAllocationContent() {
                     }
                   }}
                   disabled={processing || unprocessedBatches.every(b => b.billingUnAllocated === 0)}
-                  className="h-10 gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-md"
+                  className="h-12 sm:h-10 gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-md text-sm"
                   data-testid="button-process-all"
                 >
                   {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCheck className="w-4 h-4" />}
@@ -774,10 +827,10 @@ function AutoAllocationContent() {
                             size="sm"
                             onClick={(e) => { e.stopPropagation(); handlePrint(batch); }}
                             disabled={printing}
-                            className="h-7 gap-1 text-[10px]"
+                            className="h-9 sm:h-7 gap-1 text-xs sm:text-[10px] min-w-[44px]"
                             data-testid={`button-print-${batch.num}`}
                           >
-                            {printing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Printer className="w-3 h-3" />}
+                            {printing ? <Loader2 className="w-3.5 h-3.5 sm:w-3 sm:h-3 animate-spin" /> : <Printer className="w-3.5 h-3.5 sm:w-3 sm:h-3" />}
                             Print
                           </Button>
                           {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}

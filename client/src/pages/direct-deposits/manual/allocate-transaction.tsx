@@ -1554,7 +1554,7 @@ export default function AllocateTransaction() {
       <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
         <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5 flex items-center gap-2 sm:gap-4">
              <Link href="/direct-deposits/manual">
-                <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9 rounded-full hover:bg-[#F2F4F7]" data-testid="button-back">
+                <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-9 sm:w-9 rounded-full hover:bg-[#F2F4F7]" data-testid="button-back">
                     <ArrowLeft className="w-4 h-4" />
                 </Button>
              </Link>
@@ -1708,12 +1708,12 @@ export default function AllocateTransaction() {
                 <div className="px-3 sm:px-5 py-3 sm:py-4 border-b bg-[#F7F7F7]">
                     <div className="flex items-center justify-between mb-3">
                         <h2 className="text-sm sm:text-base font-semibold tracking-tight">Allocation Lines</h2>
-                        <Button variant="outline" size="sm" className="h-7 sm:h-8 text-xs gap-1.5 border-[#D6D6D6]" data-testid="button-import-csv" onClick={() => setCsvDialogOpen(true)}>
+                        <Button variant="outline" size="sm" className="h-11 sm:h-8 text-xs gap-1.5 border-[#D6D6D6]" data-testid="button-import-csv" onClick={() => setCsvDialogOpen(true)}>
                             <Upload className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Import</span> File
                         </Button>
                     </div>
 
-                    <div className="flex items-center gap-1 sm:gap-1.5 mb-3 overflow-x-auto pb-0.5">
+                    <div className="flex items-center gap-1 sm:gap-1.5 mb-3 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin">
                         <HelpTip text="Choose whether to allocate to a specific account, group, or clearance." side="bottom" className="mr-1" />
                         {scopeOptions.map(opt => {
                             const Icon = opt.icon;
@@ -1827,10 +1827,10 @@ export default function AllocateTransaction() {
                                      <Building2 className="w-4 h-4 sm:w-5 sm:h-5" />}
                                 </div>
                                 <div className="min-w-0">
-                                    <div className="text-xs sm:text-sm font-semibold text-slate-800 truncate">{selectedAccount.name}</div>
-                                    <div className="text-[11px] sm:text-xs text-slate-500 font-mono truncate">{selectedAccount.accountNo}</div>
+                                    <div className="text-xs sm:text-sm font-semibold text-slate-800 break-words sm:truncate">{selectedAccount.name}</div>
+                                    <div className="text-[11px] sm:text-xs text-slate-500 font-mono break-words sm:truncate">{selectedAccount.accountNo}</div>
                                 </div>
-                                <Button onClick={() => { setSelectedAccount(null); setNewLineAmount(''); }} size="icon" variant="ghost" className="h-7 w-7 sm:hidden text-slate-400 hover:text-slate-600 shrink-0 ml-auto">
+                                <Button onClick={() => { setSelectedAccount(null); setNewLineAmount(''); }} size="icon" variant="ghost" className="h-11 w-11 sm:hidden text-slate-400 hover:text-slate-600 shrink-0 ml-auto">
                                     <X className="w-3.5 h-3.5" />
                                 </Button>
                             </div>
@@ -1940,13 +1940,13 @@ export default function AllocateTransaction() {
                                     <span className="text-xs truncate block" title={item.item}>{item.item}</span>
                                     {item.accountNo && <span className="text-[10px] text-muted-foreground font-mono">{item.accountNo}</span>}
                                 </div>
-                                <span className="text-xs text-muted-foreground font-mono whitespace-nowrap w-24 text-right" title="Outstanding amount">R {item.amount.toFixed(2)}</span>
+                                <span className="text-xs text-muted-foreground font-mono whitespace-nowrap w-16 sm:w-24 text-right shrink-0" title="Outstanding amount">R {item.amount.toFixed(2)}</span>
                                 <Input
                                     type="number"
                                     step="0.01"
                                     min="0"
                                     max={item.amount}
-                                    className="h-8 w-28 text-right font-mono text-sm"
+                                    className="h-9 sm:h-8 w-20 sm:w-28 text-right font-mono text-sm shrink-0"
                                     placeholder="0.00"
                                     value={clearanceAllocations[key] ?? ''}
                                     onChange={e => setClearanceAllocations(prev => ({ ...prev, [key]: parseFloat(e.target.value) || 0 }))}
@@ -1958,23 +1958,23 @@ export default function AllocateTransaction() {
 
                     return (
                     <div className="px-3 sm:px-5 py-3 sm:py-4 bg-gradient-to-r from-amber-50 to-orange-50/30 border-b border-amber-100 animate-in fade-in slide-in-from-top-2 duration-200">
-                        <div className="flex justify-between items-start mb-4">
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-4">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
-                                    <FileCheck className="w-5 h-5 text-amber-700" />
+                                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                                    <FileCheck className="w-4 h-4 sm:w-5 sm:h-5 text-amber-700" />
                                 </div>
-                                <div>
-                                    <div className="text-sm font-semibold text-slate-800" data-testid="clearance-schedule-no">{selectedClearance.scheduleNo}</div>
+                                <div className="min-w-0">
+                                    <div className="text-sm font-semibold text-slate-800 break-words" data-testid="clearance-schedule-no">{selectedClearance.scheduleNo}</div>
                                     <div className="text-xs text-slate-500">
                                         {selectedClearance.linkedAccounts.length} account{selectedClearance.linkedAccounts.length !== 1 ? 's' : ''} | Total Due: <span className="font-mono font-medium">R {selectedClearance.totalDue.toFixed(2)}</span>
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-1">
-                                <Button size="sm" variant="outline" onClick={handleAutoFill} className="h-8 text-xs text-amber-700 border-amber-200 hover:bg-amber-100 gap-1" data-testid="btn-auto-fill-clearance">
+                            <div className="flex items-center gap-1 self-end sm:self-auto shrink-0">
+                                <Button size="sm" variant="outline" onClick={handleAutoFill} className="h-9 sm:h-8 text-xs text-amber-700 border-amber-200 hover:bg-amber-100 gap-1" data-testid="btn-auto-fill-clearance">
                                     <CheckCircle2 className="w-3 h-3" /> Auto-fill
                                 </Button>
-                                <Button size="icon" variant="ghost" onClick={() => setSelectedClearance(null)} className="h-8 w-8 text-slate-400 hover:text-slate-600" data-testid="btn-close-clearance">
+                                <Button size="icon" variant="ghost" onClick={() => setSelectedClearance(null)} className="h-9 w-9 sm:h-8 sm:w-8 text-slate-400 hover:text-slate-600" data-testid="btn-close-clearance">
                                     <X className="w-4 h-4" />
                                 </Button>
                             </div>
@@ -2080,7 +2080,7 @@ export default function AllocateTransaction() {
                                 </div>
                             )}
                         </div>
-                        <div className="mt-4 pt-3 border-t border-amber-200/60 flex flex-wrap justify-between items-center gap-2">
+                        <div className="mt-4 pt-3 border-t border-amber-200/60 flex flex-col sm:flex-row sm:flex-wrap justify-between items-start sm:items-center gap-2">
                             <div className="text-sm flex items-center gap-3">
                                 <div>
                                     <span className="text-muted-foreground">Allocated:</span>
@@ -2097,7 +2097,7 @@ export default function AllocateTransaction() {
                                     <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-[10px]">Fully matched</Badge>
                                 )}
                             </div>
-                            <Button onClick={handleAddClearanceLines} className="bg-amber-600 hover:bg-amber-700 text-white gap-1.5" data-testid="btn-add-clearance-lines">
+                            <Button onClick={handleAddClearanceLines} className="bg-amber-600 hover:bg-amber-700 text-white gap-1.5 w-full sm:w-auto h-10 sm:h-9" data-testid="btn-add-clearance-lines">
                                 <Plus className="w-4 h-4" /> Add Lines
                             </Button>
                         </div>
@@ -2128,44 +2128,62 @@ export default function AllocateTransaction() {
                         <>
                             <div className="sm:hidden divide-y">
                                 {pageLines.map((line, idx) => (
-                                    <div key={line.id} className="px-4 py-3 flex items-center gap-3 hover:bg-[#F7F7F7]/50 transition-colors">
-                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold ${
-                                            line.allocationType === 'CASHBOOK' ? 'bg-orange-50 text-orange-600' :
-                                            line.allocationType === 'CLEARANCE' ? 'bg-amber-50 text-amber-600' :
-                                            line.allocationType === 'DIRECT' ? 'bg-emerald-50 text-emerald-600' :
-                                            line.allocationType === 'GROUP' ? 'bg-purple-50 text-purple-600' :
-                                            'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)]'
-                                        }`}>
-                                            {startIdx + idx + 1}
+                                    <div key={line.id} className="px-3 py-3 hover:bg-[#F7F7F7]/50 transition-colors" data-testid={`mobile-line-card-${idx}`}>
+                                        <div className="flex items-start gap-2.5 mb-2">
+                                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold mt-0.5 ${
+                                                line.allocationType === 'CASHBOOK' ? 'bg-orange-50 text-orange-600' :
+                                                line.allocationType === 'CLEARANCE' ? 'bg-amber-50 text-amber-600' :
+                                                line.allocationType === 'DIRECT' ? 'bg-emerald-50 text-emerald-600' :
+                                                line.allocationType === 'GROUP' ? 'bg-purple-50 text-purple-600' :
+                                                'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)]'
+                                            }`}>
+                                                {startIdx + idx + 1}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-sm font-medium text-slate-700 break-words leading-snug">{line.description || line.accountNo}</div>
+                                                {line.allocationType === 'ACCOUNT' || line.allocationType === 'PREPAID' ? (
+                                                    <button className="text-xs text-[var(--pos-accent-dark)] hover:underline cursor-pointer font-mono mt-0.5" onClick={() => setEnquiryAccountId(String(line.accountNo))} data-testid={`mobile-line-enquiry-${idx}`}>{line.accountNo}</button>
+                                                ) : (
+                                                    <div className="text-xs text-muted-foreground font-mono mt-0.5">{line.accountNo}</div>
+                                                )}
+                                                <Badge variant="secondary" className={`text-[10px] font-medium mt-1 ${
+                                                    line.allocationType === 'CASHBOOK' ? 'bg-orange-50 text-orange-700' :
+                                                    line.allocationType === 'CLEARANCE' ? 'bg-amber-50 text-amber-700' :
+                                                    line.allocationType === 'DIRECT' ? 'bg-emerald-50 text-emerald-700' :
+                                                    line.allocationType === 'GROUP' ? 'bg-purple-50 text-purple-700' :
+                                                    line.allocationType === 'PREPAID' ? 'bg-yellow-50 text-yellow-700' :
+                                                    'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)]'
+                                                }`}>
+                                                    {line.allocationType === 'CASHBOOK' ? 'Return' :
+                                                     line.allocationType === 'CLEARANCE' ? 'Clearance' :
+                                                     line.allocationType === 'DIRECT' ? 'Income' :
+                                                     line.allocationType === 'GROUP' ? 'Grouping' :
+                                                     line.allocationType === 'PREPAID' ? 'Prepaid' : 'Account'}
+                                                </Badge>
+                                            </div>
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="text-sm font-medium text-slate-700 truncate">{line.description || line.accountNo}</div>
-                                            {line.allocationType === 'ACCOUNT' || line.allocationType === 'PREPAID' ? (
-                                                <button className="text-xs text-[var(--pos-accent-dark)] hover:underline cursor-pointer font-mono" onClick={() => setEnquiryAccountId(String(line.accountNo))} data-testid={`mobile-line-enquiry-${idx}`}>{line.accountNo}</button>
-                                            ) : (
-                                                <div className="text-xs text-muted-foreground font-mono">{line.accountNo}</div>
+                                        <div className="flex items-center gap-2 pl-[38px]">
+                                            <div className="flex items-center gap-1 flex-1 min-w-0">
+                                                <span className="text-xs text-muted-foreground shrink-0">R</span>
+                                                <Input
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    className="h-9 text-right font-mono text-sm font-semibold text-slate-800 px-2 flex-1"
+                                                    value={line.amount}
+                                                    onChange={(e) => handleUpdateLineAmount(line.id, e.target.value)}
+                                                    data-testid={`input-mobile-amount-${idx}`}
+                                                />
+                                            </div>
+                                            {(line.allocationType === 'ACCOUNT' || line.allocationType === 'PREPAID') && (
+                                                <Button variant="outline" size="icon" className="h-9 w-9 text-[var(--pos-accent-dark)] border-[var(--pos-accent-light)] hover:bg-[var(--pos-accent-tint)] shrink-0 rounded-lg" onClick={() => setEnquiryAccountId(String(line.accountNo))} data-testid={`mobile-line-enquiry-btn-${idx}`}>
+                                                    <Search className="w-3.5 h-3.5" />
+                                                </Button>
                                             )}
-                                        </div>
-                                        <div className="shrink-0 flex items-center gap-1">
-                                            <span className="text-xs text-muted-foreground">R</span>
-                                            <Input
-                                                type="number"
-                                                step="0.01"
-                                                min="0"
-                                                className="w-24 h-7 text-right font-mono text-sm font-semibold text-slate-800 px-2"
-                                                value={line.amount}
-                                                onChange={(e) => handleUpdateLineAmount(line.id, e.target.value)}
-                                                data-testid={`input-mobile-amount-${idx}`}
-                                            />
-                                        </div>
-                                        {(line.allocationType === 'ACCOUNT' || line.allocationType === 'PREPAID') && (
-                                            <Button variant="outline" size="icon" className="h-7 w-7 text-[var(--pos-accent-dark)] border-[var(--pos-accent-light)] hover:bg-[var(--pos-accent-tint)] shrink-0 rounded-lg" onClick={() => setEnquiryAccountId(String(line.accountNo))} data-testid={`mobile-line-enquiry-btn-${idx}`}>
-                                                <Search className="w-3 h-3" />
+                                            <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-400 hover:text-red-500 hover:bg-red-50 shrink-0 rounded-lg" onClick={() => handleRemoveLine(line.id)}>
+                                                <Trash2 className="w-4 h-4" />
                                             </Button>
-                                        )}
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50 shrink-0 rounded-lg" onClick={() => handleRemoveLine(line.id)}>
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                        </Button>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -2279,15 +2297,15 @@ export default function AllocateTransaction() {
                 </div>
 
                 {lines.length > 0 && (
-                    <div className="hidden sm:flex px-5 py-4 border-t bg-[#F7F7F7] items-center justify-between">
-                        <div className="flex items-center gap-6 text-sm">
+                    <div className="flex px-3 sm:px-5 py-3 sm:py-4 border-t bg-[#F7F7F7] items-center justify-between">
+                        <div className="flex items-center gap-3 sm:gap-6 text-xs sm:text-sm">
                             <div>
                                 <span className="text-muted-foreground">Allocated:</span>
-                                <span className="ml-1.5 font-bold font-mono">R {allocatedTotal.toFixed(2)}</span>
+                                <span className="ml-1 sm:ml-1.5 font-bold font-mono">R {allocatedTotal.toFixed(2)}</span>
                             </div>
                             <div>
                                 <span className="text-muted-foreground">Remaining:</span>
-                                <span className={`ml-1.5 font-bold font-mono ${Math.abs(remaining) < 0.01 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                <span className={`ml-1 sm:ml-1.5 font-bold font-mono ${Math.abs(remaining) < 0.01 ? 'text-emerald-600' : 'text-red-600'}`}>
                                     R {remaining.toFixed(2)}
                                 </span>
                             </div>
@@ -2318,12 +2336,12 @@ export default function AllocateTransaction() {
           ) : (
             <div className="flex items-center gap-2">
               {remaining > 0.005 && (
-                <Button variant="outline" size="sm" onClick={handleReturnToCashbook} className="text-orange-700 border-orange-200 hover:bg-orange-50 text-xs gap-1.5 h-10">
+                <Button variant="outline" size="sm" onClick={handleReturnToCashbook} className="text-orange-700 border-orange-200 hover:bg-orange-50 text-xs gap-1.5 h-11">
                   <RotateCcw className="w-3.5 h-3.5" /> Cashbook
                 </Button>
               )}
               <Button
-                className={`flex-1 h-10 text-sm font-medium gap-1.5 ${isFullyAllocated ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
+                className={`flex-1 h-11 text-sm font-medium gap-1.5 ${isFullyAllocated ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
                 disabled={!isFullyAllocated || posting}
                 onClick={handlePost}
               >
