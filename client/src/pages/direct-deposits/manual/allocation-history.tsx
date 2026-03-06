@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ArrowLeft, Eye, Printer, FileText, Search, User, FileSpreadsheet, FileIcon, Filter, X, RotateCcw, AlertCircle, File, Download, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'wouter';
-import { fetchBulkAllocationList, fetchBulkProgressFinancialYears, fetchBulkProgressMonthList, fetchBulkProgressProcessList, fetchDirectDepositJobAccountDetails, fetchBulkProgressDirectDeposit, retryBulkAllocationJob, BulkProgressSearchQuery } from '@/lib/external-api';
+import { fetchBulkAllocationList, fetchBulkProgressFinancialYears, fetchBulkProgressMonthList, fetchBulkProgressProcessList, fetchDirectDepositJobAccountDetails, fetchBulkProgressDirectDeposit, fetchDirectDepositJobDetails, fetchBulkProgressJobAccountDetails, retryBulkAllocationJob, BulkProgressSearchQuery } from '@/lib/external-api';
 import { usePos } from '@/lib/pos-state';
 import { format, parseISO, isWithinInterval, startOfDay, endOfDay, isValid } from 'date-fns';
 import { Loader2 } from 'lucide-react';
@@ -174,49 +174,29 @@ export default function AllocationHistory() {
       setJobAccountDetails(null);
       setDetailsLoading(true);
       try {
-          const [accountDetails, bulkProgressDetails, jobDetails] = await Promise.allSettled([
+          const [jobAccountResult, errorAccountResult] = await Promise.allSettled([
+              fetchBulkProgressJobAccountDetails(tx.directDepositJob_ID),
               fetchDirectDepositJobAccountDetails(tx.directDepositJob_ID),
-              fetchBulkProgressDirectDeposit(tx.directDepositJob_ID),
-              fetchDirectDepositJobDetails(tx.directDepositJob_ID),
           ]);
 
-          console.log('[AllocationHistory] account-details response:', accountDetails.status === 'fulfilled' ? accountDetails.value : accountDetails.reason?.message);
-          console.log('[AllocationHistory] bulk-progress-dd response:', bulkProgressDetails.status === 'fulfilled' ? bulkProgressDetails.value : bulkProgressDetails.reason?.message);
-          console.log('[AllocationHistory] job-details response:', jobDetails.status === 'fulfilled' ? jobDetails.value : jobDetails.reason?.message);
+          console.log('[AllocationHistory] job-account-details response:', jobAccountResult.status === 'fulfilled' ? jobAccountResult.value : jobAccountResult.reason?.message);
+          console.log('[AllocationHistory] error-account-details response:', errorAccountResult.status === 'fulfilled' ? errorAccountResult.value : errorAccountResult.reason?.message);
 
           let details: any[] | null = null;
 
-          if (accountDetails.status === 'fulfilled') {
-              const ad = accountDetails.value;
-              const items = Array.isArray(ad) ? ad : ad?.items || ad?.data || null;
+          if (jobAccountResult.status === 'fulfilled') {
+              const data = jobAccountResult.value;
+              const items = Array.isArray(data) ? data : data?.items || data?.data || null;
               if (items && items.length > 0) {
                   details = items;
               }
           }
 
-          if (!details && bulkProgressDetails.status === 'fulfilled') {
-              const bp = bulkProgressDetails.value;
-              const items = bp?.accountDetails || bp?.accounts || bp?.items || bp?.data || (Array.isArray(bp) ? bp : null);
+          if (!details && errorAccountResult.status === 'fulfilled') {
+              const data = errorAccountResult.value;
+              const items = Array.isArray(data) ? data : data?.items || data?.data || null;
               if (items && items.length > 0) {
                   details = items;
-              } else if (bp && typeof bp === 'object' && !Array.isArray(bp)) {
-                  const accountNo = bp.accountNo || bp.accountNumber || bp.account_No;
-                  if (accountNo) {
-                      details = [bp];
-                  }
-              }
-          }
-
-          if (!details && jobDetails.status === 'fulfilled') {
-              const jd = jobDetails.value;
-              const items = jd?.accountDetails || jd?.accounts || jd?.items || jd?.data || (Array.isArray(jd) ? jd : null);
-              if (items && items.length > 0) {
-                  details = items;
-              } else if (jd && typeof jd === 'object' && !Array.isArray(jd)) {
-                  const accountNo = jd.accountNo || jd.accountNumber || jd.account_No;
-                  if (accountNo) {
-                      details = [jd];
-                  }
               }
           }
 

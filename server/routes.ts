@@ -3862,6 +3862,17 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/platinum/bulk-progress/job-account-details/:jobId", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, `/api/BulkProgress/job-account-details/${req.params.jobId}`);
+      console.log(`[job-account-details] Job ${req.params.jobId} response:`, JSON.stringify(data).substring(0, 500));
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   app.get("/api/platinum/bulk-progress/direct-deposit/:jobId", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
