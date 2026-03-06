@@ -3520,11 +3520,50 @@ export async function registerRoutes(
         payload.userId = session.userId;
       }
 
-      console.log(`[DD Submit] billType=${payload.billType}, posItemId=${payload.posItemId}, reconId=${payload.reconId}, userId=${payload.userId}, paidAmount=${payload.paidAmount}, paymentTypeId=${payload.paymentTypeId}, reference=${payload.reference}, receiptDate=${payload.receiptDate}, accountId=${payload.accountId}`);
-      console.log('[DD Submit] Full payload:', JSON.stringify(payload));
-      const data = await platinumPost(session, "/api/billing-direct-deposit-allocation/submit-details-data", payload, undefined, { timeout: 55000 });
-      console.log('[DD Submit] API response:', data?._error ? `ERROR: ${JSON.stringify(data)}` : JSON.stringify(data));
-      handlePlatinumResult(res, data);
+      const token = await refreshSessionToken(session);
+      const apiUrl = getApiUrlForSession(session);
+      const url = `${apiUrl}/api/billing-direct-deposit-allocation/submit-details-data`;
+      const bodyStr = JSON.stringify(payload);
+
+      console.log(`[DD Submit] URL: ${url}`);
+      console.log(`[DD Submit] Token (first 20): ${token?.substring(0, 20)}...`);
+      console.log(`[DD Submit] Body: ${bodyStr}`);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 55000);
+      try {
+        const rawRes = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Accept": "*/*",
+            "Content-Type": "application/json",
+          },
+          body: bodyStr,
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        const responseText = await rawRes.text();
+        console.log(`[DD Submit] HTTP ${rawRes.status} ${rawRes.statusText}`);
+        console.log(`[DD Submit] Response headers:`, JSON.stringify(Object.fromEntries(rawRes.headers.entries())));
+        console.log(`[DD Submit] Response body: ${responseText}`);
+
+        try {
+          const data = JSON.parse(responseText);
+          res.status(rawRes.status).json(data);
+        } catch {
+          res.status(rawRes.status).send(responseText);
+        }
+      } catch (fetchErr: any) {
+        clearTimeout(timeoutId);
+        if (fetchErr.name === 'AbortError') {
+          console.error('[DD Submit] Request timed out after 55s');
+          res.status(408).json({ message: "Request Timeout" });
+        } else {
+          throw fetchErr;
+        }
+      }
     } catch (e: any) {
       console.error('[DD Submit] EXCEPTION:', e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
