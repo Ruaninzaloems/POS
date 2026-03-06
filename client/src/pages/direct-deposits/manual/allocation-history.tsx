@@ -495,32 +495,32 @@ export default function AllocationHistory() {
               ))}
             </div>
 
-            <Card className="hidden sm:block">
-                <Table>
+            <Card className="hidden sm:block overflow-x-auto">
+                <Table className="table-fixed w-full">
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Captured</TableHead>
-                            <TableHead>File / Description</TableHead>
-                            <TableHead>Reference</TableHead>
-                            <TableHead>Process</TableHead>
-                            <TableHead>Method</TableHead>
-                            <TableHead className="text-center">Records</TableHead>
-                            <TableHead className="text-right">Amount</TableHead>
-                            <TableHead className="text-center">Status</TableHead>
-                            <TableHead className="text-right">Action</TableHead>
+                            <TableHead className="w-[90px]">Date</TableHead>
+                            <TableHead className="w-[140px]">Captured</TableHead>
+                            <TableHead className="w-[130px]">File / Description</TableHead>
+                            <TableHead className="w-auto">Reference</TableHead>
+                            <TableHead className="w-[130px]">Process</TableHead>
+                            <TableHead className="w-[70px]">Method</TableHead>
+                            <TableHead className="w-[60px] text-center">Records</TableHead>
+                            <TableHead className="w-[100px] text-right">Amount</TableHead>
+                            <TableHead className="w-[120px] text-center">Status</TableHead>
+                            <TableHead className="w-[70px] text-right">Action</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {filteredHistory.map(tx => (
                             <TableRow key={tx.directDepositJob_ID}>
-                                <TableCell className="font-mono text-xs text-muted-foreground">
+                                <TableCell className="font-mono text-xs text-muted-foreground whitespace-nowrap">
                                     {formatDate(tx.fileDate)}
                                 </TableCell>
-                                <TableCell className="font-mono text-xs">
+                                <TableCell className="font-mono text-xs whitespace-nowrap">
                                     {formatDateTime(tx.dateCaptured)}
                                 </TableCell>
-                                <TableCell className="text-sm font-medium max-w-[200px]">
+                                <TableCell className="text-xs font-medium">
                                     <div className="truncate" title={tx.fileName}>{tx.fileName}</div>
                                     {tx.filePath && (
                                         <div className="text-[10px] text-muted-foreground truncate" title={tx.filePath}>{tx.filePath}</div>
@@ -528,18 +528,18 @@ export default function AllocationHistory() {
                                 </TableCell>
                                 <TableCell>
                                     {tx.paymentReference && tx.paymentReference !== '0' ? (
-                                        <span className="inline-flex items-center text-[11px] font-medium tracking-wide text-[var(--pos-accent-dark)] bg-[var(--pos-accent-tint)] px-2.5 py-0.5 rounded-full max-w-[180px] truncate" title={tx.paymentReference}>{tx.paymentReference}</span>
+                                        <span className="inline-flex items-center text-[11px] font-medium tracking-wide text-[var(--pos-accent-dark)] bg-[var(--pos-accent-tint)] px-2 py-0.5 rounded-full truncate max-w-full" title={tx.paymentReference}>{tx.paymentReference}</span>
                                     ) : (
                                         <span className="text-xs text-muted-foreground">-</span>
                                     )}
                                 </TableCell>
                                 <TableCell>
-                                    <Badge variant="secondary" className={`border ${getProcessBadgeColor(tx.process)} shadow-none font-normal`}>
+                                    <Badge variant="secondary" className={`border text-[11px] ${getProcessBadgeColor(tx.process)} shadow-none font-normal`}>
                                         {tx.process}
                                     </Badge>
                                 </TableCell>
                                 <TableCell>
-                                    <Badge variant="secondary" className={isManual(tx) ? 'bg-[var(--pos-accent-tint)] text-[#6B6B6B] border-[#D6D6D6]' : 'bg-purple-100 text-purple-700 border-purple-200'}>
+                                    <Badge variant="secondary" className={`text-[11px] ${isManual(tx) ? 'bg-[var(--pos-accent-tint)] text-[#6B6B6B] border-[#D6D6D6]' : 'bg-purple-100 text-purple-700 border-purple-200'}`}>
                                         {isManual(tx) ? 'Manual' : 'Bulk'}
                                     </Badge>
                                 </TableCell>
