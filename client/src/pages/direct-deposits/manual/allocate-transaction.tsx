@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { ArrowLeft, Plus, Trash2, CheckCircle, AlertCircle, Upload, X, Loader2, Search, Banknote, Building2, FileCheck, Receipt, CreditCard, RotateCcw, FileSpreadsheet, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, CheckCircle, AlertCircle, Upload, X, Loader2, Search, Banknote, Building2, FileCheck, Receipt, CreditCard, RotateCcw, FileSpreadsheet, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { AllocationLine, Account, ClearanceCostSchedule, platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, platinumLoadDetailsPaymentGrouping, platinumLoadDetailsPaymentGroupingInstitutionData, platinumLoadDetailsConsumerServices, platinumLoadConfirmPaymentDetails, platinumLoadDetailsClearance, platinumGetClearanceDetailsInfo, platinumGetConsumerDetailsData, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, platinumDDClearanceAutocomplete, platinumSearchClearanceIds, platinumGetClearanceData, platinumGetGroupPaymentDetails, fetchMiscPaymentGroups, rebuildFullAccount, platinumSearchAccountsPayment, fetchActiveFinYear, fetchPlatinumUserInfo } from '@/lib/external-api';
 import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
@@ -603,6 +603,45 @@ export default function AllocateTransaction() {
 
     setCsvParsedRows(parsed);
     setCsvStep('preview');
+  };
+
+  const handleDownloadTemplate = async (format: 'csv' | 'xlsx') => {
+    const headers = ['AccountNumber', 'Amount'];
+    const sampleRows = [
+      ['100234', '500.00'],
+      ['100567', '1200.50'],
+      ['200891', '750.00'],
+    ];
+
+    if (format === 'csv') {
+      const csvContent = [headers.join(','), ...sampleRows.map(r => r.join(','))].join('\r\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'allocation_import_template.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } else {
+      try {
+        const XLSX = await import('xlsx-js-style');
+        const wb = XLSX.utils.book_new();
+        const wsData = [headers, ...sampleRows];
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        ws['!cols'] = [{ wch: 20 }, { wch: 15 }];
+        const headerStyle = { font: { bold: true, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '4472C4' } }, alignment: { horizontal: 'center' } };
+        headers.forEach((_, i) => {
+          const cellRef = XLSX.utils.encode_cell({ r: 0, c: i });
+          if (ws[cellRef]) ws[cellRef].s = headerStyle;
+        });
+        XLSX.utils.book_append_sheet(wb, ws, 'Template');
+        XLSX.writeFile(wb, 'allocation_import_template.xlsx');
+      } catch (err: any) {
+        toast({ title: 'Download Error', description: err.message || 'Failed to generate Excel template.', variant: 'destructive' });
+      }
+    }
   };
 
   const handleCsvFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1969,6 +2008,31 @@ export default function AllocateTransaction() {
                   <p className="font-mono bg-white px-2 py-1 rounded border text-[11px]">100234, 500.00</p>
                   <p className="font-mono bg-white px-2 py-1 rounded border text-[11px]">100567, 1200.50</p>
                   <p className="mt-2">Headers are auto-detected. CSV supports comma, semicolon, and tab delimiters. Excel files use the first sheet.</p>
+                  <div className="mt-3 pt-3 border-t border-[#E5E5E5]">
+                    <p className="font-medium text-slate-600 text-sm mb-2">Download template:</p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 text-xs"
+                        onClick={() => handleDownloadTemplate('xlsx')}
+                        data-testid="button-download-template-xlsx"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        Excel (.xlsx)
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 text-xs"
+                        onClick={() => handleDownloadTemplate('csv')}
+                        data-testid="button-download-template-csv"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        CSV (.csv)
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
