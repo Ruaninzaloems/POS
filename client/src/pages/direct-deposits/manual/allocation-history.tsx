@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ArrowLeft, Eye, Printer, FileText, Search, User, FileSpreadsheet, FileIcon, Filter, X, RotateCcw, AlertCircle, File, Download, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'wouter';
-import { fetchBulkAllocationList, fetchBulkProgressFinancialYears, fetchBulkProgressMonthList, fetchBulkProgressProcessList, BulkProgressSearchQuery } from '@/lib/external-api';
+import { fetchBulkAllocationList, fetchBulkProgressFinancialYears, fetchBulkProgressMonthList, fetchBulkProgressProcessList, fetchDirectDepositJobAccountDetails, retryBulkAllocationJob, BulkProgressSearchQuery } from '@/lib/external-api';
+import { usePos } from '@/lib/pos-state';
 import { format, parseISO, isWithinInterval, startOfDay, endOfDay, isValid } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
@@ -43,6 +44,7 @@ interface AllocationRecord {
 
 export default function AllocationHistory() {
   const { toast } = useToast();
+  const { platinumUser } = usePos();
   const [filterQuery, setFilterQuery] = useState('');
   const [methodFilter, setMethodFilter] = useState('ALL');
   
@@ -60,6 +62,9 @@ export default function AllocationHistory() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const pageSize = 20;
+  const [retrying, setRetrying] = useState<number | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [jobAccountDetails, setJobAccountDetails] = useState<any[] | null>(null);
   
   const [financialYears, setFinancialYears] = useState<string[]>(['2025/2026', '2024/2025']);
   const [monthList, setMonthList] = useState<{id: number; name: string}[]>([]);
@@ -139,6 +144,42 @@ export default function AllocationHistory() {
     contentRef: receiptRef,
     documentTitle: `Allocation-${selectedTx?.directDepositJob_ID || 'Draft'}`,
   });
+
+  const handleRetry = async (tx: AllocationRecord) => {
+      const currentUserId = platinumUser?.user_ID;
+      if (!currentUserId) {
+          toast({ title: 'Error', description: 'User session not found. Please log in again.', variant: 'destructive' });
+          return;
+      }
+      setRetrying(tx.directDepositJob_ID);
+      try {
+          await retryBulkAllocationJob(tx.directDepositJob_ID, currentUserId);
+          toast({ title: 'Retry Initiated', description: `Job #${tx.directDepositJob_ID} has been resubmitted for processing.` });
+          loadData();
+      } catch (err: any) {
+          toast({ title: 'Retry Failed', description: err.message || 'Failed to retry allocation job.', variant: 'destructive' });
+      } finally {
+          setRetrying(null);
+      }
+  };
+
+  const openDetails = async (tx: AllocationRecord) => {
+      setSelectedTx(tx);
+      setJobAccountDetails(null);
+      setDetailsLoading(true);
+      try {
+          const accountDetails = await fetchDirectDepositJobAccountDetails(tx.directDepositJob_ID);
+          setJobAccountDetails(Array.isArray(accountDetails) ? accountDetails : accountDetails?.items || accountDetails?.data || null);
+      } catch {
+      } finally {
+          setDetailsLoading(false);
+      }
+  };
+
+  const isErrorStatus = (status: string) => {
+      const lower = status.toLowerCase();
+      return lower.includes('error') || lower.includes('with errors') || lower.includes('failed');
+  };
 
   const handleDownload = (fmt: 'excel' | 'pdf') => {
       const element = document.createElement("a");
@@ -354,8 +395,12 @@ export default function AllocationHistory() {
                       <div className="font-medium text-sm truncate">{tx.fileName}</div>
                       <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
                         <span>{formatDate(tx.fileDate)}</span>
-                        <span className="text-[#D6D6D6]">|</span>
-                        <span className="text-[11px] font-medium tracking-wide text-[var(--pos-accent-dark)] bg-[var(--pos-accent-tint)] px-2 py-px rounded-full truncate max-w-[140px]" title={tx.paymentReference}>{tx.paymentReference}</span>
+                        {tx.paymentReference && tx.paymentReference !== '0' && (
+                          <>
+                            <span className="text-[#D6D6D6]">|</span>
+                            <span className="text-[11px] font-medium tracking-wide text-[var(--pos-accent-dark)] bg-[var(--pos-accent-tint)] px-2 py-px rounded-full truncate max-w-[140px]" title={tx.paymentReference}>{tx.paymentReference}</span>
+                          </>
+                        )}
                       </div>
                     </div>
                     <span className="font-mono font-bold text-sm shrink-0">R {tx.allocatedAmount.toFixed(2)}</span>
@@ -373,9 +418,16 @@ export default function AllocationHistory() {
                   </div>
                   <div className="flex justify-between items-center text-xs text-muted-foreground">
                     <span>{tx.records} record{tx.records !== 1 ? 's' : ''}</span>
-                    <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => setSelectedTx(tx)}>
-                      <Eye className="w-3 h-3 mr-1" /> Details
-                    </Button>
+                    <div className="flex gap-1">
+                      {isErrorStatus(tx.job_Status) && (
+                        <Button variant="outline" size="sm" className="h-7 text-xs px-2 text-amber-600 border-amber-200" onClick={() => handleRetry(tx)} disabled={retrying === tx.directDepositJob_ID}>
+                          {retrying === tx.directDepositJob_ID ? <Loader2 className="w-3 h-3 animate-spin" /> : <><RotateCcw className="w-3 h-3 mr-1" /> Retry</>}
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => openDetails(tx)}>
+                        <Eye className="w-3 h-3 mr-1" /> Details
+                      </Button>
+                    </div>
                   </div>
                 </Card>
               ))}
@@ -413,7 +465,11 @@ export default function AllocationHistory() {
                                     )}
                                 </TableCell>
                                 <TableCell>
-                                    <span className="inline-flex items-center text-[11px] font-medium tracking-wide text-[var(--pos-accent-dark)] bg-[var(--pos-accent-tint)] px-2.5 py-0.5 rounded-full max-w-[180px] truncate" title={tx.paymentReference}>{tx.paymentReference}</span>
+                                    {tx.paymentReference && tx.paymentReference !== '0' ? (
+                                        <span className="inline-flex items-center text-[11px] font-medium tracking-wide text-[var(--pos-accent-dark)] bg-[var(--pos-accent-tint)] px-2.5 py-0.5 rounded-full max-w-[180px] truncate" title={tx.paymentReference}>{tx.paymentReference}</span>
+                                    ) : (
+                                        <span className="text-xs text-muted-foreground">-</span>
+                                    )}
                                 </TableCell>
                                 <TableCell>
                                     <Badge variant="secondary" className={`border ${getProcessBadgeColor(tx.process)} shadow-none font-normal`}>
@@ -433,19 +489,38 @@ export default function AllocationHistory() {
                                 </TableCell>
                                 <TableCell className="text-center">
                                     <Badge className={`shadow-none border ${getStatusBadge(tx.job_Status)}`}>
-                                        {(tx.job_Status === 'Processing' || tx.job_Status === 'Performing rebuilds' || tx.job_Status === 'Completing reconciliation') && (
+                                        {(tx.job_Status === 'Processing' || tx.job_Status === 'Performing rebuilds' || tx.job_Status === 'Completing reconciliation' || tx.job_Status === 'Processing receipts') && (
                                             <Loader2 className="w-3 h-3 mr-1 animate-spin inline-block" />
                                         )}
-                                        {tx.job_Status === 'Error' && (
+                                        {isErrorStatus(tx.job_Status) && (
                                             <AlertCircle className="w-3 h-3 mr-1 inline-block" />
                                         )}
                                         {tx.job_Status === 'Bulk allocations complete' ? 'Completed' : tx.job_Status}
                                     </Badge>
                                 </TableCell>
                                 <TableCell className="text-right">
-                                    <Button variant="ghost" size="sm" onClick={() => setSelectedTx(tx)} className="h-8 px-2">
-                                        <Eye className="w-4 h-4 mr-1 text-slate-500" /> View
-                                    </Button>
+                                    <div className="flex items-center justify-end gap-1">
+                                        {isErrorStatus(tx.job_Status) && (
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => handleRetry(tx)}
+                                                disabled={retrying === tx.directDepositJob_ID}
+                                                className="h-8 px-2 text-amber-600 border-amber-200 hover:bg-amber-50"
+                                                data-testid={`button-retry-${tx.directDepositJob_ID}`}
+                                            >
+                                                {retrying === tx.directDepositJob_ID ? (
+                                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                ) : (
+                                                    <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                                                )}
+                                                {retrying !== tx.directDepositJob_ID && 'Retry'}
+                                            </Button>
+                                        )}
+                                        <Button variant="ghost" size="sm" onClick={() => openDetails(tx)} className="h-8 px-2" data-testid={`button-view-${tx.directDepositJob_ID}`}>
+                                            <Eye className="w-4 h-4 mr-1 text-slate-500" /> View
+                                        </Button>
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -480,7 +555,7 @@ export default function AllocationHistory() {
         </div>
        </div>
 
-       <Dialog open={!!selectedTx} onOpenChange={(open) => !open && setSelectedTx(null)}>
+       <Dialog open={!!selectedTx} onOpenChange={(open) => { if (!open) { setSelectedTx(null); setJobAccountDetails(null); } }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col w-[95vw] sm:w-auto">
             <DialogHeader className="border-b pb-3 sm:pb-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -489,6 +564,11 @@ export default function AllocationHistory() {
                         <DialogDescription className="text-xs sm:text-sm">Job ID: {selectedTx?.directDepositJob_ID} | POS Item: {selectedTx?.posItemID}</DialogDescription>
                     </div>
                     <div className="flex gap-2">
+                         {selectedTx && isErrorStatus(selectedTx.job_Status) && (
+                             <Button size="sm" variant="outline" className="text-xs sm:text-sm text-amber-600 border-amber-200 hover:bg-amber-50" onClick={() => selectedTx && handleRetry(selectedTx)} disabled={retrying === selectedTx?.directDepositJob_ID} data-testid="button-retry-dialog">
+                                 {retrying === selectedTx?.directDepositJob_ID ? <Loader2 className="w-4 h-4 animate-spin" /> : <><RotateCcw className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Retry</span></>}
+                             </Button>
+                         )}
                          <Button size="sm" variant="outline" className="text-xs sm:text-sm" onClick={handlePrint}>
                             <Printer className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Print</span>
                          </Button>
@@ -504,19 +584,19 @@ export default function AllocationHistory() {
                                 M
                            </div>
                            <div>
-                               <h2 className="text-xl font-bold text-slate-900">Platinum POS</h2>
+                               <h2 className="text-xl font-bold text-[#2E2E2E]">Platinum POS</h2>
                                <p className="text-sm text-muted-foreground">Direct Deposit Allocation Report</p>
                            </div>
                         </div>
                         <div className="text-right">
-                            <div className="text-sm font-medium text-slate-500">Report Date</div>
+                            <div className="text-sm font-medium text-[#6B6B6B]">Report Date</div>
                             <div className="font-mono text-sm">{new Date().toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '')}</div>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8">
                         <div>
-                             <h3 className="font-bold text-sm text-slate-900 uppercase tracking-wider mb-4 border-b pb-2">Allocation Info</h3>
+                             <h3 className="font-bold text-sm text-[#2E2E2E] uppercase tracking-wider mb-4 border-b pb-2">Allocation Info</h3>
                              <dl className="space-y-2 text-sm">
                                 <div className="grid grid-cols-3">
                                     <dt className="text-muted-foreground">File:</dt>
@@ -524,7 +604,11 @@ export default function AllocationHistory() {
                                 </div>
                                 <div className="grid grid-cols-3">
                                     <dt className="text-muted-foreground">Reference:</dt>
-                                    <dd className="col-span-2"><span className="inline-flex items-center text-[11px] font-medium tracking-wide text-[var(--pos-accent-dark)] bg-[var(--pos-accent-tint)] px-2.5 py-0.5 rounded-full">{selectedTx.paymentReference}</span></dd>
+                                    <dd className="col-span-2"><span className="inline-flex items-center text-[11px] font-medium tracking-wide text-[var(--pos-accent-dark)] bg-[var(--pos-accent-tint)] px-2.5 py-0.5 rounded-full max-w-full truncate">{selectedTx.paymentReference && selectedTx.paymentReference !== '0' ? selectedTx.paymentReference : '-'}</span></dd>
+                                </div>
+                                <div className="grid grid-cols-3">
+                                    <dt className="text-muted-foreground">Payment Type:</dt>
+                                    <dd className="col-span-2 font-medium">{getPaymentTypeName(selectedTx.paymentTypeID)}</dd>
                                 </div>
                                 <div className="grid grid-cols-3">
                                     <dt className="text-muted-foreground">File Date:</dt>
@@ -547,7 +631,7 @@ export default function AllocationHistory() {
                              </dl>
                         </div>
                         <div>
-                             <h3 className="font-bold text-sm text-slate-900 uppercase tracking-wider mb-4 border-b pb-2">Status & Amount</h3>
+                             <h3 className="font-bold text-sm text-[#2E2E2E] uppercase tracking-wider mb-4 border-b pb-2">Status & Amount</h3>
                              <dl className="space-y-2 text-sm">
                                 <div className="grid grid-cols-3">
                                     <dt className="text-muted-foreground">Status:</dt>
@@ -584,11 +668,49 @@ export default function AllocationHistory() {
                                     </div>
                                 )}
                                 <div className="grid grid-cols-3 mt-4 pt-2 border-t">
-                                    <dt className="font-bold text-slate-900">Total Amount:</dt>
-                                    <dd className="col-span-2 font-bold text-slate-900">R {selectedTx.allocatedAmount.toFixed(2)}</dd>
+                                    <dt className="font-bold text-[#2E2E2E]">Total Amount:</dt>
+                                    <dd className="col-span-2 font-bold text-[#2E2E2E]">R {selectedTx.allocatedAmount.toFixed(2)}</dd>
                                 </div>
                              </dl>
                         </div>
+                    </div>
+
+                    <div className="border-t pt-4">
+                        <h3 className="font-bold text-sm text-[#2E2E2E] uppercase tracking-wider mb-3">Allocated Account(s)</h3>
+                        {detailsLoading ? (
+                            <div className="flex items-center gap-2 py-4 text-muted-foreground text-sm">
+                                <Loader2 className="w-4 h-4 animate-spin" /> Loading account details...
+                            </div>
+                        ) : jobAccountDetails && jobAccountDetails.length > 0 ? (
+                            <div className="border border-[#D6D6D6] rounded-lg overflow-hidden">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="bg-[#F7F7F7]">
+                                            <TableHead className="text-xs">Account No</TableHead>
+                                            <TableHead className="text-xs">Name</TableHead>
+                                            <TableHead className="text-xs text-right">Amount</TableHead>
+                                            <TableHead className="text-xs text-center">Status</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {jobAccountDetails.map((acc: any, idx: number) => (
+                                            <TableRow key={idx}>
+                                                <TableCell className="font-mono text-xs">{acc.accountNo || acc.accountNumber || acc.account_No || acc.accountId || '-'}</TableCell>
+                                                <TableCell className="text-xs">{acc.name || acc.accountName || acc.surname || acc.description || '-'}</TableCell>
+                                                <TableCell className="text-right font-mono text-xs">R {Number(acc.amount ?? acc.allocatedAmount ?? 0).toFixed(2)}</TableCell>
+                                                <TableCell className="text-center">
+                                                    <Badge className={`shadow-none border text-[10px] ${acc.status === 'Error' || acc.errorMessage ? 'bg-red-100 text-red-700 border-red-200' : 'bg-green-100 text-green-700 border-green-200'}`}>
+                                                        {acc.status || (acc.errorMessage ? 'Error' : 'OK')}
+                                                    </Badge>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        ) : (
+                            <p className="text-xs text-muted-foreground py-2">No account allocation details available for this job.</p>
+                        )}
                     </div>
 
                     <div className="border-t pt-4 text-xs text-center text-muted-foreground mt-4">

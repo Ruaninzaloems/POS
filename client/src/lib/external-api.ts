@@ -2634,6 +2634,18 @@ export async function fetchBulkProgressDirectDeposit(jobId: number): Promise<any
     return res.json();
 }
 
+export async function fetchDirectDepositJobDetails(jobId: number): Promise<any> {
+    const res = await apiFetch(`/api/platinum/direct-deposit-errors/job-details/${jobId}`);
+    if (!res.ok) return null;
+    return res.json();
+}
+
+export async function fetchDirectDepositJobAccountDetails(jobId: number): Promise<any> {
+    const res = await apiFetch(`/api/platinum/direct-deposit-errors/account-details/${jobId}`);
+    if (!res.ok) return null;
+    return res.json();
+}
+
 export async function retryBulkAllocationJob(jobId: number, userId: number): Promise<any> {
     const res = await apiFetch(`/api/platinum/direct-deposit-errors/retry/${jobId}/${userId}`, {
         method: 'POST',
