@@ -7,100 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { platinumPrintReceiptRaw } from '@/lib/external-api';
-import { openReceiptPrintWindow, type ReceiptPrintData } from '@/lib/receipt-print';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-
-function buildFallbackReceiptData(txn: any, sessionDetails?: any): ReceiptPrintData {
-  const rd = txn.receiptDetail || {};
-  const sr = txn.splitReceipts?.[0];
-  const srDetail = sr?.receiptDetail || {};
-  const allocs = txn.allocations || sr?.allocations || [];
-
-  const isMisc = srDetail.paymentOption === 'Miscellaneous Payment' ||
-    (txn.items && txn.items.length > 0 && txn.items.every((i: any) => i.type === 'DIRECT_INCOME'));
-
-  let services: { description: string; amount: number }[] | undefined;
-  let totalAmount = txn.totalAmount || 0;
-  let tenderAmount = 0;
-  let changeAmount = 0;
-  let vatAmount = 0;
-  let paymentOption = '';
-  let accountName = '';
-
-  if (isMisc) {
-    const miscServices: { description: string; amount: number }[] = [];
-
-    if (txn.splitReceipts && txn.splitReceipts.length > 0) {
-      for (const split of txn.splitReceipts) {
-        const detail = split.receiptDetail;
-        if (detail?.lineItems && Array.isArray(detail.lineItems)) {
-          for (const li of detail.lineItems) {
-            miscServices.push({
-              description: li.description || detail.miscDescription || 'Direct Income',
-              amount: li.amount ?? 0,
-            });
-            vatAmount += li.vatAmount ?? 0;
-          }
-        } else if (detail?.miscDescription) {
-          const itemAmt = split.amount || detail.tenderAmount || 0;
-          miscServices.push({ description: detail.miscDescription, amount: itemAmt });
-        }
-        tenderAmount += detail?.tenderAmount ?? split.amount ?? 0;
-        changeAmount += detail?.changeAmount ?? 0;
-      }
-    }
-
-    if (miscServices.length === 0 && txn.items) {
-      for (const item of txn.items) {
-        if (item.type === 'DIRECT_INCOME' && item.amountToPay > 0) {
-          const vr = item.originalData?.vatRate || 15;
-          const isVatable = vr > 0;
-          const amtExVat = isVatable ? item.amountToPay / (1 + vr / 100) : item.amountToPay;
-          const vat = isVatable ? item.amountToPay - amtExVat : 0;
-          miscServices.push({ description: item.description || 'Direct Income', amount: Math.round(amtExVat * 100) / 100 });
-          vatAmount += Math.round(vat * 100) / 100;
-        }
-      }
-    }
-
-    services = miscServices.length > 0 ? miscServices : undefined;
-    if (!totalAmount && miscServices.length > 0) {
-      totalAmount = miscServices.reduce((s, svc) => s + svc.amount, 0) + vatAmount;
-    }
-    if (!tenderAmount) tenderAmount = totalAmount;
-    paymentOption = 'Misc Payment';
-    accountName = srDetail.accName || (txn.items?.[0]?.paidBy) || 'Walk-in';
-  } else {
-    services = allocs.length > 0
-      ? allocs.map((a: any) => ({ description: a.service || a.description || '', amount: a.amount ?? a.total ?? 0 }))
-      : undefined;
-    tenderAmount = rd.tenderAmount || txn.totalAmount || sr?.amount || 0;
-    changeAmount = rd.changeAmount || 0;
-    paymentOption = rd.paymentOption || srDetail.paymentOption || 'Consumer Services';
-    accountName = rd.accName || srDetail.accName || sr?.accountName || txn.description || '';
-  }
-
-  return {
-    receiptNo: txn.receiptNumber || rd.receiptNo || sr?.receiptNumber || srDetail.receiptNo || '',
-    receiptDate: rd.receiptDate || srDetail.receiptDate || rd.paymentDate || new Date().toISOString(),
-    accountNumber: rd.accountId || srDetail.accountId || sr?.accountId || '',
-    oldAccountCode: rd.oldAccountCode || '',
-    accountName,
-    sgNumber: rd.sgNumber || '',
-    address: rd.accAddress || '',
-    totalAmount: totalAmount || tenderAmount,
-    tenderAmount,
-    changeAmount,
-    outstandingBalance: rd.outstandingAmount ?? 0,
-    vatAmount: vatAmount || undefined,
-    paymentType: rd.paymentType || srDetail.paymentType || (sr?.paymentType === 'card' ? 'Credit Card' : 'Cash'),
-    paymentOption,
-    cashierName: rd.cashierName || srDetail.cashierName || '',
-    cashOffice: rd.cashOffice || srDetail.cashOffice || sessionDetails?.officeDesc || '',
-    services,
-  };
-}
 
 export function ReceiptModal() {
   const { isReceiptModalOpen, closeReceiptModal, payment, transactionItems, recentTransactions, transactionProcessing, processingStep, currentTransactionId, processingRecord, sessionDetails } = usePos();
@@ -194,20 +102,8 @@ export function ReceiptModal() {
       const res = await platinumPrintReceiptRaw(receiptIds, receiptNos.length > 0 ? receiptNos : undefined);
       if (!res.ok) {
         let detail = '';
-        let isWrongReceipt = false;
-        try { const errJson = await res.json(); detail = errJson.detail || errJson.message || ''; isWrongReceipt = !!errJson.wrongReceipt; } catch { detail = `HTTP ${res.status}`; }
-        console.error('[ReceiptModal] print-receipt API failed:', res.status, detail, isWrongReceipt ? '(wrong receipt detected)' : '');
-        console.log('[ReceiptModal] Attempting local receipt generation as fallback...');
-        const fallbackData = buildFallbackReceiptData(currentTransaction, sessionDetails);
-        if (fallbackData.receiptNo) {
-          openReceiptPrintWindow(fallbackData, false);
-          const toastMsg = isWrongReceipt
-            ? 'The billing system returned a receipt for a different transaction — a correct receipt was generated from your transaction data.'
-            : 'The billing system PDF was unavailable — a receipt was generated from your transaction data.';
-          toast({ title: 'Receipt Generated Locally', description: toastMsg });
-          closeReceiptModal();
-          return;
-        }
+        try { const errJson = await res.json(); detail = errJson.detail || errJson.message || ''; } catch { detail = `HTTP ${res.status}`; }
+        console.error('[ReceiptModal] print-receipt API failed:', res.status, detail);
         const errMsg = `Receipt print failed — the billing system returned an error: ${detail || `HTTP ${res.status}`}. You can reprint from View Receipts.`;
         setPrintError(errMsg);
         toast({ title: 'Print Failed', description: errMsg, variant: 'destructive' });
@@ -217,14 +113,6 @@ export function ReceiptModal() {
       const blob = await res.blob();
       if (blob.size < 100) {
         console.error('[ReceiptModal] print-receipt returned tiny response:', blob.size, 'bytes');
-        console.log('[ReceiptModal] Attempting local receipt generation as fallback...');
-        const fallbackData = buildFallbackReceiptData(currentTransaction, sessionDetails);
-        if (fallbackData.receiptNo) {
-          openReceiptPrintWindow(fallbackData, false);
-          toast({ title: 'Receipt Generated Locally', description: 'The billing system returned an empty PDF — a receipt was generated from your transaction data.' });
-          closeReceiptModal();
-          return;
-        }
         const errMsg = 'Receipt print failed — the billing system returned an empty PDF. You can reprint from View Receipts.';
         setPrintError(errMsg);
         toast({ title: 'Print Failed', description: errMsg, variant: 'destructive' });
@@ -241,14 +129,6 @@ export function ReceiptModal() {
       closeReceiptModal();
     } catch (err: any) {
       console.error('[ReceiptModal] PDF print error:', err);
-      console.log('[ReceiptModal] Attempting local receipt generation as fallback...');
-      const fallbackData = buildFallbackReceiptData(currentTransaction, sessionDetails);
-      if (fallbackData.receiptNo) {
-        openReceiptPrintWindow(fallbackData, false);
-        toast({ title: 'Receipt Generated Locally', description: 'The billing system PDF was unavailable — a receipt was generated from your transaction data.' });
-        closeReceiptModal();
-        return;
-      }
       const errMsg = `Receipt print failed: ${err.message || 'Unknown error'}. You can reprint from View Receipts.`;
       setPrintError(errMsg);
       toast({ title: 'Print Failed', description: errMsg, variant: 'destructive' });
@@ -403,7 +283,8 @@ export function ReceiptModal() {
               const consumerItems = items.filter((i: TransactionItem) => i.type === 'CONSUMER_SERVICES' || i.type === 'MULTI_ACCOUNT' || i.type === 'ACCOUNT_GROUP');
               const clearanceItems = items.filter((i: TransactionItem) => i.type === 'CLEARANCE');
               const directIncomeItems = items.filter((i: TransactionItem) => i.type === 'DIRECT_INCOME');
-              const hasSingleAccount = consumerItems.length === 1 && clearanceItems.length === 0 && directIncomeItems.length === 0;
+              const prepaidItems = items.filter((i: TransactionItem) => i.type === 'PREPAID');
+              const hasSingleAccount = consumerItems.length === 1 && clearanceItems.length === 0 && directIncomeItems.length === 0 && prepaidItems.length === 0;
               const hasMultipleAccounts = consumerItems.length > 1;
 
               return (
@@ -515,6 +396,55 @@ export function ReceiptModal() {
                           </div>
                         );
                       })}
+                    </div>
+                  )}
+                  {prepaidItems.length > 0 && (
+                    <div className="bg-amber-50 rounded-lg p-3 space-y-2">
+                      <p className="text-xs font-semibold text-amber-700">{prepaidItems.length} prepaid recharge{prepaidItems.length > 1 ? 's' : ''}</p>
+                      {prepaidItems.map((item: TransactionItem, idx: number) => {
+                        const isWater = item.originalData?.prepaidType === 'Water';
+                        return (
+                          <div key={idx} className="space-y-1 border-b border-amber-200 pb-2 last:border-0 last:pb-0">
+                            <div className="flex justify-between text-xs">
+                              <span className="font-medium text-amber-800">{isWater ? 'Water' : 'Electricity'} Prepaid</span>
+                              <span className="font-mono font-bold">R {item.amountToPay.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                              <span className="text-muted-foreground">Meter</span>
+                              <span className="font-mono font-medium">{item.reference}</span>
+                            </div>
+                            {(item.originalData?.name || item.description) && (
+                              <div className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">Customer</span>
+                                <span className="font-medium truncate ml-4 text-right">{item.originalData?.name || item.description}</span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {currentTransaction.vendingData && (() => {
+                        const vd = currentTransaction.vendingData;
+                        const isPerMeter = typeof vd === 'object' && !Array.isArray(vd);
+                        return (
+                          <div className="bg-amber-100 rounded-md p-2 mt-1 space-y-1">
+                            <p className="text-[10px] uppercase tracking-wider font-semibold text-amber-600 mb-1">Token / Vending Data</p>
+                            {isPerMeter ? (
+                              Object.entries(vd).map(([meter, token]: [string, any]) => (
+                                <div key={meter} className="space-y-0.5">
+                                  <p className="text-[10px] text-amber-600">Meter: {meter}</p>
+                                  <p className="text-xs font-mono font-bold text-amber-900 break-all" data-testid={`text-vending-token-${meter}`}>
+                                    {typeof token === 'string' ? token : JSON.stringify(token)}
+                                  </p>
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-xs font-mono font-bold text-amber-900 break-all" data-testid="text-vending-token">
+                                {typeof vd === 'string' ? vd : JSON.stringify(vd)}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
                 </div>

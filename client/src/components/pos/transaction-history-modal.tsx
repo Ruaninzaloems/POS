@@ -9,8 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AlertCircle, AlertTriangle, Ban, Receipt, CheckCircle2, Clock, Printer, Search, X, FileWarning, Info, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { fetchPosMultiReceiptPrint } from '@/lib/external-api';
-import { openReceiptFromMultiPrint } from '@/lib/receipt-print';
+import { platinumPrintReceiptRaw } from '@/lib/external-api';
 
 interface TransactionHistoryModalProps {
   isOpen: boolean;
@@ -71,32 +70,55 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
     if (!receiptId) return;
     setPrintingReceiptId(receiptId);
     try {
-      let numericId = '';
-      if (tx.splitReceipts && tx.splitReceipts.length > 0 && tx.splitReceipts[0].receiptId) {
-        numericId = String(tx.splitReceipts[0].receiptId);
-      } else if (tx.receiptNumber && tx.receiptNumber.includes('/')) {
-        numericId = tx.receiptNumber.split('/').pop() || '';
-      } else if (tx.id && tx.id.startsWith('plt-')) {
-        numericId = tx.id.replace('plt-', '');
-      } else if (tx.receiptDetail?.receiptId) {
-        numericId = String(tx.receiptDetail.receiptId);
-      } else {
-        numericId = String(receiptId);
-      }
-      const multiData = await fetchPosMultiReceiptPrint(numericId, 3, tx.receiptNumber || undefined);
-      const items = Array.isArray(multiData) ? multiData : [];
-      if (items.length > 0) {
-        const win = await openReceiptFromMultiPrint(items, true);
-        if (!win) {
-          toast({ title: "Popup Blocked", description: "Please allow popups for this site to print receipts.", variant: "destructive" });
-        } else {
-          toast({ title: "Receipt Ready", description: `Receipt ${items[0]?.receiptNo || receiptId} opened for reprinting.` });
+      const receiptIds: number[] = [];
+      const receiptNos: string[] = [];
+      if (tx.splitReceipts && tx.splitReceipts.length > 0) {
+        for (const sr of tx.splitReceipts) {
+          if (sr.receiptId) receiptIds.push(sr.receiptId);
+          if (sr.receiptNumber) receiptNos.push(sr.receiptNumber);
         }
+      }
+      if (receiptIds.length === 0) {
+        let numericId = 0;
+        if (tx.receiptDetail?.receiptId) {
+          numericId = Number(tx.receiptDetail.receiptId);
+        } else if (tx.id && tx.id.startsWith('plt-')) {
+          numericId = Number(tx.id.replace('plt-', ''));
+        } else {
+          numericId = Number(receiptId) || 0;
+        }
+        if (numericId > 0) receiptIds.push(numericId);
+      }
+      if (receiptNos.length === 0 && tx.receiptNumber) {
+        receiptNos.push(tx.receiptNumber);
+      }
+      if (receiptIds.length === 0) {
+        toast({ title: "Print Failed", description: "No receipt ID available for reprinting.", variant: "destructive" });
         return;
       }
-      toast({ title: "Print Failed", description: "The API returned no receipt data for this transaction. Please try again or contact support.", variant: "destructive" });
-    } catch {
-      toast({ title: "Print Failed", description: "Could not retrieve receipt data from the API.", variant: "destructive" });
+      const res = await platinumPrintReceiptRaw(receiptIds, receiptNos.length > 0 ? receiptNos : undefined, true);
+      if (!res.ok) {
+        let detail = '';
+        try { const errJson = await res.json(); detail = errJson.detail || errJson.message || ''; } catch { detail = `HTTP ${res.status}`; }
+        toast({ title: "Print Failed", description: `The billing system returned an error: ${detail || `HTTP ${res.status}`}`, variant: "destructive" });
+        return;
+      }
+      const blob = await res.blob();
+      if (blob.size < 100) {
+        toast({ title: "Print Failed", description: "The billing system returned an empty PDF.", variant: "destructive" });
+        return;
+      }
+      const pdfUrl = URL.createObjectURL(blob);
+      const pdfTab = window.open(pdfUrl, '_blank');
+      if (!pdfTab) {
+        const link = document.createElement('a');
+        link.href = pdfUrl;
+        link.download = `Receipt_${tx.receiptNumber || receiptId}.pdf`;
+        link.click();
+      }
+      toast({ title: "Receipt Ready", description: `Receipt ${tx.receiptNumber || receiptId} opened for reprinting.` });
+    } catch (err: any) {
+      toast({ title: "Print Failed", description: `Could not retrieve receipt PDF: ${err.message || 'Unknown error'}`, variant: "destructive" });
     } finally {
       setPrintingReceiptId(null);
     }

@@ -87,6 +87,7 @@ export interface TransactionRecord {
   splitReceipts?: SplitReceipt[];
   receiptDetail?: any;
   splitCardFailReason?: string;
+  vendingData?: any;
 }
 
 export interface DayEndReport {
@@ -2473,17 +2474,120 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
         }
     }
 
+    // --- Shared prepaid submission helper ---
+    const submitOnePrepaid = async (item: typeof electricityPrepaidItems[0], priorityLabel: string, prepaidType: 'Electricity' | 'Water') => {
+        const account = item.originalData || {};
+        const meterNumber = item.reference || account.prepaidMeterNo || '';
+        const accountId = account.apiId || account.account_ID || 0;
+
+        if (!meterNumber) {
+            toast({ title: `Prepaid ${prepaidType} Failed`, description: `No meter number found for this recharge.`, variant: "destructive" });
+            return;
+        }
+        if (!accountId) {
+            toast({ title: `Prepaid ${prepaidType} Failed`, description: `No account ID found for meter ${meterNumber}.`, variant: "destructive" });
+            return;
+        }
+
+        setProcessingStep(`Processing ${prepaidType.toLowerCase()} prepaid recharge for meter ${meterNumber}...`);
+
+        const itemAmount = item.amountToPay;
+        let paymentTypeId: number;
+        let itemTender: number;
+        let itemChange: number;
+
+        if (isSplitPayment) {
+            const cashPortion = r2((itemAmount / grandTotal) * record.payment.cash);
+            const cardPortion = r2(itemAmount - cashPortion);
+            paymentTypeId = cashPortion >= cardPortion ? 1 : 3;
+            itemTender = itemAmount;
+            itemChange = 0;
+        } else if (record.payment.cash > 0) {
+            paymentTypeId = 1;
+            itemTender = itemAmount;
+            itemChange = 0;
+        } else {
+            paymentTypeId = 3;
+            itemTender = itemAmount;
+            itemChange = 0;
+        }
+
+        const prepaidPayload = {
+            userId: sessionUserId,
+            cashierId: sessionCashierId,
+            cashOfficeId: sessionOfficeId,
+            accountId,
+            accountNumber: account.accountNo || account.accountNumber || '',
+            meterNumber,
+            amount: itemAmount,
+            tenderAmount: itemTender,
+            changeAmount: itemChange,
+            paymentTypeId,
+            receiptDate: formattedReceiptDate,
+            finYear,
+            prepaidType,
+            cardNo: paymentTypeId === 3 ? (record.payment.cardReference || null) : null,
+            cardExpiryDate: paymentTypeId === 3 ? formatCardExpiry(record.payment.cardExpiry) : null,
+        };
+        console.log(`[${priorityLabel}] ${prepaidType} prepaid payload for meter ${meterNumber}:`, JSON.stringify(prepaidPayload));
+        try {
+            const prepaidResult = await submitPrepaidPayment(prepaidPayload);
+            console.log(`[${priorityLabel}] ${prepaidType} prepaid response:`, JSON.stringify(prepaidResult)?.substring(0, 500));
+
+            const prepaidReceiptIds = extractReceiptIds(prepaidResult);
+            if (prepaidReceiptIds.length > 0) {
+                let receiptNo = `REC-${prepaidReceiptIds[0]}`;
+                try {
+                    const receiptData = await fetchPosMultiReceiptPrint(String(prepaidReceiptIds[0]), 2);
+                    if (receiptData && receiptData.length > 0 && receiptData[0].receiptNo) {
+                        receiptNo = receiptData[0].receiptNo;
+                    }
+                } catch (e) {
+                    console.warn(`[${priorityLabel}] Could not fetch receipt number for prepaid ${meterNumber}`, e);
+                    const lookedUpNo = await lookupReceiptNoById(prepaidReceiptIds[0]);
+                    if (lookedUpNo) receiptNo = lookedUpNo;
+                }
+
+                if (!finalReceiptNumber) {
+                    finalReceiptNumber = receiptNo;
+                    updateRecordReceiptNumber(record, finalReceiptNumber);
+                }
+
+                const splitEntry: SplitReceipt = {
+                    receiptNumber: receiptNo,
+                    receiptId: prepaidReceiptIds[0],
+                    paymentType: paymentTypeId === 1 ? 'cash' : 'card',
+                    amount: itemAmount,
+                };
+                record.splitReceipts!.push(splitEntry);
+
+                const vendingToken = prepaidResult?.vendingData || prepaidResult?.token;
+                if (vendingToken) {
+                    if (!record.vendingData) record.vendingData = {};
+                    record.vendingData[meterNumber] = vendingToken;
+                    console.log(`[${priorityLabel}] Vending/token data received for meter ${meterNumber}`);
+                }
+            } else {
+                console.warn(`[${priorityLabel}] No receipt IDs returned for ${prepaidType.toLowerCase()} prepaid ${meterNumber}`);
+            }
+        } catch (e: any) {
+            const errMsg = e?.message || `Unknown error during prepaid ${prepaidType.toLowerCase()} submission`;
+            console.error(`[${priorityLabel}] Failed to submit ${prepaidType.toLowerCase()} prepaid for ${meterNumber}: ${errMsg}`, e);
+            toast({ title: `Prepaid ${prepaidType} Failed`, description: errMsg, variant: "destructive" });
+        }
+    };
+
     // --- PRIORITY 3: Electricity Prepaid Recharge ---
     if (electricityPrepaidItems.length > 0) {
         for (const item of electricityPrepaidItems) {
-            console.log(`[Priority 3] Electricity prepaid recharge for ${item.reference}, amount: R${item.amountToPay}`);
+            await submitOnePrepaid(item, 'Priority 3', 'Electricity');
         }
     }
 
     // --- PRIORITY 4: Water Prepaid Recharge ---
     if (waterPrepaidItems.length > 0) {
         for (const item of waterPrepaidItems) {
-            console.log(`[Priority 4] Water prepaid recharge for ${item.reference}, amount: R${item.amountToPay}`);
+            await submitOnePrepaid(item, 'Priority 4', 'Water');
         }
     }
 
