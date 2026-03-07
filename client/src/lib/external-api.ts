@@ -1592,6 +1592,22 @@ export async function platinumSubmitDirectDepositAllocation(data: any): Promise<
     });
 }
 
+export async function createDDVirtualSession(financialYear?: string): Promise<{ success: boolean; virtualCashierId?: number; officeId?: number; message?: string }> {
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/create-virtual-session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ financialYear }),
+    });
+}
+
+export async function closeDDVirtualSession(): Promise<{ success: boolean; message?: string }> {
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/close-virtual-session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+    });
+}
+
 // --- Generic Import (Direct Deposit Allocation) ---
 
 export async function submitGenericImport(data: {

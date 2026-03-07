@@ -3624,6 +3624,106 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/platinum/direct-deposit-allocation/create-virtual-session", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const serverUserId = session.userData?.user_ID;
+      const finYear = req.body.financialYear || session.userData?.finYear || '2025/2026';
+
+      let officeId = req.body.officeId || null;
+      if (!officeId) {
+        try {
+          const vcData = await platinumGet(session, "/api/ReceiptPrepaid/validate-cashier", {
+            userId: String(serverUserId),
+            finYear,
+          });
+          if (vcData && !vcData._error) {
+            officeId = vcData.cashOffice?.cashOffice_ID || vcData.cashier?.officeId || null;
+          }
+        } catch (e: any) {
+          console.warn(`[DD Virtual] validate-cashier failed when resolving officeId:`, e.message);
+        }
+      }
+
+      if (!officeId) {
+        console.error(`[DD Virtual] Cannot determine officeId for virtual cashier`);
+        return res.status(400).json({ success: false, message: "Cannot determine cash office. Please ensure you have an active cashier session." });
+      }
+
+      console.log(`[DD Virtual] Creating virtual cashier session — userId=${serverUserId}, officeId=${officeId}`);
+      const setupPayload = {
+        id: 0,
+        user_Id: serverUserId,
+        cashFloat: 0,
+        stpPort: null,
+        plesseyPort: null,
+        officeId,
+        isVirtual: true,
+      };
+      const setupResult = await platinumPost(session, "/api/ReceiptPrepaid/submit-cashier-setup", setupPayload);
+      console.log(`[DD Virtual] submit-cashier-setup response:`, JSON.stringify(setupResult));
+
+      if (setupResult?._error) {
+        console.error(`[DD Virtual] Failed to create virtual session:`, setupResult._error);
+        return res.status(400).json({ success: false, message: "Failed to create virtual cashier session", detail: setupResult.detail || setupResult._error });
+      }
+
+      const virtualCashierId = setupResult?.cashier?.id || setupResult?.id || null;
+      if (!virtualCashierId) {
+        console.error(`[DD Virtual] No cashier ID returned from setup`);
+        return res.status(400).json({ success: false, message: "Virtual cashier created but no ID was returned" });
+      }
+
+      (session as any).ddVirtualCashierId = virtualCashierId;
+      (session as any).ddVirtualOfficeId = officeId;
+      console.log(`[DD Virtual] Virtual cashier created — cashierId=${virtualCashierId}, officeId=${officeId}, stored in session`);
+
+      res.json({ success: true, virtualCashierId, officeId });
+    } catch (e: any) {
+      console.error(`[DD Virtual] EXCEPTION:`, e.message);
+      res.status(502).json({ success: false, message: "Failed to create virtual cashier session", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/direct-deposit-allocation/close-virtual-session", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const virtualCashierId = (session as any).ddVirtualCashierId;
+      const virtualOfficeId = (session as any).ddVirtualOfficeId;
+
+      if (!virtualCashierId) {
+        console.log(`[DD Virtual Close] No active virtual session to close`);
+        return res.json({ success: true, message: "No active virtual session" });
+      }
+
+      console.log(`[DD Virtual Close] Closing virtual cashier session — cashierId=${virtualCashierId}, officeId=${virtualOfficeId}`);
+      const closePayload = {
+        id: virtualCashierId,
+        user_Id: session.userData?.user_ID,
+        officeId: virtualOfficeId,
+        isVirtual: true,
+        isActive: false,
+      };
+      const closeResult = await platinumPost(session, "/api/ReceiptPrepaid/submit-cashier-setup", closePayload);
+      console.log(`[DD Virtual Close] Response:`, JSON.stringify(closeResult));
+
+      (session as any).ddVirtualCashierId = null;
+      (session as any).ddVirtualOfficeId = null;
+
+      if (closeResult?._error) {
+        console.warn(`[DD Virtual Close] API returned error (session cleared anyway):`, closeResult._error);
+        return res.json({ success: true, message: "Virtual session cleared from server (API close may have failed)", detail: closeResult._error });
+      }
+
+      res.json({ success: true, message: "Virtual cashier session closed" });
+    } catch (e: any) {
+      (session as any).ddVirtualCashierId = null;
+      (session as any).ddVirtualOfficeId = null;
+      console.error(`[DD Virtual Close] EXCEPTION (session cleared anyway):`, e.message);
+      res.json({ success: true, message: "Virtual session cleared from server (API close failed)", detail: e.message });
+    }
+  });
+
   app.post("/api/platinum/direct-deposit-allocation/submit-details-data", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
@@ -3631,25 +3731,35 @@ export async function registerRoutes(
       const serverUserId = session.userData?.user_ID;
       payload.userId = serverUserId;
 
-      const finYear = payload.financialYear || session.userData?.finYear || '2025/2026';
-      try {
-        const vcData = await platinumGet(session, "/api/ReceiptPrepaid/validate-cashier", {
-          userId: String(serverUserId),
-          finYear,
-        });
-        if (vcData && !vcData._error) {
-          const resolvedCashierId = vcData.cashier?.id || vcData.cashier?.user_Id || null;
-          const resolvedOfficeId = vcData.cashOffice?.cashOffice_ID || vcData.cashier?.officeId || null;
-          payload.cashierId = resolvedCashierId;
-          payload.cashOfficeId = resolvedOfficeId;
-          console.log(`[DD Submit] Server-resolved — userId=${payload.userId}, cashierId=${payload.cashierId}, cashOfficeId=${payload.cashOfficeId}`);
-        } else {
-          console.error(`[DD Submit] validate-cashier failed or returned error:`, vcData?._error || 'no data');
-          return res.status(400).json({ success: false, message: "Cannot resolve cashier session. Please ensure you have an active cashier session and try again.", detail: vcData?._error || 'validate-cashier returned no data' });
+      const virtualCashierId = (session as any).ddVirtualCashierId;
+      const virtualOfficeId = (session as any).ddVirtualOfficeId;
+
+      if (virtualCashierId) {
+        payload.cashierId = virtualCashierId;
+        payload.cashOfficeId = virtualOfficeId;
+        payload.isVirtual = true;
+        console.log(`[DD Submit] Using virtual cashier — userId=${payload.userId}, cashierId=${payload.cashierId}, cashOfficeId=${payload.cashOfficeId}, isVirtual=true`);
+      } else {
+        const finYear = payload.financialYear || session.userData?.finYear || '2025/2026';
+        try {
+          const vcData = await platinumGet(session, "/api/ReceiptPrepaid/validate-cashier", {
+            userId: String(serverUserId),
+            finYear,
+          });
+          if (vcData && !vcData._error) {
+            const resolvedCashierId = vcData.cashier?.id || vcData.cashier?.user_Id || null;
+            const resolvedOfficeId = vcData.cashOffice?.cashOffice_ID || vcData.cashier?.officeId || null;
+            payload.cashierId = resolvedCashierId;
+            payload.cashOfficeId = resolvedOfficeId;
+            console.log(`[DD Submit] Server-resolved (real cashier) — userId=${payload.userId}, cashierId=${payload.cashierId}, cashOfficeId=${payload.cashOfficeId}`);
+          } else {
+            console.error(`[DD Submit] validate-cashier failed or returned error:`, vcData?._error || 'no data');
+            return res.status(400).json({ success: false, message: "Cannot resolve cashier session. Please ensure you have an active cashier session and try again.", detail: vcData?._error || 'validate-cashier returned no data' });
+          }
+        } catch (vcErr: any) {
+          console.error(`[DD Submit] validate-cashier call failed:`, vcErr.message);
+          return res.status(400).json({ success: false, message: "Cannot resolve cashier session. Please ensure you have an active cashier session and try again.", detail: vcErr.message });
         }
-      } catch (vcErr: any) {
-        console.error(`[DD Submit] validate-cashier call failed:`, vcErr.message);
-        return res.status(400).json({ success: false, message: "Cannot resolve cashier session. Please ensure you have an active cashier session and try again.", detail: vcErr.message });
       }
 
       if (!payload.cashierId) {

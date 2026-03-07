@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { ArrowLeft, Plus, Trash2, CheckCircle, AlertCircle, Upload, X, Loader2, Search, Banknote, Building2, FileCheck, Receipt, CreditCard, RotateCcw, FileSpreadsheet, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Download, Eye, Zap, Landmark } from 'lucide-react';
-import { AllocationLine, Account, ClearanceCostSchedule, platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, platinumLoadDetailsPaymentGrouping, platinumLoadDetailsPaymentGroupingInstitutionData, platinumLoadDetailsConsumerServices, platinumLoadConfirmPaymentDetails, platinumLoadDetailsClearance, platinumGetClearanceDetailsInfo, platinumGetConsumerDetailsData, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, platinumDDClearanceAutocomplete, platinumSearchClearanceIds, platinumGetClearanceData, platinumGetGroupPaymentDetails, fetchMiscPaymentGroups, rebuildFullAccount, platinumSearchAccountsPayment, fetchActiveFinYear, fetchPlatinumUserInfo, searchInstitutions, fetchAccountsByGroup } from '@/lib/external-api';
+import { AllocationLine, Account, ClearanceCostSchedule, platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, createDDVirtualSession, closeDDVirtualSession, platinumLoadDetailsPaymentGrouping, platinumLoadDetailsPaymentGroupingInstitutionData, platinumLoadDetailsConsumerServices, platinumLoadConfirmPaymentDetails, platinumLoadDetailsClearance, platinumGetClearanceDetailsInfo, platinumGetConsumerDetailsData, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, platinumDDClearanceAutocomplete, platinumSearchClearanceIds, platinumGetClearanceData, platinumGetGroupPaymentDetails, fetchMiscPaymentGroups, rebuildFullAccount, platinumSearchAccountsPayment, fetchActiveFinYear, fetchPlatinumUserInfo, searchInstitutions, fetchAccountsByGroup } from '@/lib/external-api';
 import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import { AccountEnquiryDialog } from '@/components/account-enquiry-dialog';
@@ -1121,7 +1121,29 @@ export default function AllocateTransaction() {
               setPostingStatus('');
               return;
           }
-          console.log(`[Direct Deposit] Allocating as userId=${allocatingUserId} (logged-in user), VirtualCashierUserId=${VIRTUAL_CASHIER_USER_ID} (not sent in payload)`);
+          updateProgress('Creating virtual cashier session...');
+          let virtualSessionCreated = false;
+          try {
+              const vsResult = await createDDVirtualSession(finYear);
+              if (vsResult.success && vsResult.virtualCashierId) {
+                  virtualSessionCreated = true;
+                  console.log(`[Direct Deposit] Virtual cashier session created — cashierId=${vsResult.virtualCashierId}, officeId=${vsResult.officeId}`);
+              } else {
+                  console.error('[Direct Deposit] Failed to create virtual cashier session:', vsResult.message);
+                  toast({ title: 'Virtual Session Error', description: vsResult.message || 'Failed to create virtual cashier session. Cannot proceed.', variant: 'destructive' });
+                  setPosting(false);
+                  setPostingStatus('');
+                  return;
+              }
+          } catch (vsErr: any) {
+              console.error('[Direct Deposit] Exception creating virtual session:', vsErr);
+              toast({ title: 'Virtual Session Error', description: vsErr?.message || 'Failed to create virtual cashier session. Cannot proceed.', variant: 'destructive' });
+              setPosting(false);
+              setPostingStatus('');
+              return;
+          }
+
+          console.log(`[Direct Deposit] Allocating as userId=${allocatingUserId} (logged-in user), virtualSession=${virtualSessionCreated}`);
 
           const now = new Date();
           const saFormatter = new Intl.DateTimeFormat('en-ZA', {
@@ -1337,6 +1359,9 @@ export default function AllocateTransaction() {
           }
 
           if (submittedCount === 0 && lineErrors.length > 0) {
+              if (virtualSessionCreated) {
+                  try { await closeDDVirtualSession(); console.log('[Direct Deposit] Virtual session closed after 0 submissions'); } catch (e) { console.warn('[Direct Deposit] Failed to close virtual session:', e); }
+              }
               toast({
                   title: 'Allocation Failed',
                   description: `No lines could be submitted. ${lineErrors[0]}`,
@@ -1387,9 +1412,15 @@ export default function AllocateTransaction() {
               });
           }
 
+          if (virtualSessionCreated) {
+              updateProgress('Closing virtual cashier session...');
+              try { await closeDDVirtualSession(); console.log('[Direct Deposit] Virtual session closed after successful batch'); } catch (e) { console.warn('[Direct Deposit] Failed to close virtual session:', e); }
+          }
+
           setPostComplete(true);
       } catch (e: any) {
           console.error("Failed to submit allocation", e);
+          try { await closeDDVirtualSession(); } catch (_) {}
           toast({
               title: 'Submission Error',
               description: e.message || 'An unexpected error occurred while posting the allocation.',
