@@ -3761,19 +3761,16 @@ export async function registerRoutes(
         return res.json({ results: [], duplicates: [] });
       }
 
-      if (payments.length > 500) {
-        return res.status(400).json({ message: "Too many rows", detail: `CSV contains ${payments.length} rows. Maximum is 500 per import. Please split the file into smaller batches.` });
-      }
-      const limited = payments;
-      console.log(`[Generic Import Validate] Validating ${limited.length} payment rows`);
+      console.log(`[Generic Import Validate] Validating ${payments.length} payment rows`);
 
-      const accountNumbers = [...new Set(limited.map((p: any) => {
+      const accountNumbers = [...new Set(payments.map((p: any) => {
         const d = String(p.accountNumber || '').replace(/\D/g, '');
         return d.length > 0 && d.length <= 12 ? d.padStart(12, '0') : '';
       }).filter(a => a.length === 12))];
       console.log(`[Generic Import Validate] ${accountNumbers.length} unique account numbers to validate`);
 
-      const accountMap: Record<string, { valid: boolean; name: string; address: string; accountId?: number }> = {};
+      const accountMap: Record<string, { status: 'matched' | 'not_found' | 'api_error'; name: string; address: string; accountId?: number }> = {};
+      let apiErrorCount = 0;
       const batchSize = 10;
       for (let i = 0; i < accountNumbers.length; i += batchSize) {
         const batch = accountNumbers.slice(i, i + batchSize);
@@ -3785,41 +3782,56 @@ export async function registerRoutes(
               if (data && !data._error && (data.name || data.ownerName || data.accountName)) {
                 return {
                   accNo,
-                  valid: true,
+                  status: 'matched' as const,
                   name: data.name || data.ownerName || data.accountName || '',
                   address: data.address || data.locationAddress || data.propertyAddress || '',
                   accountId: data.id || data.account_ID || data.accountId,
                 };
               }
-            } catch (e) {}
+              if (data && data._error && (data.status === 500 || data.status === 502 || data.status === 503)) {
+                return { accNo, status: 'api_error' as const, name: '', address: '' };
+              }
+            } catch (e) {
+              return { accNo, status: 'api_error' as const, name: '', address: '' };
+            }
             try {
               const searchData = await platinumGet(session, "/api/cons-accounts/search", { accountNumber: accNo });
+              if (searchData && searchData._error && (searchData.status === 500 || searchData.status === 502 || searchData.status === 503)) {
+                return { accNo, status: 'api_error' as const, name: '', address: '' };
+              }
               if (searchData && !searchData._error) {
                 const arr = Array.isArray(searchData) ? searchData : (searchData.value || [searchData]);
                 if (arr.length > 0 && arr[0]) {
                   const r = arr[0];
                   return {
                     accNo,
-                    valid: true,
+                    status: 'matched' as const,
                     name: r.name || r.ownerName || '',
                     address: r.address || r.locationAddress || '',
                     accountId: r.id || r.account_ID || r.accountId,
                   };
                 }
               }
-            } catch (e) {}
-            return { accNo, valid: false, name: '', address: '' };
+            } catch (e) {
+              return { accNo, status: 'api_error' as const, name: '', address: '' };
+            }
+            return { accNo, status: 'not_found' as const, name: '', address: '' };
           })
         );
         for (const result of batchResults) {
           if (result.status === 'fulfilled' && result.value) {
             accountMap[result.value.accNo] = result.value;
+            if (result.value.status === 'api_error') apiErrorCount++;
           }
         }
       }
 
+      if (apiErrorCount > 0) {
+        console.log(`[Generic Import Validate] ${apiErrorCount}/${accountNumbers.length} accounts returned API errors (500) — marking as unverified, still submittable`);
+      }
+
       const seenAccounts: Record<string, number[]> = {};
-      const results = limited.map((p: any, idx: number) => {
+      const results = payments.map((p: any, idx: number) => {
         const accNo = String(p.accountNumber || '');
         const accDigits = accNo.replace(/\D/g, '');
         const normalizedAccNo = accDigits.length > 0 ? accDigits.padStart(12, '0') : accNo;
@@ -3831,13 +3843,32 @@ export async function registerRoutes(
         if (!seenAccounts[normalizedAccNo]) seenAccounts[normalizedAccNo] = [];
         seenAccounts[normalizedAccNo].push(idx);
 
-        const issues: string[] = [];
-        if (accDigits.length === 0) issues.push('Empty account number');
-        else if (accDigits.length > 12) issues.push('Account number too long (max 12 digits)');
-        else if (!info || !info.valid) issues.push('Account not found in system');
-        if (!dateValid) issues.push(`Invalid date format: "${p.receiptDate}"`);
-        if (isNaN(amount) || amount <= 0) issues.push(`Invalid amount: ${p.amount}`);
-        if (ptId < 1 || ptId > 7) issues.push(`Invalid payment type: ${p.paymentTypeId}`);
+        const formatIssues: string[] = [];
+        if (accDigits.length === 0) formatIssues.push('Empty account number');
+        else if (accDigits.length > 12) formatIssues.push('Account number too long (max 12 digits)');
+        if (!dateValid) formatIssues.push(`Invalid date format: "${p.receiptDate}"`);
+        if (isNaN(amount) || amount <= 0) formatIssues.push(`Invalid amount: ${p.amount}`);
+        if (ptId < 1 || ptId > 7) formatIssues.push(`Invalid payment type: ${p.paymentTypeId}`);
+
+        const hasFormatErrors = formatIssues.length > 0;
+        const accountStatus = info?.status || 'not_found';
+        const isApiError = accountStatus === 'api_error';
+        const isNotFound = accountStatus === 'not_found' && !hasFormatErrors && accDigits.length > 0;
+
+        let validationStatus: 'valid' | 'unverified' | 'invalid';
+        let validationMsg = '';
+        if (hasFormatErrors) {
+          validationStatus = 'invalid';
+          validationMsg = formatIssues.join('; ');
+        } else if (accountStatus === 'matched') {
+          validationStatus = 'valid';
+        } else if (isApiError) {
+          validationStatus = 'unverified';
+          validationMsg = 'Account lookup API unavailable — will be validated on submission';
+        } else {
+          validationStatus = 'unverified';
+          validationMsg = 'Account not confirmed — will be validated by Platinum on submission';
+        }
 
         return {
           rowNum: p.rowNum || idx + 1,
@@ -3848,8 +3879,9 @@ export async function registerRoutes(
           ownerName: info?.name || '',
           address: info?.address || '',
           accountId: info?.accountId,
-          isValid: issues.length === 0,
-          validationMsg: issues.length > 0 ? issues.join('; ') : '',
+          isValid: validationStatus !== 'invalid',
+          validationStatus,
+          validationMsg,
           isDuplicate: false,
         };
       });
@@ -3866,12 +3898,14 @@ export async function registerRoutes(
         }
       }
 
-      const validCount = results.filter((r: any) => r.isValid).length;
-      const invalidCount = results.filter((r: any) => !r.isValid).length;
+      const validCount = results.filter((r: any) => r.validationStatus === 'valid').length;
+      const unverifiedCount = results.filter((r: any) => r.validationStatus === 'unverified').length;
+      const invalidCount = results.filter((r: any) => r.validationStatus === 'invalid').length;
+      const submittableCount = results.filter((r: any) => r.isValid).length;
       const totalAmount = results.filter((r: any) => r.isValid).reduce((s: number, r: any) => s + r.amount, 0);
-      console.log(`[Generic Import Validate] Results: ${validCount} valid, ${invalidCount} invalid, ${duplicateAccounts.length} duplicate accounts, total R${totalAmount.toFixed(2)}`);
+      console.log(`[Generic Import Validate] Results: ${validCount} matched, ${unverifiedCount} unverified, ${invalidCount} invalid, ${submittableCount} submittable, ${duplicateAccounts.length} duplicate accounts, total R${totalAmount.toFixed(2)}`);
 
-      res.json({ results, duplicates: duplicateAccounts, validCount, invalidCount, totalAmount });
+      res.json({ results, duplicates: duplicateAccounts, validCount, unverifiedCount, invalidCount, submittableCount, totalAmount });
     } catch (e: any) {
       console.error('[Generic Import Validate] Error:', e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });

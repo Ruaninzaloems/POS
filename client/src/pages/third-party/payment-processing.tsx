@@ -101,6 +101,7 @@ interface GenericPreviewRow {
   ownerName?: string;
   address?: string;
   isValid: boolean;
+  validationStatus?: 'valid' | 'unverified' | 'invalid';
   validationMsg?: string;
   isDuplicate?: boolean;
 }
@@ -821,12 +822,6 @@ export default function ThirdPartyPaymentProcessing() {
         return;
       }
 
-      if (parsedRows.length > 500) {
-        setGiError(`CSV contains ${parsedRows.length} rows, which exceeds the maximum of 500 rows per import. Please split the file into smaller batches.`);
-        setGiPreviewLoading(false);
-        setGiValidationProgress(null);
-        return;
-      }
 
       const uniqueAccounts = new Set(parsedRows.map(r => r.accountNumber).filter(a => /^\d{12}$/.test(a)));
       setGiValidationProgress({
@@ -907,6 +902,7 @@ export default function ThirdPartyPaymentProcessing() {
           ownerName: r.ownerName || '',
           address: r.address || '',
           isValid: r.isValid,
+          validationStatus: r.validationStatus || (r.isValid ? 'valid' : 'invalid'),
           validationMsg: isDup && r.isValid ? (r.validationMsg ? r.validationMsg + '; Duplicate account' : 'Duplicate account in file') : (r.validationMsg || ''),
           isDuplicate: isDup,
         };
@@ -1981,7 +1977,7 @@ export default function ThirdPartyPaymentProcessing() {
                     </CardTitle>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Review the parsed data below. Only valid (matched) accounts will be submitted for processing.
+                    Review the parsed data below. Matched and unverified accounts will be submitted. Only rows with format errors are excluded.
                   </p>
                 </CardHeader>
                 <CardContent className="pt-4 space-y-4">
@@ -1994,24 +1990,28 @@ export default function ThirdPartyPaymentProcessing() {
                     </Alert>
                   )}
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                     <div className="bg-slate-50 rounded-lg p-3 border text-center">
                       <div className="text-2xl font-bold text-slate-800" data-testid="text-gi-preview-total">{giPreviewRows.length}</div>
                       <div className="text-[11px] text-muted-foreground uppercase tracking-wider mt-0.5">Total Rows</div>
                     </div>
                     <div className="bg-green-50 rounded-lg p-3 border border-green-200 text-center">
-                      <div className="text-2xl font-bold text-green-700" data-testid="text-gi-preview-valid">{giPreviewRows.filter(r => r.isValid).length}</div>
-                      <div className="text-[11px] text-green-600 uppercase tracking-wider mt-0.5">Valid</div>
+                      <div className="text-2xl font-bold text-green-700" data-testid="text-gi-preview-valid">{giPreviewRows.filter(r => r.validationStatus === 'valid').length}</div>
+                      <div className="text-[11px] text-green-600 uppercase tracking-wider mt-0.5">Matched</div>
+                    </div>
+                    <div className="bg-amber-50 rounded-lg p-3 border border-amber-200 text-center">
+                      <div className="text-2xl font-bold text-amber-700" data-testid="text-gi-preview-unverified">{giPreviewRows.filter(r => r.validationStatus === 'unverified').length}</div>
+                      <div className="text-[11px] text-amber-600 uppercase tracking-wider mt-0.5">Unverified</div>
                     </div>
                     <div className="bg-red-50 rounded-lg p-3 border border-red-200 text-center">
                       <div className="text-2xl font-bold text-red-700" data-testid="text-gi-preview-invalid">{giPreviewRows.filter(r => !r.isValid).length}</div>
-                      <div className="text-[11px] text-red-600 uppercase tracking-wider mt-0.5">Not Found</div>
+                      <div className="text-[11px] text-red-600 uppercase tracking-wider mt-0.5">Invalid</div>
                     </div>
                     <div className="bg-blue-50 rounded-lg p-3 border border-blue-200 text-center">
                       <div className="text-2xl font-bold text-blue-700" data-testid="text-gi-preview-amount">
                         R {giPreviewRows.filter(r => r.isValid).reduce((s, r) => s + r.amount, 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
                       </div>
-                      <div className="text-[11px] text-blue-600 uppercase tracking-wider mt-0.5">Valid Total</div>
+                      <div className="text-[11px] text-blue-600 uppercase tracking-wider mt-0.5">Submittable Total</div>
                     </div>
                   </div>
 
@@ -2050,16 +2050,21 @@ export default function ThirdPartyPaymentProcessing() {
                           {giPreviewRows.map((row, idx) => (
                             <TableRow
                               key={idx}
-                              className={!row.isValid ? 'bg-red-50/50' : row.isDuplicate ? 'bg-amber-50/50' : ''}
+                              className={!row.isValid ? 'bg-red-50/50' : row.validationStatus === 'unverified' ? 'bg-amber-50/30' : row.isDuplicate ? 'bg-amber-50/50' : ''}
                               data-testid={`row-gi-preview-${idx}`}
                             >
                               <TableCell className="text-xs text-muted-foreground py-2">{row.rowNum}</TableCell>
                               <TableCell className="py-2">
                                 <div className="flex flex-col gap-1">
-                                  {row.isValid ? (
+                                  {row.validationStatus === 'valid' ? (
                                     <Badge className="text-[10px] bg-green-100 text-green-800 hover:bg-green-100 gap-1 w-fit" data-testid={`badge-gi-valid-${idx}`}>
                                       <CheckCircle2 className="h-3 w-3" />
                                       Matched
+                                    </Badge>
+                                  ) : row.validationStatus === 'unverified' ? (
+                                    <Badge className="text-[10px] bg-amber-100 text-amber-800 hover:bg-amber-100 gap-1 w-fit" data-testid={`badge-gi-unverified-${idx}`}>
+                                      <AlertTriangle className="h-3 w-3" />
+                                      Unverified
                                     </Badge>
                                   ) : (
                                     <Badge variant="destructive" className="text-[10px] gap-1 w-fit" data-testid={`badge-gi-invalid-${idx}`}>
@@ -2096,13 +2101,23 @@ export default function ThirdPartyPaymentProcessing() {
                     </div>
                   </div>
 
+                  {giPreviewRows.some(r => r.validationStatus === 'unverified') && (
+                    <Alert className="border-amber-200 bg-amber-50/50">
+                      <AlertTriangle className="h-4 w-4 text-amber-600" />
+                      <AlertTitle className="text-amber-800">Unverified Accounts ({giPreviewRows.filter(r => r.validationStatus === 'unverified').length})</AlertTitle>
+                      <AlertDescription className="text-sm text-amber-700">
+                        The account lookup API returned errors, so these accounts couldn't be verified beforehand.
+                        They will still be submitted — Platinum will validate them during processing and report any issues in the results.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
                   {giPreviewRows.some(r => !r.isValid) && (
                     <Alert variant="destructive">
                       <AlertCircle className="h-4 w-4" />
-                      <AlertTitle>Unmatched Accounts ({giPreviewRows.filter(r => !r.isValid).length})</AlertTitle>
+                      <AlertTitle>Invalid Rows ({giPreviewRows.filter(r => !r.isValid).length})</AlertTitle>
                       <AlertDescription className="text-sm">
-                        {giPreviewRows.filter(r => !r.isValid).length} account(s) could not be validated through the Platinum API.
-                        These rows will be excluded from the import. Only the {giPreviewRows.filter(r => r.isValid).length} valid row(s) will be submitted.
+                        {giPreviewRows.filter(r => !r.isValid).length} row(s) have format errors (empty account, invalid amount, etc.) and will be excluded from submission.
                       </AlertDescription>
                     </Alert>
                   )}
@@ -2127,7 +2142,7 @@ export default function ThirdPartyPaymentProcessing() {
                         <div><span className="text-muted-foreground">User ID:</span> <span className="font-medium">{posState?.platinumUser?.user_ID || '-'}</span></div>
                         <div><span className="text-muted-foreground">Fin Year:</span> <span className="font-medium">{posState?.platinumUser?.finYear || '-'}</span></div>
                         <div><span className="text-muted-foreground">Post to Cashbook:</span> <span className="font-medium">{giPostToCashbook ? 'Yes' : 'No'}</span></div>
-                        <div><span className="text-muted-foreground">Valid Payments:</span> <span className="font-medium">{giPreviewRows.filter(r => r.isValid).length}</span></div>
+                        <div><span className="text-muted-foreground">Submittable Payments:</span> <span className="font-medium">{giPreviewRows.filter(r => r.isValid).length} ({giPreviewRows.filter(r => r.validationStatus === 'valid').length} matched + {giPreviewRows.filter(r => r.validationStatus === 'unverified').length} unverified)</span></div>
                         <div><span className="text-muted-foreground">Total Amount:</span> <span className="font-bold">R {giPreviewRows.filter(r => r.isValid).reduce((s, r) => s + r.amount, 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span></div>
                         <div><span className="text-muted-foreground">Date Format:</span> <span className="font-medium">dd/MM/yyyy</span></div>
                         <div><span className="text-muted-foreground">Account Format:</span> <span className="font-medium">12-digit zero-padded</span></div>
