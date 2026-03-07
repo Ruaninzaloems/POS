@@ -131,7 +131,7 @@ export function AccountEnquiryDialog({ open, onClose, accountId }: AccountEnquir
 
   const numericAccountId = account ? (account.account_ID || account.accountID) : 0;
   const accountNumber = account?.accountNumber || account?.oldAccountCode || String(accountId);
-  const accountName = account?.name || account?.surname_Company || 'Unknown';
+  const accountName = account?.name || account?.surname_Company || '';
   const isActive = (account?.accountStatus || account?.statusDesc)?.toLowerCase() === 'active';
   const propertyId = account?.propertyID ? Number(account.propertyID) : (account?.unitID || account?.unitPartitionID || undefined);
   const unitId = account?.unitID || undefined;
@@ -141,16 +141,26 @@ export function AccountEnquiryDialog({ open, onClose, accountId }: AccountEnquir
       <DialogContent className="max-w-[95vw] w-[1400px] h-[85vh] p-0 gap-0 flex flex-col overflow-hidden [&>button.absolute]:hidden" data-testid="account-enquiry-dialog">
         <div className="shrink-0 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] px-5 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="shrink-0 h-9 w-9 rounded-full bg-white/20 flex items-center justify-center text-white text-sm font-bold">
-              {accountName.charAt(0).toUpperCase()}
-            </div>
+            {accountName ? (
+              <div className="shrink-0 h-9 w-9 rounded-full bg-white/20 flex items-center justify-center text-white text-sm font-bold">
+                {accountName.charAt(0).toUpperCase()}
+              </div>
+            ) : (
+              <div className="shrink-0 h-9 w-9 rounded-full bg-white/20 flex items-center justify-center">
+                <Loader2 className="w-4 h-4 text-white/70 animate-spin" />
+              </div>
+            )}
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-sm font-bold text-white truncate">{accountName}</h2>
+                {accountName ? (
+                  <h2 className="text-sm font-bold text-white truncate">{accountName}</h2>
+                ) : (
+                  <h2 className="text-sm font-medium text-white/70 truncate">Loading account...</h2>
+                )}
                 {account && (
                   <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${isActive ? 'bg-white/20 text-white' : 'bg-white/10 text-white/70'}`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-300' : 'bg-white/40'}`} />
-                    {account.accountStatus || account.statusDesc || 'Unknown'}
+                    {account.accountStatus || account.statusDesc || ''}
                   </span>
                 )}
               </div>
