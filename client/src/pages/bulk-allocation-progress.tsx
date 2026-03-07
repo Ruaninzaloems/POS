@@ -21,12 +21,15 @@ import {
   fetchBulkAllocationList,
   fetchBulkProgressDirectDeposit,
   fetchBulkProgressJobAccountDetails,
+  fetchDirectDepositJobAccountDetails,
   fetchGenericImportErrors,
+  fetchGenericImportStatus,
   fetchViewReceiptCashiers,
   platinumGetPosItemDetails,
   retryBulkAllocationJob,
   type BulkProgressSearchQuery,
 } from '@/lib/external-api';
+import { searchAccounts } from '@/lib/enquiries-service';
 import { AccountEnquiryDialog } from '@/components/account-enquiry-dialog';
 import { useToast } from '@/hooks/use-toast';
 
@@ -207,11 +210,13 @@ export default function BulkAllocationProgress() {
     }
 
     try {
-      const [dataResult, posItemResult, accountsResult, errorsResult] = await Promise.allSettled([
+      const [dataResult, posItemResult, accountsResult, errorsResult, errorAccountResult, statusResult] = await Promise.allSettled([
         fetchBulkProgressDirectDeposit(jobId),
         job.posItemID ? platinumGetPosItemDetails(job.posItemID) : Promise.resolve(null),
         fetchBulkProgressJobAccountDetails(jobId),
         fetchGenericImportErrors(jobId),
+        fetchDirectDepositJobAccountDetails(jobId),
+        fetchGenericImportStatus(jobId),
       ]);
 
       const data = dataResult.status === 'fulfilled' ? dataResult.value : null;
@@ -237,6 +242,26 @@ export default function BulkAllocationProgress() {
         });
       }
 
+      const receiptMap = new Map<string, string>();
+      if (errorAccountResult.status === 'fulfilled') {
+        const errAccts = errorAccountResult.value;
+        const errItems = Array.isArray(errAccts) ? errAccts : errAccts?.items || [];
+        errItems.forEach((r: any) => {
+          const accNo = r.accountNumber || r.accountNo || r.account_No || '';
+          const rcpt = String(r.receiptNumber ?? r.receiptNo ?? '').trim();
+          if (accNo && rcpt) receiptMap.set(accNo, rcpt);
+        });
+      }
+      if (statusResult.status === 'fulfilled') {
+        const statusData = statusResult.value;
+        const statusRows = Array.isArray(statusData?.rows) ? statusData.rows : Array.isArray(statusData) ? statusData : [];
+        statusRows.forEach((r: any) => {
+          const accNo = r.accountNumber || r.accountNo || r.account_No || '';
+          const rcpt = String(r.receiptNumber ?? r.receiptNo ?? '').trim();
+          if (accNo && rcpt && !receiptMap.has(accNo)) receiptMap.set(accNo, rcpt);
+        });
+      }
+
       let accounts: any[] | null = null;
       if (accountsRaw) {
         const items = Array.isArray(accountsRaw) ? accountsRaw : accountsRaw?.items || accountsRaw?.data || null;
@@ -244,15 +269,57 @@ export default function BulkAllocationProgress() {
           accounts = items.map((acc: any) => {
             const accNo = acc.accountNo || acc.accountNumber || acc.account_No || '';
             const isFailed = acc.status === 'Error' || acc.isAllocated === false;
+            const merged: any = { ...acc };
+            if (!merged.receiptNumber && !merged.receiptNo) {
+              const rcpt = receiptMap.get(accNo);
+              if (rcpt) merged.receiptNumber = rcpt;
+            }
             const errMsg = errorMap.get(accNo);
-            if (errMsg && !acc.errorMessage) {
-              return { ...acc, errorMessage: errMsg };
+            if (errMsg && !merged.errorMessage) {
+              merged.errorMessage = errMsg;
             }
-            if (isFailed && !acc.errorMessage && !errMsg) {
-              return { ...acc, errorMessage: 'Allocation failed — error details not available from API. Use the Retry button or check the account manually.' };
+            if (isFailed && !merged.errorMessage && !errMsg) {
+              merged.errorMessage = 'Allocation failed — error details not available from API. Use the Retry button or check the account manually.';
             }
-            return acc;
+            return merged;
           });
+        }
+      }
+
+      if (accounts) {
+        const needsNameLookup = accounts.filter((a: any) => {
+          const name = a.name || a.accountName || a.surname || a.companyName || '';
+          return !name;
+        });
+        if (needsNameLookup.length > 0) {
+          const nameMap = new Map<string, string>();
+          const uniqueAccNos = Array.from(new Set(needsNameLookup.map((a: any) =>
+            (a.accountNo || a.accountNumber || a.account_No || '').replace(/^0+/, '')
+          ).filter(Boolean)));
+          const batchSize = 10;
+          for (let i = 0; i < uniqueAccNos.length; i += batchSize) {
+            const batch = uniqueAccNos.slice(i, i + batchSize);
+            const lookups = batch.map(async (accNo) => {
+              try {
+                const results = await searchAccounts({ accountNo: accNo });
+                if (Array.isArray(results) && results.length > 0) {
+                  const r = results[0] as any;
+                  const name = r.name || r.ownerName || r.companyName || r.fullName || r.surname_Company || r.addName || '';
+                  if (name) nameMap.set(accNo, name);
+                }
+              } catch {}
+            });
+            await Promise.all(lookups);
+          }
+          if (nameMap.size > 0) {
+            accounts = accounts.map((acc: any) => {
+              const existingName = acc.name || acc.accountName || acc.surname || acc.companyName || '';
+              if (existingName) return acc;
+              const accNo = (acc.accountNo || acc.accountNumber || acc.account_No || '').replace(/^0+/, '');
+              const lookedUpName = nameMap.get(accNo);
+              return lookedUpName ? { ...acc, accountName: lookedUpName } : acc;
+            });
+          }
         }
       }
       setDetailAccounts(accounts);
@@ -1219,8 +1286,9 @@ export default function BulkAllocationProgress() {
                                     <TableHeader>
                                       <TableRow className="bg-[#F7F7F7]">
                                         <TableHead className="text-xs">Account No</TableHead>
+                                        <TableHead className="text-xs">Name</TableHead>
                                         <TableHead className="text-xs text-right">Amount</TableHead>
-                                        <TableHead className="text-xs text-center">Receipt</TableHead>
+                                        <TableHead className="text-xs text-center">Receipt ID</TableHead>
                                         <TableHead className="text-xs text-center">Status</TableHead>
                                       </TableRow>
                                     </TableHeader>
@@ -1242,6 +1310,7 @@ export default function BulkAllocationProgress() {
                                                   {accNo}
                                                 </button>
                                               </TableCell>
+                                              <TableCell className="text-xs">{acc.name || acc.accountName || acc.surname || acc.companyName || '-'}</TableCell>
                                               <TableCell className="text-right font-mono text-xs">R {Number(acc.amount ?? acc.allocatedAmount ?? 0).toFixed(2)}</TableCell>
                                               <TableCell className="text-center font-mono text-xs text-muted-foreground">{receiptNo ? String(receiptNo).trim() : '-'}</TableCell>
                                               <TableCell className="text-center">
@@ -1252,7 +1321,7 @@ export default function BulkAllocationProgress() {
                                             </TableRow>
                                             {isFailed && acc.errorMessage && (
                                               <TableRow className="bg-red-50/30">
-                                                <TableCell colSpan={4} className="py-1.5 px-4">
+                                                <TableCell colSpan={5} className="py-1.5 px-4">
                                                   <div className="flex items-start gap-2 text-xs text-red-700">
                                                     <AlertCircle className="w-3 h-3 text-red-400 shrink-0 mt-0.5" />
                                                     <span className="break-words">{acc.errorMessage}</span>
@@ -1281,7 +1350,8 @@ export default function BulkAllocationProgress() {
                                             >
                                               {acc.accountNo || acc.accountNumber || acc.account_No || '-'}
                                             </button>
-                                            {receiptNo && <div className="text-[10px] text-muted-foreground font-mono">Rcpt: {String(receiptNo).trim()}</div>}
+                                            <div className="text-xs text-muted-foreground truncate">{acc.name || acc.accountName || acc.surname || acc.companyName || '-'}</div>
+                                            {receiptNo && <div className="text-[10px] text-muted-foreground font-mono">Receipt ID: {String(receiptNo).trim()}</div>}
                                           </div>
                                           <div className="flex items-center gap-2 shrink-0">
                                             <span className="font-mono text-xs font-bold">R {Number(acc.amount ?? acc.allocatedAmount ?? 0).toFixed(2)}</span>
