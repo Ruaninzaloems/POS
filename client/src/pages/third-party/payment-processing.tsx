@@ -145,6 +145,7 @@ export default function ThirdPartyPaymentProcessing() {
   const [giPreviewSkipped, setGiPreviewSkipped] = useState<string[]>([]);
   const [giPreviewLoading, setGiPreviewLoading] = useState(false);
   const [giDragOver, setGiDragOver] = useState(false);
+  const [giCsvHasPaymentType, setGiCsvHasPaymentType] = useState(false);
   const giFileInputRef = useRef<HTMLInputElement>(null);
   const [giCashOffices, setGiCashOffices] = useState<Array<{ id: string; name: string }>>([]);
   const [giSelectedCashOfficeId, setGiSelectedCashOfficeId] = useState<string>('');
@@ -783,6 +784,7 @@ export default function ThirdPartyPaymentProcessing() {
       const amtIdx = header.findIndex(h => h === 'amount' || h === 'amt');
       const dateIdx = header.findIndex(h => h === 'receiptdate' || h === 'date');
       const ptIdx = header.findIndex(h => h === 'paymenttypeid' || h === 'paymenttype' || h === 'paytype');
+      setGiCsvHasPaymentType(ptIdx !== -1);
 
       if (accIdx === -1) { setGiError('CSV missing required column: AccountNumber'); setGiPreviewLoading(false); setGiValidationProgress(null); return; }
       if (amtIdx === -1) { setGiError('CSV missing required column: Amount'); setGiPreviewLoading(false); setGiValidationProgress(null); return; }
@@ -1135,6 +1137,7 @@ export default function ThirdPartyPaymentProcessing() {
     setGiError('');
     setGiPreviewRows([]);
     setGiPreviewSkipped([]);
+    setGiCsvHasPaymentType(false);
   };
 
   const giStatusText = useMemo(() => {
@@ -1943,20 +1946,31 @@ export default function ThirdPartyPaymentProcessing() {
                         )}
                       </div>
                       <div>
-                        <Label htmlFor="gi-payment-type" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Payment Method</Label>
-                        <Select value={giPaymentTypeId} onValueChange={setGiPaymentTypeId}>
-                          <SelectTrigger id="gi-payment-type" className="mt-1.5 h-11 sm:h-10" data-testid="select-gi-payment-type">
-                            <SelectValue placeholder="Select payment method" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="1">Cash</SelectItem>
-                            <SelectItem value="2">Cheque</SelectItem>
-                            <SelectItem value="3">Credit Card</SelectItem>
-                            <SelectItem value="4">Postal Order</SelectItem>
-                            <SelectItem value="5">EFT</SelectItem>
-                            <SelectItem value="6">Third Party Payment</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <Label htmlFor="gi-payment-type" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                          {giCsvHasPaymentType ? 'Payment Method' : 'Default Payment Method'}
+                        </Label>
+                        {giCsvHasPaymentType ? (
+                          <div className="mt-1.5 h-11 sm:h-10 flex items-center px-3 rounded-md border bg-slate-50 text-sm text-muted-foreground" data-testid="text-gi-payment-type-csv">
+                            Defined per row in CSV
+                          </div>
+                        ) : (
+                          <>
+                            <Select value={giPaymentTypeId} onValueChange={setGiPaymentTypeId}>
+                              <SelectTrigger id="gi-payment-type" className="mt-1.5 h-11 sm:h-10" data-testid="select-gi-payment-type">
+                                <SelectValue placeholder="Select payment method" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="1">Cash</SelectItem>
+                                <SelectItem value="2">Cheque</SelectItem>
+                                <SelectItem value="3">Credit Card</SelectItem>
+                                <SelectItem value="4">Postal Order</SelectItem>
+                                <SelectItem value="5">EFT</SelectItem>
+                                <SelectItem value="6">Third Party Payment</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <p className="text-[10px] text-muted-foreground mt-1">Used when CSV has no PaymentTypeId column</p>
+                          </>
+                        )}
                       </div>
                     </div>
 
