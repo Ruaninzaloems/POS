@@ -609,7 +609,7 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
                     const searchInput = document.querySelector<HTMLInputElement>('[data-testid="input-search-account"]');
                     if (searchInput) { searchInput.focus(); searchInput.placeholder = `Search ${label.toLowerCase()}...`; }
                   }}
-                  className="group relative flex items-start gap-3 p-3 sm:p-4 rounded-2xl bg-white/80 backdrop-blur-sm border border-slate-200/80 hover:border-[var(--pos-accent-shadow)] hover:shadow-md transition-all duration-200 text-left min-h-[56px] sm:min-h-[72px]"
+                  className="group relative flex items-start gap-3 p-3 sm:p-4 rounded-2xl bg-white/80 backdrop-blur-sm border border-slate-200/80 cursor-pointer hover:border-[var(--pos-accent-shadow)] hover:shadow-lg hover:bg-white hover:-translate-y-0.5 active:translate-y-0 active:shadow-md transition-all duration-200 text-left min-h-[56px] sm:min-h-[72px]"
                   data-testid={`action-${key}`}
                 >
                   <div

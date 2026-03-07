@@ -397,6 +397,7 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
           placeholder={placeholder || "Search Account / Meter / Group..."}
           className="h-12 rounded-xl border-2 border-[#D6D6D6] bg-white pl-14 pr-4 text-base focus:border-[var(--pos-accent)] focus:ring-4 focus:ring-[var(--pos-accent-tint)] shadow-sm placeholder:text-slate-400 transition-all"
           autoFocus={autoFocus}
+          data-testid="input-search-account"
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex gap-1">
              <kbd className="pointer-events-none inline-flex h-6 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
