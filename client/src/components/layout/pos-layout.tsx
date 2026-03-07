@@ -71,7 +71,7 @@ export function PosLayout({ children }: PosLayoutProps) {
       }
   }, [activeSession, sessionLoading, location, setLocation]);
 
-  if (sessionLoading && isPosPage) {
+  if (sessionLoading && requiresActiveSession) {
       return (
         <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="flex flex-col items-center gap-4">
