@@ -27,6 +27,7 @@ import {
   retryBulkAllocationJob,
   type BulkProgressSearchQuery,
 } from '@/lib/external-api';
+import { AccountEnquiryDialog } from '@/components/account-enquiry-dialog';
 import { useToast } from '@/hooks/use-toast';
 
 function getStatusBadge(status: string | null | undefined) {
@@ -90,6 +91,7 @@ export default function BulkAllocationProgress() {
   const [detailAccounts, setDetailAccounts] = useState<any[] | null>(null);
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [retryingJobId, setRetryingJobId] = useState<number | null>(null);
+  const [enquiryAccountId, setEnquiryAccountId] = useState<string | null>(null);
 
   useEffect(() => {
     loadFilterOptions();
@@ -205,12 +207,17 @@ export default function BulkAllocationProgress() {
     }
 
     try {
-      const [data, posItemData, accountsResult, errorsResult] = await Promise.all([
+      const [dataResult, posItemResult, accountsResult, errorsResult] = await Promise.allSettled([
         fetchBulkProgressDirectDeposit(jobId),
-        job.posItemID ? platinumGetPosItemDetails(job.posItemID).catch((err) => { console.error('[BulkAllocationProgress] Failed to fetch POS item details:', err); return null; }) : Promise.resolve(null),
-        fetchBulkProgressJobAccountDetails(jobId).catch(() => null),
-        fetchGenericImportErrors(jobId).catch(() => null),
+        job.posItemID ? platinumGetPosItemDetails(job.posItemID) : Promise.resolve(null),
+        fetchBulkProgressJobAccountDetails(jobId),
+        fetchGenericImportErrors(jobId),
       ]);
+
+      const data = dataResult.status === 'fulfilled' ? dataResult.value : null;
+      const posItemData = posItemResult.status === 'fulfilled' ? posItemResult.value : null;
+      const accountsRaw = accountsResult.status === 'fulfilled' ? accountsResult.value : null;
+      const errorsRaw = errorsResult.status === 'fulfilled' ? errorsResult.value : null;
 
       const enriched = { ...(data || job) };
       if (posItemData && posItemData.posItem_ID) {
@@ -221,18 +228,18 @@ export default function BulkAllocationProgress() {
       setDetailData(enriched);
 
       const errorMap = new Map<string, string>();
-      if (errorsResult) {
-        const errList = errorsResult.errors || (Array.isArray(errorsResult) ? errorsResult : []);
+      if (errorsRaw) {
+        const errList = errorsRaw.errors || (Array.isArray(errorsRaw) ? errorsRaw : []);
         errList.forEach((e: any) => {
           const accNo = e.accountNumber || e.accountNo || '';
-          const msg = e.message || e.errorMessage || e.error || '';
+          const msg = e.message || e.errorMessage || e.error || e.failedStep || '';
           if (accNo && msg) errorMap.set(accNo, msg);
         });
       }
 
       let accounts: any[] | null = null;
-      if (accountsResult) {
-        const items = Array.isArray(accountsResult) ? accountsResult : accountsResult?.items || accountsResult?.data || null;
+      if (accountsRaw) {
+        const items = Array.isArray(accountsRaw) ? accountsRaw : accountsRaw?.items || accountsRaw?.data || null;
         if (items && items.length > 0) {
           accounts = items.map((acc: any) => {
             const accNo = acc.accountNo || acc.accountNumber || acc.account_No || '';
@@ -1159,6 +1166,30 @@ export default function BulkAllocationProgress() {
                           </div>
                         )}
 
+                        {detailLoading && !detailAccounts && (
+                          <div className="rounded-lg border border-[#D6D6D6] overflow-hidden">
+                            <div className="bg-[#F7F7F7] px-3 py-2 border-b border-[#D6D6D6]">
+                              <h3 className="text-[11px] uppercase tracking-wider font-bold text-slate-500 flex items-center gap-1.5">
+                                <Layers className="w-3.5 h-3.5" /> Account Details
+                              </h3>
+                            </div>
+                            <div className="flex items-center gap-2 py-6 justify-center text-muted-foreground text-sm">
+                              <Loader2 className="w-4 h-4 animate-spin" /> Loading account details...
+                            </div>
+                          </div>
+                        )}
+
+                        {!detailLoading && detailAccounts && detailAccounts.length === 0 && (
+                          <div className="rounded-lg border border-[#D6D6D6] overflow-hidden">
+                            <div className="bg-[#F7F7F7] px-3 py-2 border-b border-[#D6D6D6]">
+                              <h3 className="text-[11px] uppercase tracking-wider font-bold text-slate-500 flex items-center gap-1.5">
+                                <Layers className="w-3.5 h-3.5" /> Account Details
+                              </h3>
+                            </div>
+                            <div className="py-4 text-center text-xs text-muted-foreground">No account allocation details available for this job.</div>
+                          </div>
+                        )}
+
                         {detailAccounts && detailAccounts.length > 0 && (() => {
                           const failedAccts = detailAccounts.filter((a: any) => a.status === 'Error' || a.errorMessage || a.isAllocated === false);
                           const successCount = detailAccounts.length - failedAccts.length;
@@ -1201,7 +1232,16 @@ export default function BulkAllocationProgress() {
                                         return (
                                           <React.Fragment key={idx}>
                                             <TableRow className={isFailed ? 'bg-red-50/50' : ''}>
-                                              <TableCell className="font-mono text-xs font-medium">{accNo}</TableCell>
+                                              <TableCell className="font-mono text-xs font-medium">
+                                                <button
+                                                  className="text-[var(--pos-accent-dark)] hover:underline cursor-pointer font-mono font-medium"
+                                                  onClick={() => setEnquiryAccountId(accNo)}
+                                                  title="Open account enquiry"
+                                                  data-testid={`link-enquiry-detail-${idx}`}
+                                                >
+                                                  {accNo}
+                                                </button>
+                                              </TableCell>
                                               <TableCell className="text-right font-mono text-xs">R {Number(acc.amount ?? acc.allocatedAmount ?? 0).toFixed(2)}</TableCell>
                                               <TableCell className="text-center font-mono text-xs text-muted-foreground">{receiptNo ? String(receiptNo).trim() : '-'}</TableCell>
                                               <TableCell className="text-center">
@@ -1234,7 +1274,13 @@ export default function BulkAllocationProgress() {
                                       <div key={idx} className={`p-3 ${isFailed ? 'bg-red-50' : ''}`}>
                                         <div className="flex justify-between items-start gap-2 mb-1">
                                           <div className="min-w-0 flex-1">
-                                            <div className="font-mono text-xs font-medium">{acc.accountNo || acc.accountNumber || acc.account_No || '-'}</div>
+                                            <button
+                                              className="font-mono text-xs font-medium text-[var(--pos-accent-dark)] hover:underline cursor-pointer"
+                                              onClick={() => setEnquiryAccountId(acc.accountNo || acc.accountNumber || acc.account_No || '')}
+                                              data-testid={`link-enquiry-mobile-detail-${idx}`}
+                                            >
+                                              {acc.accountNo || acc.accountNumber || acc.account_No || '-'}
+                                            </button>
                                             {receiptNo && <div className="text-[10px] text-muted-foreground font-mono">Rcpt: {String(receiptNo).trim()}</div>}
                                           </div>
                                           <div className="flex items-center gap-2 shrink-0">
@@ -1274,6 +1320,11 @@ export default function BulkAllocationProgress() {
             )}
           </DialogContent>
         </Dialog>
+        <AccountEnquiryDialog
+          open={enquiryAccountId !== null}
+          onClose={() => setEnquiryAccountId(null)}
+          accountId={enquiryAccountId || ''}
+        />
       </div>
       </div>
     </PosLayout>
