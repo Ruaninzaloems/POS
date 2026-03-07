@@ -199,6 +199,7 @@ interface PosActions {
   setReceiptDate: (date: string) => void;
   setPerItemSplitMode: (enabled: boolean) => void;
   updateItemSplit: (id: string, cash: number, card: number) => void;
+  forceFailTransaction: (reason: string) => void;
 }
 
 const PosContext = createContext<(PosState & PosActions) | null>(null);
@@ -2647,6 +2648,20 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
     loadTransactionsFromApi().catch((e) => { console.error('[Transactions] Failed to reload transactions after closing receipt modal:', e?.message || e); });
   };
 
+  const forceFailTransaction = useCallback((reason: string) => {
+    console.error(`[ForceFailTransaction] ${reason}`);
+    setTransactionProcessing(false);
+    setProcessingStep('');
+    if (processingRecord) {
+      const failedRecord = { ...processingRecord, receiptNumber: '', declineReason: reason };
+      setProcessingRecord(failedRecord);
+    }
+    toast({ title: 'Transaction Failed', description: reason, variant: 'destructive' });
+    setTimeout(() => {
+      paymentInFlightRef.current = false;
+    }, 5000);
+  }, [processingRecord, toast]);
+
   const submitDayEnd = (report: { cashOnHand: number, cardTotal: number }) => {
       console.log('Day End Report Submitted:', report);
       setDayEndStatus('RECONCILED'); // In a real app this would go to PENDING_APPROVAL
@@ -2838,6 +2853,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
       perItemSplitMode,
       setPerItemSplitMode: handleSetPerItemSplitMode,
       updateItemSplit,
+      forceFailTransaction,
       siteInfo: siteInfoProp || null
     }}>
       {children}

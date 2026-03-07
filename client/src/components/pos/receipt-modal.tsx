@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { usePos, TransactionItem } from '@/lib/pos-state';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, XCircle, Printer, Mail, MessageSquare, Check, Loader2 } from 'lucide-react';
+import { CheckCircle2, XCircle, Printer, Mail, MessageSquare, Check, Loader2, AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -10,8 +10,10 @@ import { platinumPrintReceiptRaw } from '@/lib/external-api';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 
+const TRANSACTION_TIMEOUT_SECONDS = 120;
+
 export function ReceiptModal() {
-  const { isReceiptModalOpen, closeReceiptModal, payment, transactionItems, recentTransactions, transactionProcessing, processingStep, currentTransactionId, processingRecord, sessionDetails } = usePos();
+  const { isReceiptModalOpen, closeReceiptModal, payment, transactionItems, recentTransactions, transactionProcessing, processingStep, currentTransactionId, processingRecord, sessionDetails, forceFailTransaction } = usePos();
   
   const currentTransaction = processingRecord && currentTransactionId && processingRecord.id === currentTransactionId
     ? processingRecord
@@ -23,6 +25,10 @@ export function ReceiptModal() {
   const [elapsed, setElapsed] = useState(0);
   const elapsedRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const prevStepRef = useRef<string>('');
+  const [totalElapsed, setTotalElapsed] = useState(0);
+  const totalElapsedRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [timedOut, setTimedOut] = useState(false);
+  const timeoutFiredRef = useRef(false);
 
   useEffect(() => {
     if (transactionProcessing) {
@@ -40,6 +46,37 @@ export function ReceiptModal() {
     }
     return () => { if (elapsedRef.current) { clearInterval(elapsedRef.current); elapsedRef.current = null; } };
   }, [transactionProcessing, processingStep]);
+
+  useEffect(() => {
+    if (transactionProcessing) {
+      setTotalElapsed(0);
+      setTimedOut(false);
+      timeoutFiredRef.current = false;
+      totalElapsedRef.current = setInterval(() => {
+        setTotalElapsed(prev => {
+          const next = prev + 1;
+          if (next >= TRANSACTION_TIMEOUT_SECONDS) {
+            setTimedOut(true);
+          }
+          return next;
+        });
+      }, 1000);
+    } else {
+      if (totalElapsedRef.current) { clearInterval(totalElapsedRef.current); totalElapsedRef.current = null; }
+      setTotalElapsed(0);
+      setTimedOut(false);
+      timeoutFiredRef.current = false;
+    }
+    return () => { if (totalElapsedRef.current) { clearInterval(totalElapsedRef.current); totalElapsedRef.current = null; } };
+  }, [transactionProcessing]);
+
+  useEffect(() => {
+    if (timedOut && transactionProcessing && forceFailTransaction && !timeoutFiredRef.current) {
+      timeoutFiredRef.current = true;
+      console.error(`[ReceiptModal] Transaction timed out after ${TRANSACTION_TIMEOUT_SECONDS}s — forcing failure`);
+      forceFailTransaction('Transaction timed out. The payment may not have completed. Please check View Receipts before retrying.');
+    }
+  }, [timedOut, transactionProcessing, forceFailTransaction]);
   const [emailSelected, setEmailSelected] = useState(false);
   const [smsSelected, setSmsSelected] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
@@ -184,8 +221,8 @@ export function ReceiptModal() {
   const isPartialSuccess = paymentSucceeded && isSplitPayment && cashReceipts.length > 0 && cardReceipts.length === 0;
 
   return (
-    <Dialog open={isReceiptModalOpen} onOpenChange={(open) => !open && closeReceiptModal()}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col overflow-hidden">
+    <Dialog open={isReceiptModalOpen} onOpenChange={(open) => { if (!open && !transactionProcessing && !isPrinting) closeReceiptModal(); }}>
+      <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col overflow-hidden" hideCloseButton={transactionProcessing || isPrinting} preventClose={transactionProcessing || isPrinting}>
         <DialogHeader className="items-center text-center space-y-3 pb-4 border-b flex-shrink-0">
           {transactionProcessing ? (
             (() => {
@@ -251,7 +288,7 @@ export function ReceiptModal() {
               </div>
               <DialogTitle className="text-2xl text-red-600" data-testid="text-payment-failed">Payment Failed</DialogTitle>
               <DialogDescription className="text-lg text-red-500 font-medium" data-testid="text-receipt-number">
-                 No receipt number was returned from the billing system. The payment was not processed successfully.
+                 {currentTransaction.declineReason || 'No receipt number was returned from the billing system. The payment was not processed successfully.'}
               </DialogDescription>
             </>
           ) : isPartialSuccess ? (
@@ -600,26 +637,30 @@ export function ReceiptModal() {
             )}
         </div>
 
-        <DialogFooter className="sm:justify-between gap-2 border-t pt-4 flex-shrink-0">
-          <Button variant="ghost" onClick={closeReceiptModal} disabled={transactionProcessing || isPrinting} className="h-12 sm:h-10 rounded-xl">Close</Button>
-          {!paymentFailed && (
-            <Button onClick={handleComplete} className="min-w-[140px] h-12 sm:h-10 rounded-xl bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] hover:from-[var(--pos-accent-dark)] hover:to-[var(--pos-accent-dark)] shadow-lg shadow-[0_1px_3px_rgba(0,0,0,0.15)] font-bold" disabled={transactionProcessing || isPrinting}>
-                {transactionProcessing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Please wait...
-                  </>
-                ) : isPrinting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Fetching Receipt...
-                  </>
-                ) : (
-                  printSelected ? 'Print & Complete' : 'Complete'
-                )}
-            </Button>
-          )}
-        </DialogFooter>
+        {transactionProcessing ? (
+          <div className="border-t pt-3 flex-shrink-0">
+            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+              <span>Do not close this window — transaction in progress ({totalElapsed}s)</span>
+            </div>
+          </div>
+        ) : (
+          <DialogFooter className="sm:justify-between gap-2 border-t pt-4 flex-shrink-0">
+            <Button variant="ghost" onClick={closeReceiptModal} disabled={isPrinting} className="h-12 sm:h-10 rounded-xl" data-testid="button-close-receipt">Close</Button>
+            {!paymentFailed && (
+              <Button onClick={handleComplete} className="min-w-[140px] h-12 sm:h-10 rounded-xl bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] hover:from-[var(--pos-accent-dark)] hover:to-[var(--pos-accent-dark)] shadow-lg shadow-[0_1px_3px_rgba(0,0,0,0.15)] font-bold" disabled={isPrinting} data-testid="button-complete-receipt">
+                  {isPrinting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Fetching Receipt...
+                    </>
+                  ) : (
+                    printSelected ? 'Print & Complete' : 'Complete'
+                  )}
+              </Button>
+            )}
+          </DialogFooter>
+        )}
         
       </DialogContent>
     </Dialog>
