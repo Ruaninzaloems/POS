@@ -1614,6 +1614,20 @@ export async function submitGenericImport(data: {
     });
 }
 
+export async function validateGenericImport(payments: Array<{
+    rowNum: number;
+    accountNumber: string;
+    amount: number;
+    receiptDate: string;
+    paymentTypeId: number;
+}>): Promise<any> {
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/validate-generic-import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payments }),
+    });
+}
+
 export async function fetchGenericImportStatus(jobId: number | string): Promise<any> {
     return platinumFetch(`/api/platinum/direct-deposit-allocation/generic-import-status/${jobId}`);
 }

@@ -3753,23 +3753,180 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/platinum/direct-deposit-allocation/validate-generic-import", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const { payments } = req.body;
+      if (!Array.isArray(payments) || payments.length === 0) {
+        return res.json({ results: [], duplicates: [] });
+      }
+
+      if (payments.length > 500) {
+        return res.status(400).json({ message: "Too many rows", detail: `CSV contains ${payments.length} rows. Maximum is 500 per import. Please split the file into smaller batches.` });
+      }
+      const limited = payments;
+      console.log(`[Generic Import Validate] Validating ${limited.length} payment rows`);
+
+      const accountNumbers = [...new Set(limited.map((p: any) => {
+        const d = String(p.accountNumber || '').replace(/\D/g, '');
+        return d.length > 0 && d.length <= 12 ? d.padStart(12, '0') : '';
+      }).filter(a => a.length === 12))];
+      console.log(`[Generic Import Validate] ${accountNumbers.length} unique account numbers to validate`);
+
+      const accountMap: Record<string, { valid: boolean; name: string; address: string; accountId?: number }> = {};
+      const batchSize = 10;
+      for (let i = 0; i < accountNumbers.length; i += batchSize) {
+        const batch = accountNumbers.slice(i, i + batchSize);
+        const batchResults = await Promise.allSettled(
+          batch.map(async (accNo) => {
+            const stripped = accNo.replace(/^0+/, '') || '0';
+            try {
+              const data = await platinumGet(session, `/api/cons-accounts/${stripped}`);
+              if (data && !data._error && (data.name || data.ownerName || data.accountName)) {
+                return {
+                  accNo,
+                  valid: true,
+                  name: data.name || data.ownerName || data.accountName || '',
+                  address: data.address || data.locationAddress || data.propertyAddress || '',
+                  accountId: data.id || data.account_ID || data.accountId,
+                };
+              }
+            } catch (e) {}
+            try {
+              const searchData = await platinumGet(session, "/api/cons-accounts/search", { accountNumber: accNo });
+              if (searchData && !searchData._error) {
+                const arr = Array.isArray(searchData) ? searchData : (searchData.value || [searchData]);
+                if (arr.length > 0 && arr[0]) {
+                  const r = arr[0];
+                  return {
+                    accNo,
+                    valid: true,
+                    name: r.name || r.ownerName || '',
+                    address: r.address || r.locationAddress || '',
+                    accountId: r.id || r.account_ID || r.accountId,
+                  };
+                }
+              }
+            } catch (e) {}
+            return { accNo, valid: false, name: '', address: '' };
+          })
+        );
+        for (const result of batchResults) {
+          if (result.status === 'fulfilled' && result.value) {
+            accountMap[result.value.accNo] = result.value;
+          }
+        }
+      }
+
+      const seenAccounts: Record<string, number[]> = {};
+      const results = limited.map((p: any, idx: number) => {
+        const accNo = String(p.accountNumber || '');
+        const accDigits = accNo.replace(/\D/g, '');
+        const normalizedAccNo = accDigits.length > 0 ? accDigits.padStart(12, '0') : accNo;
+        const info = accountMap[normalizedAccNo];
+        const amount = typeof p.amount === 'number' ? p.amount : parseFloat(p.amount);
+        const dateValid = /^\d{2}\/\d{2}\/\d{4}$/.test(p.receiptDate || '');
+        const ptId = parseInt(p.paymentTypeId) || 0;
+
+        if (!seenAccounts[normalizedAccNo]) seenAccounts[normalizedAccNo] = [];
+        seenAccounts[normalizedAccNo].push(idx);
+
+        const issues: string[] = [];
+        if (accDigits.length === 0) issues.push('Empty account number');
+        else if (accDigits.length > 12) issues.push('Account number too long (max 12 digits)');
+        else if (!info || !info.valid) issues.push('Account not found in system');
+        if (!dateValid) issues.push(`Invalid date format: "${p.receiptDate}"`);
+        if (isNaN(amount) || amount <= 0) issues.push(`Invalid amount: ${p.amount}`);
+        if (ptId < 1 || ptId > 7) issues.push(`Invalid payment type: ${p.paymentTypeId}`);
+
+        return {
+          rowNum: p.rowNum || idx + 1,
+          accountNumber: normalizedAccNo,
+          amount: isNaN(amount) ? 0 : amount,
+          receiptDate: p.receiptDate || '',
+          paymentTypeId: p.paymentTypeId || 1,
+          ownerName: info?.name || '',
+          address: info?.address || '',
+          accountId: info?.accountId,
+          isValid: issues.length === 0,
+          validationMsg: issues.length > 0 ? issues.join('; ') : '',
+          isDuplicate: false,
+        };
+      });
+
+      const duplicateAccounts: string[] = [];
+      for (const [accNo, indices] of Object.entries(seenAccounts)) {
+        if (indices.length > 1) {
+          duplicateAccounts.push(accNo);
+          for (const idx of indices) {
+            if (results[idx]) {
+              results[idx].isDuplicate = true;
+            }
+          }
+        }
+      }
+
+      const validCount = results.filter((r: any) => r.isValid).length;
+      const invalidCount = results.filter((r: any) => !r.isValid).length;
+      const totalAmount = results.filter((r: any) => r.isValid).reduce((s: number, r: any) => s + r.amount, 0);
+      console.log(`[Generic Import Validate] Results: ${validCount} valid, ${invalidCount} invalid, ${duplicateAccounts.length} duplicate accounts, total R${totalAmount.toFixed(2)}`);
+
+      res.json({ results, duplicates: duplicateAccounts, validCount, invalidCount, totalAmount });
+    } catch (e: any) {
+      console.error('[Generic Import Validate] Error:', e.message);
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   app.post("/api/platinum/direct-deposit-allocation/submit-generic-import", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
       const { cashOfficeId, cashierId, finYear, postToCashbook, payments } = req.body;
-      const payload = {
-        cashOfficeId: cashOfficeId || 0,
-        cashierId: cashierId || 0,
-        userId: session.userId,
-        finYear: finYear || '',
-        postToCashbook: postToCashbook ?? false,
-        payments: Array.isArray(payments) ? payments : [],
-      };
-      console.log(`[Generic Import] Submit request — userId=${payload.userId}, cashOfficeId=${payload.cashOfficeId}, cashierId=${payload.cashierId}, finYear=${payload.finYear}, postToCashbook=${payload.postToCashbook}, payments=${payload.payments.length} rows`);
-      if (payload.payments.length > 0) {
-        console.log(`[Generic Import] First payment sample:`, JSON.stringify(payload.payments[0]));
+
+      if (!cashOfficeId || !cashierId || !finYear) {
+        return res.status(400).json({ message: "Missing required fields", detail: `cashOfficeId=${cashOfficeId}, cashierId=${cashierId}, finYear=${finYear}` });
       }
-      const data = await platinumPost(session, "/api/billing-direct-deposit-allocation/submit-generic-import", payload, undefined, { timeout: 55000 });
+      if (!Array.isArray(payments) || payments.length === 0) {
+        return res.status(400).json({ message: "No payments to process", detail: "The payments array is empty." });
+      }
+
+      const sanitizedPayments = payments.map((p: any) => {
+        const digits = String(p.accountNumber || '').replace(/\D/g, '');
+        const accNo = digits.length > 0 && digits.length <= 12 ? digits.padStart(12, '0') : '';
+        let receiptDate = String(p.receiptDate || '');
+        if (!/^\d{2}\/\d{2}\/\d{4}$/.test(receiptDate)) {
+          const now = new Date();
+          receiptDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+        }
+        const amount = typeof p.amount === 'number' ? Math.round(p.amount * 100) / 100 : parseFloat(p.amount) || 0;
+        const ptId = parseInt(p.paymentTypeId) || 0;
+        const paymentTypeId = ptId >= 1 && ptId <= 7 ? ptId : 1;
+        return { receiptDate, accountNumber: accNo, amount, paymentTypeId };
+      }).filter((p: any) => p.amount > 0 && p.accountNumber.length === 12);
+
+      if (sanitizedPayments.length === 0) {
+        return res.status(400).json({ message: "No valid payments after sanitization", detail: "All payments were filtered out during validation." });
+      }
+
+      const payload = {
+        cashOfficeId: Number(cashOfficeId),
+        cashierId: Number(cashierId),
+        userId: session.userId,
+        finYear: String(finYear),
+        postToCashbook: postToCashbook ?? false,
+        payments: sanitizedPayments,
+      };
+
+      console.log(`[Generic Import] Submit request — userId=${payload.userId}, cashOfficeId=${payload.cashOfficeId}, cashierId=${payload.cashierId}, finYear=${payload.finYear}, postToCashbook=${payload.postToCashbook}, payments=${payload.payments.length} rows`);
+      console.log(`[Generic Import] First payment:`, JSON.stringify(payload.payments[0]));
+      if (payload.payments.length > 1) {
+        console.log(`[Generic Import] Last payment:`, JSON.stringify(payload.payments[payload.payments.length - 1]));
+      }
+      const totalAmount = payload.payments.reduce((s: number, p: any) => s + p.amount, 0);
+      console.log(`[Generic Import] Total amount: R${totalAmount.toFixed(2)}, payment count: ${payload.payments.length}`);
+
+      const timeoutMs = Math.max(55000, payload.payments.length * 3000);
+      const data = await platinumPost(session, "/api/billing-direct-deposit-allocation/submit-generic-import", payload, undefined, { timeout: timeoutMs });
       console.log('[Generic Import] Submit response:', data?._error ? `ERROR: ${JSON.stringify(data)}` : JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {

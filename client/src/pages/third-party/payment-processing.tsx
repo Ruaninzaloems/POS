@@ -24,6 +24,7 @@ import {
   platinumThirdPartyCashierDetails,
   fetchBatchAccountNames,
   submitGenericImport,
+  validateGenericImport,
   fetchGenericImportStatus,
   fetchGenericImportResults,
   fetchGenericImportErrors,
@@ -101,6 +102,7 @@ interface GenericPreviewRow {
   address?: string;
   isValid: boolean;
   validationMsg?: string;
+  isDuplicate?: boolean;
 }
 
 interface GenericImportResult {
@@ -764,7 +766,7 @@ export default function ThirdPartyPaymentProcessing() {
         return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
       };
 
-      const previewRows: GenericPreviewRow[] = [];
+      const parsedRows: Array<{ rowNum: number; accountNumber: string; amount: number; receiptDate: string; paymentTypeId: number }> = [];
       const skipped: string[] = [];
 
       for (let i = 1; i < lines.length; i++) {
@@ -772,69 +774,70 @@ export default function ThirdPartyPaymentProcessing() {
         const rawAcc = cols[accIdx] || '';
         const rawAmt = cols[amtIdx] || '';
 
-        if (!rawAcc || !rawAmt) {
-          skipped.push(`Row ${i + 1}: empty account or amount`);
+        if (!rawAcc && !rawAmt) {
+          skipped.push(`Row ${i + 1}: completely empty row`);
           continue;
         }
 
         const digits = rawAcc.replace(/\D/g, '');
-        if (digits.length === 0 || digits.length > 12) {
-          skipped.push(`Row ${i + 1}: invalid account number "${rawAcc}"`);
-          continue;
-        }
-
-        const amount = parseFloat(rawAmt.replace(/[^0-9.\-]/g, ''));
-        if (isNaN(amount) || amount <= 0) {
-          skipped.push(`Row ${i + 1}: invalid amount "${rawAmt}"`);
-          continue;
-        }
-
+        const amount = parseFloat((rawAmt || '0').replace(/[^0-9.\-]/g, ''));
         const receiptDate = dateIdx !== -1 && cols[dateIdx] ? formatDateDDMMYYYY(cols[dateIdx]) : defaultReceiptDate;
         const paymentTypeId = ptIdx !== -1 && cols[ptIdx] ? (parseInt(cols[ptIdx]) || defaultPaymentTypeId) : defaultPaymentTypeId;
 
-        previewRows.push({
+        parsedRows.push({
           rowNum: i + 1,
-          accountNumber: digits.padStart(12, '0'),
-          amount,
+          accountNumber: digits.length > 0 ? digits.padStart(12, '0') : rawAcc,
+          amount: isNaN(amount) ? 0 : amount,
           receiptDate,
           paymentTypeId,
-          isValid: true,
         });
       }
 
       setGiPreviewSkipped(skipped);
 
-      if (previewRows.length === 0) {
-        setGiError('No valid payment rows found in CSV. Check the file format.');
+      if (parsedRows.length === 0) {
+        setGiError('No data rows found in CSV. Check the file format.');
         setGiPreviewLoading(false);
         return;
       }
 
-      const uniqueAccounts = [...new Set(previewRows.map(r => r.accountNumber))];
-      try {
-        const nameMap = await fetchBatchAccountNames(uniqueAccounts);
-        for (const row of previewRows) {
-          const info = nameMap[row.accountNumber];
-          if (info && info.name) {
-            row.ownerName = info.name;
-            row.address = info.address || '';
-            row.isValid = true;
-          } else {
-            row.isValid = false;
-            row.validationMsg = 'Account not found in system';
-          }
-        }
-      } catch (e: any) {
-        console.warn('[GenericImport] Account validation failed, proceeding without:', e.message);
-        for (const row of previewRows) {
-          row.validationMsg = 'Could not validate';
-        }
+      if (parsedRows.length > 500) {
+        setGiError(`CSV contains ${parsedRows.length} rows, which exceeds the maximum of 500 rows per import. Please split the file into smaller batches.`);
+        setGiPreviewLoading(false);
+        return;
       }
+
+      console.log(`[GenericImport] Parsed ${parsedRows.length} rows, sending to API for validation...`);
+      const validation = await validateGenericImport(parsedRows);
+
+      if (validation._error || !validation.results) {
+        setGiError(validation.detail || validation.message || 'API validation failed. Please try again.');
+        setGiPreviewLoading(false);
+        return;
+      }
+
+      const previewRows: GenericPreviewRow[] = validation.results.map((r: any) => ({
+        rowNum: r.rowNum,
+        accountNumber: r.accountNumber,
+        amount: r.amount,
+        receiptDate: r.receiptDate,
+        paymentTypeId: r.paymentTypeId,
+        ownerName: r.ownerName || '',
+        address: r.address || '',
+        isValid: r.isValid,
+        validationMsg: r.validationMsg || '',
+        isDuplicate: r.isDuplicate || false,
+      }));
+
+      const validCount = previewRows.filter(r => r.isValid).length;
+      const invalidCount = previewRows.filter(r => !r.isValid).length;
+      console.log(`[GenericImport] API validation complete: ${validCount} valid, ${invalidCount} invalid, ${(validation.duplicates || []).length} duplicate accounts`);
 
       setGiPreviewRows(previewRows);
       setGiStep('preview');
     } catch (e: any) {
-      setGiError(e.message || 'Failed to parse CSV file.');
+      console.error('[GenericImport] Preview failed:', e);
+      setGiError(e.message || 'Failed to validate CSV file.');
     } finally {
       setGiPreviewLoading(false);
     }
@@ -1849,28 +1852,37 @@ export default function ThirdPartyPaymentProcessing() {
                             <TableHead className="text-[11px] font-semibold">Owner / Name</TableHead>
                             <TableHead className="text-[11px] font-semibold text-right">Amount</TableHead>
                             <TableHead className="text-[11px] font-semibold">Date</TableHead>
+                            <TableHead className="text-[11px] font-semibold">Pay Type</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {giPreviewRows.map((row, idx) => (
                             <TableRow
                               key={idx}
-                              className={row.isValid ? '' : 'bg-red-50/50'}
+                              className={!row.isValid ? 'bg-red-50/50' : row.isDuplicate ? 'bg-amber-50/50' : ''}
                               data-testid={`row-gi-preview-${idx}`}
                             >
                               <TableCell className="text-xs text-muted-foreground py-2">{row.rowNum}</TableCell>
                               <TableCell className="py-2">
-                                {row.isValid ? (
-                                  <Badge className="text-[10px] bg-green-100 text-green-800 hover:bg-green-100 gap-1" data-testid={`badge-gi-valid-${idx}`}>
-                                    <CheckCircle2 className="h-3 w-3" />
-                                    Matched
-                                  </Badge>
-                                ) : (
-                                  <Badge variant="destructive" className="text-[10px] gap-1" data-testid={`badge-gi-invalid-${idx}`}>
-                                    <AlertCircle className="h-3 w-3" />
-                                    {row.validationMsg || 'Invalid'}
-                                  </Badge>
-                                )}
+                                <div className="flex flex-col gap-1">
+                                  {row.isValid ? (
+                                    <Badge className="text-[10px] bg-green-100 text-green-800 hover:bg-green-100 gap-1 w-fit" data-testid={`badge-gi-valid-${idx}`}>
+                                      <CheckCircle2 className="h-3 w-3" />
+                                      Matched
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="destructive" className="text-[10px] gap-1 w-fit" data-testid={`badge-gi-invalid-${idx}`}>
+                                      <AlertCircle className="h-3 w-3" />
+                                      {row.validationMsg || 'Invalid'}
+                                    </Badge>
+                                  )}
+                                  {row.isDuplicate && (
+                                    <Badge className="text-[10px] bg-amber-100 text-amber-800 hover:bg-amber-100 gap-1 w-fit">
+                                      <AlertTriangle className="h-3 w-3" />
+                                      Duplicate
+                                    </Badge>
+                                  )}
+                                </div>
                               </TableCell>
                               <TableCell className="font-mono text-xs py-2" data-testid={`text-gi-acc-${idx}`}>{row.accountNumber}</TableCell>
                               <TableCell className="text-xs py-2" data-testid={`text-gi-name-${idx}`}>
@@ -1883,6 +1895,9 @@ export default function ThirdPartyPaymentProcessing() {
                                 R {row.amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
                               </TableCell>
                               <TableCell className="text-xs py-2">{row.receiptDate}</TableCell>
+                              <TableCell className="text-xs py-2">
+                                {({1:'Cash',2:'Cheque',3:'Card',4:'Postal',5:'EFT',6:'3rd Party',7:'Journal'} as Record<number,string>)[row.paymentTypeId] || row.paymentTypeId}
+                              </TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -1891,14 +1906,42 @@ export default function ThirdPartyPaymentProcessing() {
                   </div>
 
                   {giPreviewRows.some(r => !r.isValid) && (
-                    <Alert>
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertTitle>Unmatched Accounts</AlertTitle>
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>Unmatched Accounts ({giPreviewRows.filter(r => !r.isValid).length})</AlertTitle>
                       <AlertDescription className="text-sm">
-                        {giPreviewRows.filter(r => !r.isValid).length} account(s) could not be found in the system.
+                        {giPreviewRows.filter(r => !r.isValid).length} account(s) could not be validated through the Platinum API.
                         These rows will be excluded from the import. Only the {giPreviewRows.filter(r => r.isValid).length} valid row(s) will be submitted.
                       </AlertDescription>
                     </Alert>
+                  )}
+
+                  {giPreviewRows.some(r => r.isDuplicate) && (
+                    <Alert>
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertTitle>Duplicate Accounts Detected</AlertTitle>
+                      <AlertDescription className="text-sm">
+                        Some account numbers appear more than once in the file. Duplicate entries are highlighted in amber.
+                        They will still be submitted unless they also fail validation.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {giPreviewRows.filter(r => r.isValid).length > 0 && (
+                    <div className="bg-slate-50 rounded-lg p-4 border space-y-2">
+                      <div className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">API Payload Summary</div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1 text-xs">
+                        <div><span className="text-muted-foreground">Cash Office:</span> <span className="font-medium">{cashierInfo?.cashOfficeName || cashierInfo?.cashOfficeId || '-'}</span></div>
+                        <div><span className="text-muted-foreground">Cashier ID:</span> <span className="font-medium">{posState?.platinumCashierId || '-'}</span></div>
+                        <div><span className="text-muted-foreground">User ID:</span> <span className="font-medium">{posState?.platinumUser?.user_ID || '-'}</span></div>
+                        <div><span className="text-muted-foreground">Fin Year:</span> <span className="font-medium">{posState?.platinumUser?.finYear || '-'}</span></div>
+                        <div><span className="text-muted-foreground">Post to Cashbook:</span> <span className="font-medium">{giPostToCashbook ? 'Yes' : 'No'}</span></div>
+                        <div><span className="text-muted-foreground">Valid Payments:</span> <span className="font-medium">{giPreviewRows.filter(r => r.isValid).length}</span></div>
+                        <div><span className="text-muted-foreground">Total Amount:</span> <span className="font-bold">R {giPreviewRows.filter(r => r.isValid).reduce((s, r) => s + r.amount, 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span></div>
+                        <div><span className="text-muted-foreground">Date Format:</span> <span className="font-medium">dd/MM/yyyy</span></div>
+                        <div><span className="text-muted-foreground">Account Format:</span> <span className="font-medium">12-digit zero-padded</span></div>
+                      </div>
+                    </div>
                   )}
 
                   <div className="flex flex-col-reverse sm:flex-row justify-between gap-3 pt-2 border-t">
