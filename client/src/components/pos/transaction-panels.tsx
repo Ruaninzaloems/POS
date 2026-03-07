@@ -23,7 +23,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
-function BasketPayAmountInput({ value, onChange, className = '', tabIndex }: { value: number; onChange: (val: number) => void; className?: string; tabIndex?: number }) {
+function BasketPayAmountInput({ value, onChange, className = '', tabIndex, onFocus, onBlur: onBlurProp }: { value: number; onChange: (val: number) => void; className?: string; tabIndex?: number; onFocus?: () => void; onBlur?: () => void }) {
     const [text, setText] = useState(value ? String(value) : '');
     const lastExternalValue = useRef(value);
 
@@ -59,6 +59,7 @@ function BasketPayAmountInput({ value, onChange, className = '', tabIndex }: { v
         } else {
             setText('');
         }
+        onBlurProp?.();
     };
 
     return (
@@ -68,6 +69,7 @@ function BasketPayAmountInput({ value, onChange, className = '', tabIndex }: { v
             className={`h-9 pl-6 text-right font-mono rounded-lg focus:ring-2 focus:ring-[var(--pos-accent-shadow)] ${className}`}
             value={text}
             onChange={handleChange}
+            onFocus={onFocus}
             onBlur={handleBlur}
             {...(tabIndex !== undefined ? { tabIndex } : {})}
             data-testid="input-basket-pay-amount"
@@ -302,6 +304,7 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [basketPage, setBasketPage] = useState(1);
   const [showOnlyMissing, setShowOnlyMissing] = useState(false);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const basketItemRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const basketCardRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
@@ -325,7 +328,7 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
   );
 
   const itemsWithAmount = sortedItems.filter(i => i.amountToPay > 0);
-  const itemsMissing = sortedItems.filter(i => i.amountToPay <= 0);
+  const itemsMissing = sortedItems.filter(i => i.amountToPay <= 0 || i.id === editingItemId);
   const displayItems = showOnlyMissing ? itemsMissing : sortedItems;
   const totalPages = Math.max(1, Math.ceil(displayItems.length / BASKET_PAGE_SIZE));
   const safePage = Math.min(basketPage, totalPages);
@@ -945,6 +948,8 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
                                              <BasketPayAmountInput
                                                 value={item.amountToPay}
                                                 onChange={(val) => updateItemAmount(item.id, val)}
+                                                onFocus={() => setEditingItemId(item.id)}
+                                                onBlur={() => { setTimeout(() => setEditingItemId(cur => cur === item.id ? null : cur), 100); }}
                                              />
                                           </div>
                                       </div>
