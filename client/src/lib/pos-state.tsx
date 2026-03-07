@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect, useRef,
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, CashOffice } from './external-api';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchCashierPaymentOptions, fetchCashierPaymentTypes, CashierPaymentOption, CashierPaymentType, mapTransactionTypeToPaymentOptionId, platinumGetConsAccountDetails, validateReceiptRange, fetchActiveCashierByUserId, platinumValidateCashier, fetchActiveFinYear, platinumAuthDayEndCancelReceipt, platinumRequestCancelReceipt, platinumApproveCancelReceipt, platinumDeclineCancelReceipt, platinumGetPendingCancelRequests, platinumGetDayEndUnreconciledList, platinumSubmitCashierSetup } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchCashierPaymentOptions, fetchCashierPaymentTypes, CashierPaymentOption, CashierPaymentType, mapTransactionTypeToPaymentOptionId, platinumGetConsAccountDetails, validateReceiptRange, fetchActiveCashierByUserId, platinumValidateCashier, fetchActiveFinYear, platinumAuthDayEndCancelReceipt, platinumRequestCancelReceipt, platinumApproveCancelReceipt, platinumDeclineCancelReceipt, platinumGetPendingCancelRequests, platinumGetDayEndUnreconciledList, platinumSubmitCashierSetup } from './external-api';
 import { getAccountBalance as enquiryGetAccountBalance } from './enquiries-service';
 
 if (import.meta.hot) {
@@ -2376,53 +2376,66 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
                         console.log(`[Priority 2 ${label}] Receipt number from submit response: ${receiptNo}`);
                     }
 
-                    try {
-                        const miscReceiptData = await fetchPosMultiReceiptPrint(String(miscReceiptId), 3, apiReceiptNo || undefined);
-                        if (miscReceiptData && miscReceiptData.length > 0) {
-                            if (miscReceiptData[0].receiptNo) receiptNo = miscReceiptData[0].receiptNo;
-                            const rd = miscReceiptData[0];
-                            miscReceiptDetail = {
-                                receiptNo: rd.receiptNo || receiptNo || '',
-                                cashierName: rd.cashierName || currentUser.name,
-                                cashOffice: rd.cashOfficeName || sessionDetails?.officeDesc || '',
-                                tenderAmount: rd.tenderAmount ?? tender,
-                                changeAmount: rd.changeAmount ?? change,
-                                outstandingAmount: rd.outstandingAmount,
-                                paymentType: splitType === 'cash' ? 'Cash' : 'Credit Card',
-                                paymentOption: 'Miscellaneous Payment',
-                                accountId: rd.accountId || '',
-                                accName: (rd.accName && rd.accName.trim()) ? rd.accName : paidByName,
-                                receiptDate: rd.receiptDate || formattedReceiptDate,
-                                miscDescription: miscItemDesc,
-                                miscReference: miscReference,
-                                miscInitials: initials,
-                                miscSurname: lastName,
-                                lineItems: [{
-                                    description: miscItemDesc,
-                                    amount: rd.amount ?? miscAmtExVat,
-                                    vatAmount: rd.vatAmount ?? miscVatAmt,
-                                }],
-                            };
-                            console.log(`[Priority 2 ${label}] Receipt data resolved via pos-multi-receipt-print: ${receiptNo}`);
+                    if (receiptNo) {
+                        miscReceiptDetail = {
+                            receiptNo,
+                            cashierName: sessionCashierName,
+                            cashOffice: sessionOfficeDesc,
+                            tenderAmount: tender,
+                            changeAmount: change,
+                            outstandingAmount: null,
+                            paymentType: splitType === 'cash' ? 'Cash' : 'Credit Card',
+                            paymentOption: 'Miscellaneous Payment',
+                            accountId: '',
+                            accName: paidByName,
+                            receiptDate: formattedReceiptDate,
+                            miscDescription: miscItemDesc,
+                            miscReference: miscReference,
+                            miscInitials: initials,
+                            miscSurname: lastName,
+                            lineItems: [{ description: miscItemDesc, amount: miscAmtExVat, vatAmount: miscVatAmt }],
+                        };
+                        console.log(`[Priority 2 ${label}] Using local receipt detail (receipt number already resolved from submit response: ${receiptNo})`);
+                    } else {
+                        try {
+                            const miscReceiptData = await fetchPosMultiReceiptPrint(String(miscReceiptId), 2, undefined);
+                            if (miscReceiptData && miscReceiptData.length > 0) {
+                                if (miscReceiptData[0].receiptNo) receiptNo = miscReceiptData[0].receiptNo;
+                                const rd = miscReceiptData[0];
+                                miscReceiptDetail = {
+                                    receiptNo: rd.receiptNo || receiptNo || '',
+                                    cashierName: rd.cashierName || currentUser.name,
+                                    cashOffice: rd.cashOfficeName || sessionDetails?.officeDesc || '',
+                                    tenderAmount: rd.tenderAmount ?? tender,
+                                    changeAmount: rd.changeAmount ?? change,
+                                    outstandingAmount: rd.outstandingAmount,
+                                    paymentType: splitType === 'cash' ? 'Cash' : 'Credit Card',
+                                    paymentOption: 'Miscellaneous Payment',
+                                    accountId: rd.accountId || '',
+                                    accName: (rd.accName && rd.accName.trim()) ? rd.accName : paidByName,
+                                    receiptDate: rd.receiptDate || formattedReceiptDate,
+                                    miscDescription: miscItemDesc,
+                                    miscReference: miscReference,
+                                    miscInitials: initials,
+                                    miscSurname: lastName,
+                                    lineItems: [{
+                                        description: miscItemDesc,
+                                        amount: rd.amount ?? miscAmtExVat,
+                                        vatAmount: rd.vatAmount ?? miscVatAmt,
+                                    }],
+                                };
+                                console.log(`[Priority 2 ${label}] Receipt data resolved via pos-multi-receipt-print: ${receiptNo}`);
+                            }
+                        } catch (e) {
+                            console.warn(`[Priority 2 ${label}] Could not fetch receipt data from Platinum`, e);
                         }
-                    } catch (e) {
-                        console.warn(`[Priority 2 ${label}] Could not fetch receipt data from Platinum`, e);
-                    }
 
-                    if (!receiptNo) {
-                        const lookedUpNo = await lookupReceiptNoById(miscReceiptId);
-                        if (lookedUpNo) {
-                            receiptNo = lookedUpNo;
-                            console.log(`[Priority 2 ${label}] Receipt number resolved from unreconciled list: ${receiptNo}`);
-                        }
-                    }
-
-                    if (!receiptNo) {
-                        await new Promise(r => setTimeout(r, 2000));
-                        const retryLookup = await lookupReceiptNoById(miscReceiptId);
-                        if (retryLookup) {
-                            receiptNo = retryLookup;
-                            console.log(`[Priority 2 ${label}] Receipt number resolved from unreconciled list (retry): ${receiptNo}`);
+                        if (!receiptNo) {
+                            const lookedUpNo = await lookupReceiptNoById(miscReceiptId);
+                            if (lookedUpNo) {
+                                receiptNo = lookedUpNo;
+                                console.log(`[Priority 2 ${label}] Receipt number resolved from unreconciled list: ${receiptNo}`);
+                            }
                         }
                     }
 
@@ -2488,44 +2501,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
 
                     const splitEntry: SplitReceipt = { receiptNumber: receiptNo, receiptId: miscReceiptId, paymentType: splitType, amount, receiptDetail: miscReceiptDetail };
 
-                    const miscPrintPayload = {
-                        receiptId: miscReceiptId,
-                        receiptNo: receiptNo,
-                        lastName: lastName,
-                        initials: initials,
-                        description: miscItemDesc,
-                        reference: miscReference,
-                        amount: miscAmtExVat,
-                        vatAmount: miscVatAmt,
-                        totalAmount: amount,
-                        tenderAmount: tender,
-                        changeAmount: change,
-                        paymentType: splitType === 'cash' ? 1 : 3,
-                        groupId: Number(groupId),
-                        scoaItemId: Number(scoaItemId),
-                        cashierName: sessionCashierName,
-                        cashOffice: sessionOfficeDesc,
-                        receiptDate: formattedReceiptDate,
-                    };
-                    for (let printAttempt = 1; printAttempt <= 2; printAttempt++) {
-                        try {
-                            await platinumPrintMiscellaneousReceipt(miscPrintPayload, { id: String(miscReceiptId), userId: String(sessionUserId), cashierId: String(sessionCashierId) });
-                            break;
-                        } catch (e) {
-                            if (printAttempt === 2) console.warn(`[Priority 2 ${label}] Failed to print misc receipt after 2 attempts`, e);
-                            else await new Promise(r => setTimeout(r, 1000));
-                        }
-                    }
-
-                    try {
-                        const miscAllocs = await fetchReceiptAllocations(String(miscReceiptId));
+                    fetchReceiptAllocations(String(miscReceiptId)).then(miscAllocs => {
                         if (miscAllocs.length > 0) {
                             splitEntry.allocations = miscAllocs;
                             record.allocations = [...(record.allocations || []), ...miscAllocs];
                         }
-                    } catch (e) {
-                        console.warn(`[Priority 2 ${label}] Could not fetch misc receipt allocations`, e);
-                    }
+                    }).catch(() => {});
 
                     record.splitReceipts!.push(splitEntry);
                     console.log(`[Priority 2 ${label}] Receipt ${receiptNo} added`);
