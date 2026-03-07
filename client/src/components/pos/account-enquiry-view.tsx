@@ -68,7 +68,6 @@ function PaymentInput({ id, value, onChange }: { id: string; value: number; onCh
         className="pl-12 w-full sm:w-56 h-14 text-2xl font-mono font-bold border-2 border-[var(--pos-accent)] focus:border-[var(--pos-accent)] focus:ring-2 focus:ring-[var(--pos-accent-shadow)] bg-white rounded-lg"
         value={rawText}
         placeholder="0.00"
-        tabIndex={1}
         onFocus={(e) => e.target.select()}
         onChange={handleChange}
         data-testid="input-payment-allocation"
@@ -371,6 +370,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
          <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-[#E5E5E5] bg-[#F7F7F7]">
            <div className="flex items-center gap-2.5">
               <button
+                tabIndex={-1}
                 onClick={() => { if (viewingItemId) setViewingItem(null); else removeItem(item.id); }}
                 className="shrink-0 w-7 h-7 rounded-lg bg-[#F2F4F7] hover:bg-[#E5E5E5] flex items-center justify-center text-slate-500 transition-colors"
                 data-testid="button-close-enquiry"
@@ -405,7 +405,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                     R {account.outstandingAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                 </div>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50" onClick={() => removeItem(item.id)} data-testid={`button-remove-account-${item.id}`}>
+                <Button variant="ghost" size="icon" tabIndex={-1} className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50" onClick={() => removeItem(item.id)} data-testid={`button-remove-account-${item.id}`}>
                   <Trash2 className="w-3.5 h-3.5" />
                 </Button>
               </div>
@@ -413,17 +413,17 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
 
            <div className="flex gap-1.5 mt-2 flex-wrap">
               {hasPropertyRates && (
-                <button onClick={handlePayRatesAdvance} className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100 transition-colors" data-testid="button-pay-rates-advance">
+                <button tabIndex={-1} onClick={handlePayRatesAdvance} className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100 transition-colors" data-testid="button-pay-rates-advance">
                   <CalendarRange className="w-3 h-3" /> Rates Advance
                 </button>
               )}
               {account.prepaidMeterNo && (
-                <button onClick={handleBuyPrepaid} className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium ring-1 hover:opacity-90 transition-colors ${account.prepaidType === 'Water' ? 'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)] ring-[var(--pos-accent-shadow)]' : 'bg-amber-50 text-amber-700 ring-amber-200'}`} data-testid="button-buy-prepaid">
+                <button tabIndex={-1} onClick={handleBuyPrepaid} className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium ring-1 hover:opacity-90 transition-colors ${account.prepaidType === 'Water' ? 'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)] ring-[var(--pos-accent-shadow)]' : 'bg-amber-50 text-amber-700 ring-amber-200'}`} data-testid="button-buy-prepaid">
                   {account.prepaidType === 'Water' ? <Droplets className="w-3 h-3" /> : <Zap className="w-3 h-3" />}
                   Prepaid {account.prepaidType || 'Electricity'}
                 </button>
               )}
-              <button onClick={fetchBalanceData} disabled={balanceLoading} className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium bg-orange-50 text-orange-700 ring-1 ring-orange-200 hover:bg-orange-100 transition-colors disabled:opacity-50" data-testid="button-refresh-account-transactions">
+              <button tabIndex={-1} onClick={fetchBalanceData} disabled={balanceLoading} className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium bg-orange-50 text-orange-700 ring-1 ring-orange-200 hover:bg-orange-100 transition-colors disabled:opacity-50" data-testid="button-refresh-account-transactions">
                 {balanceLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
                 Refresh
               </button>

@@ -23,7 +23,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
-function BasketPayAmountInput({ value, onChange, className = '' }: { value: number; onChange: (val: number) => void; className?: string }) {
+function BasketPayAmountInput({ value, onChange, className = '', tabIndex }: { value: number; onChange: (val: number) => void; className?: string; tabIndex?: number }) {
     const [text, setText] = useState(value ? String(value) : '');
     const lastExternalValue = useRef(value);
 
@@ -65,11 +65,11 @@ function BasketPayAmountInput({ value, onChange, className = '' }: { value: numb
         <Input
             type="text"
             inputMode="decimal"
-            tabIndex={1}
             className={`h-9 pl-6 text-right font-mono rounded-lg focus:ring-2 focus:ring-[var(--pos-accent-shadow)] ${className}`}
             value={text}
             onChange={handleChange}
             onBlur={handleBlur}
+            {...(tabIndex !== undefined ? { tabIndex } : {})}
             data-testid="input-basket-pay-amount"
         />
     );
@@ -171,6 +171,7 @@ function ClearanceBasketExpander({ item, updateItemDetails, updateItemAmount }: 
         <div className="px-3 sm:px-4 pb-3 sm:pb-4 pt-0">
             <div className="bg-amber-50 border border-amber-200 rounded-xl">
                 <button
+                    tabIndex={-1}
                     className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100/50 transition-colors rounded-xl"
                     onClick={() => setExpanded(!expanded)}
                     data-testid={`button-expand-clearance-${item.id}`}
@@ -906,7 +907,7 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
                                               {item.type === 'DIRECT_INCOME' && <Badge variant="outline" className="font-mono text-xs border-green-500 text-green-600 bg-green-50">INC</Badge>}
                                               {item.type === 'ACCOUNT_GROUP' && <Badge variant="outline" className="font-mono text-xs border-purple-500 text-purple-600 bg-purple-50">GRP</Badge>}
                                           </div>
-                                          <Button variant="ghost" size="icon" className="h-7 w-7 sm:hidden text-muted-foreground hover:text-destructive" onClick={() => removeItem(item.id)}>
+                                          <Button variant="ghost" size="icon" tabIndex={-1} className="h-7 w-7 sm:hidden text-muted-foreground hover:text-destructive" onClick={() => removeItem(item.id)}>
                                               <Trash2 className="w-4 h-4" />
                                           </Button>
                                       </div>
@@ -1115,7 +1116,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                   </div>
                   <div className="text-[10px] text-slate-500 font-mono">Meter: {account.prepaidMeterNo}</div>
                 </div>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50" onClick={() => removeItem(item.id)}>
+                <Button variant="ghost" size="icon" tabIndex={-1} className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50" onClick={() => removeItem(item.id)}>
                   <Trash2 className="w-3.5 h-3.5" />
                 </Button>
               </div>
@@ -1162,6 +1163,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                   {[50, 100, 200, 500].map(amt => (
                     <button
                       key={amt}
+                      tabIndex={-1}
                       className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors ${isWater ? 'bg-[var(--pos-accent-tint-strong)] text-[var(--pos-accent)] hover:bg-[var(--pos-accent-tint-strong)] active:bg-[var(--pos-accent)]' : 'bg-amber-100 text-amber-700 hover:bg-amber-200 active:bg-amber-300'}`}
                       onClick={() => { setStagedAmount(amt); updateItemAmount(item.id, amt); }}
                       data-testid={`button-quick-${amt}-${item.id}`}
@@ -1235,7 +1237,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                     <div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Due</div>
                     <div className="text-sm font-bold font-mono text-red-600">R {(clr.totalDue || item.amountDue || 0).toFixed(2)}</div>
                   </div>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50" onClick={() => removeItem(item.id)} data-testid={`button-remove-clearance-${item.id}`}>
+                  <Button variant="ghost" size="icon" tabIndex={-1} className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50" onClick={() => removeItem(item.id)} data-testid={`button-remove-clearance-${item.id}`}>
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
                 </div>
@@ -1399,61 +1401,18 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                   <h3 className="text-sm font-bold text-[#2E2E2E] truncate">{item.description}</h3>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span className="text-[9px] font-mono px-1 py-0 rounded bg-[#F2F4F7] text-slate-600 ring-1 ring-[#D6D6D6]">
-                      SCOA: {incomeItem.scoaItem}
+                      {(incomeItem.scoaItem || '').replace(/\s+[A-Z]{2}\d{30,}.*$/, '').trim() || incomeItem.scoaItem} · ID: {incomeItem.scoaItemId}
                     </span>
                     <span className="text-[10px] text-slate-500">{incomeItem.groupName}</span>
                   </div>
                 </div>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50" onClick={() => removeItem(item.id)}>
+                <Button variant="ghost" size="icon" tabIndex={-1} className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50" onClick={() => removeItem(item.id)}>
                   <Trash2 className="w-3.5 h-3.5" />
                 </Button>
               </div>
             </div>
 
             <div className="px-3 sm:px-4 py-3 space-y-3">
-              <div className="grid grid-cols-[120px_1fr] gap-2">
-                <div className="space-y-1">
-                  <Label htmlFor={`initials-${item.id}`} className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Initials</Label>
-                  <Input 
-                    id={`initials-${item.id}`}
-                    tabIndex={10}
-                    autoFocus
-                    placeholder="e.g. JD"
-                    className="h-9 text-sm bg-[#F7F7F7] border-[#D6D6D6]"
-                    value={item.additionalInfo || ''}
-                    onChange={(e) => updateItemDetails(item.id, { additionalInfo: e.target.value })}
-                    data-testid={`input-initials-${item.id}`}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor={`lastName-${item.id}`} className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Last Name <span className="text-red-500">*</span></Label>
-                  <Input 
-                    id={`lastName-${item.id}`}
-                    tabIndex={20}
-                    placeholder="Surname / Company"
-                    className={`h-9 text-sm bg-[#F7F7F7] border-[#D6D6D6] ${(item as any).paidByError ? 'border-red-500 ring-1 ring-red-500' : ''}`}
-                    value={item.paidBy || ''}
-                    onChange={(e) => updateItemDetails(item.id, { paidBy: e.target.value })}
-                    data-testid={`input-lastname-${item.id}`}
-                  />
-                  {(item as any).paidByError && <span className="text-[10px] text-red-500">Required</span>}
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor={`desc-${item.id}`} className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Description <span className="text-red-500">*</span></Label>
-                <Textarea 
-                  id={`desc-${item.id}`}
-                  tabIndex={30}
-                  placeholder="Payment description..."
-                  className={`resize-none h-16 text-sm bg-[#F7F7F7] border-[#D6D6D6] ${(item as any).notesError ? 'border-red-500 ring-1 ring-red-500' : ''}`}
-                  value={item.notes || ''}
-                  onChange={(e) => updateItemDetails(item.id, { notes: e.target.value })}
-                  data-testid={`input-desc-${item.id}`}
-                />
-                {(item as any).notesError && <span className="text-[10px] text-red-500">Required</span>}
-              </div>
-
               <div className="rounded-xl p-3 bg-emerald-50/70 border border-emerald-100 space-y-2">
                 {(() => {
                   const vatRate = incomeItem.vatRate || 0;
@@ -1473,7 +1432,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                             id={`amount-${item.id}`}
                             type="text"
                             inputMode="decimal"
-                            tabIndex={40}
+                            autoFocus
                             className="pl-10 h-12 text-xl font-mono font-bold bg-white border-emerald-200 focus:border-emerald-400 focus:ring-emerald-200"
                             value={item.amountToPay || ''} 
                             onChange={(e) => {
@@ -1510,6 +1469,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                   {[50, 100, 200, 500].map(amt => (
                     <button
                       key={amt}
+                      tabIndex={-1}
                       className="flex-1 py-1.5 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 active:bg-emerald-300 transition-colors"
                       onClick={() => updateItemAmount(item.id, amt)}
                       data-testid={`button-quick-${amt}-${item.id}`}
@@ -1518,6 +1478,45 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div className="grid grid-cols-[120px_1fr] gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor={`initials-${item.id}`} className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Initials</Label>
+                  <Input 
+                    id={`initials-${item.id}`}
+                    placeholder="e.g. JD"
+                    className="h-9 text-sm bg-[#F7F7F7] border-[#D6D6D6]"
+                    value={item.additionalInfo || ''}
+                    onChange={(e) => updateItemDetails(item.id, { additionalInfo: e.target.value })}
+                    data-testid={`input-initials-${item.id}`}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor={`lastName-${item.id}`} className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Last Name <span className="text-red-500">*</span></Label>
+                  <Input 
+                    id={`lastName-${item.id}`}
+                    placeholder="Surname / Company"
+                    className={`h-9 text-sm bg-[#F7F7F7] border-[#D6D6D6] ${(item as any).paidByError ? 'border-red-500 ring-1 ring-red-500' : ''}`}
+                    value={item.paidBy || ''}
+                    onChange={(e) => updateItemDetails(item.id, { paidBy: e.target.value })}
+                    data-testid={`input-lastname-${item.id}`}
+                  />
+                  {(item as any).paidByError && <span className="text-[10px] text-red-500">Required</span>}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor={`desc-${item.id}`} className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Description <span className="text-red-500">*</span></Label>
+                <Textarea 
+                  id={`desc-${item.id}`}
+                  placeholder="Payment description..."
+                  className={`resize-none h-16 text-sm bg-[#F7F7F7] border-[#D6D6D6] ${(item as any).notesError ? 'border-red-500 ring-1 ring-red-500' : ''}`}
+                  value={item.notes || ''}
+                  onChange={(e) => updateItemDetails(item.id, { notes: e.target.value })}
+                  data-testid={`input-desc-${item.id}`}
+                />
+                {(item as any).notesError && <span className="text-[10px] text-red-500">Required</span>}
               </div>
             </div>
           </div>
@@ -1530,7 +1529,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
         <div className="px-3 sm:px-4 py-2.5 border-b bg-[#F7F7F7]">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-[#2E2E2E]">{item.description}</h3>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50" onClick={() => removeItem(item.id)}>
+            <Button variant="ghost" size="icon" tabIndex={-1} className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50" onClick={() => removeItem(item.id)}>
               <Trash2 className="w-3.5 h-3.5" />
             </Button>
           </div>

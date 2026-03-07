@@ -83,11 +83,12 @@ export function UnifiedSearch({ onSearchActiveChange }: { onSearchActiveChange?:
       if (item.isGroup) {
         return;
       }
+      const cleanScoaName = (item.scoaItem || item.name || '').replace(/\s+[A-Z]{2}\d{30,}.*$/, '').trim();
       newItem = {
         id: crypto.randomUUID(),
         type: 'DIRECT_INCOME',
-        description: item.description || item.name,
-        reference: item.scoaItem || item.name || '',
+        description: item.description || cleanScoaName || item.name,
+        reference: cleanScoaName || item.scoaItem || item.name || '',
         amountDue: 0,
         amountToPay: 0,
         originalData: {
