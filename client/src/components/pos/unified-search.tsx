@@ -202,6 +202,13 @@ export function UnifiedSearch({ onSearchActiveChange }: { onSearchActiveChange?:
             const status = clearanceInfo?.status || '';
             const expiryDate = clearanceInfo?.clearanceExpiryDateStr || clearanceInfo?.clearanceExpiryDate || '';
             const accountID = clearanceInfo?.accountID || '';
+
+            const statusLower = (status || '').toLowerCase().trim();
+            if (statusLower === 'completed' || statusLower === 'complete') {
+                alert(`Clearance ${clearanceId} has already been completed and cannot be processed.\n\nStatus: ${status}\nOwner: ${ownerName || accountID || 'Unknown'}`);
+                return;
+            }
+
             const total1181 = clearanceInfo?.total1181 ?? null;
             const total1183 = clearanceInfo?.total1183 ?? null;
             const totalPaid = clearanceInfo?.paid ?? null;
