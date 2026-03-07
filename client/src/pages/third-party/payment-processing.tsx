@@ -142,6 +142,15 @@ export default function ThirdPartyPaymentProcessing() {
   const [giPreviewRows, setGiPreviewRows] = useState<GenericPreviewRow[]>([]);
   const [giPreviewSkipped, setGiPreviewSkipped] = useState<string[]>([]);
   const [giPreviewLoading, setGiPreviewLoading] = useState(false);
+  const [giValidationProgress, setGiValidationProgress] = useState<{
+    phase: 'parsing' | 'validating' | 'building' | 'done';
+    percent: number;
+    detail: string;
+    validatedCount: number;
+    totalCount: number;
+    validCount: number;
+    invalidCount: number;
+  } | null>(null);
   const giPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -735,12 +744,19 @@ export default function ThirdPartyPaymentProcessing() {
     setGiError('');
     setGiPreviewRows([]);
     setGiPreviewSkipped([]);
+    setGiValidationProgress({ phase: 'parsing', percent: 0, detail: 'Reading CSV file...', validatedCount: 0, totalCount: 0, validCount: 0, invalidCount: 0 });
+
     try {
+      await new Promise(r => setTimeout(r, 300));
       const fileContent = await giFile.text();
       const lines = fileContent.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+
+      setGiValidationProgress(p => p ? { ...p, percent: 5, detail: `Read ${lines.length - 1} data rows from file` } : p);
+
       if (lines.length < 2) {
         setGiError('CSV must have a header row and at least one data row.');
         setGiPreviewLoading(false);
+        setGiValidationProgress(null);
         return;
       }
 
@@ -750,8 +766,11 @@ export default function ThirdPartyPaymentProcessing() {
       const dateIdx = header.findIndex(h => h === 'receiptdate' || h === 'date');
       const ptIdx = header.findIndex(h => h === 'paymenttypeid' || h === 'paymenttype' || h === 'paytype');
 
-      if (accIdx === -1) { setGiError('CSV missing required column: AccountNumber'); setGiPreviewLoading(false); return; }
-      if (amtIdx === -1) { setGiError('CSV missing required column: Amount'); setGiPreviewLoading(false); return; }
+      if (accIdx === -1) { setGiError('CSV missing required column: AccountNumber'); setGiPreviewLoading(false); setGiValidationProgress(null); return; }
+      if (amtIdx === -1) { setGiError('CSV missing required column: Amount'); setGiPreviewLoading(false); setGiValidationProgress(null); return; }
+
+      setGiValidationProgress(p => p ? { ...p, percent: 10, detail: 'Parsing rows and formatting data...' } : p);
+      await new Promise(r => setTimeout(r, 200));
 
       const defaultDateParts = giReceiptDate ? giReceiptDate.split('-') : [];
       const defaultReceiptDate = defaultDateParts.length === 3
@@ -798,40 +817,116 @@ export default function ThirdPartyPaymentProcessing() {
       if (parsedRows.length === 0) {
         setGiError('No data rows found in CSV. Check the file format.');
         setGiPreviewLoading(false);
+        setGiValidationProgress(null);
         return;
       }
 
       if (parsedRows.length > 500) {
         setGiError(`CSV contains ${parsedRows.length} rows, which exceeds the maximum of 500 rows per import. Please split the file into smaller batches.`);
         setGiPreviewLoading(false);
+        setGiValidationProgress(null);
         return;
       }
 
-      console.log(`[GenericImport] Parsed ${parsedRows.length} rows, sending to API for validation...`);
-      const validation = await validateGenericImport(parsedRows);
+      const uniqueAccounts = new Set(parsedRows.map(r => r.accountNumber).filter(a => /^\d{12}$/.test(a)));
+      setGiValidationProgress({
+        phase: 'validating',
+        percent: 15,
+        detail: `Validating ${uniqueAccounts.size} unique accounts against Platinum API...`,
+        validatedCount: 0,
+        totalCount: parsedRows.length,
+        validCount: 0,
+        invalidCount: 0,
+      });
 
-      if (validation._error || !validation.results) {
-        setGiError(validation.detail || validation.message || 'API validation failed. Please try again.');
-        setGiPreviewLoading(false);
-        return;
+      const BATCH_SIZE = 50;
+      const allResults: any[] = [];
+      const allDuplicates: string[] = [];
+
+      for (let batchStart = 0; batchStart < parsedRows.length; batchStart += BATCH_SIZE) {
+        const batch = parsedRows.slice(batchStart, batchStart + BATCH_SIZE);
+        const batchNum = Math.floor(batchStart / BATCH_SIZE) + 1;
+        const totalBatches = Math.ceil(parsedRows.length / BATCH_SIZE);
+        const batchEnd = Math.min(batchStart + BATCH_SIZE, parsedRows.length);
+
+        setGiValidationProgress(p => p ? {
+          ...p,
+          phase: 'validating',
+          percent: 15 + Math.round((batchStart / parsedRows.length) * 70),
+          detail: `Batch ${batchNum}/${totalBatches} — Validating rows ${batchStart + 1}–${batchEnd} against Platinum API...`,
+          validatedCount: batchStart,
+        } : p);
+
+        const validation = await validateGenericImport(batch);
+
+        if (validation._error || !validation.results) {
+          setGiError(validation.detail || validation.message || `API validation failed on batch ${batchNum}. Please try again.`);
+          setGiPreviewLoading(false);
+          setGiValidationProgress(null);
+          return;
+        }
+
+        allResults.push(...validation.results);
+        if (validation.duplicates) allDuplicates.push(...validation.duplicates);
+
+        const batchValid = validation.results.filter((r: any) => r.isValid).length;
+        const batchInvalid = validation.results.filter((r: any) => !r.isValid).length;
+
+        setGiValidationProgress(p => p ? {
+          ...p,
+          percent: 15 + Math.round((batchEnd / parsedRows.length) * 70),
+          detail: `Batch ${batchNum}/${totalBatches} complete — ${batchValid} matched, ${batchInvalid} invalid`,
+          validatedCount: batchEnd,
+          validCount: (p.validCount || 0) + batchValid,
+          invalidCount: (p.invalidCount || 0) + batchInvalid,
+        } : p);
+
+        if (batchStart + BATCH_SIZE < parsedRows.length) {
+          await new Promise(r => setTimeout(r, 100));
+        }
       }
 
-      const previewRows: GenericPreviewRow[] = validation.results.map((r: any) => ({
-        rowNum: r.rowNum,
-        accountNumber: r.accountNumber,
-        amount: r.amount,
-        receiptDate: r.receiptDate,
-        paymentTypeId: r.paymentTypeId,
-        ownerName: r.ownerName || '',
-        address: r.address || '',
-        isValid: r.isValid,
-        validationMsg: r.validationMsg || '',
-        isDuplicate: r.isDuplicate || false,
-      }));
+      setGiValidationProgress(p => p ? { ...p, phase: 'building', percent: 90, detail: 'Building preview table...' } : p);
+      await new Promise(r => setTimeout(r, 200));
+
+      const globalDuplicateCheck: Record<string, number[]> = {};
+      allResults.forEach((r: any, idx: number) => {
+        const acc = r.accountNumber;
+        if (!globalDuplicateCheck[acc]) globalDuplicateCheck[acc] = [];
+        globalDuplicateCheck[acc].push(idx);
+      });
+
+      const previewRows: GenericPreviewRow[] = allResults.map((r: any, idx: number) => {
+        const isDup = r.isDuplicate || (globalDuplicateCheck[r.accountNumber]?.length > 1);
+        return {
+          rowNum: r.rowNum,
+          accountNumber: r.accountNumber,
+          amount: r.amount,
+          receiptDate: r.receiptDate,
+          paymentTypeId: r.paymentTypeId,
+          ownerName: r.ownerName || '',
+          address: r.address || '',
+          isValid: r.isValid,
+          validationMsg: isDup && r.isValid ? (r.validationMsg ? r.validationMsg + '; Duplicate account' : 'Duplicate account in file') : (r.validationMsg || ''),
+          isDuplicate: isDup,
+        };
+      });
 
       const validCount = previewRows.filter(r => r.isValid).length;
       const invalidCount = previewRows.filter(r => !r.isValid).length;
-      console.log(`[GenericImport] API validation complete: ${validCount} valid, ${invalidCount} invalid, ${(validation.duplicates || []).length} duplicate accounts`);
+      const dupCount = previewRows.filter(r => r.isDuplicate).length;
+
+      setGiValidationProgress({
+        phase: 'done',
+        percent: 100,
+        detail: `Complete — ${validCount} matched, ${invalidCount} invalid${dupCount > 0 ? `, ${dupCount} duplicates` : ''}`,
+        validatedCount: parsedRows.length,
+        totalCount: parsedRows.length,
+        validCount,
+        invalidCount,
+      });
+
+      await new Promise(r => setTimeout(r, 600));
 
       setGiPreviewRows(previewRows);
       setGiStep('preview');
@@ -840,6 +935,7 @@ export default function ThirdPartyPaymentProcessing() {
       setGiError(e.message || 'Failed to validate CSV file.');
     } finally {
       setGiPreviewLoading(false);
+      setGiValidationProgress(null);
     }
   };
 
@@ -1765,17 +1861,112 @@ export default function ThirdPartyPaymentProcessing() {
                     )}
                   </div>
 
-                  <div className="flex justify-end pt-2 border-t">
-                    <Button
-                      onClick={handlePreviewFile}
-                      disabled={!giFile || giPreviewLoading}
-                      className="gap-2 bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-white h-11 sm:h-10 w-full sm:w-auto"
-                      data-testid="button-gi-preview"
-                    >
-                      {giPreviewLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
-                      {giPreviewLoading ? 'Validating...' : 'Preview & Validate'}
-                    </Button>
-                  </div>
+                  {giValidationProgress ? (
+                    <div className="pt-3 border-t space-y-3" data-testid="gi-validation-progress">
+                      <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                        <Loader2 className="h-4 w-4 animate-spin" style={{ color: 'var(--pos-accent)' }} />
+                        <span>Validating Import File</span>
+                      </div>
+
+                      <div className="relative w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className="absolute inset-y-0 left-0 rounded-full transition-all duration-500 ease-out"
+                          style={{
+                            width: `${giValidationProgress.percent}%`,
+                            background: giValidationProgress.phase === 'done'
+                              ? '#22c55e'
+                              : 'linear-gradient(90deg, var(--pos-accent), var(--pos-accent-dark))',
+                          }}
+                        />
+                        {giValidationProgress.phase === 'validating' && (
+                          <div
+                            className="absolute inset-y-0 rounded-full animate-pulse opacity-40"
+                            style={{
+                              left: `${Math.max(0, giValidationProgress.percent - 8)}%`,
+                              width: '8%',
+                              background: 'var(--pos-accent)',
+                            }}
+                          />
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs text-slate-500">
+                        <span>{giValidationProgress.detail}</span>
+                        <span className="font-mono tabular-nums">{giValidationProgress.percent}%</span>
+                      </div>
+
+                      <div className="flex items-center gap-3 flex-wrap">
+                        {[
+                          { label: 'Parsing CSV', phase: 'parsing' as const, icon: '📄' },
+                          { label: 'API Validation', phase: 'validating' as const, icon: '🔍' },
+                          { label: 'Building Preview', phase: 'building' as const, icon: '📋' },
+                        ].map((step, i) => {
+                          const phases = ['parsing', 'validating', 'building', 'done'];
+                          const currentIdx = phases.indexOf(giValidationProgress.phase);
+                          const stepIdx = phases.indexOf(step.phase);
+                          const isComplete = currentIdx > stepIdx;
+                          const isCurrent = currentIdx === stepIdx;
+                          return (
+                            <div key={step.phase} className="flex items-center gap-1.5">
+                              {i > 0 && <div className={`w-4 h-px ${isComplete ? 'bg-green-400' : 'bg-slate-200'}`} />}
+                              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all duration-300 ${
+                                isComplete
+                                  ? 'bg-green-50 border-green-200 text-green-700'
+                                  : isCurrent
+                                    ? 'border-[var(--pos-accent)] text-slate-700 shadow-sm'
+                                    : 'bg-slate-50 border-slate-200 text-slate-400'
+                              }`} style={isCurrent ? { backgroundColor: 'color-mix(in srgb, var(--pos-accent) 10%, transparent)' } : {}}>
+                                {isComplete ? (
+                                  <CheckCircle2 className="h-3 w-3 text-green-500" />
+                                ) : isCurrent ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" style={{ color: 'var(--pos-accent)' }} />
+                                ) : (
+                                  <div className="h-3 w-3 rounded-full border border-slate-300" />
+                                )}
+                                {step.label}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {giValidationProgress.phase === 'validating' && giValidationProgress.totalCount > 0 && (
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          <div className="bg-slate-50 rounded-lg p-2 border">
+                            <div className="text-lg font-semibold text-slate-700 tabular-nums">{giValidationProgress.validatedCount}<span className="text-slate-400 text-sm">/{giValidationProgress.totalCount}</span></div>
+                            <div className="text-[10px] text-slate-500 uppercase tracking-wider">Checked</div>
+                          </div>
+                          <div className="bg-green-50 rounded-lg p-2 border border-green-100">
+                            <div className="text-lg font-semibold text-green-600 tabular-nums">{giValidationProgress.validCount}</div>
+                            <div className="text-[10px] text-green-600 uppercase tracking-wider">Matched</div>
+                          </div>
+                          <div className="bg-red-50 rounded-lg p-2 border border-red-100">
+                            <div className="text-lg font-semibold text-red-500 tabular-nums">{giValidationProgress.invalidCount}</div>
+                            <div className="text-[10px] text-red-500 uppercase tracking-wider">Invalid</div>
+                          </div>
+                        </div>
+                      )}
+
+                      {giValidationProgress.phase === 'done' && (
+                        <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 rounded-lg p-2.5 border border-green-200">
+                          <CheckCircle2 className="h-4 w-4" />
+                          <span className="font-medium">Validation complete — loading preview...</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex justify-end pt-2 border-t">
+                      <Button
+                        onClick={handlePreviewFile}
+                        disabled={!giFile || giPreviewLoading}
+                        className="gap-2 bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-white h-11 sm:h-10 w-full sm:w-auto"
+                        data-testid="button-gi-preview"
+                      >
+                        {giPreviewLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+                        {giPreviewLoading ? 'Validating...' : 'Preview & Validate'}
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
