@@ -426,8 +426,11 @@ export async function registerRoutes(
 
       const reconcileStatus = resolvedCashierReconcile ? String(resolvedCashierReconcile.status || resolvedCashierReconcile.reconcileStatus || '').toLowerCase().trim() : '';
       const isReconcileReturned = reconcileStatus.includes('return');
+      const isReconcileCompleted = reconcileStatus.includes('complet') || reconcileStatus.includes('post') || reconcileStatus.includes('finish') || reconcileStatus.includes('approved');
+      const isReconcileNotSubmitted = reconcileStatus.includes('not yet submitted') || reconcileStatus.includes('not submitted') || reconcileStatus === '';
       const hasDayEndReturned = resolvedCashierReconcile != null && isReconcileReturned;
-      const hasPendingDayEnd = !hasDayEndReturned && ((resolvedCashierReconcile != null) || session.dayEndPending === true);
+      const reconcileIsPending = resolvedCashierReconcile != null && !isReconcileReturned && !isReconcileCompleted && !isReconcileNotSubmitted;
+      const hasPendingDayEnd = reconcileIsPending || (!resolvedCashierReconcile && session.dayEndPending === true);
       if (!resolvedCashierReconcile && session.dayEndPending === true) {
         console.log(`[active-cashier] API cashierReconcile is null but session.dayEndPending=true — treating as pending (API may not reflect submission yet)`);
       }
@@ -435,7 +438,11 @@ export async function registerRoutes(
         console.log(`[active-cashier] Reconcile record has RETURNED status — cashier can re-submit`);
         session.dayEndPending = false;
       }
-      console.log(`[active-cashier] validate-cashier result — registered: ${isCashierRegistered}, isActive: ${isSessionActive} (POS_Cashier.IsActive=${cashier?.isActive}), cashierId: ${cashierId}, officeId: ${activeOfficeId}, officeName: ${activeOfficeName}, cashierReconcile: ${resolvedCashierReconcile ? 'PRESENT' : 'null'}, session.dayEndPending: ${session.dayEndPending}, hasPendingDayEnd: ${hasPendingDayEnd}`);
+      if (isReconcileCompleted) {
+        console.log(`[active-cashier] Reconcile record has COMPLETED status — day-end fully reconciled`);
+        session.dayEndPending = false;
+      }
+      console.log(`[active-cashier] validate-cashier result — registered: ${isCashierRegistered}, isActive: ${isSessionActive} (POS_Cashier.IsActive=${cashier?.isActive}), cashierId: ${cashierId}, officeId: ${activeOfficeId}, officeName: ${activeOfficeName}, cashierReconcile: ${resolvedCashierReconcile ? 'PRESENT' : 'null'}, reconcileStatus: "${reconcileStatus}", session.dayEndPending: ${session.dayEndPending}, hasPendingDayEnd: ${hasPendingDayEnd}, hasDayEndReturned: ${hasDayEndReturned}, isReconcileCompleted: ${isReconcileCompleted}`);
 
       const cashierDetails = cashier ? {
         ...cashier,
@@ -2980,8 +2987,12 @@ export async function registerRoutes(
       console.log(`[auth-dayend-submit] Query:`, req.query);
       const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile/submit-day-auth-reconcile", req.body, req.query as Record<string, string>);
       console.log(`[auth-dayend-submit] Response:`, JSON.stringify(data).substring(0, 500));
-      session.dayEndPending = true;
-      console.log(`[auth-dayend-submit] Marked session.dayEndPending=true`);
+      if (!data?._error && data?.isSuccess !== false) {
+        session.dayEndPending = true;
+        console.log(`[auth-dayend-submit] Marked session.dayEndPending=true`);
+      } else {
+        console.warn(`[auth-dayend-submit] API returned error/failure — NOT setting dayEndPending`);
+      }
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });

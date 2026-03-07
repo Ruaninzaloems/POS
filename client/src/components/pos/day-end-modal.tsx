@@ -306,12 +306,16 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
           cashBookId = 1;
         }
       }
-      try {
-        console.log('[DayEndModal] Step 3: submit-day-auth-reconcile for cashier', cashierId, 'cashBookId', cashBookId, 'officeId', cashierOfficeId);
-        await platinumAuthDayEndSubmitReconcile({ cashierId: Number(cashierId), cashBookId: Number(cashBookId), cashierOfficeId: Number(cashierOfficeId) });
-        console.log('[DayEndModal] submit-day-auth-reconcile succeeded');
-      } catch (subErr: any) {
-        console.warn('[DayEndModal] submit-day-auth-reconcile warning (continuing):', subErr.message);
+      console.log('[DayEndModal] Step 3: submit-day-auth-reconcile for cashier', cashierId, 'cashBookId', cashBookId, 'officeId', cashierOfficeId);
+      const submitResult = await platinumAuthDayEndSubmitReconcile({ cashierId: Number(cashierId), cashBookId: Number(cashBookId), cashierOfficeId: Number(cashierOfficeId) });
+      console.log('[DayEndModal] submit-day-auth-reconcile response:', JSON.stringify(submitResult));
+
+      if (submitResult?.isSuccess === false || submitResult?.error) {
+        const errMsg = submitResult?.message || submitResult?.error || 'Failed to submit day-end for authorization.';
+        console.error('[DayEndModal] submit-day-auth-reconcile returned error:', errMsg);
+        setErrorMessage(errMsg);
+        setStep('error');
+        return;
       }
 
       setStep('success');
