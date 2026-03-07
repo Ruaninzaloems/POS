@@ -295,7 +295,7 @@ function useIsMobile() {
 }
 
 export function TransactionPanels({ isSearchActive = false }: { isSearchActive?: boolean }) {
-  const { activeTransactionType, transactionItems, removeItem, updateItemAmount, updateItemDetails, addItem, viewingItemId, setViewingItem } = usePos();
+  const { activeTransactionType, transactionItems, removeItem, updateItemAmount, updateItemDetails, addItem, viewingItemId, setViewingItem, currentUser, recentTransactions, sessionDetails, activeSession } = usePos();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const [isImportOpen, setIsImportOpen] = useState(false);
@@ -549,113 +549,158 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
     if (isSearchActive) {
       return (
         <div className="flex-1 flex flex-col items-center justify-start pt-16 sm:pt-24 p-4 sm:p-8 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-[#F7F7F7] via-[#F7F7F7] to-[#F7F7F7]" />
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-slate-50" />
           <div className="relative z-10 flex flex-col items-center">
-            <Loader2 className="w-6 h-6 text-[#6B6B6B] animate-spin mb-3" />
-            <p className="text-sm text-slate-400">Searching...</p>
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-center mb-4 shadow-lg">
+              <Loader2 className="w-5 h-5 text-white animate-spin" />
+            </div>
+            <p className="text-sm font-medium text-slate-500">Finding accounts...</p>
           </div>
         </div>
       );
     }
 
+    const greeting = (() => {
+      const h = new Date().getHours();
+      if (h < 12) return 'Good morning';
+      if (h < 17) return 'Good afternoon';
+      return 'Good evening';
+    })();
+    const firstName = currentUser?.name?.split(' ')[0] || '';
+    const todayReceipts = recentTransactions?.length || 0;
+    const todayTotal = recentTransactions?.reduce((sum, r) => sum + (r.totalAmount || 0), 0) || 0;
+    const formatZAR = (n: number) => new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR', minimumFractionDigits: 2 }).format(n);
+
+    const quickActions = [
+      { key: 'accounts', label: 'Consumer Accounts', desc: 'Search by account or name', icon: User, color: 'var(--pos-accent)', bg: 'var(--pos-accent-tint)' },
+      { key: 'prepaid', label: 'Prepaid Meters', desc: 'Electricity & water tokens', icon: Zap, color: '#f59e0b', bg: '#fffbeb' },
+      { key: 'clearance', label: 'Clearance Certs', desc: 'Property clearance figures', icon: FileCheck, color: '#10b981', bg: '#ecfdf5' },
+      { key: 'direct', label: 'Direct Income', desc: 'Miscellaneous receipting', icon: FileText, color: '#8b5cf6', bg: '#f5f3ff' },
+    ];
+
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#F7F7F7] via-[#F7F7F7] to-[#F7F7F7]" />
-        <div className="absolute top-1/4 -left-32 w-64 h-64 bg-[var(--pos-accent-tint)] rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 -right-32 w-64 h-64 bg-[var(--pos-accent-tint)] rounded-full blur-3xl" />
-        
-        <div className="relative z-10 flex flex-col items-center max-w-lg w-full">
-          <div className="relative mb-6">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-center shadow-xl shadow-[0_1px_3px_rgba(0,0,0,0.15)] rotate-3 transition-transform hover:rotate-0">
-              <Search className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+      <div className="flex-1 flex flex-col relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-50/80 via-white to-slate-50/80" />
+        <div className="absolute top-0 left-0 right-0 h-[1px]" style={{ background: 'linear-gradient(to right, transparent, var(--pos-accent-tint), transparent)' }} />
+        <div className="absolute top-1/3 -left-40 w-80 h-80 rounded-full blur-3xl pointer-events-none" style={{ backgroundColor: 'var(--pos-accent-tint)' }} />
+        <div className="absolute bottom-1/4 -right-40 w-80 h-80 rounded-full blur-3xl pointer-events-none" style={{ backgroundColor: 'var(--pos-accent-tint)', opacity: 0.7 }} />
+
+        <div className="relative z-10 flex-1 flex flex-col items-center justify-center p-4 sm:p-8 max-w-xl mx-auto w-full">
+          {activeSession && firstName && (
+            <div className="mb-6 sm:mb-8 text-center" data-testid="text-greeting">
+              <h2 className="text-lg sm:text-xl font-semibold text-slate-700 tracking-tight">
+                {greeting}, <span className="text-[var(--pos-accent-dark)]">{firstName}</span>
+              </h2>
+              {todayReceipts > 0 && (
+                <p className="text-xs text-slate-400 mt-1">
+                  {todayReceipts} receipt{todayReceipts !== 1 ? 's' : ''} today &middot; {formatZAR(todayTotal)} collected
+                </p>
+              )}
             </div>
-            <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-lg bg-emerald-500 flex items-center justify-center shadow-lg">
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+          )}
+
+          <div className="w-full mb-6 sm:mb-8">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent to-slate-200" />
+              <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400">Quick Actions</span>
+              <div className="h-[1px] flex-1 bg-gradient-to-l from-transparent to-slate-200" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              {quickActions.map(({ key, label, desc, icon: Icon, color, bg }) => (
+                <button
+                  key={key}
+                  onClick={() => {
+                    const searchInput = document.querySelector<HTMLInputElement>('[data-testid="input-search-account"]');
+                    if (searchInput) { searchInput.focus(); searchInput.placeholder = `Search ${label.toLowerCase()}...`; }
+                  }}
+                  className="group relative flex items-start gap-3 p-3 sm:p-4 rounded-2xl bg-white/80 backdrop-blur-sm border border-slate-200/80 hover:border-[var(--pos-accent-shadow)] hover:shadow-md transition-all duration-200 text-left min-h-[56px] sm:min-h-[72px]"
+                  data-testid={`action-${key}`}
+                >
+                  <div
+                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-110"
+                    style={{ backgroundColor: bg }}
+                  >
+                    <Icon className="w-4 h-4 sm:w-[18px] sm:h-[18px]" style={{ color }} />
+                  </div>
+                  <div className="min-w-0 flex-1 pt-0.5">
+                    <span className="text-xs sm:text-[13px] font-semibold text-slate-700 leading-tight block">{label}</span>
+                    <span className="text-[10px] sm:text-[11px] text-slate-400 leading-snug block mt-0.5 hidden sm:block">{desc}</span>
+                  </div>
+                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Search className="w-3 h-3 text-[var(--pos-accent)]" />
+                  </div>
+                </button>
+              ))}
             </div>
           </div>
 
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-1.5 tracking-tight">Start a Transaction</h2>
-          <p className="text-sm text-slate-400 text-center mb-6 max-w-sm leading-relaxed">Search for an account, meter, or item above to begin receipting</p>
-
-          <div className="grid grid-cols-2 gap-2 w-full max-w-xs mb-6">
-            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white border border-[#E5E5E5] shadow-sm" data-testid="hint-accounts">
-              <div className="w-7 h-7 rounded-lg bg-[var(--pos-accent-tint)] flex items-center justify-center shrink-0">
-                <User className="w-3.5 h-3.5 text-[var(--pos-accent)]" />
-              </div>
-              <span className="text-[11px] font-medium text-slate-600 leading-tight">Consumer Accounts</span>
+          <div className="flex flex-col items-center gap-3 w-full">
+            <div className="flex items-center gap-2 text-slate-400">
+              <div className="h-[1px] w-8 bg-slate-200" />
+              <Search className="w-3.5 h-3.5" />
+              <p className="text-xs font-medium">Type in the search bar above to begin</p>
+              <div className="h-[1px] w-8 bg-slate-200" />
             </div>
-            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white border border-[#E5E5E5] shadow-sm" data-testid="hint-prepaid">
-              <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
-                <Zap className="w-3.5 h-3.5 text-amber-500" />
-              </div>
-              <span className="text-[11px] font-medium text-slate-600 leading-tight">Prepaid Meters</span>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white border border-[#E5E5E5] shadow-sm" data-testid="hint-clearance">
-              <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
-                <FileCheck className="w-3.5 h-3.5 text-emerald-500" />
-              </div>
-              <span className="text-[11px] font-medium text-slate-600 leading-tight">Clearance Certs</span>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white border border-[#E5E5E5] shadow-sm" data-testid="hint-direct">
-              <div className="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
-                <FileText className="w-3.5 h-3.5 text-violet-500" />
-              </div>
-              <span className="text-[11px] font-medium text-slate-600 leading-tight">Direct Income</span>
-            </div>
+            <p className="text-[10px] text-slate-300 tracking-wide">
+              Search by account number, meter number, name, or ID
+            </p>
           </div>
 
-          <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
+          <div className="mt-6 sm:mt-8 flex items-center gap-3">
+            <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
               <DialogTrigger asChild>
-                <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium text-[var(--pos-accent)] bg-[var(--pos-accent-tint)] hover:bg-[var(--pos-accent-tint-strong)] border border-[#D6D6D6] transition-colors" data-testid="button-import-csv">
-                    <Upload className="w-3.5 h-3.5" />
-                    Import CSV Batch
+                <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-medium text-slate-500 bg-white/70 backdrop-blur-sm hover:bg-white hover:text-[var(--pos-accent)] border border-slate-200/80 hover:border-[var(--pos-accent-shadow)] hover:shadow-sm transition-all duration-200" data-testid="button-import-csv">
+                  <Upload className="w-3.5 h-3.5" />
+                  Import CSV Batch
                 </button>
               </DialogTrigger>
-                 <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Import Transactions</DialogTitle>
-                        <DialogDescription>
-                            Upload a CSV file to add multiple transactions at once.
-                        </DialogDescription>
-                    </DialogHeader>
-                    
-                    <div className="bg-[var(--pos-accent-tint)] border-[#D6D6D6] p-4 rounded-md border text-sm space-y-3">
-                        <div className="font-semibold text-slate-700 flex items-center gap-1">Required CSV Format: <HelpTip text="Your CSV file must have 3 columns in this exact order. The first row (header) is automatically skipped." /></div>
-                        <div className="bg-white rounded-xl border border-[#D6D6D6] p-2 font-mono text-xs text-slate-600">
-                            Receipt Date, Account Number, Amount
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                            Example:<br/>
-                            2026-03-07, 000000013088, 150.00<br/>
-                            2026-03-07, 000000020715, 200.50
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-[var(--pos-accent)] bg-[var(--pos-accent-tint)] p-2 rounded border border-[#D6D6D6]">
-                            <Info className="w-4 h-4" />
-                            Duplicate accounts allowed (e.g. multiple receipts for same account). <HelpTip text="Each row creates a separate transaction. You can import multiple payments for the same account number." icon="info" />
-                        </div>
-                    </div>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Import Transactions</DialogTitle>
+                  <DialogDescription>
+                    Upload a CSV file to add multiple transactions at once.
+                  </DialogDescription>
+                </DialogHeader>
 
-                    <DialogFooter className="sm:justify-between gap-2">
-                         <Button variant="ghost" size="sm" onClick={handleDownloadTemplate} className="gap-2 text-[var(--pos-accent)] hover:text-[var(--pos-accent-dark)] hover:bg-[var(--pos-accent-tint)]" data-testid="button-download-csv-template">
-                             <Download className="w-4 h-4" />
-                             Download Template
-                         </Button>
-                         <Button onClick={() => fileInputRef.current?.click()} className="gap-2 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] hover:from-[var(--pos-accent-dark)] hover:to-[var(--pos-accent-dark)]" disabled={importingCSV}>
-                             {importingCSV ? (
-                               <><Loader2 className="w-4 h-4 animate-spin" /> Importing...</>
-                             ) : (
-                               <><FileText className="w-4 h-4" /> Select File</>
-                             )}
-                         </Button>
-                    </DialogFooter>
-                 </DialogContent>
-             </Dialog>
+                <div className="bg-[var(--pos-accent-tint)] border-[#D6D6D6] p-4 rounded-md border text-sm space-y-3">
+                  <div className="font-semibold text-slate-700 flex items-center gap-1">Required CSV Format: <HelpTip text="Your CSV file must have 3 columns in this exact order. The first row (header) is automatically skipped." /></div>
+                  <div className="bg-white rounded-xl border border-[#D6D6D6] p-2 font-mono text-xs text-slate-600">
+                    Receipt Date, Account Number, Amount
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Example:<br/>
+                    2026-03-07, 000000013088, 150.00<br/>
+                    2026-03-07, 000000020715, 200.50
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-[var(--pos-accent)] bg-[var(--pos-accent-tint)] p-2 rounded border border-[#D6D6D6]">
+                    <Info className="w-4 h-4" />
+                    Duplicate accounts allowed (e.g. multiple receipts for same account). <HelpTip text="Each row creates a separate transaction. You can import multiple payments for the same account number." icon="info" />
+                  </div>
+                </div>
 
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            className="hidden" 
-            accept=".csv,.txt" 
+                <DialogFooter className="sm:justify-between gap-2">
+                  <Button variant="ghost" size="sm" onClick={handleDownloadTemplate} className="gap-2 text-[var(--pos-accent)] hover:text-[var(--pos-accent-dark)] hover:bg-[var(--pos-accent-tint)]" data-testid="button-download-csv-template">
+                    <Download className="w-4 h-4" />
+                    Download Template
+                  </Button>
+                  <Button onClick={() => fileInputRef.current?.click()} className="gap-2 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] hover:from-[var(--pos-accent-dark)] hover:to-[var(--pos-accent-dark)]" disabled={importingCSV}>
+                    {importingCSV ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /> Importing...</>
+                    ) : (
+                      <><FileText className="w-4 h-4" /> Select File</>
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept=".csv,.txt"
             onChange={handleFileUpload}
           />
         </div>
