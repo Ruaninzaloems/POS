@@ -3778,39 +3778,25 @@ export async function registerRoutes(
           batch.map(async (accNo) => {
             const stripped = accNo.replace(/^0+/, '') || '0';
             try {
-              const data = await platinumGet(session, `/api/cons-accounts/${stripped}`);
-              if (data && !data._error && (data.name || data.ownerName || data.accountName)) {
-                return {
-                  accNo,
-                  status: 'matched' as const,
-                  name: data.name || data.ownerName || data.accountName || '',
-                  address: data.address || data.locationAddress || data.propertyAddress || '',
-                  accountId: data.id || data.account_ID || data.accountId,
-                };
-              }
-              if (data && data._error && (data.status === 500 || data.status === 502 || data.status === 503)) {
-                return { accNo, status: 'api_error' as const, name: '', address: '' };
-              }
-            } catch (e) {
-              return { accNo, status: 'api_error' as const, name: '', address: '' };
-            }
-            try {
-              const searchData = await platinumGet(session, "/api/cons-accounts/search", { accountNumber: accNo });
-              if (searchData && searchData._error && (searchData.status === 500 || searchData.status === 502 || searchData.status === 503)) {
-                return { accNo, status: 'api_error' as const, name: '', address: '' };
-              }
-              if (searchData && !searchData._error) {
-                const arr = Array.isArray(searchData) ? searchData : (searchData.value || [searchData]);
-                if (arr.length > 0 && arr[0]) {
-                  const r = arr[0];
+              const data = await platinumPost(session, "/api/BillingEnquiry/EnquiryResults", { accountID: stripped });
+              if (data && !data._error) {
+                const arr = Array.isArray(data) ? data : (data.value ? (Array.isArray(data.value) ? data.value : [data.value]) : [data]);
+                const match = arr.find((r: any) => {
+                  const rAccNo = String(r.accountNo || r.accountNumber || r.account_ID || '').replace(/\D/g, '').padStart(12, '0');
+                  return rAccNo === accNo;
+                }) || arr[0];
+                if (match && (match.companyName || match.name || match.ownerName || match.accountName)) {
                   return {
                     accNo,
                     status: 'matched' as const,
-                    name: r.name || r.ownerName || '',
-                    address: r.address || r.locationAddress || '',
-                    accountId: r.id || r.account_ID || r.accountId,
+                    name: match.companyName || match.name || match.ownerName || match.accountName || '',
+                    address: match.locationAddress || match.address || match.propertyAddress || '',
+                    accountId: match.account_ID || match.id || match.accountId,
                   };
                 }
+              }
+              if (data && data._error && (data.status === 500 || data.status === 502 || data.status === 503)) {
+                return { accNo, status: 'api_error' as const, name: '', address: '' };
               }
             } catch (e) {
               return { accNo, status: 'api_error' as const, name: '', address: '' };
@@ -4606,20 +4592,18 @@ export async function registerRoutes(
         const batchResults = await Promise.allSettled(
           batch.map(async (accNo) => {
             const stripped = accNo.replace(/^0+/, '') || '0';
-            const data = await platinumGet(session, `/api/cons-accounts/${stripped}`);
-            if (data && !data._error) {
-              const name = data.name || data.ownerName || data.accountName || '';
-              const address = data.address || data.locationAddress || data.propertyAddress || '';
-              return { accNo, name, address };
-            }
-            const searchData = await platinumGet(session, "/api/cons-accounts/search", { accountNumber: accNo });
-            if (searchData && !searchData._error) {
-              const arr = Array.isArray(searchData) ? searchData : (searchData.value || [searchData]);
-              if (arr.length > 0) {
-                const r = arr[0];
-                return { accNo, name: r.name || r.ownerName || '', address: r.address || r.locationAddress || '' };
+            try {
+              const data = await platinumPost(session, "/api/BillingEnquiry/EnquiryResults", { accountID: stripped });
+              if (data && !data._error) {
+                const arr = Array.isArray(data) ? data : (data.value ? (Array.isArray(data.value) ? data.value : [data.value]) : [data]);
+                const match = arr[0];
+                if (match) {
+                  const name = match.companyName || match.name || match.ownerName || match.accountName || '';
+                  const address = match.locationAddress || match.address || match.propertyAddress || '';
+                  return { accNo, name, address };
+                }
               }
-            }
+            } catch (e) {}
             return null;
           })
         );
