@@ -533,20 +533,23 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                             data-testid={`search-result-scoa-${item.id}`}
                             onClick={() => {
                               const group = miscGroups.find(g => g.id === groupId);
+                              const cleanName = item.name.replace(/\s+[A-Z]{2}\d{30,}.*$/, '').trim() || item.name;
+                              const displayDesc = group?.name ? `${group.name} — ${cleanName}` : cleanName;
                               handleSelect({
                                 type: 'DIRECT',
                                 data: {
                                   id: item.id.toString(),
                                   groupName: group?.name || '',
-                                  description: item.name,
+                                  description: displayDesc,
                                   scoaItem: item.name,
                                   scoaItemId: item.id,
                                   groupId: groupId,
                                   vatRate: item.isVatable === false ? 0 : miscVatRate,
                                   isVatable: item.isVatable !== false,
                                   isGroup: false,
+                                  costScheduleDescription: displayDesc,
                                 },
-                                label: item.name
+                                label: displayDesc
                               });
                             }}
                           >
@@ -560,8 +563,8 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                               );
                             })()}
                             <div className="flex-1 min-w-0">
-                              <div className="text-sm font-medium truncate">{item.name}</div>
-                              <div className="text-xs text-muted-foreground">SCOA Item ID: {item.id}</div>
+                              <div className="text-sm font-medium truncate">{item.name.replace(/\s+[A-Z]{2}\d{30,}.*$/, '').trim() || item.name}</div>
+                              <div className="text-xs text-muted-foreground truncate">{miscGroups.find(g => g.id === groupId)?.name || ''} · ID: {item.id}</div>
                             </div>
                           </button>
                         ))
