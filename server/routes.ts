@@ -1826,6 +1826,39 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/platinum/billing-payment-clearance/debug-batch-test", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const idsParam = req.query.ids as string || '';
+      const ids = idsParam.split(',').filter(Boolean);
+      if (ids.length === 0) return res.json({ error: 'Pass ?ids=1,2,3,...' });
+      
+      const results: any[] = [];
+      for (const id of ids.slice(0, 20)) {
+        const paddedId = id.padStart(12, '0');
+        try {
+          const [dataResult, accountsResult] = await Promise.all([
+            platinumPost(session, "/api/billing-payment-clearance/get-clearance-data", { clearanceId: paddedId }).catch((e: any) => ({ _error: true, msg: e.message })),
+            platinumPost(session, "/api/billing-payment-clearance/get-accounts-for-clearance", { clearanceId: paddedId, userId: -1 }).catch((e: any) => ({ _error: true, msg: e.message })),
+          ]);
+          const dataItems = (dataResult as any)?.items || [];
+          const accountItems = (accountsResult as any)?.items || accountsResult || [];
+          const hasData = dataItems.length > 0;
+          const hasAccounts = Array.isArray(accountItems) && accountItems.length > 0 && !(accountsResult as any)?._error;
+          const status = dataItems[0]?.status || '';
+          const totalDue = Array.isArray(accountItems) ? accountItems.reduce((s: number, a: any) => s + (a.amount || a.paymentAmount || 0), 0) : 0;
+          results.push({ id: paddedId, hasData, hasAccounts, status, accountCount: hasAccounts ? accountItems.length : 0, totalDue, dataItemCount: dataItems.length, error: (accountsResult as any)?._error ? (accountsResult as any).msg : null });
+        } catch (e: any) {
+          results.push({ id: paddedId, error: e.message });
+        }
+      }
+      console.log(`[clearance-batch-test] Results:`, JSON.stringify(results));
+      res.json(results);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   app.post("/api/platinum/billing-payment-clearance/get-clearance-data", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
