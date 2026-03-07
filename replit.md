@@ -74,7 +74,17 @@ Post-payment receipt flow is optimized for speed by:
 For large batch payments (e.g., 149 accounts), timeouts scale dynamically at all three layers:
 - **Server proxy**: `Math.max(60000, accounts × 8000)` ms passed to Platinum API call.
 - **Client API call** (`submitMultiplePayment`): Same formula with AbortController.
-- **Receipt modal watchdog**: `BASE_TIMEOUT_SECONDS` (120s) for ≤5 items; `items × PER_ITEM_TIMEOUT_SECONDS` (8s) for larger batches. Previously hardcoded at 120s, which force-failed large batches before the API could respond. Footer warning shows elapsed time and max duration estimate for large batches.
+- **Receipt modal watchdog**: `BASE_TIMEOUT_SECONDS` (120s) for ≤5 items; `items × 8s` for 6-25 items; for chunked batches (>25): `ceil(chunks/MAX_CONCURRENT) × PER_CHUNK_TIMEOUT_SECONDS (45s) + 30s` buffer. Previously hardcoded at 120s, which force-failed large batches before the API could respond. Footer warning shows elapsed time and max duration estimate for large batches.
+
+### Chunked Parallel Multi-Account Payments
+When a multi-account payment exceeds `CHUNK_SIZE` (25 accounts), submissions are split into parallel batches:
+- Accounts are divided into chunks of 25.
+- Up to `MAX_CONCURRENT` (3) chunks are submitted in parallel via `Promise.all`.
+- Each chunk gets its own `requestModel` with proportional `totalAmount`, `tenderAmount` = chunk total (no change), `changeAmount` = 0.
+- Progress updates show completed batches and account counts.
+- Partial failure handling: if some batches fail but others succeed, the user is warned with receipt IDs from successful batches and told to check View Receipts. The error message surfaces the first failure reason.
+- For 149 accounts: 6 chunks × 2 rounds (3 concurrent) ≈ 60-90s total instead of 10-20 minutes with a single API call.
+- Small batches (≤25 accounts) still use a single `submitMultiplePayment` call as before.
 
 ### SA 10c Cash Rounding
 Cash payments must be rounded UP to the nearest 10c (SA standard). Card payments are exempt. Implementation:

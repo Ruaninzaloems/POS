@@ -1702,21 +1702,101 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
                     for (const sa of submitAccounts) {
                         console.log(`[Priority 1 ${label}]   → account ${sa.accountID} (${sa.name}): outstandingAmount=R${sa.outstandingAmount}, paymentAmount=R${sa.paymentAmount}`);
                     }
-                    setProcessingStep(`Submitting payment for ${submitAccounts.length} account${submitAccounts.length > 1 ? 's' : ''}...`);
 
-                    const result = await submitMultiplePayment(sessionUserId, {
-                        accounts: submitAccounts,
-                        requestModel,
-                    });
-                    console.log(`[Priority 1 ${label}] submit-multiple-payment response:`, JSON.stringify(result).substring(0, 2000));
-                    if (result && result.isSuccess === false) {
-                        const apiDetail = result.message || result.detail || result.error || result.statusText || '';
-                        const reason = apiDetail || `API returned isSuccess=false (no error message provided). PaymentType=${paymentTypeId}, Amount=R${totalPaymentAmount}`;
-                        console.error(`[Priority 1 ${label}] SUBMIT FAILED:`, JSON.stringify(result));
-                        throw new Error(reason);
+                    const CHUNK_SIZE = 25;
+                    const MAX_CONCURRENT = 3;
+
+                    if (submitAccounts.length > CHUNK_SIZE) {
+                        const chunks: (typeof submitAccounts)[] = [];
+                        for (let ci = 0; ci < submitAccounts.length; ci += CHUNK_SIZE) {
+                            chunks.push(submitAccounts.slice(ci, ci + CHUNK_SIZE));
+                        }
+                        console.log(`[Priority 1 ${label}] CHUNKED: ${submitAccounts.length} accounts → ${chunks.length} batches of ~${CHUNK_SIZE}, concurrency ${MAX_CONCURRENT}`);
+                        setProcessingStep(`Submitting ${submitAccounts.length} accounts in ${chunks.length} batches...`);
+
+                        let completedChunks = 0;
+                        const failedChunks: { index: number; error: string; accountNames: string[] }[] = [];
+
+                        for (let batchStart = 0; batchStart < chunks.length; batchStart += MAX_CONCURRENT) {
+                            const concurrentBatch = chunks.slice(batchStart, batchStart + MAX_CONCURRENT);
+                            const batchPromises = concurrentBatch.map(async (chunk, batchIdx) => {
+                                const chunkIdx = batchStart + batchIdx;
+                                const chunkTotal = r2(chunk.reduce((s, a) => s + a.paymentAmount, 0));
+                                const chunkOutstanding = r2(chunk.reduce((s, a) => s + a.outstandingAmount, 0));
+
+                                const chunkRequestModel = {
+                                    ...baseRequestModel,
+                                    totalAmount: chunkTotal,
+                                    tenderAmount: isCardPayment ? 0 : chunkTotal,
+                                    changeAmount: 0,
+                                    outStandingAmount: chunkOutstanding,
+                                    accountHolderName: chunk[0]?.name || '',
+                                };
+
+                                console.log(`[Priority 1 ${label}] Batch ${chunkIdx + 1}/${chunks.length}: ${chunk.length} accounts, total R${chunkTotal}`);
+                                try {
+                                    const result = await submitMultiplePayment(sessionUserId, {
+                                        accounts: chunk,
+                                        requestModel: chunkRequestModel,
+                                    });
+                                    if (result && result.isSuccess === false) {
+                                        const apiDetail = result.message || result.detail || result.error || result.statusText || '';
+                                        throw new Error(apiDetail || `Batch ${chunkIdx + 1} returned isSuccess=false`);
+                                    }
+                                    console.log(`[Priority 1 ${label}] Batch ${chunkIdx + 1}/${chunks.length} SUCCESS:`, JSON.stringify(result).substring(0, 500));
+                                    return { success: true as const, result, chunkIdx };
+                                } catch (e: any) {
+                                    console.error(`[Priority 1 ${label}] Batch ${chunkIdx + 1}/${chunks.length} FAILED:`, e.message);
+                                    return { success: false as const, error: e.message, chunkIdx, accountNames: chunk.map(a => a.name || a.accountNumber) };
+                                }
+                            });
+
+                            const batchResults = await Promise.all(batchPromises);
+                            for (const br of batchResults) {
+                                completedChunks++;
+                                if (br.success) {
+                                    const ids = extractReceiptIds(br.result);
+                                    allReceiptIds.push(...ids);
+                                } else {
+                                    failedChunks.push({ index: br.chunkIdx, error: br.error, accountNames: br.accountNames });
+                                }
+                            }
+                            const acctsDone = Math.min(completedChunks * CHUNK_SIZE, submitAccounts.length);
+                            setProcessingStep(`Submitted ${completedChunks} of ${chunks.length} batches (${acctsDone}/${submitAccounts.length} accounts)...`);
+                        }
+
+                        if (failedChunks.length > 0) {
+                            const successCount = chunks.length - failedChunks.length;
+                            const failedAcctCount = failedChunks.reduce((s, f) => s + f.accountNames.length, 0);
+                            console.error(`[Priority 1 ${label}] CHUNKED PARTIAL FAILURE: ${successCount}/${chunks.length} batches succeeded, ${failedChunks.length} failed (${failedAcctCount} accounts)`);
+                            if (allReceiptIds.length > 0) {
+                                toast({
+                                    title: 'Partial Payment — Some Batches Failed',
+                                    description: `${successCount} of ${chunks.length} batches succeeded (Receipt IDs: ${allReceiptIds.join(', ')}). ${failedChunks.length} batch(es) failed affecting ${failedAcctCount} accounts. Check View Receipts for completed payments before retrying failed accounts.`,
+                                    variant: 'destructive',
+                                    duration: 30000,
+                                });
+                            }
+                            throw new Error(`${failedChunks.length} of ${chunks.length} batches failed. First error: ${failedChunks[0].error}`);
+                        }
+                        console.log(`[Priority 1 ${label}] CHUNKED COMPLETE: All ${chunks.length} batches succeeded, ${allReceiptIds.length} receipt(s)`);
+                    } else {
+                        setProcessingStep(`Submitting payment for ${submitAccounts.length} account${submitAccounts.length > 1 ? 's' : ''}...`);
+
+                        const result = await submitMultiplePayment(sessionUserId, {
+                            accounts: submitAccounts,
+                            requestModel,
+                        });
+                        console.log(`[Priority 1 ${label}] submit-multiple-payment response:`, JSON.stringify(result).substring(0, 2000));
+                        if (result && result.isSuccess === false) {
+                            const apiDetail = result.message || result.detail || result.error || result.statusText || '';
+                            const reason = apiDetail || `API returned isSuccess=false (no error message provided). PaymentType=${paymentTypeId}, Amount=R${totalPaymentAmount}`;
+                            console.error(`[Priority 1 ${label}] SUBMIT FAILED:`, JSON.stringify(result));
+                            throw new Error(reason);
+                        }
+                        const ids = extractReceiptIds(result);
+                        allReceiptIds.push(...ids);
                     }
-                    const ids = extractReceiptIds(result);
-                    allReceiptIds.push(...ids);
                 } else {
                     let failedAtIndex = -1;
                     let failReason = '';

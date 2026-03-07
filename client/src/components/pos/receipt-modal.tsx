@@ -11,7 +11,9 @@ import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 
 const BASE_TIMEOUT_SECONDS = 120;
-const PER_ITEM_TIMEOUT_SECONDS = 8;
+const CHUNK_SIZE = 25;
+const MAX_CONCURRENT = 3;
+const PER_CHUNK_TIMEOUT_SECONDS = 45;
 
 export function ReceiptModal() {
   const { isReceiptModalOpen, closeReceiptModal, payment, transactionItems, recentTransactions, transactionProcessing, processingStep, currentTransactionId, processingRecord, sessionDetails, forceFailTransaction } = usePos();
@@ -19,7 +21,12 @@ export function ReceiptModal() {
   const TRANSACTION_TIMEOUT_SECONDS = useMemo(() => {
     const itemCount = transactionItems.length;
     if (itemCount <= 5) return BASE_TIMEOUT_SECONDS;
-    return Math.max(BASE_TIMEOUT_SECONDS, itemCount * PER_ITEM_TIMEOUT_SECONDS);
+    if (itemCount > CHUNK_SIZE) {
+      const numChunks = Math.ceil(itemCount / CHUNK_SIZE);
+      const numRounds = Math.ceil(numChunks / MAX_CONCURRENT);
+      return Math.max(BASE_TIMEOUT_SECONDS, numRounds * PER_CHUNK_TIMEOUT_SECONDS + 30);
+    }
+    return Math.max(BASE_TIMEOUT_SECONDS, itemCount * 8);
   }, [transactionItems.length]);
   
   const currentTransaction = processingRecord && currentTransactionId && processingRecord.id === currentTransactionId
