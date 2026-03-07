@@ -824,47 +824,47 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
                               </Button>
                             ) : null;
                           })()}
-                          {itemsMissing.length > 0 && (
-                            <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className={`text-xs gap-1.5 ${showOnlyMissing ? 'bg-amber-50 border-amber-300 text-amber-800' : 'text-slate-600'}`}
-                                onClick={() => { setShowOnlyMissing(!showOnlyMissing); handlePageChange(1); }}
-                                data-testid="btn-filter-missing"
-                              >
-                                <AlertCircle className="w-3.5 h-3.5" />
-                                {showOnlyMissing ? 'Show All' : 'Show Missing'}
-                              </Button>
-                              <Dialog open={showFillConfirm} onOpenChange={setShowFillConfirm}>
-                                <DialogTrigger asChild>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-xs gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50"
-                                    data-testid="btn-fill-all-due"
-                                  >
+                          {(sortedItems.some(i => i.amountToPay <= 0) || showOnlyMissing) && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className={`text-xs gap-1.5 ${showOnlyMissing ? 'bg-amber-50 border-amber-300 text-amber-800' : 'text-slate-600'}`}
+                              onClick={() => { setShowOnlyMissing(!showOnlyMissing); handlePageChange(1); }}
+                              data-testid="btn-filter-missing"
+                            >
+                              <AlertCircle className="w-3.5 h-3.5" />
+                              {showOnlyMissing ? 'Show All' : 'Show Missing'}
+                            </Button>
+                          )}
+                          {sortedItems.some(i => i.amountToPay <= 0) && (
+                            <Dialog open={showFillConfirm} onOpenChange={setShowFillConfirm}>
+                              <DialogTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-xs gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+                                  data-testid="btn-fill-all-due"
+                                >
+                                  <Sparkles className="w-3.5 h-3.5" />
+                                  Pay All Due
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="sm:max-w-sm">
+                                <DialogHeader>
+                                  <DialogTitle>Set All to Due Amounts?</DialogTitle>
+                                  <DialogDescription>
+                                    This will set the pay amount on {sortedItems.filter(i => i.amountToPay <= 0 && i.amountDue > 0).length} item(s) to their full outstanding balance. You can still adjust individual amounts afterwards.
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <DialogFooter className="gap-2">
+                                  <Button variant="ghost" size="sm" onClick={() => setShowFillConfirm(false)}>Cancel</Button>
+                                  <Button size="sm" className="gap-1.5 bg-gradient-to-r from-emerald-600 to-green-600" onClick={fillAllDueAmounts}>
                                     <Sparkles className="w-3.5 h-3.5" />
-                                    Pay All Due
+                                    Yes, Fill All
                                   </Button>
-                                </DialogTrigger>
-                                <DialogContent className="sm:max-w-sm">
-                                  <DialogHeader>
-                                    <DialogTitle>Set All to Due Amounts?</DialogTitle>
-                                    <DialogDescription>
-                                      This will set the pay amount on {itemsMissing.filter(i => i.amountDue > 0).length} item(s) to their full outstanding balance. You can still adjust individual amounts afterwards.
-                                    </DialogDescription>
-                                  </DialogHeader>
-                                  <DialogFooter className="gap-2">
-                                    <Button variant="ghost" size="sm" onClick={() => setShowFillConfirm(false)}>Cancel</Button>
-                                    <Button size="sm" className="gap-1.5 bg-gradient-to-r from-emerald-600 to-green-600" onClick={fillAllDueAmounts}>
-                                      <Sparkles className="w-3.5 h-3.5" />
-                                      Yes, Fill All
-                                    </Button>
-                                  </DialogFooter>
-                                </DialogContent>
-                              </Dialog>
-                            </>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
                           )}
                         </div>
                       </div>
