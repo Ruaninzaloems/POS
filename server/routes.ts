@@ -3628,8 +3628,33 @@ export async function registerRoutes(
     try {
       const session = requireAuth(req, res); if (!session) return;
       const payload = { ...req.body };
-      if (!payload.userId || payload.userId <= 0) {
-        payload.userId = session.userData?.user_ID;
+      const serverUserId = session.userData?.user_ID;
+      payload.userId = serverUserId;
+
+      const finYear = payload.financialYear || session.userData?.finYear || '2025/2026';
+      try {
+        const vcData = await platinumGet(session, "/api/ReceiptPrepaid/validate-cashier", {
+          userId: String(serverUserId),
+          finYear,
+        });
+        if (vcData && !vcData._error) {
+          const resolvedCashierId = vcData.cashier?.id || vcData.cashier?.user_Id || null;
+          const resolvedOfficeId = vcData.cashOffice?.cashOffice_ID || vcData.cashier?.officeId || null;
+          payload.cashierId = resolvedCashierId;
+          payload.cashOfficeId = resolvedOfficeId;
+          console.log(`[DD Submit] Server-resolved — userId=${payload.userId}, cashierId=${payload.cashierId}, cashOfficeId=${payload.cashOfficeId}`);
+        } else {
+          console.error(`[DD Submit] validate-cashier failed or returned error:`, vcData?._error || 'no data');
+          return res.status(400).json({ success: false, message: "Cannot resolve cashier session. Please ensure you have an active cashier session and try again.", detail: vcData?._error || 'validate-cashier returned no data' });
+        }
+      } catch (vcErr: any) {
+        console.error(`[DD Submit] validate-cashier call failed:`, vcErr.message);
+        return res.status(400).json({ success: false, message: "Cannot resolve cashier session. Please ensure you have an active cashier session and try again.", detail: vcErr.message });
+      }
+
+      if (!payload.cashierId) {
+        console.error(`[DD Submit] cashierId could not be resolved — aborting submit`);
+        return res.status(400).json({ success: false, message: "Cashier ID could not be resolved from your session. Please check your cashier registration and try again." });
       }
 
       const token = await refreshSessionToken(session);
