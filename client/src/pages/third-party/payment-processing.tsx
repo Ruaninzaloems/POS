@@ -1058,12 +1058,61 @@ export default function ThirdPartyPaymentProcessing() {
   const loadGenericResults = async (jobId: string) => {
     setGiLoadingResults(true);
     try {
-      const [results, errors] = await Promise.all([
+      const [resultsSettled, errorsSettled] = await Promise.allSettled([
         fetchGenericImportResults(jobId),
         fetchGenericImportErrors(jobId),
       ]);
-      setGiResults(Array.isArray(results) ? results : []);
-      setGiErrors(Array.isArray(errors) ? errors : []);
+
+      let successRows: GenericImportResult[] = [];
+      let errorRows: GenericImportResult[] = [];
+
+      if (resultsSettled.status === 'fulfilled' && Array.isArray(resultsSettled.value)) {
+        successRows = resultsSettled.value;
+      } else {
+        console.warn('[GenericImport] generic-import-results API failed (Platinum bug #8), falling back to status rows');
+      }
+
+      if (errorsSettled.status === 'fulfilled') {
+        const errData = errorsSettled.value;
+        if (Array.isArray(errData)) {
+          errorRows = errData;
+        } else if (errData?.errors && Array.isArray(errData.errors)) {
+          errorRows = errData.errors.map((e: any) => ({
+            accountNo: e.accountNumber,
+            allocatedAmount: e.amount,
+            status: 'Error',
+            errorMessage: e.message || e.errorMessage || 'Allocation failed',
+          }));
+        }
+      }
+
+      if (successRows.length === 0 && giStatus?.rows) {
+        const statusRows = giStatus.rows as any[];
+        const errorAccountSet = new Set(errorRows.map((e: any) => (e.accountNo || e.accountNumber || '').trim()));
+
+        successRows = statusRows
+          .filter((r: any) => r.isAllocated === true)
+          .map((r: any) => ({
+            accountNo: r.accountNumber,
+            allocatedAmount: r.amount,
+            status: 'Allocated',
+            receiptNumber: (r.receiptNumber || '').trim(),
+          }));
+
+        if (errorRows.length === 0) {
+          errorRows = statusRows
+            .filter((r: any) => r.isAllocated === false)
+            .map((r: any) => ({
+              accountNo: r.accountNumber,
+              allocatedAmount: r.amount,
+              status: 'Error',
+              errorMessage: r.errorMessage || 'Allocation failed — error details not available from API',
+            }));
+        }
+      }
+
+      setGiResults(successRows);
+      setGiErrors(errorRows);
       setGiStep('results');
     } catch (e: any) {
       console.error('[GenericImport] Failed to load results:', e);
