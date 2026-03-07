@@ -1092,7 +1092,6 @@ export default function ThirdPartyPaymentProcessing() {
 
       if (successRows.length === 0 && giStatus?.rows) {
         const statusRows = giStatus.rows as any[];
-        const errorAccountSet = new Set(errorRows.map((e: any) => (e.accountNo || e.accountNumber || '').trim()));
 
         successRows = statusRows
           .filter((r: any) => r.isAllocated === true)
@@ -1100,7 +1099,7 @@ export default function ThirdPartyPaymentProcessing() {
             accountNo: r.accountNumber,
             allocatedAmount: r.amount,
             status: 'Allocated',
-            receiptNumber: (r.receiptNumber || '').trim(),
+            receiptNumber: String(r.receiptNumber ?? r.receiptNo ?? '').trim(),
           }));
 
         if (errorRows.length === 0) {
@@ -1114,6 +1113,22 @@ export default function ThirdPartyPaymentProcessing() {
             }));
         }
       }
+
+      const normalizeAccNo = (v: string) => String(v || '').trim().replace(/^0+/, '');
+      const previewNameMap = new Map<string, string>();
+      giPreviewRows.forEach(pr => {
+        if (pr.accountNumber && pr.ownerName) {
+          previewNameMap.set(normalizeAccNo(pr.accountNumber), pr.ownerName);
+        }
+      });
+      const enrichWithName = (row: GenericImportResult) => {
+        if (row.accountName || row.name || row.ownerName) return row;
+        const accNo = normalizeAccNo(row.accountNo || row.accountNumber || row.account_Number || '');
+        const name = previewNameMap.get(accNo);
+        return name ? { ...row, accountName: name } : row;
+      };
+      successRows = successRows.map(enrichWithName);
+      errorRows = errorRows.map(enrichWithName);
 
       setGiResults(successRows);
       setGiErrors(errorRows);
@@ -2535,6 +2550,7 @@ export default function ThirdPartyPaymentProcessing() {
                             <TableRow className="bg-[#F7F7F7] text-[10px] uppercase tracking-wider">
                               <TableHead>Account</TableHead>
                               <TableHead>Name</TableHead>
+                              <TableHead>Receipt #</TableHead>
                               <TableHead className="text-right">Amount</TableHead>
                               <TableHead>Status</TableHead>
                             </TableRow>
@@ -2544,6 +2560,7 @@ export default function ThirdPartyPaymentProcessing() {
                               <TableRow key={i} className="text-xs" data-testid={`row-gi-result-${i}`}>
                                 <TableCell className="font-mono">{r.accountNo || r.accountNumber || r.account_Number || '-'}</TableCell>
                                 <TableCell>{r.accountName || r.name || r.ownerName || '-'}</TableCell>
+                                <TableCell className="font-mono text-muted-foreground">{r.receiptNumber || r.receiptNo || '-'}</TableCell>
                                 <TableCell className="text-right font-mono">{r.allocatedAmount !== undefined ? `R ${Number(r.allocatedAmount).toFixed(2)}` : r.amount !== undefined ? `R ${Number(r.amount).toFixed(2)}` : '-'}</TableCell>
                                 <TableCell><Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200">{r.status || 'Allocated'}</Badge></TableCell>
                               </TableRow>
@@ -2562,6 +2579,9 @@ export default function ThirdPartyPaymentProcessing() {
                               <span className="text-xs text-muted-foreground truncate">{r.accountName || r.name || r.ownerName || '-'}</span>
                               <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200 shrink-0">{r.status || 'Allocated'}</Badge>
                             </div>
+                            {(r.receiptNumber || r.receiptNo) && (
+                              <div className="text-[10px] text-muted-foreground font-mono">Rcpt: {String(r.receiptNumber || r.receiptNo).trim()}</div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -2584,6 +2604,7 @@ export default function ThirdPartyPaymentProcessing() {
                           <TableHeader>
                             <TableRow className="bg-red-50/50 text-[10px] uppercase tracking-wider">
                               <TableHead>Account</TableHead>
+                              <TableHead>Name</TableHead>
                               <TableHead>Error</TableHead>
                               <TableHead className="text-right">Amount</TableHead>
                             </TableRow>
@@ -2592,6 +2613,7 @@ export default function ThirdPartyPaymentProcessing() {
                             {giErrors.map((e, i) => (
                               <TableRow key={i} className="text-xs" data-testid={`row-gi-error-${i}`}>
                                 <TableCell className="font-mono">{e.accountNo || e.accountNumber || e.account_Number || '-'}</TableCell>
+                                <TableCell className="text-muted-foreground">{e.accountName || e.name || e.ownerName || '-'}</TableCell>
                                 <TableCell className="text-red-700">{e.errorMessage || e.error || e.message || '-'}</TableCell>
                                 <TableCell className="text-right font-mono">{e.allocatedAmount !== undefined ? `R ${Number(e.allocatedAmount).toFixed(2)}` : e.amount !== undefined ? `R ${Number(e.amount).toFixed(2)}` : '-'}</TableCell>
                               </TableRow>
@@ -2606,6 +2628,9 @@ export default function ThirdPartyPaymentProcessing() {
                               <span className="font-mono text-xs font-medium">{e.accountNo || e.accountNumber || e.account_Number || '-'}</span>
                               <span className="font-mono text-xs font-bold">{e.allocatedAmount !== undefined ? `R ${Number(e.allocatedAmount).toFixed(2)}` : e.amount !== undefined ? `R ${Number(e.amount).toFixed(2)}` : '-'}</span>
                             </div>
+                            {(e.accountName || e.name || e.ownerName) && (
+                              <p className="text-xs text-muted-foreground truncate">{e.accountName || e.name || e.ownerName}</p>
+                            )}
                             <p className="text-xs text-red-700 break-words">{e.errorMessage || e.error || e.message || '-'}</p>
                           </div>
                         ))}
