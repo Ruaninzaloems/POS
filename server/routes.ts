@@ -2126,10 +2126,9 @@ export async function registerRoutes(
       const sgNumber = req.body.sgNumber ? String(req.body.sgNumber).trim() : '';
       const erfNumber = req.body.erfNumber ? String(req.body.erfNumber).trim() : '';
 
-      const unsupportedFields = ['deliveryAddress', 'trading', 'allotmentArea'];
       const cleanBody: Record<string, any> = {};
       for (const [k, v] of Object.entries(req.body)) {
-        if (!unsupportedFields.includes(k) && v !== undefined && v !== null && String(v).trim() !== '') {
+        if (v !== undefined && v !== null && String(v).trim() !== '') {
           cleanBody[k] = v;
         }
       }
@@ -2215,8 +2214,8 @@ export async function registerRoutes(
       if (Object.keys(searchBody).length === 0) {
         return res.json([]);
       }
-      console.log(`[enquiry-results] Search body:`, JSON.stringify(cleanBody));
-      const data = await platinumPost(session, "/api/BillingEnquiry/EnquiryResults", cleanBody);
+      console.log(`[enquiry-results] Search body:`, JSON.stringify(searchBody));
+      const data = await platinumPost(session, "/api/BillingEnquiry/EnquiryResults", searchBody);
       const count = Array.isArray(data) ? data.length : (data?._error ? 'ERROR' : '1');
       console.log(`[enquiry-results] Results: ${count}`);
       handlePlatinumResult(res, data);

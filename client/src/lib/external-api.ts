@@ -662,7 +662,7 @@ export async function fetchAccounts(criteria: any): Promise<any[]> {
         if (criteria.locationAddress) body.locationAddress = criteria.locationAddress;
         if (criteria.street) body.locationAddress = criteria.street;
         if (criteria.allotmentArea) body.allotmentArea = criteria.allotmentArea;
-        if (criteria.erfNumber) body.eftNumber = criteria.erfNumber;
+        if (criteria.erfNumber) body.erfNumber = criteria.erfNumber;
         if (criteria.emailAddress) body.emailAddress = criteria.emailAddress;
         if (criteria.mobileNumber) body.mobileNumber = criteria.mobileNumber;
         if (criteria.physicalMeterNumber) body.physicalMeterNumber = criteria.physicalMeterNumber;
