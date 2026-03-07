@@ -10,10 +10,17 @@ import { platinumPrintReceiptRaw } from '@/lib/external-api';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 
-const TRANSACTION_TIMEOUT_SECONDS = 120;
+const BASE_TIMEOUT_SECONDS = 120;
+const PER_ITEM_TIMEOUT_SECONDS = 8;
 
 export function ReceiptModal() {
   const { isReceiptModalOpen, closeReceiptModal, payment, transactionItems, recentTransactions, transactionProcessing, processingStep, currentTransactionId, processingRecord, sessionDetails, forceFailTransaction } = usePos();
+
+  const TRANSACTION_TIMEOUT_SECONDS = useMemo(() => {
+    const itemCount = transactionItems.length;
+    if (itemCount <= 5) return BASE_TIMEOUT_SECONDS;
+    return Math.max(BASE_TIMEOUT_SECONDS, itemCount * PER_ITEM_TIMEOUT_SECONDS);
+  }, [transactionItems.length]);
   
   const currentTransaction = processingRecord && currentTransactionId && processingRecord.id === currentTransactionId
     ? processingRecord
@@ -73,8 +80,8 @@ export function ReceiptModal() {
   useEffect(() => {
     if (timedOut && transactionProcessing && forceFailTransaction && !timeoutFiredRef.current) {
       timeoutFiredRef.current = true;
-      console.error(`[ReceiptModal] Transaction timed out after ${TRANSACTION_TIMEOUT_SECONDS}s — forcing failure`);
-      forceFailTransaction('Transaction timed out. The payment may not have completed. Please check View Receipts before retrying.');
+      console.error(`[ReceiptModal] Transaction timed out after ${TRANSACTION_TIMEOUT_SECONDS}s (${transactionItems.length} items) — forcing failure`);
+      forceFailTransaction(`Transaction timed out after ${Math.floor(TRANSACTION_TIMEOUT_SECONDS / 60)}+ minutes (${transactionItems.length} accounts). The payment may not have completed on the server. Please check View Receipts before retrying.`);
     }
   }, [timedOut, transactionProcessing, forceFailTransaction]);
   const [emailSelected, setEmailSelected] = useState(false);
@@ -641,7 +648,7 @@ export function ReceiptModal() {
           <div className="border-t pt-3 flex-shrink-0">
             <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
               <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-              <span>Do not close this window — transaction in progress ({totalElapsed}s)</span>
+              <span>Do not close this window — transaction in progress ({totalElapsed}s{transactionItems.length > 5 ? ` / ~${Math.ceil(TRANSACTION_TIMEOUT_SECONDS / 60)}min max` : ''})</span>
             </div>
           </div>
         ) : (

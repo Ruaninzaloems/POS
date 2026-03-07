@@ -70,6 +70,12 @@ Post-payment receipt flow is optimized for speed by:
 - Suppressing session polling during `transactionProcessing`.
 - Passing receipt numbers to the print API for first prints and reprints.
 
+### Multi-Account Payment Timeout Scaling
+For large batch payments (e.g., 149 accounts), timeouts scale dynamically at all three layers:
+- **Server proxy**: `Math.max(60000, accounts × 8000)` ms passed to Platinum API call.
+- **Client API call** (`submitMultiplePayment`): Same formula with AbortController.
+- **Receipt modal watchdog**: `BASE_TIMEOUT_SECONDS` (120s) for ≤5 items; `items × PER_ITEM_TIMEOUT_SECONDS` (8s) for larger batches. Previously hardcoded at 120s, which force-failed large batches before the API could respond. Footer warning shows elapsed time and max duration estimate for large batches.
+
 ### SA 10c Cash Rounding
 Cash payments must be rounded UP to the nearest 10c (SA standard). Card payments are exempt. Implementation:
 - `pos-logic.ts` `calculateTransactionTotals()` rounds `totalToPay` up for cash-only display/change calculation.
