@@ -23,6 +23,7 @@ import {
   platinumThirdPartyValidateAccount,
   platinumThirdPartyCashierDetails,
   fetchBatchAccountNames,
+  fetchCashOffices,
   submitGenericImport,
   validateGenericImport,
   fetchGenericImportStatus,
@@ -143,6 +144,11 @@ export default function ThirdPartyPaymentProcessing() {
   const [giPreviewRows, setGiPreviewRows] = useState<GenericPreviewRow[]>([]);
   const [giPreviewSkipped, setGiPreviewSkipped] = useState<string[]>([]);
   const [giPreviewLoading, setGiPreviewLoading] = useState(false);
+  const [giDragOver, setGiDragOver] = useState(false);
+  const giFileInputRef = useRef<HTMLInputElement>(null);
+  const [giCashOffices, setGiCashOffices] = useState<Array<{ id: string; name: string }>>([]);
+  const [giSelectedCashOfficeId, setGiSelectedCashOfficeId] = useState<string>('');
+  const [giLoadingCashOffices, setGiLoadingCashOffices] = useState(false);
   const [giValidationProgress, setGiValidationProgress] = useState<{
     phase: 'parsing' | 'validating' | 'building' | 'done';
     percent: number;
@@ -213,10 +219,21 @@ export default function ThirdPartyPaymentProcessing() {
           setCashierInfo(details);
           if (details.cashOfficeId) {
             setCashBookId(String(details.cashOfficeId));
+            setGiSelectedCashOfficeId(String(details.cashOfficeId));
           }
         }
       })
       .catch((e) => console.error('Failed to load cashier details:', e));
+
+    setGiLoadingCashOffices(true);
+    fetchCashOffices()
+      .then((offices) => {
+        if (Array.isArray(offices) && offices.length > 0) {
+          setGiCashOffices(offices.map(o => ({ id: o.id, name: o.name })));
+        }
+      })
+      .catch((e) => console.error('Failed to load cash offices:', e))
+      .finally(() => setGiLoadingCashOffices(false));
   }, [posState?.platinumUser?.user_ID]);
 
   const loadThirdPartyTypes = async () => {
@@ -950,7 +967,7 @@ export default function ThirdPartyPaymentProcessing() {
       toast({ title: 'Session Error', description: 'User ID not available. Please log in again.', variant: 'destructive' });
       return;
     }
-    const cashOfficeId = cashierInfo?.cashOfficeId ? Number(cashierInfo.cashOfficeId) : 0;
+    const cashOfficeId = giSelectedCashOfficeId ? Number(giSelectedCashOfficeId) : (cashierInfo?.cashOfficeId ? Number(cashierInfo.cashOfficeId) : 0);
     const cashierId = posState?.platinumCashierId || 0;
     if (!cashOfficeId || !cashierId) {
       toast({ title: 'Session Error', description: 'Cashier session details not available. Please start a session first.', variant: 'destructive' });
@@ -1720,12 +1737,45 @@ export default function ThirdPartyPaymentProcessing() {
 
             {giStep === 'upload' && (
               <Card className="border-t-4 border-t-[var(--pos-accent)] shadow-sm">
-                <CardHeader className="bg-[#F2F4F7]/50 pb-4 border-b">
-                  <div className="flex items-center gap-2">
-                    <div className="h-6 w-1 bg-[var(--pos-accent)] rounded-full"></div>
-                    <CardTitle className="text-lg font-medium text-slate-800">
-                      Generic Import — Upload File
-                    </CardTitle>
+                <CardHeader className="bg-gradient-to-r from-[#F2F4F7] to-white pb-4 border-b">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, var(--pos-accent), var(--pos-accent-dark))' }}>
+                        <Upload className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg font-semibold text-slate-800">
+                          Generic Import
+                        </CardTitle>
+                        <p className="text-xs text-muted-foreground mt-0.5">Upload a CSV file to allocate direct deposit payments in bulk</p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-9 gap-1.5 text-xs border-slate-300"
+                      data-testid="button-gi-download-template"
+                      onClick={() => {
+                        const header = 'AccountNumber,Amount,ReceiptDate,PaymentTypeId';
+                        const dateParts = (giReceiptDate || new Date().toISOString().slice(0, 10)).split('-');
+                        const todayFormatted = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : giReceiptDate;
+                        const sample1 = `000000013088,1500.00,${todayFormatted},5`;
+                        const sample2 = `000000022906,750.50,${todayFormatted},3`;
+                        const csv = [header, sample1, sample2].join('\r\n');
+                        const blob = new Blob([csv], { type: 'text/csv' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'generic_import_template.csv';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                      }}
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Template
+                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent className="pt-6 space-y-6">
@@ -1738,87 +1788,113 @@ export default function ThirdPartyPaymentProcessing() {
                     </Alert>
                   )}
 
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <Label htmlFor="gi-file" className="text-sm font-medium text-slate-700">Import File (CSV)</Label>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-11 sm:h-7 gap-1.5 text-xs text-[var(--pos-accent-dark)] hover:text-[var(--pos-accent-dark)] hover:bg-[var(--pos-accent-tint)]"
-                          data-testid="button-gi-download-template"
-                          onClick={() => {
-                            const header = 'AccountNumber,Amount,ReceiptDate,PaymentTypeId';
-                            const dateParts = (giReceiptDate || new Date().toISOString().slice(0, 10)).split('-');
-                            const todayFormatted = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : giReceiptDate;
-                            const sample1 = `000000013088,1500.00,${todayFormatted},5`;
-                            const sample2 = `000000022906,750.50,${todayFormatted},3`;
-                            const csv = [header, sample1, sample2].join('\r\n');
-                            const blob = new Blob([csv], { type: 'text/csv' });
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = 'generic_import_template.csv';
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
-                            URL.revokeObjectURL(url);
-                          }}
-                        >
-                          <Download className="h-3.5 w-3.5" />
-                          Download Template
-                        </Button>
-                      </div>
-                      <div className="border-2 border-dashed border-[var(--pos-accent-light)] rounded-lg p-4 sm:p-6 text-center hover:bg-[var(--pos-accent-tint)] transition-colors min-h-[100px] flex items-center justify-center">
-                        <Input
-                          id="gi-file"
-                          type="file"
-                          accept=".csv,.txt"
-                          className="hidden"
-                          data-testid="input-gi-file"
-                          onChange={(e) => {
-                            const f = e.target.files?.[0] || null;
-                            setGiFile(f);
-                            setGiError('');
-                          }}
-                        />
-                        <label htmlFor="gi-file" className="cursor-pointer flex flex-col items-center gap-2">
-                          <Upload className="h-8 w-8 text-[var(--pos-accent)]" />
-                          {giFile ? (
-                            <span className="text-sm font-medium text-slate-700">{giFile.name} <span className="text-muted-foreground">({(giFile.size / 1024).toFixed(1)} KB)</span></span>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">Click to select a CSV file</span>
-                          )}
-                        </label>
-                      </div>
+                  <div
+                    className={`relative rounded-xl border-2 border-dashed transition-all duration-200 cursor-pointer group ${
+                      giDragOver
+                        ? 'border-[var(--pos-accent)] scale-[1.01] shadow-lg'
+                        : giFile
+                          ? 'border-green-300 bg-green-50/30'
+                          : 'border-slate-300 hover:border-[var(--pos-accent)] hover:shadow-sm'
+                    }`}
+                    style={giDragOver ? { backgroundColor: 'color-mix(in srgb, var(--pos-accent) 8%, transparent)' } : {}}
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setGiDragOver(true); }}
+                    onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setGiDragOver(true); }}
+                    onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setGiDragOver(false); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setGiDragOver(false);
+                      const file = e.dataTransfer.files?.[0];
+                      if (file && (file.name.endsWith('.csv') || file.name.endsWith('.txt'))) {
+                        setGiFile(file);
+                        setGiError('');
+                      } else {
+                        setGiError('Please drop a CSV file (.csv or .txt)');
+                      }
+                    }}
+                    onClick={() => giFileInputRef.current?.click()}
+                    data-testid="dropzone-gi-file"
+                  >
+                    <input
+                      ref={giFileInputRef}
+                      type="file"
+                      accept=".csv,.txt"
+                      className="hidden"
+                      data-testid="input-gi-file"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0] || null;
+                        setGiFile(f);
+                        setGiError('');
+                        if (e.target) e.target.value = '';
+                      }}
+                    />
+                    <div className="flex flex-col items-center justify-center py-8 px-4 sm:py-10">
+                      {giFile ? (
+                        <>
+                          <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center mb-3">
+                            <FileCheck className="h-6 w-6 text-green-600" />
+                          </div>
+                          <div className="text-sm font-semibold text-slate-800">{giFile.name}</div>
+                          <div className="text-xs text-muted-foreground mt-1">{(giFile.size / 1024).toFixed(1)} KB</div>
+                          <button
+                            type="button"
+                            className="mt-3 text-xs text-[var(--pos-accent-dark)] hover:underline font-medium"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setGiFile(null);
+                              if (giFileInputRef.current) giFileInputRef.current.value = '';
+                            }}
+                            data-testid="button-gi-remove-file"
+                          >
+                            Remove file
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <div className="h-14 w-14 rounded-full flex items-center justify-center mb-3 transition-transform group-hover:scale-110" style={{ background: 'color-mix(in srgb, var(--pos-accent) 15%, transparent)' }}>
+                            <Upload className="h-7 w-7" style={{ color: 'var(--pos-accent)' }} />
+                          </div>
+                          <div className="text-sm font-medium text-slate-700">
+                            {giDragOver ? 'Drop your CSV file here' : 'Drag & drop your CSV file here'}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">or click to browse</div>
+                          <div className="text-[10px] text-muted-foreground mt-3 px-4 py-1.5 bg-slate-100 rounded-full">
+                            Supports .csv and .txt — no row limit
+                          </div>
+                        </>
+                      )}
                     </div>
+                  </div>
 
-                    <div>
-                      <Label htmlFor="gi-payment-ref" className="text-sm font-medium text-slate-700">Payment Reference (optional)</Label>
-                      <Input
-                        id="gi-payment-ref"
-                        className="mt-1.5 h-11 sm:h-10"
-                        placeholder="e.g. Batch 2026-03"
-                        value={giPaymentRef}
-                        onChange={(e) => setGiPaymentRef(e.target.value)}
-                        data-testid="input-gi-payment-ref"
-                      />
-                    </div>
-
+                  <div className="space-y-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="gi-receipt-date" className="text-sm font-medium text-slate-700">Receipt Date</Label>
-                        <Input
-                          id="gi-receipt-date"
-                          type="date"
-                          className="mt-1.5 h-11 sm:h-10"
-                          value={giReceiptDate}
-                          onChange={(e) => setGiReceiptDate(e.target.value)}
-                          data-testid="input-gi-receipt-date"
-                        />
+                        <Label htmlFor="gi-cash-office" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Cash Office</Label>
+                        {giCashOffices.length > 0 ? (
+                          <Select value={giSelectedCashOfficeId} onValueChange={setGiSelectedCashOfficeId}>
+                            <SelectTrigger id="gi-cash-office" className="mt-1.5 h-11 sm:h-10" data-testid="select-gi-cash-office">
+                              <SelectValue placeholder={giLoadingCashOffices ? 'Loading...' : 'Select cash office'} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {giCashOffices.map((office) => (
+                                <SelectItem key={office.id} value={office.id}>{office.id} — {office.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <div className="mt-1.5 h-11 sm:h-10 px-3 rounded-md border bg-slate-50 flex items-center text-sm text-slate-600">
+                            {giLoadingCashOffices ? (
+                              <span className="flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading cash offices...</span>
+                            ) : cashierInfo ? (
+                              <span>{cashierInfo.cashOfficeId} — {cashierInfo.cashOfficeName || cashierInfo.cashOfficeDesc || 'Cash Office'}</span>
+                            ) : (
+                              <span className="text-muted-foreground">No cash offices available</span>
+                            )}
+                          </div>
+                        )}
                       </div>
                       <div>
-                        <Label htmlFor="gi-payment-type" className="text-sm font-medium text-slate-700">Payment Method</Label>
+                        <Label htmlFor="gi-payment-type" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Payment Method</Label>
                         <Select value={giPaymentTypeId} onValueChange={setGiPaymentTypeId}>
                           <SelectTrigger id="gi-payment-type" className="mt-1.5 h-11 sm:h-10" data-testid="select-gi-payment-type">
                             <SelectValue placeholder="Select payment method" />
@@ -1835,26 +1911,52 @@ export default function ThirdPartyPaymentProcessing() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 min-h-[44px]">
-                      <button
-                        type="button"
-                        onClick={() => setGiPostToCashbook(!giPostToCashbook)}
-                        className={`relative inline-flex h-6 w-11 sm:h-5 sm:w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${giPostToCashbook ? 'bg-[var(--pos-accent)]' : 'bg-slate-200'}`}
-                        data-testid="toggle-gi-post-to-cashbook"
-                      >
-                        <span className={`pointer-events-none inline-block h-5 w-5 sm:h-4 sm:w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${giPostToCashbook ? 'translate-x-5 sm:translate-x-4' : 'translate-x-0'}`} />
-                      </button>
-                      <Label className="text-sm font-medium text-slate-700 cursor-pointer" onClick={() => setGiPostToCashbook(!giPostToCashbook)}>
-                        Post to Cashbook
-                      </Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="gi-receipt-date" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Receipt Date</Label>
+                        <Input
+                          id="gi-receipt-date"
+                          type="date"
+                          className="mt-1.5 h-11 sm:h-10"
+                          value={giReceiptDate}
+                          onChange={(e) => setGiReceiptDate(e.target.value)}
+                          data-testid="input-gi-receipt-date"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="gi-payment-ref" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Payment Reference <span className="text-muted-foreground font-normal normal-case">(optional)</span></Label>
+                        <Input
+                          id="gi-payment-ref"
+                          className="mt-1.5 h-11 sm:h-10"
+                          placeholder="e.g. Batch 2026-03"
+                          value={giPaymentRef}
+                          onChange={(e) => setGiPaymentRef(e.target.value)}
+                          data-testid="input-gi-payment-ref"
+                        />
+                      </div>
                     </div>
 
-                    {cashierInfo && (
-                      <div className="bg-[#F7F7F7] rounded-lg p-3 text-sm border">
-                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Cash Office</div>
-                        <div className="font-medium text-slate-700">{cashierInfo.cashOfficeName || cashierInfo.cashOfficeId || '-'}</div>
+                    <div className="flex items-center justify-between p-3.5 rounded-lg border bg-slate-50/80">
+                      <div className="flex items-center gap-3">
+                        <div className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${giPostToCashbook ? 'bg-green-100' : 'bg-slate-200'}`}>
+                          <FileCheck className={`h-4 w-4 ${giPostToCashbook ? 'text-green-600' : 'text-slate-400'}`} />
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-slate-700">Post to Cashbook</div>
+                          <div className="text-[11px] text-muted-foreground">Automatically post allocations to the cashbook after processing</div>
+                        </div>
                       </div>
-                    )}
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={giPostToCashbook}
+                        onClick={() => setGiPostToCashbook(!giPostToCashbook)}
+                        className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${giPostToCashbook ? 'bg-green-500' : 'bg-slate-300'}`}
+                        data-testid="toggle-gi-post-to-cashbook"
+                      >
+                        <span className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${giPostToCashbook ? 'translate-x-5' : 'translate-x-0'}`} />
+                      </button>
+                    </div>
                   </div>
 
                   {giValidationProgress ? (
@@ -2137,7 +2239,7 @@ export default function ThirdPartyPaymentProcessing() {
                     <div className="bg-slate-50 rounded-lg p-4 border space-y-2">
                       <div className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">API Payload Summary</div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1 text-xs">
-                        <div><span className="text-muted-foreground">Cash Office:</span> <span className="font-medium">{cashierInfo?.cashOfficeName || cashierInfo?.cashOfficeId || '-'}</span></div>
+                        <div><span className="text-muted-foreground">Cash Office:</span> <span className="font-medium">{giSelectedCashOfficeId ? `${giSelectedCashOfficeId} — ${giCashOffices.find(o => o.id === giSelectedCashOfficeId)?.name || ''}` : (cashierInfo?.cashOfficeName || cashierInfo?.cashOfficeId || '-')}</span></div>
                         <div><span className="text-muted-foreground">Cashier ID:</span> <span className="font-medium">{posState?.platinumCashierId || '-'}</span></div>
                         <div><span className="text-muted-foreground">User ID:</span> <span className="font-medium">{posState?.platinumUser?.user_ID || '-'}</span></div>
                         <div><span className="text-muted-foreground">Fin Year:</span> <span className="font-medium">{posState?.platinumUser?.finYear || '-'}</span></div>
