@@ -18,6 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from '@/components/ui/date-picker';
+import { AccountEnquiryDialog } from '@/components/account-enquiry-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { HelpTip } from '@/components/ui/help-tip';
@@ -63,6 +64,7 @@ export default function AllocationHistory() {
   const [page, setPage] = useState(1);
   const pageSize = 20;
   const [retrying, setRetrying] = useState<number | null>(null);
+  const [enquiryAccountId, setEnquiryAccountId] = useState<string | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [jobAccountDetails, setJobAccountDetails] = useState<any[] | null>(null);
   
@@ -846,7 +848,16 @@ export default function AllocationHistory() {
                                                     return (
                                                         <React.Fragment key={idx}>
                                                             <TableRow className={isFailed ? 'bg-red-50/50' : ''}>
-                                                                <TableCell className="font-mono text-xs font-medium">{accNo}</TableCell>
+                                                                <TableCell className="font-mono text-xs font-medium">
+                                                                    <button
+                                                                        className="text-[var(--pos-accent-dark)] hover:underline cursor-pointer font-mono font-medium"
+                                                                        onClick={() => setEnquiryAccountId(accNo)}
+                                                                        title="Open account enquiry"
+                                                                        data-testid={`link-enquiry-${idx}`}
+                                                                    >
+                                                                        {accNo}
+                                                                    </button>
+                                                                </TableCell>
                                                                 <TableCell className="text-xs">{acc.name || acc.accountName || acc.surname || acc.description || acc.companyName || '-'}</TableCell>
                                                                 <TableCell className="text-right font-mono text-xs">R {Number(acc.amount ?? acc.allocatedAmount ?? 0).toFixed(2)}</TableCell>
                                                                 <TableCell className="text-center font-mono text-xs text-muted-foreground">{receiptNo ? String(receiptNo).trim() : '-'}</TableCell>
@@ -880,7 +891,13 @@ export default function AllocationHistory() {
                                                 <div key={idx} className={`border rounded-lg p-3 ${isFailed ? 'border-red-200 bg-red-50' : 'border-[#D6D6D6] bg-[#F7F7F7]'}`} data-testid={`card-account-detail-${idx}`}>
                                                     <div className="flex justify-between items-start gap-2 mb-1">
                                                         <div className="min-w-0 flex-1">
-                                                            <div className="font-mono text-xs font-medium">{acc.accountNo || acc.accountNumber || acc.account_No || acc.accountId || '-'}</div>
+                                                            <button
+                                                                className="font-mono text-xs font-medium text-[var(--pos-accent-dark)] hover:underline cursor-pointer"
+                                                                onClick={() => setEnquiryAccountId(acc.accountNo || acc.accountNumber || acc.account_No || acc.accountId || '')}
+                                                                data-testid={`link-enquiry-mobile-${idx}`}
+                                                            >
+                                                                {acc.accountNo || acc.accountNumber || acc.account_No || acc.accountId || '-'}
+                                                            </button>
                                                             <div className="text-xs text-muted-foreground truncate">{acc.name || acc.accountName || acc.surname || acc.description || acc.companyName || '-'}</div>
                                                         </div>
                                                         <Badge className={`shadow-none border text-[10px] shrink-0 ${isFailed ? 'bg-red-100 text-red-700 border-red-200' : 'bg-green-100 text-green-700 border-green-200'}`}>
@@ -917,6 +934,11 @@ export default function AllocationHistory() {
             )}
         </DialogContent>
        </Dialog>
+       <AccountEnquiryDialog
+           open={enquiryAccountId !== null}
+           onClose={() => setEnquiryAccountId(null)}
+           accountId={enquiryAccountId || ''}
+       />
     </PosLayout>
   );
 }
