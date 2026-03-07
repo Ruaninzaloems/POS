@@ -4339,11 +4339,11 @@ export async function registerRoutes(
       if (!Array.isArray(accountIds) || accountIds.length === 0) {
         return res.json({});
       }
-      const limited = accountIds.slice(0, 50);
-      console.log(`[batch-balance] Fetching balances for ${limited.length} accounts`);
+      const limited = accountIds.slice(0, 500);
+      console.log(`[batch-balance] Fetching balances for ${limited.length} accounts (requested ${accountIds.length})`);
 
       const results: Record<string, number> = {};
-      const batchSize = 5;
+      const batchSize = 10;
       for (let i = 0; i < limited.length; i += batchSize) {
         const batch = limited.slice(i, i + batchSize);
         const batchResults = await Promise.allSettled(
@@ -5214,16 +5214,20 @@ export async function registerRoutes(
 
       const strategies: Array<{ label: string; fn: () => Promise<any> }> = [
         {
-          label: `POST EnquiryResults {accountGroup: ${instIdNum}}`,
-          fn: () => platinumPost(session, "/api/BillingEnquiry/EnquiryResults", { accountGroup: instIdNum }),
+          label: `GET receipting-account-group-payment/search-accounts-by-group?institutionId=${instIdNum}`,
+          fn: () => platinumGet(session, "/api/receipting-account-group-payment/search-accounts-by-group", { institutionId: String(instIdNum) }),
         },
         {
-          label: `GET billing-enquiry-search?accountGroup=${instIdNum}`,
-          fn: () => platinumGet(session, "/api/billing-enquiry-search", { accountGroup: String(instIdNum) }),
+          label: `POST EnquiryResults {accountGroup: ${instIdNum}, pageSize: 2000}`,
+          fn: () => platinumPost(session, "/api/BillingEnquiry/EnquiryResults", { accountGroup: instIdNum, pageSize: 2000 }),
         },
         {
-          label: `POST EnquiryResults {instituationID: ${instIdNum}}`,
-          fn: () => platinumPost(session, "/api/BillingEnquiry/EnquiryResults", { instituationID: instIdNum }),
+          label: `GET billing-enquiry-search?accountGroup=${instIdNum}&PageSize=2000`,
+          fn: () => platinumGet(session, "/api/billing-enquiry-search", { accountGroup: String(instIdNum), PageSize: "2000" }),
+        },
+        {
+          label: `POST EnquiryResults {instituationID: ${instIdNum}, pageSize: 2000}`,
+          fn: () => platinumPost(session, "/api/BillingEnquiry/EnquiryResults", { instituationID: instIdNum, pageSize: 2000 }),
         },
       ];
 
