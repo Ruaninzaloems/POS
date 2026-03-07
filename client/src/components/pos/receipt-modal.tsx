@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 const BASE_TIMEOUT_SECONDS = 120;
 const CHUNK_SIZE = 25;
 const MAX_CONCURRENT = 3;
-const PER_CHUNK_TIMEOUT_SECONDS = 45;
+const PER_CHUNK_TIMEOUT_SECONDS = 120;
 
 export function ReceiptModal() {
   const { isReceiptModalOpen, closeReceiptModal, payment, transactionItems, recentTransactions, transactionProcessing, processingStep, currentTransactionId, processingRecord, sessionDetails, forceFailTransaction } = usePos();
