@@ -2211,9 +2211,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
             }
 
             const paidByName = (item.paidBy || 'Walk-in').trim();
-            const paidByParts = paidByName.split(/\s+/);
-            const lastName = paidByParts.length > 1 ? paidByParts.slice(1).join(' ') : paidByParts[0];
-            const initials = paidByParts[0]?.charAt(0) || 'W';
+            const lastName = paidByName;
+            const initials = item.additionalInfo?.trim() || paidByName.charAt(0) || 'W';
 
             const submitOneMisc = async (paymentTypeId: number, amount: number, tender: number, change: number, label: string, splitType: 'cash' | 'card') => {
                 const itemAmtExVat = isVatable ? amount / (1 + vatRate / 100) : amount;

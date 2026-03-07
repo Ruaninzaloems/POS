@@ -857,17 +857,31 @@ function DirectIncomeDetailsSection({ item, od, updateItemAmount, updateItemDeta
           />
         </div>
       </div>
-      <div>
-        <Label className={`text-[9px] uppercase font-semibold tracking-wider flex items-center gap-1 ${!item.paidBy?.trim() ? 'text-red-500' : 'text-green-600'}`}>
-          Paid By (Last Name) *
-        </Label>
-        <Input
-          placeholder="Surname / Company"
-          className={`h-9 text-sm rounded-lg mt-0.5 ${!item.paidBy?.trim() ? 'border-red-300 ring-1 ring-red-200' : 'border-green-200'}`}
-          value={item.paidBy || ''}
-          onChange={(e) => updateItemDetails(item.id, { paidBy: e.target.value })}
-          data-testid={`input-mobile-paidby-${item.id}`}
-        />
+      <div className="grid grid-cols-[100px_1fr] gap-2">
+        <div>
+          <Label className="text-[9px] uppercase font-semibold tracking-wider text-green-600">
+            Initials
+          </Label>
+          <Input
+            placeholder="e.g. JD"
+            className="h-9 text-sm rounded-lg mt-0.5 border-green-200"
+            value={item.additionalInfo || ''}
+            onChange={(e) => updateItemDetails(item.id, { additionalInfo: e.target.value })}
+            data-testid={`input-mobile-initials-${item.id}`}
+          />
+        </div>
+        <div>
+          <Label className={`text-[9px] uppercase font-semibold tracking-wider flex items-center gap-1 ${!item.paidBy?.trim() ? 'text-red-500' : 'text-green-600'}`}>
+            Last Name *
+          </Label>
+          <Input
+            placeholder="Surname / Company"
+            className={`h-9 text-sm rounded-lg mt-0.5 ${!item.paidBy?.trim() ? 'border-red-300 ring-1 ring-red-200' : 'border-green-200'}`}
+            value={item.paidBy || ''}
+            onChange={(e) => updateItemDetails(item.id, { paidBy: e.target.value })}
+            data-testid={`input-mobile-paidby-${item.id}`}
+          />
+        </div>
       </div>
       <div>
         <Label className={`text-[9px] uppercase font-semibold tracking-wider flex items-center gap-1 ${!item.notes?.trim() ? 'text-red-500' : 'text-green-600'}`}>
