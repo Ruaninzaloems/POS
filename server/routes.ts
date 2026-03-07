@@ -2988,8 +2988,14 @@ export async function registerRoutes(
       const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile/submit-day-auth-reconcile", req.body, req.query as Record<string, string>);
       console.log(`[auth-dayend-submit] Response:`, JSON.stringify(data).substring(0, 500));
       if (!data?._error && data?.isSuccess !== false) {
-        session.dayEndPending = true;
-        console.log(`[auth-dayend-submit] Marked session.dayEndPending=true`);
+        const requestCashierId = Number(req.query.cashierId || 0);
+        const sessionCashierId = getSessionPosCashierId(session);
+        if (requestCashierId === sessionCashierId && sessionCashierId > 0) {
+          session.dayEndPending = true;
+          console.log(`[auth-dayend-submit] Marked session.dayEndPending=true (own cashier session)`);
+        } else {
+          console.log(`[auth-dayend-submit] Skipping dayEndPending — request cashierId=${requestCashierId} != session cashierId=${sessionCashierId} (supervisor approving for another cashier)`);
+        }
       } else {
         console.warn(`[auth-dayend-submit] API returned error/failure — NOT setting dayEndPending`);
       }

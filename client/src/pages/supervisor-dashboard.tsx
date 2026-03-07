@@ -760,11 +760,10 @@ export default function SupervisorDashboard() {
           cashBookId = 1;
         }
       }
-      try {
-        console.log('[Supervisor] Step 2: submit-day-auth-reconcile for cashier', cashierId, 'cashBookId', cashBookId, 'officeId', cashierOfficeId);
-        await platinumAuthDayEndSubmitReconcile({ cashierId: Number(cashierId), cashBookId: Number(cashBookId), cashierOfficeId: Number(cashierOfficeId) });
-      } catch (subErr: any) {
-        console.warn('[Supervisor] submit-day-auth-reconcile warning (continuing):', subErr.message);
+      console.log('[Supervisor] Step 2: submit-day-auth-reconcile for cashier', cashierId, 'cashBookId', cashBookId, 'officeId', cashierOfficeId);
+      const submitResult = await platinumAuthDayEndSubmitReconcile({ cashierId: Number(cashierId), cashBookId: Number(cashBookId), cashierOfficeId: Number(cashierOfficeId) });
+      if (submitResult?.isSuccess === false || submitResult?.error) {
+        throw new Error(submitResult?.message || submitResult?.error || 'Failed to submit day-end authorization.');
       }
 
       const resolvedUserId = selectedShift?.userId || reviewData?.details?.user_Id || reviewData?.details?.userId || reviewData?.details?.capturerId || platinumUser?.user_ID || 0;
