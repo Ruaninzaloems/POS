@@ -74,7 +74,7 @@ Post-payment receipt flow is optimized for speed by:
 For large batch payments (e.g., 149 accounts), timeouts scale dynamically at all three layers:
 - **Server proxy**: `Math.max(60000, accounts × 8000)` ms passed to Platinum API call.
 - **Client API call** (`submitMultiplePayment`): Same formula with AbortController.
-- **Receipt modal watchdog**: `BASE_TIMEOUT_SECONDS` (120s) for ≤5 items; `items × 8s` for 6-25 items; for chunked batches (>25): `ceil(chunks/MAX_CONCURRENT) × PER_CHUNK_TIMEOUT_SECONDS (45s) + 30s` buffer. Previously hardcoded at 120s, which force-failed large batches before the API could respond. Footer warning shows elapsed time and max duration estimate for large batches.
+- **Receipt modal watchdog**: `BASE_TIMEOUT_SECONDS` (120s) for ≤5 items; `items × 8s` for 6-25 items; for chunked batches (>25): `ceil(chunks/MAX_CONCURRENT) × PER_CHUNK_TIMEOUT_SECONDS (120s) + 30s` buffer. Previously hardcoded at 120s/45s, which force-failed large batches before the API could respond. Platinum takes ~85-100s per 25-account batch. Footer warning shows elapsed time and max duration estimate for large batches.
 
 ### Chunked Parallel Multi-Account Payments
 When a multi-account payment exceeds `CHUNK_SIZE` (25 accounts), submissions are split into parallel batches:
@@ -85,6 +85,9 @@ When a multi-account payment exceeds `CHUNK_SIZE` (25 accounts), submissions are
 - Partial failure handling: if some batches fail but others succeed, the user is warned with receipt IDs from successful batches and told to check View Receipts. The error message surfaces the first failure reason.
 - For 149 accounts: 6 chunks × 2 rounds (3 concurrent) ≈ 60-90s total instead of 10-20 minutes with a single API call.
 - Small batches (≤25 accounts) still use a single `submitMultiplePayment` call as before.
+
+### Day-End Reconciliation Status Flow
+The day-end process uses these statuses: `NOT_SUBMITTED` (or "Not Yet Submitted"), `PENDING_APPROVAL` ("Submitted"), `RETURNED`, and `COMPLETED`. The cashier submits via 3 API steps: save-reconcile-data → validate-cashbook → submit-day-auth-reconcile. The supervisor approves via: validate-cashbook → submit-day-auth-reconcile → finish-day-end-reconcile. Returns use `return-day-end-reconcile` with `{ id, returnReason }`. The server's active-cashier endpoint checks the reconcile record's status field to distinguish pending vs returned — `hasDayEndReturned` keeps the session active so the cashier can re-submit, while `hasPendingDayEnd` blocks the session. Status mapping must check "not yet submitted" and "return" before "submit" to avoid misclassification. Per-office reconciliation follows: add-stage → process-staging → verify-cashier → submit-reconcile → finish-stage.
 
 ### SA 10c Cash Rounding
 Cash payments must be rounded UP to the nearest 10c (SA standard). Card payments are exempt. Implementation:

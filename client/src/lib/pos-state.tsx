@@ -450,7 +450,20 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
             }
 
             const hasPendingDayEnd = data.hasPendingDayEnd === true;
-            if (hasPendingDayEnd) {
+            const hasDayEndReturned = data.hasDayEndReturned === true;
+            if (hasDayEndReturned) {
+              console.log(`[Session] Day-end reconcile was RETURNED by supervisor — cashier can re-submit`);
+              setDayEndStatus('RETURNED');
+              setDayEndReturnReason(data.dayEndReturnReason || '');
+              setActiveSession(true);
+              setApiSessionActive(true);
+              setSessionDetails({
+                startTime: Date.now(),
+                officeId,
+                officeDesc: officeName,
+                floatAmount: cashFloat
+              });
+            } else if (hasPendingDayEnd) {
               console.log(`[Session] cashierReconcile is present in validate-cashier response — day-end is pending supervisor approval`);
               setDayEndStatus('PENDING_APPROVAL');
               setActiveSession(false);
@@ -777,7 +790,16 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
           variant: "destructive"
         });
       } else {
-        if (result?.hasPendingDayEnd === true) {
+        if (result?.hasDayEndReturned === true) {
+          console.warn(`[SessionEnforcement] active-cashier returned hasDayEndReturned=true — supervisor returned day-end for correction.`);
+          setDayEndStatus('RETURNED');
+          setDayEndReturnReason(result.dayEndReturnReason || '');
+          toast({
+            title: "Day-End Returned",
+            description: result.dayEndReturnReason ? `Supervisor returned your day-end: ${result.dayEndReturnReason}` : "Your day-end reconciliation was returned by the supervisor for correction. Please re-submit.",
+            variant: "destructive"
+          });
+        } else if (result?.hasPendingDayEnd === true) {
           console.warn(`[SessionEnforcement] active-cashier returned isActive=true BUT hasPendingDayEnd=true — day-end reconcile pending. Blocking session.`);
           setDayEndStatus('PENDING_APPROVAL');
           setActiveSession(false);
@@ -2729,7 +2751,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
   };
 
   const returnDayEnd = (reason: string) => {
-      setDayEndStatus('OPEN'); // In real app would be RETURNED status, but here we open it for editing
+      setDayEndStatus('RETURNED');
       setDayEndReturnReason(reason);
   };
 

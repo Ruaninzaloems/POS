@@ -47,7 +47,7 @@ const COIN_DENOMINATIONS = [
 ];
 
 export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
-  const { platinumCashierId, platinumUser, currentUser, sessionDetails, allowedPaymentTypes, dayEndStatus } = usePos();
+  const { platinumCashierId, platinumUser, currentUser, sessionDetails, allowedPaymentTypes, dayEndStatus, dayEndReturnReason } = usePos();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
@@ -379,6 +379,21 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
             </span>
           </div>
         </div>
+
+        {step === 'capture' && dayEndStatus === 'RETURNED' && dayEndReturnReason && (
+          <div className="mx-6 mt-4 rounded-xl border border-red-200 bg-red-50 p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0 mt-0.5">
+                <XCircle className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-red-800">Day-End Returned by Supervisor</h4>
+                <p className="text-xs text-red-600 mt-1">Reason: {dayEndReturnReason}</p>
+                <p className="text-xs text-slate-500 mt-1">Please review the figures below and re-submit.</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {step === 'capture' && (
           <div className="px-6 py-5 space-y-5">

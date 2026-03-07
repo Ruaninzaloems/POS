@@ -424,9 +424,16 @@ export async function registerRoutes(
         }
       }
 
-      const hasPendingDayEnd = resolvedCashierReconcile != null || session.dayEndPending === true;
+      const reconcileStatus = resolvedCashierReconcile ? String(resolvedCashierReconcile.status || resolvedCashierReconcile.reconcileStatus || '').toLowerCase().trim() : '';
+      const isReconcileReturned = reconcileStatus.includes('return');
+      const hasDayEndReturned = resolvedCashierReconcile != null && isReconcileReturned;
+      const hasPendingDayEnd = !hasDayEndReturned && ((resolvedCashierReconcile != null) || session.dayEndPending === true);
       if (!resolvedCashierReconcile && session.dayEndPending === true) {
         console.log(`[active-cashier] API cashierReconcile is null but session.dayEndPending=true — treating as pending (API may not reflect submission yet)`);
+      }
+      if (hasDayEndReturned) {
+        console.log(`[active-cashier] Reconcile record has RETURNED status — cashier can re-submit`);
+        session.dayEndPending = false;
       }
       console.log(`[active-cashier] validate-cashier result — registered: ${isCashierRegistered}, isActive: ${isSessionActive} (POS_Cashier.IsActive=${cashier?.isActive}), cashierId: ${cashierId}, officeId: ${activeOfficeId}, officeName: ${activeOfficeName}, cashierReconcile: ${resolvedCashierReconcile ? 'PRESENT' : 'null'}, session.dayEndPending: ${session.dayEndPending}, hasPendingDayEnd: ${hasPendingDayEnd}`);
 
@@ -446,6 +453,8 @@ export async function registerRoutes(
         isActive: isSessionActive,
         hasReceiptRange: receiptRange != null && receiptRange.isEnabled === true,
         hasPendingDayEnd,
+        hasDayEndReturned,
+        dayEndReturnReason: hasDayEndReturned ? (resolvedCashierReconcile?.returnReason || resolvedCashierReconcile?.reason || resolvedCashierReconcile?.returnedReason || resolvedCashierReconcile?.comments || '') : undefined,
         cashierReconcile: resolvedCashierReconcile,
         details: cashierDetails,
         sessionNeedsCreation: sessionFromCache,

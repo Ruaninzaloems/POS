@@ -130,13 +130,13 @@ function mapCashierToShift(c: any, index: number, officeConfigs?: Record<string,
   const groupCashiers = officeConfig?.groupCashiers ?? c.groupCashiers ?? false;
 
   let status: DayEndStatus = 'NOT_SUBMITTED';
-  const rawStatus = String(c.status || c.reconcileStatus || c.dayEndStatus || '').toLowerCase();
-  if (rawStatus.includes('not submitted') || rawStatus.includes('not_submitted') || rawStatus === 'not submitted') {
+  const rawStatus = String(c.status || c.reconcileStatus || c.dayEndStatus || '').toLowerCase().trim();
+  if (rawStatus.includes('not yet submitted') || rawStatus.includes('not submitted') || rawStatus.includes('not_submitted') || rawStatus === 'not submitted') {
     status = 'NOT_SUBMITTED';
-  } else if (rawStatus.includes('complet') || rawStatus.includes('post') || rawStatus.includes('finish') || rawStatus.includes('approved')) {
-    status = 'COMPLETED';
   } else if (rawStatus.includes('return')) {
     status = 'RETURNED';
+  } else if (rawStatus.includes('complet') || rawStatus.includes('post') || rawStatus.includes('finish') || rawStatus.includes('approved')) {
+    status = 'COMPLETED';
   } else if (rawStatus.includes('submit') || rawStatus.includes('pending') || rawStatus.includes('awaiting')) {
     status = 'PENDING_APPROVAL';
   } else if (rawStatus.includes('not') || rawStatus.includes('open') || rawStatus === '') {
