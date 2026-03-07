@@ -381,16 +381,22 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
   };
 
   const handleDownloadTemplate = () => {
-      const csvContent = "Receipt Date,Account Number,Amount\n2023-10-25,000000000030,150.00\n2023-10-25,ACC-1002,200.50";
+      const today = new Date().toISOString().split('T')[0];
+      const csvContent = "\uFEFF" +
+        "Receipt Date,Account Number,Amount\r\n" +
+        `${today},000000013088,150.00\r\n` +
+        `${today},000000020715,200.50\r\n` +
+        `${today},000000017807,75.00`;
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.setAttribute("href", url);
       link.setAttribute("download", "receipt_import_template.csv");
       link.style.display = 'none';
-      (document.body || document.documentElement).appendChild(link);
+      document.body.appendChild(link);
       link.click();
       link.remove();
+      URL.revokeObjectURL(url);
   };
 
   const [importingCSV, setImportingCSV] = useState(false);
@@ -620,8 +626,8 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
                         </div>
                         <div className="text-xs text-muted-foreground">
                             Example:<br/>
-                            2023-10-25, 000000000030, 150.00<br/>
-                            2023-10-25, ACC-1002, 200.50
+                            2026-03-07, 000000013088, 150.00<br/>
+                            2026-03-07, 000000020715, 200.50
                         </div>
                         <div className="flex items-center gap-2 text-xs text-[var(--pos-accent)] bg-[var(--pos-accent-tint)] p-2 rounded border border-[#D6D6D6]">
                             <Info className="w-4 h-4" />
@@ -630,7 +636,7 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
                     </div>
 
                     <DialogFooter className="sm:justify-between gap-2">
-                         <Button variant="ghost" size="sm" onClick={handleDownloadTemplate} className="gap-2 text-[var(--pos-accent)] hover:text-[var(--pos-accent-dark)] hover:bg-[var(--pos-accent-tint)]">
+                         <Button variant="ghost" size="sm" onClick={handleDownloadTemplate} className="gap-2 text-[var(--pos-accent)] hover:text-[var(--pos-accent-dark)] hover:bg-[var(--pos-accent-tint)]" data-testid="button-download-csv-template">
                              <Download className="w-4 h-4" />
                              Download Template
                          </Button>
@@ -694,8 +700,8 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
                                     </div>
                                     <div className="text-xs text-muted-foreground">
                                         Example:<br/>
-                                        2023-10-25, 000000000030, 150.00<br/>
-                                        2023-10-25, ACC-1002, 200.50
+                                        2026-03-07, 000000013088, 150.00<br/>
+                                        2026-03-07, 000000020715, 200.50
                                     </div>
                                     <div className="flex items-center gap-2 text-xs text-[var(--pos-accent)] bg-[var(--pos-accent-tint)] p-2 rounded border border-[#D6D6D6]">
                                         <Info className="w-4 h-4" />
