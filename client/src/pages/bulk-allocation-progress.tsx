@@ -30,12 +30,12 @@ import { useToast } from '@/hooks/use-toast';
 function getStatusBadge(status: string | null | undefined) {
   if (!status) return <Badge variant="outline">Unknown</Badge>;
   const s = status.toLowerCase();
+  if (s.includes('fail') || s.includes('error'))
+    return <Badge className="bg-red-100 text-red-800 border-red-200"><XCircle className="w-3 h-3 mr-1" />{status}</Badge>;
   if (s.includes('complete') || s === 'success' || s === 'done')
     return <Badge className="bg-green-100 text-green-800 border-green-200"><CheckCircle2 className="w-3 h-3 mr-1" />{status}</Badge>;
   if (s.includes('progress') || s.includes('processing') || s.includes('running') || s.includes('busy'))
     return <Badge className="bg-blue-100 text-blue-800 border-blue-200"><Clock className="w-3 h-3 mr-1" />{status}</Badge>;
-  if (s.includes('fail') || s.includes('error'))
-    return <Badge className="bg-red-100 text-red-800 border-red-200"><XCircle className="w-3 h-3 mr-1" />{status}</Badge>;
   if (s.includes('pending') || s.includes('queued') || s.includes('waiting'))
     return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200"><Clock className="w-3 h-3 mr-1" />{status}</Badge>;
   if (s.includes('cancel'))
@@ -295,8 +295,8 @@ export default function BulkAllocationProgress() {
   function getStatusCategory(s: string): string {
     if (s.includes('rebuild')) return 'rebuilds';
     if (s.includes('recon') || s.includes('reconcil')) return 'recon';
-    if (s.includes('complete') || s === 'success' || s === 'done') return 'completed';
     if (s.includes('fail') || s.includes('error')) return 'failed';
+    if (s.includes('complete') || s === 'success' || s === 'done') return 'completed';
     if (s.includes('progress') || s.includes('processing') || s.includes('running') || s.includes('busy')) return 'in_progress';
     if (s.includes('pending') || s.includes('queued') || s.includes('waiting')) return 'pending';
     if (s.includes('cancel')) return 'cancelled';
