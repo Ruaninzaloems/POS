@@ -146,6 +146,7 @@ export default function ThirdPartyPaymentProcessing() {
   const [giPreviewLoading, setGiPreviewLoading] = useState(false);
   const [giDragOver, setGiDragOver] = useState(false);
   const [giCsvHasPaymentType, setGiCsvHasPaymentType] = useState(false);
+  const [giCsvHasReceiptDate, setGiCsvHasReceiptDate] = useState(false);
   const giFileInputRef = useRef<HTMLInputElement>(null);
   const [giCashOffices, setGiCashOffices] = useState<Array<{ id: string; name: string }>>([]);
   const [giSelectedCashOfficeId, setGiSelectedCashOfficeId] = useState<string>('');
@@ -785,6 +786,7 @@ export default function ThirdPartyPaymentProcessing() {
       const dateIdx = header.findIndex(h => h === 'receiptdate' || h === 'date');
       const ptIdx = header.findIndex(h => h === 'paymenttypeid' || h === 'paymenttype' || h === 'paytype');
       setGiCsvHasPaymentType(ptIdx !== -1);
+      setGiCsvHasReceiptDate(dateIdx !== -1);
 
       if (accIdx === -1) { setGiError('CSV missing required column: AccountNumber'); setGiPreviewLoading(false); setGiValidationProgress(null); return; }
       if (amtIdx === -1) { setGiError('CSV missing required column: Amount'); setGiPreviewLoading(false); setGiValidationProgress(null); return; }
@@ -1138,6 +1140,7 @@ export default function ThirdPartyPaymentProcessing() {
     setGiPreviewRows([]);
     setGiPreviewSkipped([]);
     setGiCsvHasPaymentType(false);
+    setGiCsvHasReceiptDate(false);
   };
 
   const giStatusText = useMemo(() => {
@@ -1976,15 +1979,26 @@ export default function ThirdPartyPaymentProcessing() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="gi-receipt-date" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Receipt Date</Label>
-                        <Input
-                          id="gi-receipt-date"
-                          type="date"
-                          className="mt-1.5 h-11 sm:h-10"
-                          value={giReceiptDate}
-                          onChange={(e) => setGiReceiptDate(e.target.value)}
-                          data-testid="input-gi-receipt-date"
-                        />
+                        <Label htmlFor="gi-receipt-date" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                          {giCsvHasReceiptDate ? 'Receipt Date' : 'Default Receipt Date'}
+                        </Label>
+                        {giCsvHasReceiptDate ? (
+                          <div className="mt-1.5 h-11 sm:h-10 flex items-center px-3 rounded-md border bg-slate-50 text-sm text-muted-foreground" data-testid="text-gi-receipt-date-csv">
+                            Defined per row in CSV
+                          </div>
+                        ) : (
+                          <>
+                            <Input
+                              id="gi-receipt-date"
+                              type="date"
+                              className="mt-1.5 h-11 sm:h-10"
+                              value={giReceiptDate}
+                              onChange={(e) => setGiReceiptDate(e.target.value)}
+                              data-testid="input-gi-receipt-date"
+                            />
+                            <p className="text-[10px] text-muted-foreground mt-1">Used when CSV has no ReceiptDate column</p>
+                          </>
+                        )}
                       </div>
                       <div>
                         <Label htmlFor="gi-payment-ref" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Payment Reference <span className="text-muted-foreground font-normal normal-case">(optional)</span></Label>
