@@ -223,7 +223,7 @@ export function ReceiptModal() {
                   <div className="w-full space-y-2 mt-1">
                     <p className="text-sm text-muted-foreground font-medium text-center">{phaseText}</p>
                     {acctDetail && (
-                      <p className="text-xs font-semibold text-[var(--pos-accent)] text-center truncate max-w-[280px] mx-auto">{acctDetail}</p>
+                      <p className="text-xs font-semibold text-[var(--pos-accent)] text-center mx-auto break-words">{acctDetail}</p>
                     )}
                     {pct >= 0 ? (
                       <div className="px-2">

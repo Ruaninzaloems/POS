@@ -437,7 +437,7 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
                   <span className="text-right">{
                     effectiveRd._balanceIsPostPayment
                       ? Number(effectiveRd.outstandingAmount).toFixed(2)
-                      : (Number(effectiveRd.outstandingAmount) - totalAmount).toFixed(2)
+                      : (Number(effectiveRd.outstandingAmount) - (effectiveRd.tenderAmount ?? totalAmount)).toFixed(2)
                   }</span>
               </div>
           </div>
