@@ -20,6 +20,8 @@ import {
   fetchBulkProgressProcessList,
   fetchBulkAllocationList,
   fetchBulkProgressDirectDeposit,
+  fetchBulkProgressJobAccountDetails,
+  fetchGenericImportErrors,
   fetchViewReceiptCashiers,
   platinumGetPosItemDetails,
   retryBulkAllocationJob,
@@ -85,6 +87,7 @@ export default function BulkAllocationProgress() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailData, setDetailData] = useState<any>(null);
+  const [detailAccounts, setDetailAccounts] = useState<any[] | null>(null);
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [retryingJobId, setRetryingJobId] = useState<number | null>(null);
 
@@ -190,6 +193,7 @@ export default function BulkAllocationProgress() {
     setDetailOpen(true);
     setDetailLoading(true);
     setDetailData(null);
+    setDetailAccounts(null);
 
     loadCashierCache();
 
@@ -201,9 +205,11 @@ export default function BulkAllocationProgress() {
     }
 
     try {
-      const [data, posItemData] = await Promise.all([
+      const [data, posItemData, accountsResult, errorsResult] = await Promise.all([
         fetchBulkProgressDirectDeposit(jobId),
         job.posItemID ? platinumGetPosItemDetails(job.posItemID).catch((err) => { console.error('[BulkAllocationProgress] Failed to fetch POS item details:', err); return null; }) : Promise.resolve(null),
+        fetchBulkProgressJobAccountDetails(jobId).catch(() => null),
+        fetchGenericImportErrors(jobId).catch(() => null),
       ]);
 
       const enriched = { ...(data || job) };
@@ -213,6 +219,32 @@ export default function BulkAllocationProgress() {
         enriched._posItemDate = posItemData.dateOfTransaction || posItemData.dateCaptured;
       }
       setDetailData(enriched);
+
+      const errorMap = new Map<string, string>();
+      if (errorsResult) {
+        const errList = errorsResult.errors || (Array.isArray(errorsResult) ? errorsResult : []);
+        errList.forEach((e: any) => {
+          const accNo = e.accountNumber || e.accountNo || '';
+          const msg = e.message || e.errorMessage || e.error || '';
+          if (accNo && msg) errorMap.set(accNo, msg);
+        });
+      }
+
+      let accounts: any[] | null = null;
+      if (accountsResult) {
+        const items = Array.isArray(accountsResult) ? accountsResult : accountsResult?.items || accountsResult?.data || null;
+        if (items && items.length > 0) {
+          accounts = items.map((acc: any) => {
+            const accNo = acc.accountNo || acc.accountNumber || acc.account_No || '';
+            const errMsg = errorMap.get(accNo);
+            if (errMsg && !acc.errorMessage) {
+              return { ...acc, errorMessage: errMsg };
+            }
+            return acc;
+          });
+        }
+      }
+      setDetailAccounts(accounts);
     } catch (err) {
       console.error('[BulkAllocationProgress] Failed to load job detail:', err);
       setDetailData(job);
@@ -842,7 +874,20 @@ export default function BulkAllocationProgress() {
                               </DialogDescription>
                             </div>
                           </div>
-                          <div className="shrink-0 mt-0.5">
+                          <div className="flex items-center gap-2 shrink-0 mt-0.5">
+                            {isError && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 text-xs text-orange-600 border-orange-200 hover:bg-orange-50"
+                                onClick={() => detailData && handleRetryJob(detailData)}
+                                disabled={retryingJobId === jobId}
+                                data-testid="button-retry-detail"
+                              >
+                                {retryingJobId === jobId ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <RefreshCw className="w-3.5 h-3.5 mr-1" />}
+                                Retry Job
+                              </Button>
+                            )}
                             {getStatusBadge(jobStatus)}
                           </div>
                         </div>
@@ -1072,6 +1117,106 @@ export default function BulkAllocationProgress() {
                             </div>
                           </div>
                         )}
+
+                        {detailAccounts && detailAccounts.length > 0 && (() => {
+                          const failedAccts = detailAccounts.filter((a: any) => a.status === 'Error' || a.errorMessage || a.isAllocated === false);
+                          const successCount = detailAccounts.length - failedAccts.length;
+                          return (
+                            <div className="rounded-lg border border-[#D6D6D6] overflow-hidden">
+                              <div className="bg-[#F7F7F7] px-3 py-2 border-b border-[#D6D6D6] flex items-center justify-between">
+                                <h3 className="text-[11px] uppercase tracking-wider font-bold text-slate-500 flex items-center gap-1.5">
+                                  <Layers className="w-3.5 h-3.5" /> Account Details
+                                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 ml-1">{detailAccounts.length}</Badge>
+                                </h3>
+                                <div className="flex items-center gap-2">
+                                  {successCount > 0 && <Badge className="bg-green-100 text-green-700 border-green-200 shadow-none text-[10px]">{successCount} Success</Badge>}
+                                  {failedAccts.length > 0 && <Badge className="bg-red-100 text-red-700 border-red-200 shadow-none text-[10px]">{failedAccts.length} Failed</Badge>}
+                                </div>
+                              </div>
+                              {failedAccts.length > 0 && (
+                                <div className="px-3 py-2 bg-red-50 border-b border-red-200">
+                                  <div className="flex items-center gap-2">
+                                    <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                                    <span className="text-xs font-medium text-red-700">{failedAccts.length} account{failedAccts.length !== 1 ? 's' : ''} failed allocation. {isError ? 'Use the Retry button above to reprocess this job.' : ''}</span>
+                                  </div>
+                                </div>
+                              )}
+                              <div className="max-h-[350px] overflow-y-auto">
+                                <div className="hidden sm:block">
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow className="bg-[#F7F7F7]">
+                                        <TableHead className="text-xs">Account No</TableHead>
+                                        <TableHead className="text-xs text-right">Amount</TableHead>
+                                        <TableHead className="text-xs text-center">Receipt</TableHead>
+                                        <TableHead className="text-xs text-center">Status</TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {detailAccounts.map((acc: any, idx: number) => {
+                                        const isFailed = acc.status === 'Error' || acc.errorMessage || acc.isAllocated === false;
+                                        const accNo = acc.accountNo || acc.accountNumber || acc.account_No || acc.accountId || '-';
+                                        const receiptNo = acc.receiptNumber || acc.receiptNo || acc.receipt_No || null;
+                                        return (
+                                          <React.Fragment key={idx}>
+                                            <TableRow className={isFailed ? 'bg-red-50/50' : ''}>
+                                              <TableCell className="font-mono text-xs font-medium">{accNo}</TableCell>
+                                              <TableCell className="text-right font-mono text-xs">R {Number(acc.amount ?? acc.allocatedAmount ?? 0).toFixed(2)}</TableCell>
+                                              <TableCell className="text-center font-mono text-xs text-muted-foreground">{receiptNo ? String(receiptNo).trim() : '-'}</TableCell>
+                                              <TableCell className="text-center">
+                                                <Badge className={`shadow-none border text-[10px] ${isFailed ? 'bg-red-100 text-red-700 border-red-200' : 'bg-green-100 text-green-700 border-green-200'}`}>
+                                                  {isFailed ? <><AlertCircle className="w-2.5 h-2.5 mr-0.5 inline" />Error</> : 'Success'}
+                                                </Badge>
+                                              </TableCell>
+                                            </TableRow>
+                                            {isFailed && acc.errorMessage && (
+                                              <TableRow className="bg-red-50/30">
+                                                <TableCell colSpan={4} className="py-1.5 px-4">
+                                                  <div className="flex items-start gap-2 text-xs text-red-700">
+                                                    <AlertCircle className="w-3 h-3 text-red-400 shrink-0 mt-0.5" />
+                                                    <span className="break-words">{acc.errorMessage}</span>
+                                                  </div>
+                                                </TableCell>
+                                              </TableRow>
+                                            )}
+                                          </React.Fragment>
+                                        );
+                                      })}
+                                    </TableBody>
+                                  </Table>
+                                </div>
+                                <div className="sm:hidden divide-y divide-[#E5E5E5]">
+                                  {detailAccounts.map((acc: any, idx: number) => {
+                                    const isFailed = acc.status === 'Error' || acc.errorMessage || acc.isAllocated === false;
+                                    const receiptNo = acc.receiptNumber || acc.receiptNo || acc.receipt_No || null;
+                                    return (
+                                      <div key={idx} className={`p-3 ${isFailed ? 'bg-red-50' : ''}`}>
+                                        <div className="flex justify-between items-start gap-2 mb-1">
+                                          <div className="min-w-0 flex-1">
+                                            <div className="font-mono text-xs font-medium">{acc.accountNo || acc.accountNumber || acc.account_No || '-'}</div>
+                                            {receiptNo && <div className="text-[10px] text-muted-foreground font-mono">Rcpt: {String(receiptNo).trim()}</div>}
+                                          </div>
+                                          <div className="flex items-center gap-2 shrink-0">
+                                            <span className="font-mono text-xs font-bold">R {Number(acc.amount ?? acc.allocatedAmount ?? 0).toFixed(2)}</span>
+                                            <Badge className={`shadow-none border text-[10px] ${isFailed ? 'bg-red-100 text-red-700 border-red-200' : 'bg-green-100 text-green-700 border-green-200'}`}>
+                                              {isFailed ? 'Error' : 'Success'}
+                                            </Badge>
+                                          </div>
+                                        </div>
+                                        {isFailed && acc.errorMessage && (
+                                          <div className="mt-1.5 p-2 bg-red-100/50 rounded border border-red-200 text-[11px] text-red-700 flex items-start gap-1.5">
+                                            <AlertCircle className="w-3 h-3 text-red-400 shrink-0 mt-0.5" />
+                                            <span className="break-words">{acc.errorMessage}</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </>
                   );

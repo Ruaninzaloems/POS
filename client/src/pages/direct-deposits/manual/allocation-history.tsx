@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ArrowLeft, Eye, Printer, FileText, Search, User, FileSpreadsheet, FileIcon, Filter, X, RotateCcw, AlertCircle, File, Download, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'wouter';
-import { fetchBulkAllocationList, fetchBulkProgressFinancialYears, fetchBulkProgressMonthList, fetchBulkProgressProcessList, fetchDirectDepositJobAccountDetails, fetchBulkProgressDirectDeposit, fetchDirectDepositJobDetails, fetchBulkProgressJobAccountDetails, retryBulkAllocationJob, fetchBankStatementNotes, BulkProgressSearchQuery } from '@/lib/external-api';
+import { fetchBulkAllocationList, fetchBulkProgressFinancialYears, fetchBulkProgressMonthList, fetchBulkProgressProcessList, fetchDirectDepositJobAccountDetails, fetchBulkProgressDirectDeposit, fetchDirectDepositJobDetails, fetchBulkProgressJobAccountDetails, retryBulkAllocationJob, fetchBankStatementNotes, fetchGenericImportErrors, BulkProgressSearchQuery } from '@/lib/external-api';
 import { usePos } from '@/lib/pos-state';
 import { format, parseISO, isWithinInterval, startOfDay, endOfDay, isValid } from 'date-fns';
 import { Loader2 } from 'lucide-react';
@@ -204,13 +204,22 @@ export default function AllocationHistory() {
       setJobAccountDetails(null);
       setDetailsLoading(true);
       try {
-          const [jobAccountResult, errorAccountResult] = await Promise.allSettled([
+          const [jobAccountResult, errorAccountResult, importErrorsResult] = await Promise.allSettled([
               fetchBulkProgressJobAccountDetails(tx.directDepositJob_ID),
               fetchDirectDepositJobAccountDetails(tx.directDepositJob_ID),
+              fetchGenericImportErrors(tx.directDepositJob_ID),
           ]);
 
-          console.log('[AllocationHistory] job-account-details response:', jobAccountResult.status === 'fulfilled' ? jobAccountResult.value : jobAccountResult.reason?.message);
-          console.log('[AllocationHistory] error-account-details response:', errorAccountResult.status === 'fulfilled' ? errorAccountResult.value : errorAccountResult.reason?.message);
+          const errorMap = new Map<string, string>();
+          if (importErrorsResult.status === 'fulfilled') {
+              const errData = importErrorsResult.value;
+              const errList = errData?.errors || (Array.isArray(errData) ? errData : []);
+              errList.forEach((e: any) => {
+                  const accNo = e.accountNumber || e.accountNo || e.account_No || '';
+                  const msg = e.message || e.errorMessage || e.error || e.failedStep || '';
+                  if (accNo && msg) errorMap.set(accNo, msg);
+              });
+          }
 
           let details: any[] | null = null;
 
@@ -228,6 +237,17 @@ export default function AllocationHistory() {
               if (items && items.length > 0) {
                   details = items;
               }
+          }
+
+          if (details && errorMap.size > 0) {
+              details = details.map((acc: any) => {
+                  const accNo = acc.accountNo || acc.accountNumber || acc.account_No || '';
+                  const errMsg = errorMap.get(accNo);
+                  if (errMsg && !acc.errorMessage) {
+                      return { ...acc, errorMessage: errMsg };
+                  }
+                  return acc;
+              });
           }
 
           setJobAccountDetails(details);
@@ -746,48 +766,109 @@ export default function AllocationHistory() {
                             </div>
                         ) : jobAccountDetails && jobAccountDetails.length > 0 ? (
                             <>
-                            <div className="hidden sm:block border border-[#D6D6D6] rounded-lg overflow-hidden">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow className="bg-[#F7F7F7]">
-                                            <TableHead className="text-xs">Account No</TableHead>
-                                            <TableHead className="text-xs">Name</TableHead>
-                                            <TableHead className="text-xs text-right">Amount</TableHead>
-                                            <TableHead className="text-xs text-center">Status</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {jobAccountDetails.map((acc: any, idx: number) => (
-                                            <TableRow key={idx}>
-                                                <TableCell className="font-mono text-xs">{acc.accountNo || acc.accountNumber || acc.account_No || acc.accountId || '-'}</TableCell>
-                                                <TableCell className="text-xs">{acc.name || acc.accountName || acc.surname || acc.description || '-'}</TableCell>
-                                                <TableCell className="text-right font-mono text-xs">R {Number(acc.amount ?? acc.allocatedAmount ?? 0).toFixed(2)}</TableCell>
-                                                <TableCell className="text-center">
-                                                    <Badge className={`shadow-none border text-[10px] ${acc.status === 'Error' || acc.errorMessage ? 'bg-red-100 text-red-700 border-red-200' : 'bg-green-100 text-green-700 border-green-200'}`}>
-                                                        {acc.status || (acc.errorMessage ? 'Error' : 'OK')}
-                                                    </Badge>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                            <div className="sm:hidden space-y-2">
-                                {jobAccountDetails.map((acc: any, idx: number) => (
-                                    <div key={idx} className="border border-[#D6D6D6] rounded-lg p-3 bg-[#F7F7F7]" data-testid={`card-account-detail-${idx}`}>
-                                        <div className="flex justify-between items-start gap-2 mb-1">
-                                            <div className="min-w-0 flex-1">
-                                                <div className="font-mono text-xs font-medium">{acc.accountNo || acc.accountNumber || acc.account_No || acc.accountId || '-'}</div>
-                                                <div className="text-xs text-muted-foreground truncate">{acc.name || acc.accountName || acc.surname || acc.description || '-'}</div>
+                            {(() => {
+                                const failedAccounts = jobAccountDetails.filter((a: any) => a.status === 'Error' || a.errorMessage || a.isAllocated === false);
+                                const successCount = jobAccountDetails.length - failedAccounts.length;
+                                return (
+                                    <>
+                                    {(failedAccounts.length > 0 || successCount > 0) && (
+                                        <div className={`mb-3 p-3 border rounded-lg flex items-center justify-between ${failedAccounts.length > 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
+                                            <div className="flex items-center gap-2">
+                                                {failedAccounts.length > 0 ? (
+                                                    <>
+                                                        <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                                                        <div>
+                                                            <span className="text-sm font-semibold text-red-700">{failedAccounts.length} Failed Allocation{failedAccounts.length !== 1 ? 's' : ''}</span>
+                                                            <p className="text-xs text-red-600">See error details below each failed account.</p>
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <span className="text-sm font-semibold text-green-700">All accounts allocated successfully</span>
+                                                )}
                                             </div>
-                                            <Badge className={`shadow-none border text-[10px] shrink-0 ${acc.status === 'Error' || acc.errorMessage ? 'bg-red-100 text-red-700 border-red-200' : 'bg-green-100 text-green-700 border-green-200'}`}>
-                                                {acc.status || (acc.errorMessage ? 'Error' : 'OK')}
-                                            </Badge>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                {successCount > 0 && <Badge className="bg-green-100 text-green-700 border-green-200 shadow-none text-[10px]">{successCount} Success</Badge>}
+                                                {failedAccounts.length > 0 && <Badge className="bg-red-100 text-red-700 border-red-200 shadow-none text-[10px]">{failedAccounts.length} Failed</Badge>}
+                                            </div>
                                         </div>
-                                        <div className="font-mono text-sm font-bold">R {Number(acc.amount ?? acc.allocatedAmount ?? 0).toFixed(2)}</div>
+                                    )}
+                                    <div className="hidden sm:block border border-[#D6D6D6] rounded-lg overflow-hidden">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow className="bg-[#F7F7F7]">
+                                                    <TableHead className="text-xs">Account No</TableHead>
+                                                    <TableHead className="text-xs">Name</TableHead>
+                                                    <TableHead className="text-xs text-right">Amount</TableHead>
+                                                    <TableHead className="text-xs text-center">Receipt</TableHead>
+                                                    <TableHead className="text-xs text-center">Status</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {jobAccountDetails.map((acc: any, idx: number) => {
+                                                    const isFailed = acc.status === 'Error' || acc.errorMessage || acc.isAllocated === false;
+                                                    const accNo = acc.accountNo || acc.accountNumber || acc.account_No || acc.accountId || '-';
+                                                    const receiptNo = acc.receiptNumber || acc.receiptNo || acc.receipt_No || null;
+                                                    return (
+                                                        <React.Fragment key={idx}>
+                                                            <TableRow className={isFailed ? 'bg-red-50/50' : ''}>
+                                                                <TableCell className="font-mono text-xs font-medium">{accNo}</TableCell>
+                                                                <TableCell className="text-xs">{acc.name || acc.accountName || acc.surname || acc.description || acc.companyName || '-'}</TableCell>
+                                                                <TableCell className="text-right font-mono text-xs">R {Number(acc.amount ?? acc.allocatedAmount ?? 0).toFixed(2)}</TableCell>
+                                                                <TableCell className="text-center font-mono text-xs text-muted-foreground">{receiptNo ? String(receiptNo).trim() : '-'}</TableCell>
+                                                                <TableCell className="text-center">
+                                                                    <Badge className={`shadow-none border text-[10px] ${isFailed ? 'bg-red-100 text-red-700 border-red-200' : 'bg-green-100 text-green-700 border-green-200'}`}>
+                                                                        {isFailed ? <><AlertCircle className="w-2.5 h-2.5 mr-0.5 inline" />Error</> : 'Success'}
+                                                                    </Badge>
+                                                                </TableCell>
+                                                            </TableRow>
+                                                            {isFailed && acc.errorMessage && (
+                                                                <TableRow className="bg-red-50/30">
+                                                                    <TableCell colSpan={5} className="py-1.5 px-4">
+                                                                        <div className="flex items-start gap-2 text-xs text-red-700">
+                                                                            <AlertCircle className="w-3 h-3 text-red-400 shrink-0 mt-0.5" />
+                                                                            <span className="break-words">{acc.errorMessage}</span>
+                                                                        </div>
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            )}
+                                                        </React.Fragment>
+                                                    );
+                                                })}
+                                            </TableBody>
+                                        </Table>
                                     </div>
-                                ))}
-                            </div>
+                                    <div className="sm:hidden space-y-2">
+                                        {jobAccountDetails.map((acc: any, idx: number) => {
+                                            const isFailed = acc.status === 'Error' || acc.errorMessage || acc.isAllocated === false;
+                                            const receiptNo = acc.receiptNumber || acc.receiptNo || acc.receipt_No || null;
+                                            return (
+                                                <div key={idx} className={`border rounded-lg p-3 ${isFailed ? 'border-red-200 bg-red-50' : 'border-[#D6D6D6] bg-[#F7F7F7]'}`} data-testid={`card-account-detail-${idx}`}>
+                                                    <div className="flex justify-between items-start gap-2 mb-1">
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="font-mono text-xs font-medium">{acc.accountNo || acc.accountNumber || acc.account_No || acc.accountId || '-'}</div>
+                                                            <div className="text-xs text-muted-foreground truncate">{acc.name || acc.accountName || acc.surname || acc.description || acc.companyName || '-'}</div>
+                                                        </div>
+                                                        <Badge className={`shadow-none border text-[10px] shrink-0 ${isFailed ? 'bg-red-100 text-red-700 border-red-200' : 'bg-green-100 text-green-700 border-green-200'}`}>
+                                                            {isFailed ? 'Error' : 'Success'}
+                                                        </Badge>
+                                                    </div>
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="font-mono text-sm font-bold">R {Number(acc.amount ?? acc.allocatedAmount ?? 0).toFixed(2)}</div>
+                                                        {receiptNo && <div className="text-[10px] text-muted-foreground font-mono">Rcpt: {String(receiptNo).trim()}</div>}
+                                                    </div>
+                                                    {isFailed && acc.errorMessage && (
+                                                        <div className="mt-2 p-2 bg-red-100/50 rounded border border-red-200 text-[11px] text-red-700 flex items-start gap-1.5">
+                                                            <AlertCircle className="w-3 h-3 text-red-400 shrink-0 mt-0.5" />
+                                                            <span className="break-words">{acc.errorMessage}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    </>
+                                );
+                            })()}
                             </>
                         ) : (
                             <p className="text-xs text-muted-foreground py-2">No account allocation details available for this job.</p>
