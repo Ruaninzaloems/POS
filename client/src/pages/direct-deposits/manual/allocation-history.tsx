@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ArrowLeft, Eye, Printer, FileText, Search, User, FileSpreadsheet, FileIcon, Filter, X, RotateCcw, AlertCircle, File, Download, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'wouter';
-import { fetchBulkAllocationList, fetchBulkProgressFinancialYears, fetchBulkProgressMonthList, fetchBulkProgressProcessList, fetchDirectDepositJobAccountDetails, fetchBulkProgressDirectDeposit, fetchDirectDepositJobDetails, fetchBulkProgressJobAccountDetails, retryBulkAllocationJob, fetchBankStatementNotes, fetchGenericImportErrors, BulkProgressSearchQuery } from '@/lib/external-api';
+import { fetchBulkAllocationList, fetchBulkProgressFinancialYears, fetchBulkProgressMonthList, fetchBulkProgressProcessList, fetchDirectDepositJobAccountDetails, fetchBulkProgressDirectDeposit, fetchDirectDepositJobDetails, fetchBulkProgressJobAccountDetails, retryBulkAllocationJob, fetchBankStatementNotes, fetchGenericImportErrors, fetchGenericImportStatus, BulkProgressSearchQuery } from '@/lib/external-api';
+import { searchAccounts } from '@/lib/enquiries-service';
 import { usePos } from '@/lib/pos-state';
 import { format, parseISO, isWithinInterval, startOfDay, endOfDay, isValid } from 'date-fns';
 import { Loader2 } from 'lucide-react';
@@ -206,10 +207,11 @@ export default function AllocationHistory() {
       setJobAccountDetails(null);
       setDetailsLoading(true);
       try {
-          const [jobAccountResult, errorAccountResult, importErrorsResult] = await Promise.allSettled([
+          const [jobAccountResult, errorAccountResult, importErrorsResult, statusResult] = await Promise.allSettled([
               fetchBulkProgressJobAccountDetails(tx.directDepositJob_ID),
               fetchDirectDepositJobAccountDetails(tx.directDepositJob_ID),
               fetchGenericImportErrors(tx.directDepositJob_ID),
+              fetchGenericImportStatus(tx.directDepositJob_ID),
           ]);
 
           const errorMap = new Map<string, string>();
@@ -220,6 +222,26 @@ export default function AllocationHistory() {
                   const accNo = e.accountNumber || e.accountNo || e.account_No || '';
                   const msg = e.message || e.errorMessage || e.error || e.failedStep || '';
                   if (accNo && msg) errorMap.set(accNo, msg);
+              });
+          }
+
+          const receiptMap = new Map<string, string>();
+          if (errorAccountResult.status === 'fulfilled') {
+              const errAccts = errorAccountResult.value;
+              const errItems = Array.isArray(errAccts) ? errAccts : errAccts?.items || [];
+              errItems.forEach((r: any) => {
+                  const accNo = r.accountNumber || r.accountNo || '';
+                  const rcpt = String(r.receiptNumber ?? '').trim();
+                  if (accNo && rcpt) receiptMap.set(accNo, rcpt);
+              });
+          }
+          if (statusResult.status === 'fulfilled') {
+              const statusData = statusResult.value;
+              const statusRows = Array.isArray(statusData?.rows) ? statusData.rows : Array.isArray(statusData) ? statusData : [];
+              statusRows.forEach((r: any) => {
+                  const accNo = r.accountNumber || r.accountNo || '';
+                  const rcpt = String(r.receiptNumber ?? '').trim();
+                  if (accNo && rcpt && !receiptMap.has(accNo)) receiptMap.set(accNo, rcpt);
               });
           }
 
@@ -245,15 +267,55 @@ export default function AllocationHistory() {
               details = details.map((acc: any) => {
                   const accNo = acc.accountNo || acc.accountNumber || acc.account_No || '';
                   const isFailed = acc.status === 'Error' || acc.isAllocated === false;
+                  const merged: any = { ...acc };
+                  if (!merged.receiptNumber && !merged.receiptNo) {
+                      const rcpt = receiptMap.get(accNo);
+                      if (rcpt) merged.receiptNumber = rcpt;
+                  }
                   const errMsg = errorMap.get(accNo);
-                  if (errMsg && !acc.errorMessage) {
-                      return { ...acc, errorMessage: errMsg };
+                  if (errMsg && !merged.errorMessage) {
+                      merged.errorMessage = errMsg;
                   }
-                  if (isFailed && !acc.errorMessage && !errMsg) {
-                      return { ...acc, errorMessage: 'Allocation failed — error details not available from API. Use the Retry button or check the account manually.' };
+                  if (isFailed && !merged.errorMessage && !errMsg) {
+                      merged.errorMessage = 'Allocation failed — error details not available from API. Use the Retry button or check the account manually.';
                   }
-                  return acc;
+                  return merged;
               });
+
+              const needsNameLookup = details.filter((a: any) => {
+                  const name = a.name || a.accountName || a.surname || a.companyName || '';
+                  return !name;
+              });
+              if (needsNameLookup.length > 0) {
+                  const nameMap = new Map<string, string>();
+                  const uniqueAccNos = Array.from(new Set(needsNameLookup.map((a: any) =>
+                      (a.accountNo || a.accountNumber || a.account_No || '').replace(/^0+/, '')
+                  ).filter(Boolean)));
+                  const batchSize = 10;
+                  for (let i = 0; i < uniqueAccNos.length; i += batchSize) {
+                      const batch = uniqueAccNos.slice(i, i + batchSize);
+                      const lookups = batch.map(async (accNo) => {
+                          try {
+                              const results = await searchAccounts({ accountNo: accNo });
+                              if (Array.isArray(results) && results.length > 0) {
+                                  const r = results[0] as any;
+                                  const name = r.name || r.ownerName || r.companyName || r.fullName || '';
+                                  if (name) nameMap.set(accNo, name);
+                              }
+                          } catch {}
+                      });
+                      await Promise.all(lookups);
+                  }
+                  if (nameMap.size > 0) {
+                      details = details.map((acc: any) => {
+                          const existingName = acc.name || acc.accountName || acc.surname || acc.companyName || '';
+                          if (existingName) return acc;
+                          const accNo = (acc.accountNo || acc.accountNumber || acc.account_No || '').replace(/^0+/, '');
+                          const lookedUpName = nameMap.get(accNo);
+                          return lookedUpName ? { ...acc, accountName: lookedUpName } : acc;
+                      });
+                  }
+              }
           }
 
           setJobAccountDetails(details);
@@ -840,7 +902,7 @@ export default function AllocationHistory() {
                                                     <TableHead className="text-xs">Account No</TableHead>
                                                     <TableHead className="text-xs">Name</TableHead>
                                                     <TableHead className="text-xs text-right">Amount</TableHead>
-                                                    <TableHead className="text-xs text-center">Receipt</TableHead>
+                                                    <TableHead className="text-xs text-center">Receipt ID</TableHead>
                                                     <TableHead className="text-xs text-center">Status</TableHead>
                                                 </TableRow>
                                             </TableHeader>
@@ -910,7 +972,7 @@ export default function AllocationHistory() {
                                                     </div>
                                                     <div className="flex items-center justify-between">
                                                         <div className="font-mono text-sm font-bold">R {Number(acc.amount ?? acc.allocatedAmount ?? 0).toFixed(2)}</div>
-                                                        {receiptNo && <div className="text-[10px] text-muted-foreground font-mono">Rcpt: {String(receiptNo).trim()}</div>}
+                                                        {receiptNo && <div className="text-[10px] text-muted-foreground font-mono">Receipt ID: {String(receiptNo).trim()}</div>}
                                                     </div>
                                                     {isFailed && acc.errorMessage && (
                                                         <div className="mt-2 p-2 bg-red-100/50 rounded border border-red-200 text-[11px] text-red-700 flex items-start gap-1.5">

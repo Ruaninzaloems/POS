@@ -2550,7 +2550,7 @@ export default function ThirdPartyPaymentProcessing() {
                             <TableRow className="bg-[#F7F7F7] text-[10px] uppercase tracking-wider">
                               <TableHead>Account</TableHead>
                               <TableHead>Name</TableHead>
-                              <TableHead>Receipt #</TableHead>
+                              <TableHead>Receipt ID</TableHead>
                               <TableHead className="text-right">Amount</TableHead>
                               <TableHead>Status</TableHead>
                             </TableRow>
@@ -2580,7 +2580,7 @@ export default function ThirdPartyPaymentProcessing() {
                               <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200 shrink-0">{r.status || 'Allocated'}</Badge>
                             </div>
                             {(r.receiptNumber || r.receiptNo) && (
-                              <div className="text-[10px] text-muted-foreground font-mono">Rcpt: {String(r.receiptNumber || r.receiptNo).trim()}</div>
+                              <div className="text-[10px] text-muted-foreground font-mono">Receipt ID: {String(r.receiptNumber || r.receiptNo).trim()}</div>
                             )}
                           </div>
                         ))}
