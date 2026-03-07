@@ -1826,9 +1826,12 @@ export async function registerRoutes(
     }
   });
 
+  let clearanceScanSession: UserSession | null = null;
+
   app.get("/api/platinum/billing-payment-clearance/debug-batch-test", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
+      clearanceScanSession = session;
       const idsParam = req.query.ids as string || '';
       const ids = idsParam.split(',').filter(Boolean);
       if (ids.length === 0) return res.json({ error: 'Pass ?ids=1,2,3,...' });
@@ -1856,6 +1859,57 @@ export async function registerRoutes(
       res.json(results);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-payment-clearance/trigger-scan", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const userId = session.userId || 209;
+      
+      const testIds = [1, 5, 10, 30, 50, 100, 200, 300, 301, 302, 303, 305, 310, 350, 400, 500, 785, 800, 900, 1000, 1032, 1100, 1200, 1300, 1301, 1302, 1303, 1304, 1305, 1350, 1400, 1500, 1600, 1700, 1800, 1900, 1950];
+      
+      console.log(`[CLEARANCE-SCAN] Testing ${testIds.length} clearance IDs with userId=${userId}...`);
+      const results: any[] = [];
+      
+      for (const num of testIds) {
+        const paddedId = String(num).padStart(12, '0');
+        try {
+          const dataResult = await platinumPost(session, "/api/billing-payment-clearance/get-clearance-data", { clearanceId: paddedId }).catch((e: any) => ({ _error: true, msg: e.message }));
+          const dataItems = (dataResult as any)?.items || [];
+          
+          let acctResultMinus1: any = null;
+          let acctResultUser: any = null;
+          
+          acctResultMinus1 = await platinumPost(session, "/api/billing-payment-clearance/get-accounts-for-clearance", { clearanceId: paddedId, userId: -1 }).catch((e: any) => ({ _error: true, status: 500, msg: e.message }));
+          acctResultUser = await platinumPost(session, "/api/billing-payment-clearance/get-accounts-for-clearance", { clearanceId: paddedId, userId: userId }).catch((e: any) => ({ _error: true, status: 500, msg: e.message }));
+
+          const status = dataItems[0]?.status || '';
+          const name = dataItems[0]?.name || '';
+          const m1Ok = !(acctResultMinus1 as any)?._error;
+          const userOk = !(acctResultUser as any)?._error;
+          const m1Items = m1Ok ? ((acctResultMinus1 as any)?.items || acctResultMinus1 || []) : [];
+          const userItems = userOk ? ((acctResultUser as any)?.items || acctResultUser || []) : [];
+          
+          console.log(`[CLEARANCE-SCAN] ${paddedId}: data=${dataItems.length} items, status="${status}", name="${name}", accts(userId=-1)=${m1Ok ? (Array.isArray(m1Items) ? m1Items.length : '?') : 'ERR'}, accts(userId=${userId})=${userOk ? (Array.isArray(userItems) ? userItems.length : '?') : 'ERR'}`);
+          
+          results.push({ id: paddedId, hasData: dataItems.length > 0, status, name, acctsM1: m1Ok ? (Array.isArray(m1Items) ? m1Items.length : 0) : 'ERR', acctsUser: userOk ? (Array.isArray(userItems) ? userItems.length : 0) : 'ERR' });
+        } catch (e: any) {
+          console.log(`[CLEARANCE-SCAN] ${paddedId}: ERROR ${e.message}`);
+          results.push({ id: paddedId, error: e.message });
+        }
+      }
+      
+      console.log(`[CLEARANCE-SCAN] ========== COMPLETE ==========`);
+      const withData = results.filter((r: any) => r.hasData);
+      console.log(`[CLEARANCE-SCAN] ${withData.length}/${results.length} had clearance data`);
+      withData.forEach(r => console.log(`[CLEARANCE-SCAN]   ${r.id} | ${r.status} | ${r.name} | m1=${r.acctsM1} | user=${r.acctsUser}`));
+      console.log(`[CLEARANCE-SCAN] ========== END ==========`);
+      
+      res.json(results);
+    } catch (e: any) {
+      console.error(`[CLEARANCE-SCAN] Error:`, e.message);
+      if (!res.headersSent) res.status(500).json({ error: e.message });
     }
   });
 
