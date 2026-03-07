@@ -591,11 +591,6 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
               <h2 className="text-lg sm:text-xl font-semibold text-slate-700 tracking-tight">
                 {greeting}, <span className="text-[var(--pos-accent-dark)]">{firstName}</span>
               </h2>
-              {todayReceipts > 0 && (
-                <p className="text-xs text-slate-400 mt-1">
-                  {todayReceipts} receipt{todayReceipts !== 1 ? 's' : ''} today &middot; {formatZAR(todayTotal)} collected
-                </p>
-              )}
             </div>
           )}
 
