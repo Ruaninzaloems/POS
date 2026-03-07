@@ -263,6 +263,24 @@ export default function AllocationHistory() {
       return lower.includes('error') || lower.includes('with errors') || lower.includes('failed');
   };
 
+  const isStuckStatus = (status: string) => {
+      const lower = status.toLowerCase();
+      return lower.includes('processing') || lower.includes('rebuild') || lower.includes('reconcil');
+  };
+
+  const isJobStale = (tx: AllocationRecord) => {
+      if (!isStuckStatus(tx.job_Status)) return false;
+      if (!tx.dateCaptured) return false;
+      const captured = new Date(tx.dateCaptured);
+      if (isNaN(captured.getTime())) return false;
+      const ageMinutes = (Date.now() - captured.getTime()) / (1000 * 60);
+      return ageMinutes > 30;
+  };
+
+  const canRetryJob = (tx: AllocationRecord) => {
+      return isErrorStatus(tx.job_Status) || isJobStale(tx);
+  };
+
   const handleDownload = (fmt: 'excel' | 'pdf') => {
       const element = document.createElement("a");
       const fileContent = "FileDate,CapturedDate,Description,Reference,Process,Method,Amount,Status,Records\n" + 
@@ -498,11 +516,16 @@ export default function AllocationHistory() {
                     <Badge className={`shadow-none border text-xs ${getStatusBadge(tx.job_Status)}`}>
                       {tx.job_Status === 'Bulk allocations complete' ? 'Completed' : tx.job_Status}
                     </Badge>
+                    {isJobStale(tx) && (
+                      <Badge className="shadow-none border text-xs bg-amber-100 text-amber-700 border-amber-200">
+                        <AlertCircle className="w-3 h-3 mr-1" />Stuck
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-xs text-muted-foreground">{tx.records} record{tx.records !== 1 ? 's' : ''}</span>
                     <div className="flex gap-2">
-                      {isErrorStatus(tx.job_Status) && (
+                      {canRetryJob(tx) && (
                         <Button variant="outline" size="sm" className="min-h-[44px] min-w-[44px] text-xs px-3 text-amber-600 border-amber-200" onClick={() => handleRetry(tx)} disabled={retrying === tx.directDepositJob_ID} data-testid={`button-retry-mobile-${tx.directDepositJob_ID}`}>
                           {retrying === tx.directDepositJob_ID ? <Loader2 className="w-4 h-4 animate-spin" /> : <><RotateCcw className="w-4 h-4 mr-1" /> Retry</>}
                         </Button>
@@ -571,19 +594,26 @@ export default function AllocationHistory() {
                                     R {tx.allocatedAmount.toFixed(2)}
                                 </TableCell>
                                 <TableCell className="text-center">
-                                    <Badge className={`shadow-none border text-[11px] whitespace-nowrap ${getStatusBadge(tx.job_Status)}`}>
-                                        {(tx.job_Status.toLowerCase().includes('processing') || tx.job_Status.toLowerCase().includes('rebuild') || tx.job_Status.toLowerCase().includes('reconcil') || tx.job_Status.toLowerCase().includes('receipt')) && !isErrorStatus(tx.job_Status) && (
-                                            <Loader2 className="w-3 h-3 mr-1 animate-spin inline-block" />
+                                    <div className="flex flex-col items-center gap-1">
+                                        <Badge className={`shadow-none border text-[11px] whitespace-nowrap ${getStatusBadge(tx.job_Status)}`}>
+                                            {isStuckStatus(tx.job_Status) && !isErrorStatus(tx.job_Status) && !isJobStale(tx) && (
+                                                <Loader2 className="w-3 h-3 mr-1 animate-spin inline-block" />
+                                            )}
+                                            {isErrorStatus(tx.job_Status) && (
+                                                <AlertCircle className="w-3 h-3 mr-1 inline-block" />
+                                            )}
+                                            {tx.job_Status === 'Bulk allocations complete' ? 'Completed' : tx.job_Status}
+                                        </Badge>
+                                        {isJobStale(tx) && (
+                                            <Badge className="shadow-none border text-[10px] bg-amber-100 text-amber-700 border-amber-200 whitespace-nowrap">
+                                                <AlertCircle className="w-2.5 h-2.5 mr-0.5 inline" />Stuck &gt;30min
+                                            </Badge>
                                         )}
-                                        {isErrorStatus(tx.job_Status) && (
-                                            <AlertCircle className="w-3 h-3 mr-1 inline-block" />
-                                        )}
-                                        {tx.job_Status === 'Bulk allocations complete' ? 'Completed' : tx.job_Status}
-                                    </Badge>
+                                    </div>
                                 </TableCell>
                                 <TableCell className="text-right">
                                     <div className="flex items-center justify-end gap-1">
-                                        {isErrorStatus(tx.job_Status) && (
+                                        {canRetryJob(tx) && (
                                             <Button
                                                 variant="outline"
                                                 size="sm"
@@ -647,9 +677,9 @@ export default function AllocationHistory() {
                         <DialogDescription className="text-xs sm:text-sm">Job ID: {selectedTx?.directDepositJob_ID} | POS Item: {selectedTx?.posItemID}</DialogDescription>
                     </div>
                     <div className="flex gap-2">
-                         {selectedTx && isErrorStatus(selectedTx.job_Status) && (
+                         {selectedTx && canRetryJob(selectedTx) && (
                              <Button size="sm" variant="outline" className="min-h-[44px] sm:min-h-0 text-xs sm:text-sm text-amber-600 border-amber-200 hover:bg-amber-50" onClick={() => selectedTx && handleRetry(selectedTx)} disabled={retrying === selectedTx?.directDepositJob_ID} data-testid="button-retry-dialog">
-                                 {retrying === selectedTx?.directDepositJob_ID ? <Loader2 className="w-4 h-4 animate-spin" /> : <><RotateCcw className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Retry</span></>}
+                                 {retrying === selectedTx?.directDepositJob_ID ? <Loader2 className="w-4 h-4 animate-spin" /> : <><RotateCcw className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">{isJobStale(selectedTx) && !isErrorStatus(selectedTx.job_Status) ? 'Retry Stuck' : 'Retry'}</span></>}
                              </Button>
                          )}
                          <Button size="sm" variant="outline" className="min-h-[44px] sm:min-h-0 text-xs sm:text-sm" onClick={handlePrint} data-testid="button-print-dialog">
@@ -718,10 +748,15 @@ export default function AllocationHistory() {
                              <dl className="space-y-2 text-sm">
                                 <div className="grid grid-cols-3">
                                     <dt className="text-muted-foreground">Status:</dt>
-                                    <dd className="col-span-2">
+                                    <dd className="col-span-2 flex items-center gap-1.5 flex-wrap">
                                         <Badge className={`shadow-none border ${getStatusBadge(selectedTx.job_Status)}`}>
                                             {selectedTx.job_Status === 'Bulk allocations complete' ? 'Completed' : selectedTx.job_Status}
                                         </Badge>
+                                        {isJobStale(selectedTx) && (
+                                            <Badge className="shadow-none border text-[10px] bg-amber-100 text-amber-700 border-amber-200">
+                                                <AlertCircle className="w-2.5 h-2.5 mr-0.5" />Stuck &gt;30min
+                                            </Badge>
+                                        )}
                                     </dd>
                                 </div>
                                 <div className="grid grid-cols-3">

@@ -278,6 +278,24 @@ export default function BulkAllocationProgress() {
     return s.includes('fail') || s.includes('error');
   }
 
+  function isStuckStatus(job: any): boolean {
+    const s = getJobStatus(job);
+    return s.includes('processing') || s.includes('rebuild') || s.includes('reconcil');
+  }
+
+  function isJobStale(job: any): boolean {
+    if (!isStuckStatus(job)) return false;
+    if (!job.dateCaptured) return false;
+    const captured = new Date(job.dateCaptured);
+    if (isNaN(captured.getTime())) return false;
+    const ageMinutes = (Date.now() - captured.getTime()) / (1000 * 60);
+    return ageMinutes > 30;
+  }
+
+  function canRetryJob(job: any): boolean {
+    return isErrorStatus(job) || isJobStale(job);
+  }
+
   function handleSort(field: string) {
     if (sortField === field) {
       setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
@@ -618,14 +636,19 @@ export default function BulkAllocationProgress() {
                       >
                         <div className="flex items-start justify-between gap-2 mb-1.5">
                           <div className="min-w-0">
-                            <div className="flex items-center gap-2 mb-0.5">
+                            <div className="flex items-center gap-2 flex-wrap mb-0.5">
                               <span className="font-mono text-sm font-semibold">#{jobId}</span>
                               {getStatusBadge(status)}
+                              {isJobStale(job) && (
+                                <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[10px]">
+                                  <AlertCircle className="w-2.5 h-2.5 mr-0.5" />Stuck
+                                </Badge>
+                              )}
                             </div>
                             <p className="text-sm text-muted-foreground truncate">{process}</p>
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
-                            {isErrorStatus(job) && (
+                            {canRetryJob(job) && (
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -722,7 +745,16 @@ export default function BulkAllocationProgress() {
                               </TooltipProvider>
                             </TableCell>
                             <TableCell className="text-sm" data-testid={`text-year-${jobId}`}>{year}</TableCell>
-                            <TableCell data-testid={`badge-status-${jobId}`}>{getStatusBadge(status)}</TableCell>
+                            <TableCell data-testid={`badge-status-${jobId}`}>
+                              <div className="flex items-center gap-1 flex-wrap">
+                                {getStatusBadge(status)}
+                                {isJobStale(job) && (
+                                  <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[10px]">
+                                    <AlertCircle className="w-2.5 h-2.5 mr-0.5" />Stuck
+                                  </Badge>
+                                )}
+                              </div>
+                            </TableCell>
                             <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{formatDate(dateCaptured)}</TableCell>
                             <TableCell className="text-sm max-w-[150px] truncate">
                               <TooltipProvider>
@@ -754,7 +786,7 @@ export default function BulkAllocationProgress() {
                                     <TooltipContent>View Details</TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
-                                {isErrorStatus(job) && (
+                                {canRetryJob(job) && (
                                   <TooltipProvider>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
@@ -773,7 +805,7 @@ export default function BulkAllocationProgress() {
                                           )}
                                         </Button>
                                       </TooltipTrigger>
-                                      <TooltipContent>Skip failed items or retry the allocation for specific accounts.</TooltipContent>
+                                      <TooltipContent>{isJobStale(job) ? 'Retry stuck job' : 'Skip failed items or retry the allocation for specific accounts.'}</TooltipContent>
                                     </Tooltip>
                                   </TooltipProvider>
                                 )}
@@ -875,7 +907,7 @@ export default function BulkAllocationProgress() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2 shrink-0 mt-0.5">
-                            {isError && (
+                            {(isError || (detailData && isJobStale(detailData))) && (
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -885,10 +917,15 @@ export default function BulkAllocationProgress() {
                                 data-testid="button-retry-detail"
                               >
                                 {retryingJobId === jobId ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <RefreshCw className="w-3.5 h-3.5 mr-1" />}
-                                Retry Job
+                                {detailData && isJobStale(detailData) && !isError ? 'Retry Stuck Job' : 'Retry Job'}
                               </Button>
                             )}
                             {getStatusBadge(jobStatus)}
+                            {detailData && isJobStale(detailData) && (
+                              <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[10px]">
+                                <AlertCircle className="w-2.5 h-2.5 mr-0.5" />Stuck
+                              </Badge>
+                            )}
                           </div>
                         </div>
 
