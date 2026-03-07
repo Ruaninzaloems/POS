@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { usePos, TransactionItem } from '@/lib/pos-state';
 import { Account } from '@/lib/external-api';
 import { Button } from '@/components/ui/button';
@@ -84,6 +84,19 @@ export function PaymentDrawer() {
   const cardOverpayWithCash = payment.cardAmount > 0 && payment.cashAmount > 0 && 
     (payment.cashAmount + payment.cardAmount) > totalDue && payment.cardAmount > Math.round((totalDue - payment.cashAmount) * 100) / 100;
 
+  const roundUpTo10c = (val: number) => Math.ceil(Math.round(val * 100) / 10) / 10;
+
+  const cashRoundingInfo = useMemo(() => {
+    if (payment.cashAmount <= 0) return null;
+    const rawTotal = Math.round(totalDue * 100) / 100;
+    const cents = Math.round(rawTotal * 100) % 10;
+    if (cents === 0) return null;
+    const rounded = roundUpTo10c(rawTotal);
+    const diff = Math.round((rounded - rawTotal) * 100) / 100;
+    if (diff <= 0) return null;
+    return { current: rawTotal, rounded, diff };
+  }, [totalDue, payment.cashAmount, payment.cardAmount]);
+
   const isCompleteEnabled = 
     transactionItems.length > 0 && 
     payment.tenderTotal >= totalDue &&
@@ -92,6 +105,7 @@ export function PaymentDrawer() {
     cardFieldsValid &&
     !cardExceedsRemaining &&
     !cardOverpayWithCash &&
+    !cashRoundingInfo &&
     transactionItems.every(item => {
         if (item.type === 'DIRECT_INCOME') {
             return (!!item.paidBy && item.paidBy.trim().length > 0) && 
@@ -121,9 +135,9 @@ export function PaymentDrawer() {
 
   const handlePayExact = () => {
       if (activeInput === 'cash') {
-          const remaining = Math.round(Math.max(0, totalDue - payment.cardAmount) * 100) / 100;
-          setPaymentAmount('cash', remaining);
-          setInputBuffer(remaining > 0 ? remaining.toFixed(2) : "");
+          const rawRemaining = Math.round(Math.max(0, totalDue - payment.cardAmount) * 100) / 100;
+          setPaymentAmount('cash', rawRemaining);
+          setInputBuffer(rawRemaining > 0 ? rawRemaining.toFixed(2) : "");
       } else {
           const remaining = Math.round(Math.max(0, totalDue - payment.cashAmount) * 100) / 100;
           setPaymentAmount('card', remaining);
@@ -149,26 +163,25 @@ export function PaymentDrawer() {
 
   const shortfall = Math.max(0, totalDue - payment.tenderTotal);
 
-  const cashRoundingNeeded = useMemo(() => {
-    if (payment.cashAmount <= 0) return null;
-    const cashTotal = Math.round(totalDue * 100) / 100;
-    const remainder = Math.round((cashTotal * 100) % 10);
-    if (remainder === 0) return null;
-    const roundedUp = Math.ceil(cashTotal * 10) / 10;
-    const diff = Math.round((roundedUp - cashTotal) * 100) / 100;
-    if (diff <= 0) return null;
-    return { current: cashTotal, rounded: roundedUp, diff };
-  }, [totalDue, payment.cashAmount]);
+  const [roundingApplied, setRoundingApplied] = useState(false);
+
+  useEffect(() => {
+    if (!cashRoundingInfo) setRoundingApplied(false);
+  }, [cashRoundingInfo]);
 
   const handleApplyRounding = () => {
-    if (!cashRoundingNeeded) return;
-    const accItems = transactionItems.filter(i => i.type === 'CONSUMER_SERVICES' || i.type === 'ACCOUNT_GROUP');
-    const firstItem = accItems.length > 0 ? accItems[0] : transactionItems[0];
-    if (!firstItem) return;
-    const newAmount = Math.round((firstItem.amountToPay + cashRoundingNeeded.diff) * 100) / 100;
-    updateItemAmount(firstItem.id, newAmount);
-    const newTotal = Math.round((totalDue + cashRoundingNeeded.diff) * 100) / 100;
-    setPaymentAmount('cash', Math.round(Math.max(0, newTotal - payment.cardAmount) * 100) / 100);
+    if (!cashRoundingInfo || roundingApplied) return;
+    setRoundingApplied(true);
+    const priority = ['CONSUMER_SERVICES', 'ACCOUNT_GROUP', 'CLEARANCE', 'DIRECT_INCOME', 'PREPAID'];
+    const sorted = [...transactionItems].sort((a, b) => priority.indexOf(a.type) - priority.indexOf(b.type));
+    const target = sorted[0];
+    if (!target) return;
+    const newAmt = Math.round((target.amountToPay + cashRoundingInfo.diff) * 100) / 100;
+    updateItemAmount(target.id, newAmt);
+    const newTotal = cashRoundingInfo.rounded;
+    const newCash = Math.round(Math.max(0, newTotal - payment.cardAmount) * 100) / 100;
+    setPaymentAmount('cash', newCash);
+    setInputBuffer(newCash > 0 ? newCash.toFixed(2) : "");
   };
 
   return (
@@ -383,6 +396,25 @@ export function PaymentDrawer() {
             </div>
         )}
 
+        {cashRoundingInfo && (
+          <button
+            onClick={handleApplyRounding}
+            disabled={roundingApplied}
+            className={`w-full flex items-center justify-between gap-2 text-[11px] lg:text-xs border rounded-lg px-3 py-2 transition-colors group ${roundingApplied ? 'bg-slate-50 border-slate-200 opacity-60 cursor-not-allowed' : 'bg-amber-50 border-amber-300 hover:bg-amber-100 active:bg-amber-200 cursor-pointer'}`}
+            data-testid="button-apply-rounding"
+          >
+            <div className="flex items-center gap-2 text-amber-700">
+              <Coins className="w-4 h-4 flex-shrink-0" />
+              <span>
+                Cash total <strong className="font-mono">R {cashRoundingInfo.current.toFixed(2)}</strong> needs 10c rounding
+              </span>
+            </div>
+            <span className="font-bold text-amber-800 bg-amber-200 group-hover:bg-amber-300 px-2.5 py-1 rounded-md font-mono whitespace-nowrap transition-colors">
+              Round up to R {cashRoundingInfo.rounded.toFixed(2)}
+            </span>
+          </button>
+        )}
+
         <Button 
           className="w-full bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] hover:from-[var(--pos-accent-dark)] hover:to-[var(--pos-accent-dark)] shadow-lg shadow-[0_1px_3px_rgba(0,0,0,0.15)] h-12 lg:h-14 text-base lg:text-lg font-bold rounded-xl disabled:from-slate-300 disabled:to-slate-400 disabled:shadow-none active:scale-[0.98] transition-all touch-manipulation" 
           size="lg"
@@ -391,7 +423,12 @@ export function PaymentDrawer() {
           onClick={completeTransaction}
           data-testid="button-complete-transaction"
         >
-          {(cardExceedsRemaining || cardOverpayWithCash) ? (
+          {cashRoundingInfo ? (
+            <>
+              <Coins className="mr-2 w-5 h-5" />
+              Round total to R {cashRoundingInfo.rounded.toFixed(2)} first
+            </>
+          ) : (cardExceedsRemaining || cardOverpayWithCash) ? (
             <>Card exceeds balance — max R {Math.max(0, totalDue - payment.cashAmount).toFixed(2)}</>
           ) : shortfall > 0 ? (
             <>R {shortfall.toFixed(2)} still needed</>

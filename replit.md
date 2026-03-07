@@ -70,6 +70,14 @@ Post-payment receipt flow is optimized for speed by:
 - Suppressing session polling during `transactionProcessing`.
 - Passing receipt numbers to the print API for first prints and reprints.
 
+### SA 10c Cash Rounding
+Cash payments must be rounded UP to the nearest 10c (SA standard). Card payments are exempt. Implementation:
+- `pos-logic.ts` `calculateTransactionTotals()` rounds `totalToPay` up for cash-only display/change calculation.
+- `payment-drawer.tsx` `cashRoundingInfo` detects when the raw basket total doesn't end in 0c and shows a warning banner with a one-click "Round up to R X.X0" button.
+- The COMPLETE button is blocked (`!cashRoundingInfo`) until the cashier applies rounding, which adjusts the first basket item's `amountToPay` and auto-updates cash tender.
+- Silent auto-rounding was removed from `processTransaction` in `pos-state.tsx` — rounding is now always explicit and user-initiated.
+- Double-click guard via `roundingApplied` state prevents over-rounding.
+
 ### Frontend Libraries
 -   `shadcn/ui` + `Radix UI`: For robust and customizable UI components.
 -   `TanStack React Query`: For efficient server state management.

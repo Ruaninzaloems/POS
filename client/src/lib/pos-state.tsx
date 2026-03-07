@@ -1635,26 +1635,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
                 const rawPaymentSum = r2(perAccountPayments.reduce((s, p) => s + p.itemPayment, 0));
                 const effectiveReceiptDate = receiptDateOverride || formattedReceiptDate;
 
-                let roundingAdjustment = 0;
-                let roundingAccountName = '';
-                let tenderAmtAdjusted = tenderAmt;
-                let changeAmtAdjusted = changeAmt;
-                if (!isCardPayment && isMultiAccount) {
-                    const roundedUp = Math.ceil(rawPaymentSum * 10) / 10;
-                    roundingAdjustment = r2(roundedUp - rawPaymentSum);
-                    if (roundingAdjustment > 0) {
-                        perAccountPayments[0].itemPayment = r2(perAccountPayments[0].itemPayment + roundingAdjustment);
-                        roundingAccountName = perAccountPayments[0].acct.name || perAccountPayments[0].acct.accountNumber || '';
-                        tenderAmtAdjusted = r2(tenderAmt + roundingAdjustment);
-                        changeAmtAdjusted = r2(Math.max(0, tenderAmtAdjusted - roundedUp));
-                        console.log(`[Priority 1] 10c rounding adjustment: +R${roundingAdjustment.toFixed(2)} applied to ${roundingAccountName} (${perAccountPayments[0].acct.account_ID}). Raw sum R${rawPaymentSum} → Rounded R${roundedUp}. tenderAmt R${tenderAmt} → R${tenderAmtAdjusted}`);
-                        toast({
-                            title: '10c Rounding Applied',
-                            description: `+R ${roundingAdjustment.toFixed(2)} added to ${roundingAccountName} (total rounded R ${rawPaymentSum.toFixed(2)} → R ${roundedUp.toFixed(2)})`,
-                            duration: 8000,
-                        });
-                    }
-                }
+                const tenderAmtAdjusted = tenderAmt;
+                const changeAmtAdjusted = changeAmt;
                 const totalPaymentAmount = r2(perAccountPayments.reduce((s, p) => s + p.itemPayment, 0));
 
                 if (isMultiAccount) {
