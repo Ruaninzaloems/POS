@@ -236,9 +236,13 @@ export default function BulkAllocationProgress() {
         if (items && items.length > 0) {
           accounts = items.map((acc: any) => {
             const accNo = acc.accountNo || acc.accountNumber || acc.account_No || '';
+            const isFailed = acc.status === 'Error' || acc.isAllocated === false;
             const errMsg = errorMap.get(accNo);
             if (errMsg && !acc.errorMessage) {
               return { ...acc, errorMessage: errMsg };
+            }
+            if (isFailed && !acc.errorMessage && !errMsg) {
+              return { ...acc, errorMessage: 'Allocation failed — error details not available from API. Use the Retry button or check the account manually.' };
             }
             return acc;
           });
