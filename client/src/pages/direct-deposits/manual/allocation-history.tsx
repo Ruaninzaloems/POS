@@ -273,11 +273,12 @@ export default function AllocationHistory() {
   };
 
   const getStatusBadge = (status: string) => {
-      if (status === 'Completed' || status === 'Bulk allocations complete') {
-          return 'bg-green-100 text-green-700 border-green-200';
-      } else if (status === 'Error') {
+      const lower = status.toLowerCase();
+      if (lower.includes('error') || lower.includes('fail')) {
           return 'bg-red-100 text-red-700 border-red-200';
-      } else if (status === 'Processing' || status === 'Performing rebuilds' || status === 'Completing reconciliation') {
+      } else if (lower.includes('complete') || lower === 'completed' || lower === 'success' || lower === 'done') {
+          return 'bg-green-100 text-green-700 border-green-200';
+      } else if (lower.includes('processing') || lower.includes('rebuild') || lower.includes('reconcil') || lower.includes('receipt')) {
           return 'bg-[var(--pos-accent-tint)] text-[#6B6B6B] border-[#D6D6D6]';
       }
       return 'bg-gray-100 text-gray-700 border-gray-200';
@@ -496,19 +497,19 @@ export default function AllocationHistory() {
             </div>
 
             <Card className="hidden sm:block overflow-x-auto">
-                <Table className="table-fixed w-full">
+                <Table className="min-w-[1100px]">
                     <TableHeader>
                         <TableRow>
                             <TableHead className="w-[90px]">Date</TableHead>
                             <TableHead className="w-[140px]">Captured</TableHead>
-                            <TableHead className="w-[130px]">File / Description</TableHead>
-                            <TableHead className="w-auto">Reference</TableHead>
-                            <TableHead className="w-[130px]">Process</TableHead>
-                            <TableHead className="w-[70px]">Method</TableHead>
-                            <TableHead className="w-[60px] text-center">Records</TableHead>
-                            <TableHead className="w-[100px] text-right">Amount</TableHead>
-                            <TableHead className="w-[120px] text-center">Status</TableHead>
-                            <TableHead className="w-[70px] text-right">Action</TableHead>
+                            <TableHead className="w-[120px]">File / Description</TableHead>
+                            <TableHead>Reference</TableHead>
+                            <TableHead className="w-[120px]">Process</TableHead>
+                            <TableHead className="w-[65px]">Method</TableHead>
+                            <TableHead className="w-[55px] text-center">Records</TableHead>
+                            <TableHead className="w-[95px] text-right">Amount</TableHead>
+                            <TableHead className="w-[180px] text-center">Status</TableHead>
+                            <TableHead className="w-[100px] text-right">Action</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -550,8 +551,8 @@ export default function AllocationHistory() {
                                     R {tx.allocatedAmount.toFixed(2)}
                                 </TableCell>
                                 <TableCell className="text-center">
-                                    <Badge className={`shadow-none border ${getStatusBadge(tx.job_Status)}`}>
-                                        {(tx.job_Status === 'Processing' || tx.job_Status === 'Performing rebuilds' || tx.job_Status === 'Completing reconciliation' || tx.job_Status === 'Processing receipts') && (
+                                    <Badge className={`shadow-none border text-[11px] whitespace-nowrap ${getStatusBadge(tx.job_Status)}`}>
+                                        {(tx.job_Status.toLowerCase().includes('processing') || tx.job_Status.toLowerCase().includes('rebuild') || tx.job_Status.toLowerCase().includes('reconcil') || tx.job_Status.toLowerCase().includes('receipt')) && !isErrorStatus(tx.job_Status) && (
                                             <Loader2 className="w-3 h-3 mr-1 animate-spin inline-block" />
                                         )}
                                         {isErrorStatus(tx.job_Status) && (
