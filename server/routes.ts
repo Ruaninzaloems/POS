@@ -3629,7 +3629,7 @@ export async function registerRoutes(
       const session = requireAuth(req, res); if (!session) return;
       const payload = { ...req.body };
       if (!payload.userId || payload.userId <= 0) {
-        payload.userId = session.userId;
+        payload.userId = session.userData?.user_ID;
       }
 
       const token = await refreshSessionToken(session);
@@ -3928,10 +3928,14 @@ export async function registerRoutes(
         return res.status(400).json({ message: "No valid payments after sanitization", detail: "All payments were filtered out during validation." });
       }
 
+      const serverUserId = session.userData?.user_ID;
+      if (!serverUserId) {
+        return res.status(401).json({ message: "User identity not available in session. Please log in again." });
+      }
       const payload = {
         cashOfficeId: Number(cashOfficeId),
         cashierId: Number(cashierId),
-        userId: session.userId,
+        userId: Number(serverUserId),
         finYear: String(finYear),
         postToCashbook: postToCashbook ?? false,
         payments: sanitizedPayments,

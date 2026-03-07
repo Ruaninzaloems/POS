@@ -2252,77 +2252,146 @@ export default function ThirdPartyPaymentProcessing() {
                     </div>
                   )}
 
-                  <div className="flex flex-col-reverse sm:flex-row justify-between gap-3 pt-2 border-t">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setGiStep('upload');
-                        setGiPreviewRows([]);
-                        setGiPreviewSkipped([]);
-                        setGiError('');
-                      }}
-                      className="gap-2 h-11 sm:h-10"
-                      data-testid="button-gi-back-to-upload"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      Back to Upload
-                    </Button>
-                    <Button
-                      onClick={handleGenericImportSubmit}
-                      disabled={giSubmitting || giPreviewRows.filter(r => r.isValid).length === 0}
-                      className="gap-2 bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-white h-11 sm:h-10"
-                      data-testid="button-gi-confirm-submit"
-                    >
-                      {giSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                      {giSubmitting ? 'Submitting...' : `Confirm & Submit ${giPreviewRows.filter(r => r.isValid).length} Payment(s)`}
-                    </Button>
+                  {giError && (
+                    <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-2">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>Submission Failed</AlertTitle>
+                      <AlertDescription>{giError}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  <div className="relative pt-2 border-t">
+                    {giSubmitting && (
+                      <div className="absolute inset-0 -top-4 bg-white/95 backdrop-blur-sm rounded-lg z-10 flex flex-col items-center justify-center gap-4 py-8">
+                        <div className="relative">
+                          <div className="h-14 w-14 rounded-full flex items-center justify-center" style={{ background: 'color-mix(in srgb, var(--pos-accent) 12%, transparent)' }}>
+                            <Loader2 className="h-7 w-7 animate-spin" style={{ color: 'var(--pos-accent)' }} />
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm font-semibold text-slate-800">Submitting to Platinum API...</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Sending {giPreviewRows.filter(r => r.isValid).length} payment(s) totalling R {giPreviewRows.filter(r => r.isValid).reduce((s, r) => s + r.amount, 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                        <div className="w-48 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                          <div className="h-full rounded-full animate-[indeterminate_1.5s_infinite]" style={{ width: '40%', background: 'linear-gradient(90deg, var(--pos-accent), var(--pos-accent-dark))' }} />
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex flex-col-reverse sm:flex-row justify-between gap-3">
+                      <Button
+                        variant="outline"
+                        disabled={giSubmitting}
+                        onClick={() => {
+                          setGiStep('upload');
+                          setGiPreviewRows([]);
+                          setGiPreviewSkipped([]);
+                          setGiError('');
+                        }}
+                        className="gap-2 h-11 sm:h-10"
+                        data-testid="button-gi-back-to-upload"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        Back to Upload
+                      </Button>
+                      <Button
+                        onClick={handleGenericImportSubmit}
+                        disabled={giSubmitting || giPreviewRows.filter(r => r.isValid).length === 0}
+                        className="gap-2 text-white h-11 sm:h-10 min-w-[200px] shadow-md transition-all"
+                        style={{ background: 'linear-gradient(135deg, var(--pos-accent), var(--pos-accent-dark))' }}
+                        data-testid="button-gi-confirm-submit"
+                      >
+                        <Send className="h-4 w-4" />
+                        Confirm & Submit {giPreviewRows.filter(r => r.isValid).length} Payment(s)
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             )}
 
             {giStep === 'processing' && (
-              <Card className="border-t-4 border-t-[var(--pos-accent)] shadow-sm">
-                <CardHeader className="bg-[#F2F4F7]/50 pb-4 border-b">
-                  <div className="flex items-center gap-2">
-                    <div className="h-6 w-1 bg-[var(--pos-accent)] rounded-full"></div>
-                    <CardTitle className="text-lg font-medium text-slate-800">
-                      Generic Import — Processing
-                    </CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-6 space-y-6">
-
-                  {giError && (
-                    <Alert variant="destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertTitle>Processing Error</AlertTitle>
-                      <AlertDescription>{giError}</AlertDescription>
-                    </Alert>
+              <Card className="border-0 shadow-lg overflow-hidden">
+                <div className="h-1.5 w-full bg-slate-200 relative overflow-hidden">
+                  <div
+                    className="h-full rounded-r-full transition-all duration-700 ease-out"
+                    style={{
+                      width: `${Math.min(giProgressPercent, 100)}%`,
+                      background: 'linear-gradient(90deg, var(--pos-accent), var(--pos-accent-dark))',
+                    }}
+                    data-testid="progress-gi"
+                  />
+                  {giPolling && giProgressPercent < 100 && (
+                    <div className="absolute inset-0 overflow-hidden">
+                      <div className="h-full w-1/3 animate-[shimmer_1.5s_infinite]" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)' }} />
+                    </div>
                   )}
-
-                  <div className="text-center py-8 space-y-4">
-                    <div className="flex justify-center">
-                      <Loader2 className="h-12 w-12 animate-spin text-[var(--pos-accent)]" />
-                    </div>
-                    <div>
-                      <p className="text-base font-semibold text-slate-800" data-testid="text-gi-status">{giStatusText}</p>
-                      <p className="text-sm text-muted-foreground mt-1">Job ID: <span className="font-mono" data-testid="text-gi-job-id">{giJobId}</span></p>
-                    </div>
-                    <div className="max-w-md mx-auto">
-                      <div className="w-full bg-gray-200 rounded-full h-2.5">
-                        <div
-                          className="bg-[var(--pos-accent)] h-2.5 rounded-full transition-all duration-500"
-                          style={{ width: `${Math.min(giProgressPercent, 100)}%` }}
-                          data-testid="progress-gi"
-                        ></div>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">{giProgressPercent}% complete</p>
-                    </div>
-                    {giPolling && (
-                      <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
-                        <RefreshCw className="h-3 w-3 animate-spin" /> Checking status every 3 seconds...
-                      </p>
+                </div>
+                <CardContent className="pt-10 pb-10 px-6">
+                  <div className="flex flex-col items-center text-center max-w-md mx-auto space-y-6">
+                    {giError ? (
+                      <>
+                        <div className="h-16 w-16 rounded-full bg-red-100 flex items-center justify-center">
+                          <AlertCircle className="h-8 w-8 text-red-500" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-bold text-slate-800">Processing Error</h3>
+                          <p className="text-sm text-red-600 mt-2">{giError}</p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          onClick={() => { setGiStep('preview'); setGiError(''); }}
+                          className="gap-2 h-11"
+                          data-testid="button-gi-back-after-error"
+                        >
+                          <ChevronLeft className="h-4 w-4" /> Back to Preview
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <div className="relative">
+                          <div className="h-20 w-20 rounded-full flex items-center justify-center" style={{ background: 'color-mix(in srgb, var(--pos-accent) 12%, transparent)' }}>
+                            <Loader2 className="h-10 w-10 animate-spin" style={{ color: 'var(--pos-accent)' }} />
+                          </div>
+                          <div className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-white shadow-md flex items-center justify-center">
+                            <span className="text-xs font-bold" style={{ color: 'var(--pos-accent-dark)' }}>{giProgressPercent}%</span>
+                          </div>
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-bold text-slate-800" data-testid="text-gi-status">{giStatusText || 'Processing your import...'}</h3>
+                          <p className="text-sm text-muted-foreground mt-1.5">
+                            Platinum is validating and allocating your {giPreviewRows.filter(r => r.isValid).length} payment(s)
+                          </p>
+                        </div>
+                        <div className="w-full space-y-3 pt-2">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">Progress</span>
+                            <span className="font-semibold text-slate-700">{giProgressPercent}%</span>
+                          </div>
+                          <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-700 ease-out"
+                              style={{
+                                width: `${Math.max(giProgressPercent, 5)}%`,
+                                background: 'linear-gradient(90deg, var(--pos-accent), var(--pos-accent-dark))',
+                              }}
+                            />
+                          </div>
+                        </div>
+                        {giJobId && (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-slate-50 rounded-lg px-4 py-2">
+                            <span>Job ID:</span>
+                            <span className="font-mono font-medium text-slate-600" data-testid="text-gi-job-id">{giJobId}</span>
+                          </div>
+                        )}
+                        {giPolling && (
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <RefreshCw className="h-3 w-3 animate-spin" />
+                            <span>Live — checking every 3 seconds</span>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </CardContent>
