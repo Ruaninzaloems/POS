@@ -486,7 +486,19 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                           {result.label}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {result.type === 'ACCOUNT' && (result.data as any).address}
+                        {result.type === 'ACCOUNT' && (
+                          <>
+                            {(result.data as any).address}
+                            {(result.data as any).status && (result.data as any).status !== '-' && (
+                              <span className={`ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold leading-none ${
+                                (result.data as any).status === 'Active' ? 'bg-emerald-100 text-emerald-700' :
+                                (result.data as any).status === 'Final' || (result.data as any).status === 'Closed' ? 'bg-red-100 text-red-700' :
+                                (result.data as any).status === 'Inactive' ? 'bg-slate-200 text-slate-600' :
+                                'bg-amber-100 text-amber-700'
+                              }`} data-testid={`status-account-${(result.data as any).account_ID || 'unknown'}`}>{(result.data as any).status}</span>
+                            )}
+                          </>
+                        )}
                         {result.type === 'DIRECT' && isDirectGroup && 'Direct Payment Group — click to view items'}
                         {result.type === 'GROUP' && (
                             <span>Total Outstanding: R {((result.data as any).totalOutstanding || 0).toFixed(2)} | {(result.data as any).accountCount || (result.data as any).memberCount || ''} account(s)</span>
