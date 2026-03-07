@@ -149,6 +149,28 @@ export function PaymentDrawer() {
 
   const shortfall = Math.max(0, totalDue - payment.tenderTotal);
 
+  const cashRoundingNeeded = useMemo(() => {
+    if (payment.cashAmount <= 0) return null;
+    const cashTotal = Math.round(totalDue * 100) / 100;
+    const remainder = Math.round((cashTotal * 100) % 10);
+    if (remainder === 0) return null;
+    const roundedUp = Math.ceil(cashTotal * 10) / 10;
+    const diff = Math.round((roundedUp - cashTotal) * 100) / 100;
+    if (diff <= 0) return null;
+    return { current: cashTotal, rounded: roundedUp, diff };
+  }, [totalDue, payment.cashAmount]);
+
+  const handleApplyRounding = () => {
+    if (!cashRoundingNeeded) return;
+    const accItems = transactionItems.filter(i => i.type === 'CONSUMER_SERVICES' || i.type === 'ACCOUNT_GROUP');
+    const firstItem = accItems.length > 0 ? accItems[0] : transactionItems[0];
+    if (!firstItem) return;
+    const newAmount = Math.round((firstItem.amountToPay + cashRoundingNeeded.diff) * 100) / 100;
+    updateItemAmount(firstItem.id, newAmount);
+    const newTotal = Math.round((totalDue + cashRoundingNeeded.diff) * 100) / 100;
+    setPaymentAmount('cash', Math.round(Math.max(0, newTotal - payment.cardAmount) * 100) / 100);
+  };
+
   return (
     <>
     {/* Mobile Bottom Bar (collapsed state) */}
