@@ -706,35 +706,32 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
   };
 
   for (const erf of clues.erfNumbers.slice(0, 2)) {
-    const erfFormats = buildErfSearchFormats(erf);
     const sgVariants = buildSgCodeVariants(erf);
     const erfLabel = erf.portion ? `ERF ${erf.erf}/${erf.portion}` : `ERF ${erf.erf}`;
     const areaLabel = erf.area && erf.area !== 'george' ? ` ${erf.area}` : '';
 
-    for (const fmt of erfFormats) {
-      searchPromises.push(
-        safe(() => fetchAccounts({ erfNumber: fmt })).then((items: any[]) => {
-          for (const item of items.slice(0, 8)) {
-            const hasAreaMatch = checkAreaMatch(item, erf.area);
-            const conf = hasAreaMatch ? 93 : (erf.portion ? 85 : 75);
-            addResult(item, 'erf_number',
-              `${erfLabel}${areaLabel}${hasAreaMatch ? ' (area confirmed)' : ''}`,
-              conf,
-              [
-                `Parsed "${erfLabel}" from description`,
-                `Searched billing enquiry with erfNumber="${fmt}"`,
-                hasAreaMatch ? `Area "${erf.area}" confirmed in result` : `Area not verified`,
-              ]
-            );
-          }
-        })
-      );
-    }
+    searchPromises.push(
+      safe(() => fetchAccounts({ erfNumber: erf.erf })).then((items: any[]) => {
+        for (const item of items.slice(0, 10)) {
+          const hasAreaMatch = checkAreaMatch(item, erf.area);
+          const conf = hasAreaMatch ? 93 : (erf.portion ? 85 : 75);
+          addResult(item, 'erf_number',
+            `${erfLabel}${areaLabel}${hasAreaMatch ? ' (area confirmed)' : ''}`,
+            conf,
+            [
+              `Parsed "${erfLabel}" from description`,
+              `Searched billing enquiry with erfNumber="${erf.erf}"`,
+              hasAreaMatch ? `Area "${erf.area}" confirmed in result` : `Area not verified`,
+            ]
+          );
+        }
+      })
+    );
 
     if (erf.area && erf.area !== 'george') {
       searchPromises.push(
-        safe(() => fetchAccounts({ erfNumber: erfFormats[0] || erf.erf, allotmentArea: erf.area })).then((items: any[]) => {
-          for (const item of items.slice(0, 8)) {
+        safe(() => fetchAccounts({ erfNumber: erf.erf, allotmentArea: erf.area })).then((items: any[]) => {
+          for (const item of items.slice(0, 10)) {
             addResult(item, 'erf_number',
               `${erfLabel} in ${erf.area} (area confirmed)`,
               94,
@@ -747,125 +744,54 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
           }
         })
       );
-
-      searchPromises.push(
-        safe(() => fetchAccounts({ erfNumber: erfFormats[0] || erf.erf, locationAddress: erf.area })).then((items: any[]) => {
-          for (const item of items.slice(0, 8)) {
-            addResult(item, 'erf_number',
-              `${erfLabel} — address in ${erf.area}`,
-              90,
-              [
-                `Parsed "${erfLabel}" from description`,
-                `Searched with erfNumber + locationAddress="${erf.area}"`,
-              ]
-            );
-          }
-        })
-      );
     }
 
-    for (const fmt of erfFormats) {
-      searchPromises.push(
-        safe(() => billingAutocomplete(fmt, 'erfNumber')).then((acResults: any[]) => {
-          const results = Array.isArray(acResults) ? acResults : [];
-          const matchedAccountIds: number[] = [];
-          for (const ac of results.slice(0, 10)) {
-            const display = (ac.displayItem || '').toUpperCase();
-            const areaMatch = erf.area && erf.area !== 'george' && normalizeArea(display).includes(normalizeArea(erf.area));
-            const erfMatch = display.includes(erf.erf);
-            if ((erfMatch || areaMatch) && ac.accountId) {
-              matchedAccountIds.push(ac.accountId);
-            }
+    searchPromises.push(
+      safe(() => billingAutocomplete(erf.erf, 'erfNumber')).then((acResults: any[]) => {
+        const results = Array.isArray(acResults) ? acResults : [];
+        const matchedAccountIds: number[] = [];
+        for (const ac of results.slice(0, 15)) {
+          const display = (ac.displayItem || '').toUpperCase();
+          if (display.includes(erf.erf) && ac.accountId && !seenIds.has(ac.accountId)) {
+            matchedAccountIds.push(ac.accountId);
           }
-          if (matchedAccountIds.length > 0) {
-            return Promise.allSettled(
-              matchedAccountIds.slice(0, 8).map(accId =>
-                safe(() => fetchAccounts({ accountNo: String(accId) })).then((items: any[]) => {
-                  for (const item of items) {
-                    const hasAreaMatch = checkAreaMatch(item, erf.area);
-                    addResult(item, 'erf_number',
-                      `${erfLabel}${areaLabel} — ERF autocomplete match${hasAreaMatch ? ' (area confirmed)' : ''}`,
-                      hasAreaMatch ? 94 : 88,
-                      [
-                        `Parsed "${erfLabel}" from description`,
-                        `Found via ERF number autocomplete (BillingEnquiry)`,
-                        `Account ID ${accId} matched`,
-                        hasAreaMatch ? `Area confirmed` : `Verify area manually`,
-                      ]
-                    );
-                  }
-                })
-              )
-            );
-          }
-        })
-      );
-    }
+        }
+        if (matchedAccountIds.length > 0) {
+          return Promise.allSettled(
+            matchedAccountIds.slice(0, 5).map(accId =>
+              safe(() => fetchAccounts({ accountNo: String(accId) })).then((items: any[]) => {
+                for (const item of items) {
+                  const hasAreaMatch = checkAreaMatch(item, erf.area);
+                  addResult(item, 'erf_number',
+                    `${erfLabel}${areaLabel} — autocomplete match${hasAreaMatch ? ' (area confirmed)' : ''}`,
+                    hasAreaMatch ? 94 : 88,
+                    [
+                      `Parsed "${erfLabel}" from description`,
+                      `Found via ERF autocomplete (BillingEnquiry)`,
+                      hasAreaMatch ? `Area confirmed` : `Verify area manually`,
+                    ]
+                  );
+                }
+              })
+            )
+          );
+        }
+      })
+    );
 
-    for (const sg of sgVariants) {
+    if (sgVariants.length > 0) {
       searchPromises.push(
-        safe(() => fetchAccounts({ oldAccountCode: sg })).then((items: any[]) => {
-          for (const item of items.slice(0, 8)) {
+        safe(() => fetchAccounts({ oldAccountCode: sgVariants[0] })).then((items: any[]) => {
+          for (const item of items.slice(0, 10)) {
             const hasAreaMatch = checkAreaMatch(item, erf.area);
             addResult(item, 'erf_number',
               `${erfLabel}${areaLabel} — SG code match${hasAreaMatch ? ' (area confirmed)' : ''}`,
               hasAreaMatch ? 95 : 90,
               [
                 `Parsed "${erfLabel}" from description`,
-                `Constructed SG code: "${sg}"`,
+                `Constructed SG code: "${sgVariants[0]}"`,
                 `Searched via old account code / SG number`,
                 hasAreaMatch ? `Area confirmed` : `Verify area`,
-              ]
-            );
-          }
-        })
-      );
-
-      searchPromises.push(
-        safe(() => billingAutocomplete(sg.substring(0, 20), 'erfNumber')).then((acResults: any[]) => {
-          const results = Array.isArray(acResults) ? acResults : [];
-          const matchedIds: number[] = [];
-          for (const ac of results.slice(0, 10)) {
-            if (ac.accountId) matchedIds.push(ac.accountId);
-          }
-          if (matchedIds.length > 0) {
-            return Promise.allSettled(
-              matchedIds.slice(0, 8).map(accId =>
-                safe(() => fetchAccounts({ accountNo: String(accId) })).then((items: any[]) => {
-                  for (const item of items) {
-                    addResult(item, 'erf_number',
-                      `${erfLabel}${areaLabel} — SG autocomplete match`,
-                      92,
-                      [
-                        `Parsed "${erfLabel}" from description`,
-                        `Constructed SG code: "${sg}"`,
-                        `Found via SG number autocomplete`,
-                      ]
-                    );
-                  }
-                })
-              )
-            );
-          }
-        })
-      );
-    }
-
-    const textSearches = [`erf ${erf.erf}`];
-    if (erf.area && erf.area !== 'george') textSearches.push(`${erf.erf} ${erf.area}`);
-
-    for (const term of textSearches) {
-      searchPromises.push(
-        safe(() => platinumSearchAccountsPayment({ name: term })).then((rawData: any) => {
-          const items = unwrap(rawData);
-          for (const item of items.slice(0, 5)) {
-            const hasAreaMatch = checkAreaMatch(item, erf.area);
-            addResult(item, 'erf_number',
-              `${erfLabel}${areaLabel} — text search${hasAreaMatch ? ' (area confirmed)' : ''}`,
-              hasAreaMatch ? 82 : 68,
-              [
-                `Searched payment accounts for: "${term}"`,
-                hasAreaMatch ? `Area confirmed` : `Area not confirmed`,
               ]
             );
           }

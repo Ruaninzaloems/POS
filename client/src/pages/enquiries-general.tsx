@@ -313,17 +313,41 @@ function FieldAutocompleteInput({ fieldKey, placeholder, value, onChange, onSele
     debRef.current = setTimeout(async () => {
       const tok = ++tokenRef.current;
       try {
-        const items = await autocomplete(val.trim(), acType);
+        const isSgField = fieldKey === 'sgNumber';
+        const term = val.trim();
+        const fetches: Promise<{ displayItem: string; accountId: number }[]>[] = [
+          autocomplete(term, acType),
+        ];
+        if (isSgField && /^\d{3,}$/.test(term)) {
+          fetches.push(
+            searchAccounts({ sgNumber: term } as EnquirySearchCriteria).then(results => {
+              const sgTerm = term.toLowerCase();
+              return results
+                .filter((r: any) => (r.sgNumber || '').toLowerCase().includes(sgTerm))
+                .map((r: any) => ({
+                  displayItem: r.sgNumber || '',
+                  accountId: r.account_ID || r.accountID || 0,
+                }))
+                .filter((s: any) => s.displayItem);
+            }).catch(() => [])
+          );
+        }
+        const allResults = await Promise.all(fetches);
         if (tokenRef.current !== tok) return;
-        setSuggestions(items.slice(0, 25));
+        const seen = new Set<string>();
+        const merged: { displayItem: string; accountId: number }[] = [];
+        for (const batch of allResults) {
+          for (const item of batch) {
+            const key = `${item.displayItem}::${item.accountId}`;
+            if (!seen.has(key)) { seen.add(key); merged.push(item); }
+          }
+        }
+        setSuggestions(merged.slice(0, 50));
         if (containerRef.current) {
           const rect = containerRef.current.getBoundingClientRect();
           setOpenUpward(rect.bottom > window.innerHeight * 0.6);
         }
         setOpen(true);
-        const withIds = items.filter(s => s.accountId && s.accountId > 0);
-        const uniqueIds = Array.from(new Set(withIds.map(s => s.accountId))).slice(0, 5);
-        if (uniqueIds.length > 0 && onAutoResults) onAutoResults(fieldKey, uniqueIds);
       } catch (e) {
         console.error('Failed to fetch autocomplete suggestions:', e);
         if (tokenRef.current === tok) setSuggestions([]);
