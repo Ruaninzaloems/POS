@@ -907,32 +907,18 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
     return [...new Set(formats)];
   };
 
-  const buildSgCodeVariants = (erf: ParsedErf): string[] => {
-    const TOWN_CODES: Record<string, string> = {
-      'george': 'C027', 'oudtshoorn': 'C040', 'uniondale': 'C055',
-      'wilderness': 'C027', 'pacaltsdorp': 'C027', 'blanco': 'C027',
-      'conville': 'C027', 'thembalethu': 'C027', 'herold': 'C027',
-      'hoekwil': 'C027', 'touwsranten': 'C027', 'rosemoor': 'C027',
-      'lawaaikamp': 'C027', 'borchards': 'C027', 'sandkraal': 'C027',
-      'denneoord': 'C027', 'kraaibosch': 'C027', 'fernridge': 'C027',
-      'camphersdrift': 'C027', 'parkdene': 'C027', 'rosedale': 'C027',
-      'bergsig': 'C027', 'kingswood': 'C027', 'glenbarrie': 'C027',
-      'heather park': 'C027', 'heatherpark': 'C027',
-    };
-    const variants: string[] = [];
-    const area = erf.area || 'george';
-    const townCode = TOWN_CODES[area] || 'C027';
+  const buildSgSearchTerms = (erf: ParsedErf): string[] => {
     const erfPadded = erf.erf.padStart(8, '0');
-    const portionPadded = (erf.portion || '0').padStart(5, '0');
-
-    for (const areaSeg of ['0000', '0001', '0002', '0003', '0004']) {
-      variants.push(`${townCode}/${areaSeg}/${erfPadded}/${portionPadded}`);
+    const terms: string[] = [erfPadded];
+    if (erf.portion) {
+      const portionPadded = erf.portion.padStart(5, '0');
+      terms.push(`${erfPadded}/${portionPadded}`);
     }
-    return variants;
+    return terms;
   };
 
   for (const erf of clues.erfNumbers.slice(0, 2)) {
-    const sgVariants = buildSgCodeVariants(erf);
+    const sgSearchTerms = buildSgSearchTerms(erf);
     const erfLabel = erf.portion ? `ERF ${erf.erf}/${erf.portion}` : `ERF ${erf.erf}`;
     const areaLabel = erf.area && erf.area !== 'george' ? ` ${erf.area}` : '';
 
@@ -972,9 +958,10 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
       );
     }
 
-    for (const sgCode of sgVariants.slice(0, 5)) {
+    for (const sgTerm of sgSearchTerms) {
       searchPromises.push(
-        safe(() => fetchAccounts({ oldAccountCode: sgCode })).then((items: any[]) => {
+        safe(() => platinumDDOldAccountAutocomplete(sgTerm)).then((rawData: any) => {
+          const items = unwrap(rawData);
           for (const item of items.slice(0, 10)) {
             const hasAreaMatch = checkAreaMatch(item, erf.area);
             addResult(item, 'erf_number',
@@ -982,8 +969,8 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
               hasAreaMatch ? 95 : 90,
               [
                 `Parsed "${erfLabel}" from description`,
-                `Constructed SG code: "${sgCode}"`,
-                `Searched via old account code / SG number`,
+                `Searched old account autocomplete with "${sgTerm}"`,
+                `Matches any municipality SG code containing this ERF`,
                 hasAreaMatch ? `Area confirmed` : `Verify area`,
               ]
             );
