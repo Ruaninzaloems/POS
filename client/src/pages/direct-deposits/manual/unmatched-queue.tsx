@@ -313,6 +313,11 @@ function parseDescriptionForClues(note: string, reference: string): ParsedClues 
         accountNumbers.splice(i, 1);
       }
     }
+    for (const erf of erfNumbers) {
+      if (erf.erf.length >= 3 && !oldAccountCodes.includes(erf.erf)) {
+        oldAccountCodes.push(erf.erf);
+      }
+    }
   }
 
   const oldCodePatterns = [
@@ -920,9 +925,8 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
     const erfPadded = erf.erf.padStart(8, '0');
     const portionPadded = (erf.portion || '0').padStart(5, '0');
 
-    variants.push(`${townCode}/0000/${erfPadded}/${portionPadded}`);
-    if (!erf.portion) {
-      variants.push(`${townCode}/0000/${erfPadded}/00000`);
+    for (const areaSeg of ['0000', '0001', '0002', '0003', '0004']) {
+      variants.push(`${townCode}/${areaSeg}/${erfPadded}/${portionPadded}`);
     }
     return variants;
   };
@@ -968,9 +972,9 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
       );
     }
 
-    if (sgVariants.length > 0) {
+    for (const sgCode of sgVariants.slice(0, 5)) {
       searchPromises.push(
-        safe(() => fetchAccounts({ oldAccountCode: sgVariants[0] })).then((items: any[]) => {
+        safe(() => fetchAccounts({ oldAccountCode: sgCode })).then((items: any[]) => {
           for (const item of items.slice(0, 10)) {
             const hasAreaMatch = checkAreaMatch(item, erf.area);
             addResult(item, 'erf_number',
@@ -978,7 +982,7 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
               hasAreaMatch ? 95 : 90,
               [
                 `Parsed "${erfLabel}" from description`,
-                `Constructed SG code: "${sgVariants[0]}"`,
+                `Constructed SG code: "${sgCode}"`,
                 `Searched via old account code / SG number`,
                 hasAreaMatch ? `Area confirmed` : `Verify area`,
               ]
