@@ -13,7 +13,7 @@ import { HelpTip } from '@/components/ui/help-tip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { platinumGetBankReconPosItemList, platinumCheckSelectedItemProcessed, platinumSearchAccountsPayment, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, fetchAccounts, fetchActiveFinYear, fetchBulkAllocationList, fetchBulkProgressJobAccountDetails, submitDDAllocationBatch, pollDDAllocationJob, searchByBankStatementNote } from '@/lib/external-api';
+import { platinumGetBankReconPosItemList, platinumCheckSelectedItemProcessed, platinumSearchAccountsPayment, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, fetchAccounts, fetchActiveFinYear, fetchBulkAllocationList, fetchBulkProgressJobAccountDetails, submitDDAllocationBatch, pollDDAllocationJob, searchByBankStatementNote, fetchMiscPaymentGroups } from '@/lib/external-api';
 import { autocomplete as billingAutocomplete, searchAccounts as billingEnquirySearch } from '@/lib/enquiries-service';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { usePos } from '@/lib/pos-state';
@@ -43,7 +43,7 @@ interface SuggestedMatch {
   name: string;
   oldAccountCode?: string;
   outstandingAmount?: number;
-  matchType: 'account_number' | 'old_account' | 'erf_number' | 'reference' | 'meter_number' | 'history' | 'name';
+  matchType: 'account_number' | 'old_account' | 'erf_number' | 'reference' | 'meter_number' | 'history' | 'name' | 'direct_income';
   matchDetail: string;
   confidence: number;
   matchReasoning?: string[];
@@ -61,6 +61,8 @@ interface SuggestedMatch {
   allotment?: string;
   matchSources?: string[];
   bankStatementPrior?: { receiptNo: string; paidAmount: number; date: string; status: string }[];
+  miscPaymentGroupId?: number;
+  miscPaymentGroupName?: string;
 }
 
 function parseSgNumber(sg: string | undefined | null): { erf?: string; portion?: string; allotment?: string } {
@@ -459,6 +461,17 @@ function loadHistoryCache(): Promise<HistoryEntry[]> {
   return historyCachePromise;
 }
 
+let miscGroupsCachePromise: Promise<{ id: number; name: string }[]> | null = null;
+function loadMiscGroupsCache(): Promise<{ id: number; name: string }[]> {
+  if (miscGroupsCachePromise) return miscGroupsCachePromise;
+  miscGroupsCachePromise = fetchMiscPaymentGroups().catch((err) => {
+    console.error('[MiscGroups] Failed to load:', err);
+    miscGroupsCachePromise = null;
+    return [];
+  });
+  return miscGroupsCachePromise;
+}
+
 async function searchForSuggestions(note: string, reference: string): Promise<SuggestedMatch[]> {
   const clues = parseDescriptionForClues(note, reference);
   const suggestions: SuggestedMatch[] = [];
@@ -473,6 +486,7 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
       case 'old_account': return 'Old Account Code';
       case 'name': return 'Name/Company';
       case 'reference': return 'Reference/Keyword';
+      case 'direct_income': return 'Direct Income';
       default: return mt;
     }
   };
@@ -1065,6 +1079,48 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
       );
     }
   }
+
+  searchPromises.push(
+    safe(async () => {
+      const groups = await loadMiscGroupsCache();
+      if (groups.length === 0) return;
+      const combinedText = `${note || ''} ${reference || ''}`.toLowerCase();
+      const words = combinedText.split(/[\s,&.\-\/]+/).filter(w => w.length >= 3);
+      for (const group of groups) {
+        const groupName = group.name.toLowerCase();
+        const groupWords = groupName.split(/[\s,&.\-\/]+/).filter(w => w.length >= 3);
+        let matchScore = 0;
+        const matchedWords: string[] = [];
+        for (const gw of groupWords) {
+          if (words.some(w => w.includes(gw) || gw.includes(w))) {
+            matchScore += gw.length >= 5 ? 20 : 10;
+            matchedWords.push(gw);
+          }
+        }
+        if (matchedWords.length > 0) {
+          const conf = Math.min(75, 35 + matchScore);
+          const groupKey = `MISC-${group.id}`;
+          suggestions.push({
+            accountId: -group.id,
+            accountNo: groupKey,
+            name: group.name,
+            matchType: 'direct_income',
+            matchDetail: `Direct Income: "${group.name}" (matched: ${matchedWords.join(', ')})`,
+            confidence: conf,
+            matchReasoning: [
+              `Description keywords matched Miscellaneous Payment Group: "${group.name}"`,
+              `Matched words: ${matchedWords.join(', ')}`,
+              `This is a Direct Income (non-consumer) allocation`,
+              `Click to allocate as Direct Income with full SCOA item selection`,
+            ],
+            miscPaymentGroupId: group.id,
+            miscPaymentGroupName: group.name,
+            matchSources: ['Direct Income'],
+          });
+        }
+      }
+    })
+  );
 
   const ensureStrArr = (v: any): string[] =>
     Array.isArray(v) ? v.filter((x: any) => typeof x === 'string' && x.trim()) : [];
@@ -2138,6 +2194,7 @@ export default function UnmatchedQueue() {
       case 'history': return <Calendar className="w-3 h-3" />;
       case 'reference': return <Building2 className="w-3 h-3" />;
       case 'name': return <Users className="w-3 h-3" />;
+      case 'direct_income': return <Banknote className="w-3 h-3" />;
     }
   };
 
@@ -2150,6 +2207,7 @@ export default function UnmatchedQueue() {
       case 'history': return 'History';
       case 'reference': return 'Ref';
       case 'name': return 'Name';
+      case 'direct_income': return 'Income';
     }
   };
 
@@ -2387,19 +2445,28 @@ export default function UnmatchedQueue() {
                     {!tx.billingAllocated && bestMatch && (() => {
                       const allMatches = suggestions[tx.posItem_ID] || [];
                       const renderMobileCard = (m: SuggestedMatch, isPrimary: boolean) => {
-                        const ind = m.confidence >= 80 ? 'high' : m.confidence >= 60 ? 'medium' : 'low';
-                        const amtCmp = getAmountComparison(tx.amount, m.outstandingAmount);
+                        const isDI = m.matchType === 'direct_income';
+                        const ind = isDI ? 'income' : m.confidence >= 80 ? 'high' : m.confidence >= 60 ? 'medium' : 'low';
+                        const amtCmp = isDI ? null : getAmountComparison(tx.amount, m.outstandingAmount);
                         return (
                         <button
                           key={m.accountId}
                           className={`flex items-start gap-2.5 w-full px-3 py-2.5 rounded-xl border mb-1.5 text-left transition-all hover:shadow-sm ${
+                            isDI ? 'bg-violet-50/60 border-violet-200' :
                             ind === 'high' ? 'bg-emerald-50/60 border-emerald-200' :
                             ind === 'medium' ? 'bg-amber-50/60 border-amber-200' :
                             'bg-slate-50/60 border-slate-200'
                           } ${!isPrimary ? 'opacity-80' : ''}`}
-                          onClick={() => handleAllocateClick(tx.posItem_ID, undefined, m)}
+                          onClick={() => {
+                            if (isDI) {
+                              handleAllocateClick(tx.posItem_ID);
+                            } else {
+                              handleAllocateClick(tx.posItem_ID, undefined, m);
+                            }
+                          }}
                         >
                           <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                            isDI ? 'bg-violet-100 text-violet-600' :
                             ind === 'high' ? 'bg-emerald-100 text-emerald-600' :
                             ind === 'medium' ? 'bg-amber-100 text-amber-600' :
                             'bg-slate-100 text-slate-500'
@@ -2408,14 +2475,18 @@ export default function UnmatchedQueue() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-mono text-xs font-semibold text-slate-800">{m.accountNo}</span>
-                              <Badge variant="outline" className={`text-[8px] px-1.5 py-0 font-bold ${ind === 'high' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : ind === 'medium' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>{m.confidence}%</Badge>
-                              {m.statusDesc && (
+                              {isDI ? (
+                                <span className="text-xs font-semibold text-violet-700">Direct Income</span>
+                              ) : (
+                                <span className="font-mono text-xs font-semibold text-slate-800">{m.accountNo}</span>
+                              )}
+                              <Badge variant="outline" className={`text-[8px] px-1.5 py-0 font-bold ${isDI ? 'bg-violet-100 text-violet-700 border-violet-200' : ind === 'high' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : ind === 'medium' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>{m.confidence}%</Badge>
+                              {!isDI && m.statusDesc && (
                                 <Badge variant="outline" className={`text-[7px] px-1 py-0 ${m.statusDesc === 'Active' ? 'border-emerald-200 text-emerald-600 bg-emerald-50' : 'border-red-200 text-red-600 bg-red-50'}`}>{m.statusDesc}</Badge>
                               )}
                               {amtCmp && <Badge variant="outline" className={`text-[7px] px-1 py-0 ${amtCmp.bgColor} ${amtCmp.color} border`}>{amtCmp.label}</Badge>}
                             </div>
-                            <div className="text-[11px] text-slate-700 font-medium mt-0.5">{m.name}</div>
+                            <div className={`text-[11px] font-medium mt-0.5 ${isDI ? 'text-violet-700' : 'text-slate-700'}`}>{m.miscPaymentGroupName || m.name}</div>
                             {m.address && (
                               <div className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
                                 <MapPin className="w-2.5 h-2.5 shrink-0" />{m.address}
@@ -2580,20 +2651,29 @@ export default function UnmatchedQueue() {
                             const allMatches = suggestions[tx.posItem_ID] || [];
                             const showMultiple = allMatches.length > 1;
                             const renderMatchCard = (m: SuggestedMatch, isPrimary: boolean) => {
-                              const ind = m.confidence >= 80 ? 'high' : m.confidence >= 60 ? 'medium' : 'low';
-                              const amtCmp = getAmountComparison(tx.amount, m.outstandingAmount);
+                              const isDI = m.matchType === 'direct_income';
+                              const ind = isDI ? 'income' : m.confidence >= 80 ? 'high' : m.confidence >= 60 ? 'medium' : 'low';
+                              const amtCmp = isDI ? null : getAmountComparison(tx.amount, m.outstandingAmount);
                               return (
                                 <button
                                   key={m.accountId}
                                   className={`flex items-start gap-2 px-2.5 py-2 rounded-lg border text-left w-full transition-all hover:border-[var(--pos-accent)] hover:shadow-sm ${
+                                    isDI ? 'bg-violet-50/60 border-violet-200' :
                                     ind === 'high' ? 'bg-emerald-50/60 border-emerald-200' :
                                     ind === 'medium' ? 'bg-amber-50/60 border-amber-200' :
                                     'bg-slate-50/60 border-slate-200'
                                   } ${!isPrimary ? 'opacity-80 hover:opacity-100' : ''}`}
-                                  onClick={() => handleAllocateClick(tx.posItem_ID, undefined, m)}
+                                  onClick={() => {
+                                    if (isDI) {
+                                      handleAllocateClick(tx.posItem_ID);
+                                    } else {
+                                      handleAllocateClick(tx.posItem_ID, undefined, m);
+                                    }
+                                  }}
                                   title={m.matchReasoning?.join('\n') || m.matchDetail}
                                 >
                                   <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 mt-0.5 ${
+                                    isDI ? 'bg-violet-100 text-violet-600' :
                                     ind === 'high' ? 'bg-emerald-100 text-emerald-600' :
                                     ind === 'medium' ? 'bg-amber-100 text-amber-600' :
                                     'bg-slate-100 text-slate-500'
@@ -2602,18 +2682,23 @@ export default function UnmatchedQueue() {
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-1.5 flex-wrap">
-                                      <span className="font-mono text-[11px] font-semibold text-slate-800">{m.accountNo}</span>
+                                      {isDI ? (
+                                        <span className="text-[11px] font-semibold text-violet-700">Direct Income</span>
+                                      ) : (
+                                        <span className="font-mono text-[11px] font-semibold text-slate-800">{m.accountNo}</span>
+                                      )}
                                       <Badge variant="outline" className={`text-[8px] px-1.5 py-0 font-bold ${
+                                        isDI ? 'bg-violet-100 text-violet-700 border-violet-200' :
                                         ind === 'high' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
                                         ind === 'medium' ? 'bg-amber-100 text-amber-700 border-amber-200' :
                                         'bg-slate-100 text-slate-600 border-slate-200'
                                       }`}>{m.confidence}%</Badge>
-                                      {m.statusDesc && (
+                                      {!isDI && m.statusDesc && (
                                         <Badge variant="outline" className={`text-[7px] px-1 py-0 ${m.statusDesc === 'Active' ? 'border-emerald-200 text-emerald-600 bg-emerald-50' : 'border-red-200 text-red-600 bg-red-50'}`}>{m.statusDesc}</Badge>
                                       )}
                                       {amtCmp && <Badge variant="outline" className={`text-[7px] px-1 py-0 ${amtCmp.bgColor} ${amtCmp.color} border`}>{amtCmp.label}</Badge>}
                                     </div>
-                                    <div className="text-[11px] text-slate-700 font-medium mt-0.5">{m.name}</div>
+                                    <div className={`text-[11px] font-medium mt-0.5 ${isDI ? 'text-violet-700' : 'text-slate-700'}`}>{m.miscPaymentGroupName || m.name}</div>
                                     {m.address && (
                                       <div className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
                                         <MapPin className="w-2.5 h-2.5 shrink-0" />{m.address}{m.town ? `, ${m.town}` : ''}
