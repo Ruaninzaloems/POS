@@ -587,7 +587,7 @@ async function searchForSuggestions(note: string, reference: string, transaction
     suggestions.push({
       accountId: accId,
       accountNo: item.accountNumber || item.accountNo || String(accId),
-      name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || 'Unknown',
+      name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || item.accountDesc || item.typeOfUseDesc || '',
       oldAccountCode: item.oldAccountCode,
       outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
       matchType,
@@ -1345,12 +1345,15 @@ async function searchForSuggestions(note: string, reference: string, transaction
 
   searchPromises.push(
     safe(async () => {
+      const aiAbort = new AbortController();
+      const aiTimeout = setTimeout(() => aiAbort.abort(), 8000);
       const aiResp = await fetch('/api/ai/parse-description', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ description: note, reference }),
-      });
+        signal: aiAbort.signal,
+      }).finally(() => clearTimeout(aiTimeout));
       if (!aiResp.ok) return;
       const ai = await aiResp.json();
       console.log('[AI Parse]', note, ai);
@@ -1668,7 +1671,10 @@ async function searchForSuggestions(note: string, reference: string, transaction
     })
   );
 
-  await Promise.all(searchPromises);
+  await Promise.race([
+    Promise.all(searchPromises),
+    new Promise(resolve => setTimeout(resolve, 15000)),
+  ]);
 
   const top = suggestions.sort((a, b) => b.confidence - a.confidence).slice(0, 5);
 
@@ -2739,15 +2745,15 @@ export default function UnmatchedQueue() {
                               )}
                               {amtCmp && <Badge variant="outline" className={`text-[7px] px-1 py-0 ${amtCmp.bgColor} ${amtCmp.color} border`}>{amtCmp.label}</Badge>}
                             </div>
-                            <div className={`text-[11px] font-medium mt-0.5 ${isDI ? 'text-violet-700' : isInst ? 'text-teal-700' : isClr ? 'text-cyan-700' : 'text-slate-700'}`}>{m.institutionName || m.miscPaymentGroupName || m.clearanceAccountName || m.name}</div>
-                            {m.address && (
+                            <div className={`text-[11px] font-medium mt-0.5 ${isDI ? 'text-violet-700' : isInst ? 'text-teal-700' : isClr ? 'text-cyan-700' : 'text-slate-700'}`}>{m.institutionName || m.miscPaymentGroupName || m.clearanceAccountName || m.name || m.accountDesc || m.typeOfUseDesc || m.address || 'Account ' + m.accountNo}</div>
+                            {m.address && (m.name || m.institutionName || m.miscPaymentGroupName) && (
                               <div className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
                                 <MapPin className="w-2.5 h-2.5 shrink-0" />{m.address}
                               </div>
                             )}
                             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                               <span className="text-[9px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{getMatchTypeLabel(m.matchType)}</span>
-                              {m.typeOfUseDesc && <span className="text-[9px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{m.typeOfUseDesc}</span>}
+                              {m.typeOfUseDesc && m.name && <span className="text-[9px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{m.typeOfUseDesc}</span>}
                               {m.erfNumber && <span className="text-[9px] font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">ERF {m.erfNumber}</span>}
                               {m.portion && <span className="text-[9px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">Ptn {m.portion}</span>}
                               {m.allotment && <span className="text-[9px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{m.allotment}{m.town ? ` — ${m.town}` : ''}</span>}
@@ -2976,15 +2982,15 @@ export default function UnmatchedQueue() {
                                       )}
                                       {amtCmp && <Badge variant="outline" className={`text-[7px] px-1 py-0 ${amtCmp.bgColor} ${amtCmp.color} border`}>{amtCmp.label}</Badge>}
                                     </div>
-                                    <div className={`text-[11px] font-medium mt-0.5 ${isDI ? 'text-violet-700' : isInst ? 'text-teal-700' : isClr ? 'text-cyan-700' : 'text-slate-700'}`}>{m.institutionName || m.miscPaymentGroupName || m.clearanceAccountName || m.name}</div>
-                                    {m.address && (
+                                    <div className={`text-[11px] font-medium mt-0.5 ${isDI ? 'text-violet-700' : isInst ? 'text-teal-700' : isClr ? 'text-cyan-700' : 'text-slate-700'}`}>{m.institutionName || m.miscPaymentGroupName || m.clearanceAccountName || m.name || m.accountDesc || m.typeOfUseDesc || m.address || 'Account ' + m.accountNo}</div>
+                                    {m.address && (m.name || m.institutionName || m.miscPaymentGroupName) && (
                                       <div className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
                                         <MapPin className="w-2.5 h-2.5 shrink-0" />{m.address}{m.town ? `, ${m.town}` : ''}
                                       </div>
                                     )}
                                     <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                                       <span className="text-[9px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{getMatchTypeLabel(m.matchType)}</span>
-                                      {m.typeOfUseDesc && <span className="text-[9px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{m.typeOfUseDesc}</span>}
+                                      {m.typeOfUseDesc && m.name && <span className="text-[9px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{m.typeOfUseDesc}</span>}
                                       {m.erfNumber && <span className="text-[9px] font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">ERF {m.erfNumber}</span>}
                                       {m.portion && <span className="text-[9px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">Ptn {m.portion}</span>}
                                       {m.allotment && <span className="text-[9px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{m.allotment}{m.town ? ` — ${m.town}` : ''}</span>}
