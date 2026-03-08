@@ -20,7 +20,7 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptTemplateP
   const primaryLine = allocation.lines[0];
   const primaryAccount = primaryLine ? { accountNo: primaryLine.accountNo, name: primaryLine.description || '', address: '' } as Account : undefined;
 
-  const receiptNo = transaction.receiptNumber || transaction.id;
+  const receiptNo = (transaction as any).receiptNumber || transaction.id;
   
   // Calculate totals
   const totalAllocated = allocation.lines.reduce((sum, line) => sum + line.amount, 0);

@@ -291,7 +291,7 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
 
           const groupResults: SearchResult[] = Array.from(groupedInstitutions.entries()).slice(0, 5).map(([instId, group]) => {
               const summary = group.members[0];
-              const accountCount = summary?.account_ID || group.members.length;
+              const accountCount = summary?.accountID || group.members.length;
               const totalOuts = summary?.outStandingAmt || group.members.reduce((sum, m) => sum + (m.outStandingAmt || 0), 0);
               return {
                   type: 'GROUP' as const,

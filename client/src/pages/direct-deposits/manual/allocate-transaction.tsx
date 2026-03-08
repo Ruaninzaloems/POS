@@ -293,15 +293,15 @@ export default function AllocateTransaction() {
         try {
           const institutionResults = await searchInstitutions(query);
           for (const inst of institutionResults.slice(0, 10)) {
-            const instId = inst.institution_ID || inst.institutionID || 0;
+            const instId = inst.institutionID || 0;
             if (instId && !seen.has(instId + 200000)) {
               seen.add(instId + 200000);
               secondaryResults.push({
                 accountId: instId,
                 accountNo: `INST-${instId}`,
-                name: inst.institutionDesc || inst.institutionName || 'Institution',
+                name: inst.institutionDesc || 'Institution',
                 type: 'INSTITUTION',
-                description: `Institution: ${inst.institutionDesc || inst.institutionName || ''}`,
+                description: `Institution: ${inst.institutionDesc || ''}`,
                 rawData: inst,
               });
             }

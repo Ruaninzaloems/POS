@@ -4,6 +4,7 @@ export interface PaymentState {
   cash: number;
   card: number;
   cardReference: string;
+  cardExpiry: string;
 }
 
 export interface TransactionTotals {

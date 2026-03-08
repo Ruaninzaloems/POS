@@ -1406,7 +1406,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                   <h3 className="text-sm font-bold text-[#2E2E2E] truncate">{item.description}</h3>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span className="text-[9px] font-mono px-1 py-0 rounded bg-[#F2F4F7] text-slate-600 ring-1 ring-[#D6D6D6]">
-                      {(incomeItem.scoaItem || '').replace(/\s+[A-Z]{2}\d{30,}.*$/, '').trim() || incomeItem.scoaItem} · ID: {incomeItem.scoaItemId}
+                      {(incomeItem.scoaItem || '').replace(/\s+[A-Z]{2}\d{30,}.*$/, '').trim() || incomeItem.scoaItem} · {incomeItem.id}
                     </span>
                     <span className="text-[10px] text-slate-500">{incomeItem.groupName}</span>
                   </div>

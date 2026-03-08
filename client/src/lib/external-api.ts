@@ -51,7 +51,6 @@ export interface Account {
   prepaidBlocked?: boolean;
   prepaidBlockReason?: string;
   blockedServices?: string[];
-  apiId?: number;
   accountGroup?: string;
   subAccountGroup?: string;
   paymentGroup?: string;

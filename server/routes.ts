@@ -1865,7 +1865,7 @@ export async function registerRoutes(
   app.get("/api/platinum/billing-payment-clearance/trigger-scan", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const userId = session.userId || 209;
+      const userId = session.userData?.user_ID || 209;
       
       const testIds = [1, 5, 10, 30, 50, 100, 200, 300, 301, 302, 303, 305, 310, 350, 400, 500, 785, 800, 900, 1000, 1032, 1100, 1200, 1300, 1301, 1302, 1303, 1304, 1305, 1350, 1400, 1500, 1600, 1700, 1800, 1900, 1950];
       
@@ -3076,8 +3076,8 @@ export async function registerRoutes(
       console.log(`[auth-dayend-submit] Response:`, JSON.stringify(data).substring(0, 500));
       if (!data?._error && data?.isSuccess !== false) {
         const requestCashierId = Number(req.query.cashierId || 0);
-        const sessionCashierId = getSessionPosCashierId(session);
-        if (requestCashierId === sessionCashierId && sessionCashierId > 0) {
+        const sessionCashierId = await getSessionPosCashierId(session);
+        if (requestCashierId === sessionCashierId && sessionCashierId && sessionCashierId > 0) {
           session.dayEndPending = true;
           console.log(`[auth-dayend-submit] Marked session.dayEndPending=true (own cashier session)`);
         } else {
@@ -3459,7 +3459,7 @@ export async function registerRoutes(
       console.log(`[Bank Notes] Found ${eftReceipts.length} EFT receipts out of ${receipts.length} total for account ${accountId}`);
 
       const results: Record<string, string> = {};
-      const finYear = session.userData?.finYear || session.platinumUser?.finYear;
+      const finYear = session.userData?.finYear || (session as any).platinumUser?.finYear;
       if (!finYear) {
         return res.status(400).json({ message: "Financial year missing from session." });
       }
@@ -3471,7 +3471,7 @@ export async function registerRoutes(
         const promises = batch.map(async (r: any) => {
           const receiptNo = r.receiptNo;
           if (!receiptNo) return;
-          const receiptDate = r.receiptDate ? new Date(r.receiptDate) : now;
+          const receiptDate = r.receiptDate ? new Date(r.receiptDate) : new Date();
           const month = receiptDate.getMonth() + 1;
           try {
             const traceData = await platinumGet(session, "/api/billing/cashbook-transaction-trace/search", {
@@ -3686,8 +3686,8 @@ export async function registerRoutes(
   });
 
   app.post("/api/platinum/direct-deposit-allocation/close-virtual-session", async (req, res) => {
+    const session = requireAuth(req, res); if (!session) return;
     try {
-      const session = requireAuth(req, res); if (!session) return;
       const virtualCashierId = (session as any).ddVirtualCashierId;
       const virtualOfficeId = (session as any).ddVirtualOfficeId;
 
@@ -5989,7 +5989,7 @@ export async function registerRoutes(
   app.get("/api/platinum/const-institutions", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const finYear = session.platinumUser?.finYear || req.query.finYear as string | undefined;
+      const finYear = session.userData?.finYear || req.query.finYear as string | undefined;
 
       const endpoints: { url: string; params: Record<string, string> }[] = [
         { url: "/api/receipting-account-group/search", params: {} },
@@ -6047,8 +6047,8 @@ export async function registerRoutes(
         activeServiceCount: g.activeServiceCount || 0,
       });
 
-      const finYear = session.platinumUser?.finYear;
-      const endpoints = [
+      const finYear = session.userData?.finYear;
+      const endpoints: { url: string; params: Record<string, string> }[] = [
         { url: "/api/receipting-account-group/search", params: {} },
         ...(finYear ? [{ url: "/api/receipting-account-group/get-account-groups", params: { finYear: String(finYear) } }] : []),
       ];

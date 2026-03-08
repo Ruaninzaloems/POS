@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { PosLayout } from '@/components/layout/pos-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -93,6 +93,7 @@ export default function BulkAllocationProgress() {
   const [detailData, setDetailData] = useState<any>(null);
   const [detailAccounts, setDetailAccounts] = useState<any[] | null>(null);
   const [selectedJob, setSelectedJob] = useState<any>(null);
+  const activeJobIdRef = useRef<number | string | null>(null);
   const [retryingJobId, setRetryingJobId] = useState<number | null>(null);
   const [enquiryAccountId, setEnquiryAccountId] = useState<string | null>(null);
 
@@ -194,6 +195,8 @@ export default function BulkAllocationProgress() {
   }
 
   async function viewJobDetail(job: any) {
+    const jobId = job.directDepositJob_ID ?? job.jobId ?? job.id ?? job.bulkAllocationId;
+    activeJobIdRef.current = jobId;
     setSelectedJob(job);
     setDetailOpen(true);
     setDetailLoading(true);
@@ -202,7 +205,6 @@ export default function BulkAllocationProgress() {
 
     loadCashierCache();
 
-    const jobId = job.directDepositJob_ID ?? job.jobId ?? job.id ?? job.bulkAllocationId;
     if (!jobId) {
       setDetailData(job);
       setDetailLoading(false);
@@ -230,6 +232,7 @@ export default function BulkAllocationProgress() {
         enriched._posItemAmount = posItemData.amount;
         enriched._posItemDate = posItemData.dateOfTransaction || posItemData.dateCaptured;
       }
+      if (activeJobIdRef.current !== jobId) return;
       setDetailData(enriched);
 
       const errorMap = new Map<string, string>();
@@ -322,12 +325,13 @@ export default function BulkAllocationProgress() {
           }
         }
       }
+      if (activeJobIdRef.current !== jobId) return;
       setDetailAccounts(accounts);
     } catch (err) {
       console.error('[BulkAllocationProgress] Failed to load job detail:', err);
-      setDetailData(job);
+      if (activeJobIdRef.current === jobId) setDetailData(job);
     } finally {
-      setDetailLoading(false);
+      if (activeJobIdRef.current === jobId) setDetailLoading(false);
     }
   }
 

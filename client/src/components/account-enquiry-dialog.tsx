@@ -196,7 +196,7 @@ export function AccountEnquiryDialog({ open, onClose, accountId }: AccountEnquir
 
         {error && (
           <div className="flex-1 flex items-center justify-center p-6">
-            <ErrorState title="Account Not Found" message={error} />
+            <ErrorState message={error || "Account not found"} />
           </div>
         )}
 
@@ -255,7 +255,7 @@ export function AccountEnquiryDialog({ open, onClose, accountId }: AccountEnquir
                 <TabsContent value="txn-detailed" className="m-0"><TabErrorBoundary tabName="Detailed Transactions"><DetailedTransactionListTab accountId={numericAccountId} accountNumber={accountNumber} /></TabErrorBoundary></TabsContent>
                 <TabsContent value="services-meters" className="m-0"><TabErrorBoundary tabName="Meters"><ServicesMetersTab accountId={numericAccountId} unitId={unitId} accountNumber={accountNumber} /></TabErrorBoundary></TabsContent>
                 <TabsContent value="payment-plans" className="m-0"><TabErrorBoundary tabName="Payment Plans"><PaymentPlansTab accountId={numericAccountId} /></TabErrorBoundary></TabsContent>
-                <TabsContent value="linked-accounts" className="m-0"><TabErrorBoundary tabName="Linked Accounts"><LinkedAccountsTab accountId={numericAccountId} onNavigateToAccount={() => {}} /></TabErrorBoundary></TabsContent>
+                <TabsContent value="linked-accounts" className="m-0"><TabErrorBoundary tabName="Linked Accounts"><LinkedAccountsTab accountId={numericAccountId} onSelectAccount={() => {}} /></TabErrorBoundary></TabsContent>
                 <TabsContent value="clearance" className="m-0"><TabErrorBoundary tabName="Clearance"><ClearanceTab accountId={numericAccountId} /></TabErrorBoundary></TabsContent>
                 <TabsContent value="statements" className="m-0"><TabErrorBoundary tabName="Statements"><StatementsTab accountId={numericAccountId} /></TabErrorBoundary></TabsContent>
               </div>

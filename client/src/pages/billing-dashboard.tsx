@@ -292,13 +292,15 @@ function AnimatedCounter({ value }: { value: number }) {
         if (value === 0 && from === 0) { setDisplayed(0); return; }
         const duration = 500;
         const start = Date.now();
+        let rafId: number;
         const tick = () => {
             const p = Math.min((Date.now() - start) / duration, 1);
             const eased = 1 - Math.pow(1 - p, 3);
             setDisplayed(Math.round(from + (value - from) * eased));
-            if (p < 1) requestAnimationFrame(tick);
+            if (p < 1) rafId = requestAnimationFrame(tick);
         };
-        requestAnimationFrame(tick);
+        rafId = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(rafId);
     }, [value]);
     return <>{displayed.toLocaleString()}</>;
 }
