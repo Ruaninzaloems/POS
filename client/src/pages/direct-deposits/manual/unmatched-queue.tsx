@@ -853,7 +853,7 @@ export default function UnmatchedQueue() {
   const selectedTotal = selectedItems.reduce((s, i) => s + (i.amount || 0), 0);
   const selectedWithMatch = selectedItems.filter(i => {
     const s = suggestions[i.posItem_ID];
-    return s && s.length > 0 && s[0].confidence >= 70;
+    return s && s.length > 0 && s[0].confidence >= 55;
   });
 
   const selectedMatchQuality = useMemo(() => {
@@ -1562,7 +1562,7 @@ export default function UnmatchedQueue() {
                         </div>
                         <div className="flex flex-col items-end gap-1 shrink-0">
                           <Badge variant="outline" className={`text-[9px] px-1.5 py-0 font-bold ${matchInd === 'high' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : matchInd === 'medium' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>{bestMatch.confidence}%</Badge>
-                          <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+                          <span className="text-[8px] text-[var(--pos-accent)] font-medium">Allocate →</span>
                         </div>
                       </button>
                       );
@@ -1723,6 +1723,7 @@ export default function UnmatchedQueue() {
                                 matchIndicator === 'medium' ? 'bg-amber-100 text-amber-700 border-amber-200' :
                                 'bg-slate-100 text-slate-600 border-slate-200'
                               }`}>{bestMatch.confidence}%</Badge>
+                              <span className="text-[7px] text-[var(--pos-accent)] font-medium mt-0.5">Allocate →</span>
                             </button>
                             );
                           })() : !tx.billingAllocated && suggestions[tx.posItem_ID] !== undefined ? (
@@ -1867,13 +1868,24 @@ export default function UnmatchedQueue() {
                 {selectedWithMatch.length > 0 && (
                   <Button
                     size="sm"
-                    className="h-9 text-xs gap-1.5 px-3 font-semibold"
-                    style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
+                    className="h-9 text-xs gap-1.5 px-4 font-semibold shadow-lg animate-in fade-in duration-300"
+                    style={{ background: 'linear-gradient(135deg, #10b981, #059669)', boxShadow: '0 0 20px rgba(16,185,129,0.3)' }}
                     onClick={openBulkAllocate}
                     data-testid="button-allocate-matched"
                   >
                     <ArrowRight className="w-3.5 h-3.5" />
-                    Auto-Allocate {selectedWithMatch.length} Matched
+                    Allocate {selectedWithMatch.length} Matched
+                  </Button>
+                )}
+                {selectedItems.length > 0 && selectedWithMatch.length === 0 && selectedMatchQuality.unanalyzed === 0 && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-9 text-xs text-white/40 gap-1.5 px-3 cursor-default"
+                    disabled
+                    data-testid="button-no-matches"
+                  >
+                    No matches to allocate
                   </Button>
                 )}
                 <Button
