@@ -15,6 +15,10 @@ function getCached(key: string, ttl: number = CACHE_TTL): any | null {
   return null;
 }
 
+export function clearCacheKey(key: string): void {
+  apiCache.delete(key);
+}
+
 function setCache(key: string, data: any): void {
   apiCache.set(key, { data, ts: Date.now() });
   if (apiCache.size > 200) {

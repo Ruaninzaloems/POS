@@ -9,6 +9,7 @@ import { AllocationLine, Account, ClearanceCostSchedule, platinumGetPosItemDetai
 import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import { AccountEnquiryDialog } from '@/components/account-enquiry-dialog';
+import { getPaymentAmountByAccountIds, clearCacheKey } from '@/lib/enquiries-service';
 
 interface BankReconPosItem {
   posItem_ID: number;
@@ -55,12 +56,13 @@ export default function AllocateTransaction() {
   const [postingTotalSteps, setPostingTotalSteps] = useState(0);
   const [postingErrors, setPostingErrors] = useState<string[]>([]);
   const [postComplete, setPostComplete] = useState(false);
-  const [completedLines, setCompletedLines] = useState<{ accountNo: string; accountId?: number; description: string; amount: number; allocationType: string; receiptId?: number | null; depositMasterId?: number | null }[]>([]);
+  const [completedLines, setCompletedLines] = useState<{ accountNo: string; accountId?: number; description: string; amount: number; allocationType: string; receiptId?: number | null; depositMasterId?: number | null; receiptNo?: string | null }[]>([]);
   const [ledgerDialogOpen, setLedgerDialogOpen] = useState(false);
   const [ledgerData, setLedgerData] = useState<any>(null);
   const [ledgerLoading, setLedgerLoading] = useState(false);
   const [ledgerTitle, setLedgerTitle] = useState('');
   const [printingReceiptId, setPrintingReceiptId] = useState<number | null>(null);
+  const [lookingUpReceipt, setLookingUpReceipt] = useState<number | null>(null);
   const [lines, setLines] = useState<AllocationLine[]>([]);
   const [linesPage, setLinesPage] = useState(1);
   const LINES_PER_PAGE = 10;
@@ -1214,15 +1216,21 @@ export default function AllocateTransaction() {
 
                   if (jobStatus.status !== 'PROCESSING') {
                       const successResults = jobStatus.results.filter((r: any) => r.status === 'SUCCESS');
-                      const successfulLines = successResults.map((r: any) => ({
-                          accountNo: r.accountNo,
-                          accountId: lines.find(l => l.accountNo === r.accountNo)?.accountId,
-                          description: lines.find(l => l.accountNo === r.accountNo)?.description || '',
-                          amount: r.amount,
-                          allocationType: r.allocationType,
-                          receiptId: r.apiResponse?.receiptId || null,
-                          depositMasterId: r.apiResponse?.depositMasterId || null,
-                      }));
+                      const successfulLines = successResults.map((r: any) => {
+                          const sourceLine = (r.lineIndex != null && lines[r.lineIndex - 1])
+                              ? lines[r.lineIndex - 1]
+                              : lines.find(l => l.accountNo === r.accountNo);
+                          return {
+                              accountNo: r.accountNo,
+                              accountId: sourceLine?.accountId,
+                              description: sourceLine?.description || '',
+                              amount: r.amount,
+                              allocationType: r.allocationType,
+                              receiptId: r.apiResponse?.receiptId || null,
+                              depositMasterId: r.apiResponse?.depositMasterId || null,
+                              receiptNo: null as string | null,
+                          };
+                      });
 
                       if (successfulLines.length > 0) {
                           const accountLinesToRebuild = successfulLines.filter((l: any) =>
@@ -1241,7 +1249,52 @@ export default function AllocateTransaction() {
                           }
                       }
 
-                      setCompletedLines(successfulLines);
+                      const linesNeedingReceipt = successfulLines.filter((l: any) => !l.receiptId && l.accountId && l.accountId > 0);
+                      if (linesNeedingReceipt.length > 0) {
+                          setPostingStatus('Looking up receipts...');
+                          const uniqueLookupAccountIds = Array.from(new Set(linesNeedingReceipt.map((l: any) => l.accountId)));
+                          try {
+                              uniqueLookupAccountIds.forEach(id => clearCacheKey(`payment-amount-${id}`));
+                              const paymentHistories = await Promise.allSettled(
+                                  uniqueLookupAccountIds.map(id => getPaymentAmountByAccountIds(id as number))
+                              );
+                              const historyByAccountId: Record<number, any[]> = {};
+                              uniqueLookupAccountIds.forEach((accId, idx) => {
+                                  const result = paymentHistories[idx];
+                                  if (result.status === 'fulfilled' && Array.isArray(result.value)) {
+                                      historyByAccountId[accId as number] = result.value;
+                                  }
+                              });
+                              const usedReceiptIds = new Set<number>();
+                              const cutoffTime = Date.now() - 10 * 60 * 1000;
+                              for (const line of successfulLines) {
+                                  if (line.receiptId || !line.accountId) continue;
+                                  const payments = historyByAccountId[line.accountId];
+                                  if (!payments || payments.length === 0) continue;
+                                  const eftPayments = payments
+                                      .filter((p: any) => {
+                                          const rid = p.receiptID || p.receiptId;
+                                          return p.paymentType === 'EFT' && !p.cancelReson
+                                              && Math.abs(p.amount - line.amount) < 0.01
+                                              && !usedReceiptIds.has(rid)
+                                              && new Date(p.receiptDate).getTime() > cutoffTime;
+                                      })
+                                      .sort((a: any, b: any) => new Date(b.receiptDate).getTime() - new Date(a.receiptDate).getTime());
+                                  if (eftPayments.length > 0) {
+                                      const match = eftPayments[0];
+                                      const rid = match.receiptID || match.receiptId;
+                                      line.receiptId = rid;
+                                      line.receiptNo = match.receiptNo;
+                                      usedReceiptIds.add(rid);
+                                      console.log(`[DD Receipt Lookup] Found receipt ${rid} (${line.receiptNo}) for account ${line.accountNo} amount ${line.amount}`);
+                                  }
+                              }
+                          } catch (lookupErr) {
+                              console.warn('[DD Receipt Lookup] Failed to look up receipts:', lookupErr);
+                          }
+                      }
+
+                      setCompletedLines([...successfulLines]);
 
                       if (jobStatus.status === 'COMPLETED') {
                           toast({
@@ -1280,6 +1333,41 @@ export default function AllocateTransaction() {
           setPosting(false);
           setPostingStatus('');
       }
+  };
+
+  const handleLookupReceipt = async (lineIndex: number) => {
+    const line = completedLines[lineIndex];
+    if (!line || !line.accountId || line.accountId <= 0) {
+      toast({ title: 'Cannot Look Up', description: 'No account ID available for this line.', variant: 'destructive' });
+      return;
+    }
+    setLookingUpReceipt(lineIndex);
+    try {
+      clearCacheKey(`payment-amount-${line.accountId}`);
+      const payments = await getPaymentAmountByAccountIds(line.accountId);
+      const existingReceiptIds = new Set(completedLines.filter(l => l.receiptId).map(l => l.receiptId));
+      const eftPayments = payments
+        .filter((p: any) => {
+          const rid = p.receiptID || p.receiptId;
+          return p.paymentType === 'EFT' && !p.cancelReson
+            && Math.abs(p.amount - line.amount) < 0.01
+            && !existingReceiptIds.has(rid);
+        })
+        .sort((a: any, b: any) => new Date(b.receiptDate).getTime() - new Date(a.receiptDate).getTime());
+      if (eftPayments.length > 0) {
+        const match = eftPayments[0];
+        const updated = [...completedLines];
+        updated[lineIndex] = { ...updated[lineIndex], receiptId: match.receiptID || match.receiptId, receiptNo: match.receiptNo };
+        setCompletedLines(updated);
+        toast({ title: 'Receipt Found', description: `Receipt ${match.receiptNo || match.receiptID} linked successfully.` });
+      } else {
+        toast({ title: 'No Receipt Found', description: 'Could not find a matching EFT receipt in the payment history. The receipt may still be processing.', variant: 'destructive' });
+      }
+    } catch (e: any) {
+      toast({ title: 'Lookup Failed', description: e?.message || 'Failed to look up receipt', variant: 'destructive' });
+    } finally {
+      setLookingUpReceipt(null);
+    }
   };
 
   const handlePrintReceipt = async (receiptId: number | number[]) => {
@@ -1437,7 +1525,7 @@ export default function AllocateTransaction() {
                                 <span className="text-sm font-mono font-medium text-slate-800">{line.accountNo || '-'}</span>
                                 <Badge variant="outline" className="text-[10px]">{line.allocationType}</Badge>
                                 {line.receiptId && line.receiptId > 0 && (
-                                  <Badge variant="secondary" className="text-[10px] bg-blue-50 text-blue-700">Receipt #{line.receiptId}</Badge>
+                                  <Badge variant="secondary" className="text-[10px] bg-blue-50 text-blue-700">{line.receiptNo || `Receipt #${line.receiptId}`}</Badge>
                                 )}
                               </div>
                               <p className="text-xs text-muted-foreground truncate">{line.description || '-'}</p>
@@ -1485,8 +1573,25 @@ export default function AllocateTransaction() {
                               <Eye className="h-3 w-3" /> View Enquiry
                             </Button>
                           )}
-                          {!line.receiptId && (
-                            <span className="text-xs text-muted-foreground italic">No receipt generated by API</span>
+                          {!line.receiptId && line.accountId && line.accountId > 0 && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1.5 h-7 text-xs border-amber-300 text-amber-700 hover:bg-amber-50"
+                              onClick={() => handleLookupReceipt(i)}
+                              disabled={lookingUpReceipt === i}
+                              data-testid={`button-lookup-receipt-${i}`}
+                            >
+                              {lookingUpReceipt === i ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Search className="h-3 w-3" />
+                              )}
+                              Find Receipt
+                            </Button>
+                          )}
+                          {!line.receiptId && (!line.accountId || line.accountId <= 0) && (
+                            <span className="text-xs text-muted-foreground italic">No receipt for miscellaneous lines</span>
                           )}
                         </div>
                       </div>
