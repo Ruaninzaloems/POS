@@ -22,6 +22,8 @@ The Platinum Inzalo EMS API is the sole source of truth for all data. No fallbac
 #### Direct Deposit Allocation
 The system supports direct deposit allocation, where submissions are batched server-side (`POST /api/dd-allocation/submit-batch`) and processed sequentially against the Platinum API in the background. Clients poll for progress. Specific payload specifications exist for various `BillType`s (Consumer Services, Clearance, Miscellaneous). A "Generic Import" tab allows CSV uploads for bulk direct deposit allocation, with client-side parsing, validation, and server-side batch submission.
 
+The unmatched queue page features bulk selection (checkboxes with Select All for unmatched items), an "Auto-Match Page" function that runs smart suggestion analysis for all visible items in parallel batches of 3, and an inline Match column showing the best account match with confidence indicators (green 80%+, amber 60-79%). A floating dark-glass toolbar appears when items are selected, offering Auto-Match and Allocate Next actions. Suggestions are derived from description/reference parsing (account numbers, ERF numbers, old account codes, area keywords) against the Platinum search APIs.
+
 #### Account Enquiry
 A reusable `AccountEnquiryDialog` component provides comprehensive account enquiry functionalities, integrating various account-related tabs and accessible from different parts of the application.
 

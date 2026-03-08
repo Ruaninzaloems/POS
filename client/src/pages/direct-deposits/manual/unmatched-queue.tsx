@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { PosLayout } from '@/components/layout/pos-layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, ArrowRight, Filter, FileSpreadsheet, FileText, X, HelpCircle, Loader2, ChevronLeft, ChevronRight, Sparkles, Building2, MapPin, Hash, RefreshCw, ChevronDown, ChevronUp, Calendar, Banknote, RotateCcw } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Search, ArrowRight, Filter, FileSpreadsheet, FileText, X, HelpCircle, Loader2, ChevronLeft, ChevronRight, Sparkles, Building2, MapPin, Hash, RefreshCw, ChevronDown, ChevronUp, Calendar, Banknote, RotateCcw, CheckSquare, Zap, Users } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { format, parseISO, isWithinInterval, startOfDay, endOfDay, isValid } from 'date-fns';
 import { Label } from '@/components/ui/label';
@@ -301,6 +302,15 @@ export default function UnmatchedQueue() {
   const [suggestions, setSuggestions] = useState<Record<number, SuggestedMatch[]>>({});
   const [loadingSuggestions, setLoadingSuggestions] = useState<Set<number>>(new Set());
 
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [autoMatchRunning, setAutoMatchRunning] = useState(false);
+  const [autoMatchProgress, setAutoMatchProgress] = useState({ done: 0, total: 0 });
+  const autoMatchAbort = useRef(false);
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [page, searchTerm, txnDateFrom, txnDateTo]);
+
   const loadData = useCallback(async (pageNum: number) => {
     setLoading(true);
     setError(null);
@@ -348,6 +358,104 @@ export default function UnmatchedQueue() {
     }
     return true;
   });
+
+  const unmatchedFiltered = useMemo(() => filtered.filter(i => !i.billingAllocated), [filtered]);
+  const allUnmatchedSelected = unmatchedFiltered.length > 0 && unmatchedFiltered.every(i => selectedIds.has(i.posItem_ID));
+
+  const toggleSelectAll = () => {
+    if (allUnmatchedSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(unmatchedFiltered.map(i => i.posItem_ID)));
+    }
+  };
+
+  const toggleSelect = (id: number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const selectedItems = useMemo(() => filtered.filter(i => selectedIds.has(i.posItem_ID)), [filtered, selectedIds]);
+  const selectedTotal = selectedItems.reduce((s, i) => s + (i.amount || 0), 0);
+  const selectedWithMatch = selectedItems.filter(i => {
+    const s = suggestions[i.posItem_ID];
+    return s && s.length > 0 && s[0].confidence >= 70;
+  });
+
+  const runAutoMatchAll = async () => {
+    const targets = unmatchedFiltered.filter(i => !suggestions[i.posItem_ID]);
+    if (targets.length === 0 && unmatchedFiltered.length > 0) {
+      toast({ title: 'Already Matched', description: `All ${unmatchedFiltered.length} items on this page have already been analyzed.` });
+      return;
+    }
+    setAutoMatchRunning(true);
+    autoMatchAbort.current = false;
+    setAutoMatchProgress({ done: 0, total: targets.length });
+
+    const BATCH_SIZE = 3;
+    for (let i = 0; i < targets.length; i += BATCH_SIZE) {
+      if (autoMatchAbort.current) break;
+      const batch = targets.slice(i, i + BATCH_SIZE);
+      await Promise.all(batch.map(async (item) => {
+        try {
+          const results = await searchForSuggestions(item.note, item.reference);
+          setSuggestions(prev => ({ ...prev, [item.posItem_ID]: results }));
+        } catch (err) {
+          console.error(`[AutoMatch] Failed for POS item ${item.posItem_ID}:`, err);
+          setSuggestions(prev => ({ ...prev, [item.posItem_ID]: [] }));
+        }
+      }));
+      setAutoMatchProgress(prev => ({ ...prev, done: Math.min(i + BATCH_SIZE, targets.length) }));
+    }
+
+    setAutoMatchRunning(false);
+    if (!autoMatchAbort.current) {
+      toast({ title: 'Auto-Match Complete', description: `Analyzed ${targets.length} items on this page.` });
+    }
+  };
+
+  const runAutoMatchSelected = async () => {
+    const targets = selectedItems.filter(i => !i.billingAllocated);
+    if (targets.length === 0) return;
+    setAutoMatchRunning(true);
+    autoMatchAbort.current = false;
+    setAutoMatchProgress({ done: 0, total: targets.length });
+
+    const BATCH_SIZE = 3;
+    for (let i = 0; i < targets.length; i += BATCH_SIZE) {
+      if (autoMatchAbort.current) break;
+      const batch = targets.slice(i, i + BATCH_SIZE);
+      await Promise.all(batch.map(async (item) => {
+        try {
+          const results = await searchForSuggestions(item.note, item.reference);
+          setSuggestions(prev => ({ ...prev, [item.posItem_ID]: results }));
+        } catch (err) {
+          setSuggestions(prev => ({ ...prev, [item.posItem_ID]: [] }));
+        }
+      }));
+      setAutoMatchProgress(prev => ({ ...prev, done: Math.min(i + BATCH_SIZE, targets.length) }));
+    }
+    setAutoMatchRunning(false);
+  };
+
+  const getBestMatch = (posItemId: number): SuggestedMatch | null => {
+    const s = suggestions[posItemId];
+    if (!s || s.length === 0) return null;
+    return s[0];
+  };
+
+  const getMatchIndicator = (posItemId: number): 'high' | 'medium' | 'low' | 'none' | 'loading' => {
+    if (loadingSuggestions.has(posItemId)) return 'loading';
+    const best = getBestMatch(posItemId);
+    if (!best) return 'none';
+    if (best.confidence >= 80) return 'high';
+    if (best.confidence >= 60) return 'medium';
+    return 'low';
+  };
 
   const activeFiltersCount = [txnDateFrom].filter(Boolean).length;
 
@@ -592,7 +700,7 @@ export default function UnmatchedQueue() {
              </div>
           </div>
 
-          <div className="flex items-center gap-3 mt-3 text-xs">
+          <div className="flex flex-wrap items-center gap-3 mt-3 text-xs">
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <div className="w-2 h-2 rounded-full bg-amber-400" />
               <span>{pageUnmatchedCount} unmatched</span>
@@ -604,6 +712,18 @@ export default function UnmatchedQueue() {
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <span className="text-slate-400">on this page ({filtered.length} of {totalCount.toLocaleString()})</span>
             </div>
+            {!autoMatchRunning && pageUnmatchedCount > 0 && (
+              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5 text-amber-600 hover:text-amber-700 hover:bg-amber-50 px-2" onClick={runAutoMatchAll} data-testid="button-auto-match-page">
+                <Zap className="w-3 h-3" /> Auto-Match Page
+              </Button>
+            )}
+            {autoMatchRunning && (
+              <div className="flex items-center gap-2 text-amber-600">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                <span className="text-[11px]">Matching {autoMatchProgress.done}/{autoMatchProgress.total}...</span>
+                <button className="text-[10px] underline text-slate-500 hover:text-slate-700" onClick={() => { autoMatchAbort.current = true; }}>Cancel</button>
+              </div>
+            )}
             <div className="flex items-center gap-1.5 text-muted-foreground ml-auto">
               <Banknote className="w-3 h-3" />
               <span className="hidden sm:inline">Page total: </span>
@@ -635,10 +755,21 @@ export default function UnmatchedQueue() {
                   </div>
                   <p className="text-sm text-muted-foreground">{items.length === 0 ? 'No bank deposits found.' : 'No items match your search.'}</p>
                 </div>
-              ) : filtered.map(tx => (
-                <div key={tx.posItem_ID} data-testid={`card-positem-${tx.posItem_ID}`} className="rounded-xl border bg-white shadow-sm overflow-hidden">
+              ) : filtered.map(tx => {
+                const bestMatch = !tx.billingAllocated ? getBestMatch(tx.posItem_ID) : null;
+                const matchInd = !tx.billingAllocated ? getMatchIndicator(tx.posItem_ID) : 'none';
+                const isSelected = selectedIds.has(tx.posItem_ID);
+                return (
+                <div key={tx.posItem_ID} data-testid={`card-positem-${tx.posItem_ID}`} className={`rounded-xl border bg-white shadow-sm overflow-hidden ${isSelected ? 'ring-2 ring-[var(--pos-accent)]/30 border-[var(--pos-accent)]/40' : ''}`}>
                   <div className="p-3.5">
-                    <div className="flex justify-between items-start gap-2 mb-2">
+                    <div className="flex items-start gap-2.5 mb-2">
+                      {!tx.billingAllocated && (
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleSelect(tx.posItem_ID)}
+                          className="mt-0.5 data-[state=checked]:bg-[var(--pos-accent)] data-[state=checked]:border-[var(--pos-accent)]"
+                        />
+                      )}
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-sm text-slate-800 break-words">{tx.note || '-'}</div>
                         <div className="text-xs text-muted-foreground font-mono mt-0.5">
@@ -651,6 +782,24 @@ export default function UnmatchedQueue() {
                         <Badge variant="secondary" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] shrink-0">Unmatched</Badge>
                       )}
                     </div>
+                    {!tx.billingAllocated && bestMatch && (
+                      <button
+                        className={`flex items-center gap-2 w-full px-2.5 py-1.5 rounded-lg border mb-2 text-left transition-colors ${
+                          matchInd === 'high' ? 'bg-emerald-50/60 border-emerald-200' :
+                          matchInd === 'medium' ? 'bg-amber-50/60 border-amber-200' :
+                          'bg-slate-50/60 border-slate-200'
+                        }`}
+                        onClick={() => handleAllocateClick(tx.posItem_ID, undefined, bestMatch)}
+                      >
+                        <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${matchInd === 'high' ? 'bg-emerald-500' : matchInd === 'medium' ? 'bg-amber-500' : 'bg-slate-400'}`} />
+                        <div className="flex-1 min-w-0">
+                          <span className="font-mono text-xs text-slate-700">{bestMatch.accountNo}</span>
+                          <span className="text-[10px] text-slate-500 ml-1.5">{bestMatch.name}</span>
+                        </div>
+                        <Badge variant="outline" className={`text-[9px] px-1.5 py-0 shrink-0 ${matchInd === 'high' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>{bestMatch.confidence}%</Badge>
+                        <ArrowRight className="w-3 h-3 text-slate-400 shrink-0" />
+                      </button>
+                    )}
                     <div className="flex justify-between items-center">
                       <Badge variant="secondary" className="font-mono text-[10px]">{tx.reference || '-'}</Badge>
                       <div className="flex items-center gap-2">
@@ -679,7 +828,7 @@ export default function UnmatchedQueue() {
                     />
                   )}
                 </div>
-              ))}
+              );})}
             </div>
 
             {/* Desktop table view */}
@@ -688,60 +837,112 @@ export default function UnmatchedQueue() {
               <table className="w-full">
                 <thead className="sticky top-0 z-[1]">
                   <tr className="border-b bg-[#F7F7F7]">
-                    <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-4 py-2.5 w-14">ID</th>
-                    <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-4 py-2.5 w-24">Date</th>
-                    <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-4 py-2.5">Description</th>
-                    <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-4 py-2.5 w-20">Ref</th>
-                    <th className="text-right text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-4 py-2.5 w-28">Amount</th>
-                    <th className="text-center text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-4 py-2.5 w-24">Status</th>
-                    <th className="text-right text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-4 py-2.5 w-36">Action</th>
+                    <th className="text-center px-2 py-2.5 w-10">
+                      <Checkbox
+                        checked={allUnmatchedSelected ? true : (unmatchedFiltered.some(i => selectedIds.has(i.posItem_ID)) ? 'indeterminate' : false)}
+                        onCheckedChange={toggleSelectAll}
+                        className="data-[state=checked]:bg-[var(--pos-accent)] data-[state=checked]:border-[var(--pos-accent)]"
+                        data-testid="checkbox-select-all"
+                      />
+                    </th>
+                    <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-3 py-2.5 w-14">ID</th>
+                    <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-3 py-2.5 w-24">Date</th>
+                    <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-3 py-2.5">Description</th>
+                    <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-3 py-2.5 w-44">Match</th>
+                    <th className="text-right text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-3 py-2.5 w-28">Amount</th>
+                    <th className="text-center text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-3 py-2.5 w-24">Status</th>
+                    <th className="text-right text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-3 py-2.5 w-36">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E5E5E5]">
                   {loading ? (
                     <tr>
-                      <td colSpan={7} className="py-16 text-center">
+                      <td colSpan={8} className="py-16 text-center">
                         <Loader2 className="w-6 h-6 animate-spin mx-auto text-[var(--pos-accent)] mb-2" />
                         <span className="text-xs text-muted-foreground">Loading deposits...</span>
                       </td>
                     </tr>
                   ) : filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-16 text-center" data-testid="text-empty-state">
+                      <td colSpan={8} className="py-16 text-center" data-testid="text-empty-state">
                         <div className="w-14 h-14 rounded-2xl bg-[#F2F4F7] flex items-center justify-center mx-auto mb-3">
                           <Banknote className="w-6 h-6 text-slate-400" />
                         </div>
                         <p className="text-sm text-muted-foreground">{items.length === 0 ? 'No bank deposits found.' : 'No items match your search.'}</p>
                       </td>
                     </tr>
-                  ) : filtered.map(tx => (
+                  ) : filtered.map(tx => {
+                    const matchIndicator = !tx.billingAllocated ? getMatchIndicator(tx.posItem_ID) : 'none';
+                    const bestMatch = !tx.billingAllocated ? getBestMatch(tx.posItem_ID) : null;
+                    const isSelected = selectedIds.has(tx.posItem_ID);
+                    return (
                     <React.Fragment key={tx.posItem_ID}>
                       <tr
                         data-testid={`row-positem-${tx.posItem_ID}`}
-                        className={`transition-colors ${!tx.billingAllocated ? 'cursor-pointer hover:bg-[#F7F7F7]' : ''} ${expandedSuggestion === tx.posItem_ID ? 'bg-amber-50/30' : ''}`}
+                        className={`transition-colors ${!tx.billingAllocated ? 'cursor-pointer hover:bg-[#F7F7F7]' : ''} ${expandedSuggestion === tx.posItem_ID ? 'bg-amber-50/30' : ''} ${isSelected ? 'bg-blue-50/40' : ''}`}
                         onClick={() => !tx.billingAllocated && checkingItemId === null && handleAllocateClick(tx.posItem_ID)}
                       >
-                        <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{tx.posItem_ID}</td>
-                        <td className="px-4 py-2.5 whitespace-nowrap text-xs text-slate-600">
+                        <td className="px-2 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                          {!tx.billingAllocated && (
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => toggleSelect(tx.posItem_ID)}
+                              className="data-[state=checked]:bg-[var(--pos-accent)] data-[state=checked]:border-[var(--pos-accent)]"
+                              data-testid={`checkbox-${tx.posItem_ID}`}
+                            />
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5 font-mono text-xs text-muted-foreground">{tx.posItem_ID}</td>
+                        <td className="px-3 py-2.5 whitespace-nowrap text-xs text-slate-600">
                           <span className="font-mono">{tx.dateOfTransaction ? new Date(tx.dateOfTransaction).toLocaleDateString('en-GB', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'}</span>
                         </td>
-                        <td className="px-4 py-2.5">
-                          <div className="text-xs text-slate-700 truncate max-w-[400px]" title={tx.note}>{tx.note || '-'}</div>
+                        <td className="px-3 py-2.5">
+                          <div className="text-xs text-slate-700 truncate max-w-[350px]" title={tx.note}>{tx.note || '-'}</div>
+                          {tx.reference && <div className="font-mono text-[10px] text-slate-400 mt-0.5">{tx.reference}</div>}
                         </td>
-                        <td className="px-4 py-2.5">
-                          <span className="font-mono text-[10px] text-slate-500">{tx.reference || '-'}</span>
+                        <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                          {!tx.billingAllocated && bestMatch ? (
+                            <button
+                              className={`flex items-center gap-1.5 px-2 py-1 rounded-md border text-left w-full transition-colors hover:border-[var(--pos-accent)] ${
+                                matchIndicator === 'high' ? 'bg-emerald-50/60 border-emerald-200' :
+                                matchIndicator === 'medium' ? 'bg-amber-50/60 border-amber-200' :
+                                'bg-slate-50/60 border-slate-200'
+                              }`}
+                              onClick={() => handleAllocateClick(tx.posItem_ID, undefined, bestMatch)}
+                              title={`${bestMatch.matchDetail} — Click to allocate`}
+                            >
+                              <div className={`w-2 h-2 rounded-full shrink-0 ${
+                                matchIndicator === 'high' ? 'bg-emerald-500' :
+                                matchIndicator === 'medium' ? 'bg-amber-500' :
+                                'bg-slate-400'
+                              }`} />
+                              <div className="flex-1 min-w-0">
+                                <div className="font-mono text-[10px] text-slate-700 truncate">{bestMatch.accountNo}</div>
+                                <div className="text-[9px] text-slate-500 truncate">{bestMatch.name}</div>
+                              </div>
+                              <Badge variant="outline" className={`text-[8px] px-1 py-0 shrink-0 ${
+                                matchIndicator === 'high' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                                matchIndicator === 'medium' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                                'bg-slate-100 text-slate-600 border-slate-200'
+                              }`}>{bestMatch.confidence}%</Badge>
+                            </button>
+                          ) : !tx.billingAllocated && suggestions[tx.posItem_ID] !== undefined ? (
+                            <span className="text-[10px] text-slate-400 italic">No match</span>
+                          ) : !tx.billingAllocated ? (
+                            <span className="text-[10px] text-slate-300">—</span>
+                          ) : null}
                         </td>
-                        <td className="px-4 py-2.5 text-right">
+                        <td className="px-3 py-2.5 text-right">
                           <span className="font-mono text-xs font-semibold text-slate-800">R {(tx.amount || 0).toFixed(2)}</span>
                         </td>
-                        <td className="px-4 py-2.5 text-center">
+                        <td className="px-3 py-2.5 text-center">
                           {tx.billingAllocated ? (
                             <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]">Allocated</Badge>
                           ) : (
                             <Badge variant="secondary" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px]">Unmatched</Badge>
                           )}
                         </td>
-                        <td className="px-4 py-2.5 text-right">
+                        <td className="px-3 py-2.5 text-right">
                           {!tx.billingAllocated && (
                             <div className="flex items-center justify-end gap-1">
                               <Button
@@ -770,14 +971,13 @@ export default function UnmatchedQueue() {
                                 ) : null}
                                 Allocate <ArrowRight className="w-3 h-3" />
                               </Button>
-                              <HelpTip text="Open the allocation form to assign this deposit to one or more consumer accounts." side="left" />
                             </div>
                           )}
                         </td>
                       </tr>
                       {expandedSuggestion === tx.posItem_ID && (
                         <tr>
-                          <td colSpan={7} className="p-0">
+                          <td colSpan={8} className="p-0">
                             <SuggestionPanel
                               posItemId={tx.posItem_ID}
                               suggestions={suggestions[tx.posItem_ID]}
@@ -790,7 +990,7 @@ export default function UnmatchedQueue() {
                         </tr>
                       )}
                     </React.Fragment>
-                  ))}
+                  );})}
                 </tbody>
               </table>
               </div>
@@ -827,6 +1027,58 @@ export default function UnmatchedQueue() {
               </div>
             )}
           </div>
+
+          {selectedIds.size > 0 && (
+            <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-3 duration-200">
+              <div className="flex items-center gap-3 bg-[#1a1a2e] text-white rounded-2xl shadow-2xl px-4 sm:px-5 py-3 border border-white/10 backdrop-blur-xl">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-[var(--pos-accent)] flex items-center justify-center">
+                    <CheckSquare className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold">{selectedItems.length} selected</div>
+                    <div className="text-[10px] text-white/60 font-mono">R {selectedTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</div>
+                  </div>
+                </div>
+                <div className="w-px h-8 bg-white/20" />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-9 text-xs text-white hover:bg-white/10 gap-1.5 px-3"
+                  onClick={runAutoMatchSelected}
+                  disabled={autoMatchRunning}
+                  data-testid="button-auto-match-selected"
+                >
+                  {autoMatchRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5 text-amber-400" />}
+                  Auto-Match
+                </Button>
+                {selectedWithMatch.length > 0 && (
+                  <Button
+                    size="sm"
+                    className="h-9 text-xs bg-emerald-600 hover:bg-emerald-700 gap-1.5 px-3"
+                    onClick={() => {
+                      const first = selectedWithMatch[0];
+                      const match = getBestMatch(first.posItem_ID);
+                      if (match) handleAllocateClick(first.posItem_ID, undefined, match);
+                    }}
+                    data-testid="button-allocate-matched"
+                  >
+                    <ArrowRight className="w-3.5 h-3.5" />
+                    {selectedWithMatch.length === 1 ? 'Allocate Match' : `Allocate Next (1 of ${selectedWithMatch.length})`}
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-9 w-9 p-0 text-white/60 hover:text-white hover:bg-white/10"
+                  onClick={() => setSelectedIds(new Set())}
+                  data-testid="button-clear-selection"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </PosLayout>
