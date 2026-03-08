@@ -2119,8 +2119,8 @@ export default function UnmatchedQueue() {
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="font-mono text-xs font-semibold text-slate-800">{m.accountNo}</span>
                               <Badge variant="outline" className={`text-[8px] px-1.5 py-0 font-bold ${ind === 'high' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : ind === 'medium' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>{m.confidence}%</Badge>
-                              {m.statusDesc && m.statusDesc !== 'Active' && (
-                                <Badge variant="outline" className="text-[7px] px-1 py-0 border-red-200 text-red-600 bg-red-50">{m.statusDesc}</Badge>
+                              {m.statusDesc && (
+                                <Badge variant="outline" className={`text-[7px] px-1 py-0 ${m.statusDesc === 'Active' ? 'border-emerald-200 text-emerald-600 bg-emerald-50' : 'border-red-200 text-red-600 bg-red-50'}`}>{m.statusDesc}</Badge>
                               )}
                               {amtCmp && <Badge variant="outline" className={`text-[7px] px-1 py-0 ${amtCmp.bgColor} ${amtCmp.color} border`}>{amtCmp.label}</Badge>}
                             </div>
@@ -2317,8 +2317,8 @@ export default function UnmatchedQueue() {
                                         ind === 'medium' ? 'bg-amber-100 text-amber-700 border-amber-200' :
                                         'bg-slate-100 text-slate-600 border-slate-200'
                                       }`}>{m.confidence}%</Badge>
-                                      {m.statusDesc && m.statusDesc !== 'Active' && (
-                                        <Badge variant="outline" className="text-[7px] px-1 py-0 border-red-200 text-red-600 bg-red-50">{m.statusDesc}</Badge>
+                                      {m.statusDesc && (
+                                        <Badge variant="outline" className={`text-[7px] px-1 py-0 ${m.statusDesc === 'Active' ? 'border-emerald-200 text-emerald-600 bg-emerald-50' : 'border-red-200 text-red-600 bg-red-50'}`}>{m.statusDesc}</Badge>
                                       )}
                                       {amtCmp && <Badge variant="outline" className={`text-[7px] px-1 py-0 ${amtCmp.bgColor} ${amtCmp.color} border`}>{amtCmp.label}</Badge>}
                                     </div>
@@ -2905,6 +2905,11 @@ export default function UnmatchedQueue() {
                 <Badge className="text-[10px]" style={{ backgroundColor: quickAllocItem.match.confidence >= 80 ? '#16a34a' : quickAllocItem.match.confidence >= 60 ? '#d97706' : '#6b7280' }}>
                   {quickAllocItem.match.confidence}%
                 </Badge>
+                {quickAllocItem.match.statusDesc && (
+                  <Badge variant="outline" className={`text-[10px] ${quickAllocItem.match.statusDesc === 'Active' ? 'border-emerald-300 text-emerald-700 bg-emerald-50' : 'border-red-300 text-red-700 bg-red-50'}`}>
+                    {quickAllocItem.match.statusDesc}
+                  </Badge>
+                )}
                 {quickAllocItem.match.erfNumber && (
                   <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-600 font-mono">ERF {quickAllocItem.match.erfNumber}</Badge>
                 )}
