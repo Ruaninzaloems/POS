@@ -2175,7 +2175,7 @@ export default function SupervisorDashboard() {
       )}
 
       <Dialog open={showVarianceHistory} onOpenChange={setShowVarianceHistory}>
-        <DialogContent className="max-w-[95vw] sm:max-w-5xl h-[90vh] flex flex-col">
+        <DialogContent className="max-w-[100vw] sm:max-w-[95vw] lg:max-w-5xl h-[100dvh] sm:h-[90vh] flex flex-col rounded-none sm:rounded-lg border-0 sm:border">
             <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
                     <TrendingUp className="w-5 h-5 text-[var(--pos-accent)]" />
@@ -2390,7 +2390,7 @@ export default function SupervisorDashboard() {
 
       {selectedShift && (
           <Dialog open={!!selectedShift} onOpenChange={() => { setSelectedShift(null); setReviewData(null); }}>
-              <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[95vh] overflow-y-auto">
+              <DialogContent className="max-w-[100vw] sm:max-w-[95vw] lg:max-w-4xl h-[100dvh] sm:h-auto sm:max-h-[95vh] overflow-y-auto rounded-none sm:rounded-lg border-0 sm:border">
                   <DialogHeader>
                       <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
                           Reconciliation Review: <span className="text-[var(--pos-accent)]">{selectedShift.cashierName}</span>

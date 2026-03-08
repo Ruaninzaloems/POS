@@ -931,7 +931,7 @@ export default function BulkAllocationProgress() {
         </Card>
 
         <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-          <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0" data-testid="dialog-job-detail">
+          <DialogContent className="max-w-[100vw] sm:max-w-[95vw] md:max-w-2xl h-[100dvh] sm:h-auto sm:max-h-[90vh] overflow-y-auto p-0 rounded-none sm:rounded-lg border-0 sm:border" data-testid="dialog-job-detail">
             {detailLoading ? (
               <div className="flex flex-col items-center justify-center py-16">
                 <div className="w-12 h-12 rounded-full bg-[var(--pos-accent-tint)] flex items-center justify-center mb-3">

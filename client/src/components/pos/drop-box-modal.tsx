@@ -124,7 +124,7 @@ export function DropBoxModal({ isOpen, onClose, triggerReason }: DropBoxModalPro
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[95vh] overflow-y-auto">
+            <DialogContent className="max-w-[100vw] sm:max-w-lg h-[100dvh] sm:h-auto sm:max-h-[95vh] overflow-y-auto rounded-none sm:rounded-lg border-0 sm:border">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
                         <Box className="w-5 h-5 text-amber-600" />

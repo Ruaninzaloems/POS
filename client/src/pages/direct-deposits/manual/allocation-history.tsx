@@ -737,7 +737,7 @@ export default function AllocationHistory() {
        </div>
 
        <Dialog open={!!selectedTx} onOpenChange={(open) => { if (!open) { setSelectedTx(null); setJobAccountDetails(null); } }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col w-[95vw] sm:w-auto">
+        <DialogContent className="max-w-[100vw] sm:max-w-2xl h-[100dvh] sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col rounded-none sm:rounded-lg border-0 sm:border">
             <DialogHeader className="border-b pb-3 sm:pb-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div>

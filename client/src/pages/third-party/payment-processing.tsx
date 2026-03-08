@@ -2663,7 +2663,7 @@ export default function ThirdPartyPaymentProcessing() {
       </div>
 
       <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-[100vw] sm:max-w-2xl h-[100dvh] sm:h-auto sm:max-h-[90vh] overflow-y-auto rounded-none sm:rounded-lg border-0 sm:border">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><Search className="h-4 w-4" /> Search & Link Account</DialogTitle>
             <DialogDescription>Find the correct consumer account to link to this transaction.</DialogDescription>
@@ -2755,7 +2755,7 @@ export default function ThirdPartyPaymentProcessing() {
       </Dialog>
 
       <Dialog open={viewOpen} onOpenChange={setViewOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-[100vw] sm:max-w-lg h-[100dvh] sm:h-auto sm:max-h-[90vh] overflow-y-auto rounded-none sm:rounded-lg border-0 sm:border">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><Eye className="h-4 w-4" /> Transaction Details</DialogTitle>
             <DialogDescription>Full details for this imported transaction.</DialogDescription>

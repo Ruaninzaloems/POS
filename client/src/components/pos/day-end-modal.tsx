@@ -337,7 +337,7 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       {dayEndStatus === 'PENDING_APPROVAL' ? (
-        <DialogContent className="sm:max-w-md p-6 rounded-xl border-0 shadow-2xl">
+        <DialogContent className="max-w-[95vw] sm:max-w-md p-6 rounded-xl border-0 shadow-2xl">
           <div className="flex flex-col items-center text-center space-y-4 py-6">
             <div className="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center">
               <AlertTriangle className="w-8 h-8" />
@@ -352,7 +352,7 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
           </div>
         </DialogContent>
       ) : (
-      <DialogContent className="sm:max-w-4xl max-h-[92vh] overflow-y-auto p-0 gap-0 rounded-xl border-0 shadow-2xl">
+      <DialogContent className="max-w-[100vw] sm:max-w-4xl h-[100dvh] sm:h-auto sm:max-h-[92vh] overflow-y-auto p-0 gap-0 rounded-none sm:rounded-xl border-0 shadow-2xl">
         <div className="bg-[linear-gradient(180deg,var(--pos-accent)_0%,var(--pos-accent-dark)_100%)] text-white px-6 py-5 rounded-t-xl">
           <div className="flex items-start justify-between">
             <div>

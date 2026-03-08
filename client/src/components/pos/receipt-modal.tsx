@@ -236,7 +236,7 @@ export function ReceiptModal() {
 
   return (
     <Dialog open={isReceiptModalOpen} onOpenChange={(open) => { if (!open && !transactionProcessing && !isPrinting) closeReceiptModal(); }}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col overflow-hidden" hideCloseButton={transactionProcessing || isPrinting} preventClose={transactionProcessing || isPrinting}>
+      <DialogContent className="max-w-[100vw] sm:max-w-md h-[100dvh] sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden rounded-none sm:rounded-lg border-0 sm:border" hideCloseButton={transactionProcessing || isPrinting} preventClose={transactionProcessing || isPrinting}>
         <DialogHeader className="items-center text-center space-y-3 pb-4 border-b flex-shrink-0">
           {transactionProcessing ? (
             (() => {

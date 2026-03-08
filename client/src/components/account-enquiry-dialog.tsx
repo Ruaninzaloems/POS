@@ -85,6 +85,8 @@ const tabColorMap: Record<string, { bg: string; border: string; text: string; ic
   teal: { bg: 'bg-white', border: 'border-[#D6D6D6]', text: 'text-slate-600', iconBg: 'bg-teal-50 text-teal-500', activeBg: 'bg-teal-50', activeBorder: 'border-teal-400 ring-1 ring-teal-200', activeText: 'text-teal-800', activeIconBg: 'bg-teal-500 text-white' },
 };
 
+const allTabs = tabGroups.flatMap(g => g.tabs);
+
 export function AccountEnquiryDialog({ open, onClose, accountId }: AccountEnquiryDialogProps) {
   const [account, setAccount] = useState<EnquirySearchResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -92,6 +94,7 @@ export function AccountEnquiryDialog({ open, onClose, accountId }: AccountEnquir
   const [activeTab, setActiveTab] = useState('account');
   const [headerBalance, setHeaderBalance] = useState<number | null>(null);
   const loadedAccountRef = useRef<string | null>(null);
+  const mobileTabsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open || !accountId) {
@@ -129,6 +132,15 @@ export function AccountEnquiryDialog({ open, onClose, accountId }: AccountEnquir
       .finally(() => setLoading(false));
   }, [open, accountId]);
 
+  useEffect(() => {
+    if (mobileTabsRef.current) {
+      const activeEl = mobileTabsRef.current.querySelector(`[data-state="active"]`);
+      if (activeEl) {
+        activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }
+  }, [activeTab]);
+
   const numericAccountId = account ? (account.account_ID || account.accountID) : 0;
   const accountNumber = account?.accountNumber || account?.oldAccountCode || String(accountId);
   const accountName = account?.name || account?.surname_Company || '';
@@ -136,11 +148,13 @@ export function AccountEnquiryDialog({ open, onClose, accountId }: AccountEnquir
   const propertyId = account?.propertyID ? Number(account.propertyID) : (account?.unitID || account?.unitPartitionID || undefined);
   const unitId = account?.unitID || undefined;
 
+  const activeTabLabel = allTabs.find(t => t.value === activeTab)?.label || 'Account';
+
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-[95vw] w-[1400px] h-[85vh] p-0 gap-0 flex flex-col overflow-hidden [&>button.absolute]:hidden" data-testid="account-enquiry-dialog">
-        <div className="shrink-0 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] px-5 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3 min-w-0">
+      <DialogContent className="max-w-[100vw] sm:max-w-[95vw] w-full sm:w-[1400px] h-[100dvh] sm:h-[85vh] p-0 gap-0 flex flex-col overflow-hidden [&>button.absolute]:hidden rounded-none sm:rounded-lg border-0 sm:border" data-testid="account-enquiry-dialog">
+        <div className="shrink-0 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] px-3 sm:px-5 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
             {accountName ? (
               <div className="shrink-0 h-9 w-9 rounded-full bg-white/20 flex items-center justify-center text-white text-sm font-bold">
                 {accountName.charAt(0).toUpperCase()}
@@ -150,40 +164,48 @@ export function AccountEnquiryDialog({ open, onClose, accountId }: AccountEnquir
                 <Loader2 className="w-4 h-4 text-white/70 animate-spin" />
               </div>
             )}
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 {accountName ? (
-                  <h2 className="text-sm font-bold text-white truncate">{accountName}</h2>
+                  <h2 className="text-sm font-bold text-white truncate max-w-[200px] sm:max-w-none">{accountName}</h2>
                 ) : (
                   <h2 className="text-sm font-medium text-white/70 truncate">Loading account...</h2>
                 )}
                 {account && (
-                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${isActive ? 'bg-white/20 text-white' : 'bg-white/10 text-white/70'}`}>
+                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold shrink-0 ${isActive ? 'bg-white/20 text-white' : 'bg-white/10 text-white/70'}`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-300' : 'bg-white/40'}`} />
                     {account.accountStatus || account.statusDesc || ''}
                   </span>
                 )}
               </div>
-              <div className="text-[11px] text-white/80 font-mono">
+              <div className="text-[11px] text-white/80 font-mono truncate">
                 Acc: {accountNumber}
                 {account?.oldAccountCode && account.oldAccountCode !== accountNumber && <span className="text-white/60"> | Old: {account.oldAccountCode}</span>}
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {headerBalance !== null && (
-              <div className="text-right">
+              <div className="text-right hidden sm:block">
                 <div className="text-[9px] uppercase tracking-wider text-white/60 font-semibold">Balance</div>
                 <div className={`text-base font-bold font-mono ${headerBalance > 0 ? 'text-red-200' : headerBalance < 0 ? 'text-emerald-200' : 'text-white'}`}>
                   R {headerBalance.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
               </div>
             )}
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-white/80 hover:text-white hover:bg-white/10" onClick={onClose} data-testid="button-close-enquiry-dialog">
+            <Button variant="ghost" size="sm" className="h-10 w-10 sm:h-8 sm:w-8 p-0 text-white/80 hover:text-white hover:bg-white/10 rounded-full" onClick={onClose} data-testid="button-close-enquiry-dialog">
               <X className="w-5 h-5" />
             </Button>
           </div>
         </div>
+
+        {headerBalance !== null && (
+          <div className="sm:hidden shrink-0 bg-gradient-to-r from-[var(--pos-accent-dark)] to-[var(--pos-accent)] px-3 pb-2.5 -mt-px">
+            <div className={`text-center font-mono font-bold text-sm ${headerBalance > 0 ? 'text-red-200' : headerBalance < 0 ? 'text-emerald-200' : 'text-white'}`}>
+              Balance: R {headerBalance.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+          </div>
+        )}
 
         {loading && (
           <div className="flex-1 flex items-center justify-center">
@@ -203,13 +225,51 @@ export function AccountEnquiryDialog({ open, onClose, accountId }: AccountEnquir
         {!loading && !error && account && (
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-              <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 py-2">
-                <TabsList className="h-auto bg-transparent p-0 w-full block">
-                  <div className="grid grid-cols-4 gap-x-4 gap-y-2">
-                    {tabGroups.map((group) => (
-                      <div key={group.heading}>
-                        <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">{group.heading}</div>
-                        <div className="flex flex-wrap gap-1">
+              <div className="shrink-0 bg-white border-b border-[#D6D6D6]">
+                <div className="hidden sm:block px-4 py-2">
+                  <TabsList className="h-auto bg-transparent p-0 w-full block">
+                    <div className="grid grid-cols-4 gap-x-4 gap-y-2">
+                      {tabGroups.map((group) => (
+                        <div key={group.heading}>
+                          <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">{group.heading}</div>
+                          <div className="flex flex-wrap gap-1">
+                            {group.tabs.map(tab => {
+                              const colors = tabColorMap[tab.color] || tabColorMap.blue;
+                              const isTabActive = activeTab === tab.value;
+                              return (
+                                <TabsTrigger
+                                  key={tab.value}
+                                  value={tab.value}
+                                  className={`
+                                    inline-flex items-center gap-1.5 px-2 py-1 rounded-md border text-[10px] font-medium
+                                    transition-all duration-150 cursor-pointer
+                                    ${isTabActive
+                                      ? `${colors.activeBg} ${colors.activeBorder} ${colors.activeText} shadow-sm font-semibold`
+                                      : `${colors.bg} ${colors.border} ${colors.text} hover:border-[#BFBFBF] hover:bg-[#F7F7F7]`
+                                    }
+                                  `}
+                                  data-testid={`dialog-tab-${tab.value}`}
+                                >
+                                  <span className={`shrink-0 w-4 h-4 rounded flex items-center justify-center transition-colors ${isTabActive ? colors.activeIconBg : colors.iconBg}`}>
+                                    {tab.icon}
+                                  </span>
+                                  {tab.label}
+                                </TabsTrigger>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </TabsList>
+                </div>
+
+                <div className="sm:hidden" ref={mobileTabsRef}>
+                  <TabsList className="h-auto bg-transparent p-0 w-full block">
+                    <div className="flex overflow-x-auto gap-1.5 px-3 py-2.5 scrollbar-thin overscroll-x-contain">
+                      {tabGroups.map((group, gi) => (
+                        <React.Fragment key={group.heading}>
+                          {gi > 0 && <div className="w-px bg-[#E5E5E5] shrink-0 my-1" />}
                           {group.tabs.map(tab => {
                             const colors = tabColorMap[tab.color] || tabColorMap.blue;
                             const isTabActive = activeTab === tab.value;
@@ -218,27 +278,27 @@ export function AccountEnquiryDialog({ open, onClose, accountId }: AccountEnquir
                                 key={tab.value}
                                 value={tab.value}
                                 className={`
-                                  inline-flex items-center gap-1.5 px-2 py-1 rounded-md border text-[10px] font-medium
-                                  transition-all duration-150 cursor-pointer
+                                  inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium
+                                  transition-all duration-150 cursor-pointer whitespace-nowrap shrink-0
                                   ${isTabActive
                                     ? `${colors.activeBg} ${colors.activeBorder} ${colors.activeText} shadow-sm font-semibold`
-                                    : `${colors.bg} ${colors.border} ${colors.text} hover:border-[#BFBFBF] hover:bg-[#F7F7F7]`
+                                    : `${colors.bg} ${colors.border} ${colors.text} active:bg-[#EBEBEB]`
                                   }
                                 `}
                                 data-testid={`dialog-tab-${tab.value}`}
                               >
-                                <span className={`shrink-0 w-4 h-4 rounded flex items-center justify-center transition-colors ${isTabActive ? colors.activeIconBg : colors.iconBg}`}>
+                                <span className={`shrink-0 w-5 h-5 rounded flex items-center justify-center transition-colors ${isTabActive ? colors.activeIconBg : colors.iconBg}`}>
                                   {tab.icon}
                                 </span>
                                 {tab.label}
                               </TabsTrigger>
                             );
                           })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </TabsList>
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  </TabsList>
+                </div>
               </div>
               <div className="flex-1 overflow-auto bg-[#F2F4F7]">
                 <TabsContent value="account" className="m-0"><TabErrorBoundary tabName="Account"><AccountInfoTab account={account} /></TabErrorBoundary></TabsContent>

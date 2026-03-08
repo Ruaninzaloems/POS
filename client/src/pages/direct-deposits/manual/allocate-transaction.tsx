@@ -1509,7 +1509,7 @@ export default function AllocateTransaction() {
         </div>
 
         <Dialog open={ledgerDialogOpen} onOpenChange={setLedgerDialogOpen}>
-          <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogContent className="max-w-[100vw] sm:max-w-3xl h-[100dvh] sm:h-auto sm:max-h-[85vh] overflow-hidden flex flex-col rounded-none sm:rounded-lg border-0 sm:border">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <BookOpen className="h-5 w-5 text-[var(--pos-accent-dark)]" />
@@ -2421,7 +2421,7 @@ export default function AllocateTransaction() {
       </div>
 
       <Dialog open={csvDialogOpen} onOpenChange={(open) => { if (!csvProcessing) { if (!open) handleCsvDialogClose(); } }}>
-        <DialogContent className="max-w-2xl max-h-[85vh] sm:max-h-[85vh] h-[calc(100vh-2rem)] sm:h-auto overflow-hidden flex flex-col mx-2 sm:mx-auto">
+        <DialogContent className="max-w-[100vw] sm:max-w-2xl h-[100dvh] sm:h-auto sm:max-h-[85vh] overflow-hidden flex flex-col rounded-none sm:rounded-lg border-0 sm:border">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileSpreadsheet className="w-5 h-5 text-[var(--pos-accent)]" />

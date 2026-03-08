@@ -192,7 +192,7 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
             onClose();
         }
     }}>
-      <DialogContent className="max-w-6xl max-h-[80vh] flex flex-col">
+      <DialogContent className="max-w-[100vw] sm:max-w-[95vw] lg:max-w-6xl h-[100dvh] sm:h-auto sm:max-h-[80vh] flex flex-col rounded-none sm:rounded-lg border-0 sm:border">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Receipt className="w-5 h-5" />
@@ -412,7 +412,7 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
 
       {/* Original Receipt Warning Dialog */}
       <Dialog open={showOriginalReceiptWarning} onOpenChange={(o) => { if (!o) { setShowOriginalReceiptWarning(false); setPendingCancelTx(null); } }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-w-[95vw] sm:max-w-md rounded-lg">
             <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 text-amber-600">
                     <FileWarning className="w-5 h-5" />
@@ -473,7 +473,7 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
 
       {/* Cancellation Reason Dialog */}
       <Dialog open={!!cancellingId} onOpenChange={(o) => !o && setCancellingId(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-w-[95vw] sm:max-w-md rounded-lg">
             <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 text-red-600">
                     <Ban className="w-5 h-5" />
