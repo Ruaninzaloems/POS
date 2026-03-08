@@ -12,7 +12,7 @@ import { HelpTip } from '@/components/ui/help-tip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { platinumGetBankReconPosItemList, platinumCheckSelectedItemProcessed, platinumSearchAccountsPayment, platinumDDAccountAutocomplete, fetchAccounts, fetchActiveFinYear } from '@/lib/external-api';
+import { platinumGetBankReconPosItemList, platinumCheckSelectedItemProcessed, platinumSearchAccountsPayment, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, fetchAccounts, fetchActiveFinYear, fetchBulkAllocationList, fetchBulkProgressJobAccountDetails } from '@/lib/external-api';
 import { usePos } from '@/lib/pos-state';
 import { useToast } from '@/hooks/use-toast';
 
@@ -39,9 +39,10 @@ interface SuggestedMatch {
   name: string;
   oldAccountCode?: string;
   outstandingAmount?: number;
-  matchType: 'account_number' | 'old_account' | 'erf_number' | 'reference' | 'meter_number';
+  matchType: 'account_number' | 'old_account' | 'erf_number' | 'reference' | 'meter_number' | 'history';
   matchDetail: string;
   confidence: number;
+  matchReasoning?: string[];
 }
 
 const AREA_ABBREVIATIONS: Record<string, string> = {
@@ -254,12 +255,83 @@ function parseDescriptionForClues(note: string, reference: string): ParsedClues 
   return { accountNumbers, meterNumbers, erfNumbers, oldAccountCodes, keywords, bankingRef, serviceType };
 }
 
+interface HistoryEntry {
+  descFingerprint: string;
+  accountId: number;
+  accountNo: string;
+  name: string;
+  allocCount: number;
+}
+let historyCachePromise: Promise<HistoryEntry[]> | null = null;
+
+function getDescFingerprint(desc: string): string {
+  return desc.toUpperCase().replace(/\d+/g, '#').replace(/\s+/g, ' ').trim();
+}
+
+function loadHistoryCache(): Promise<HistoryEntry[]> {
+  if (historyCachePromise) return historyCachePromise;
+  historyCachePromise = (async () => {
+    try {
+      const result = await fetchBulkAllocationList({
+        financialYear: '',
+        billingMonth: null,
+        process: 'All',
+        orderby: 'dateCaptured',
+        page: 1,
+        pageSize: 50,
+        shortDirection: 'desc',
+      });
+      const jobs = Array.isArray(result) ? result : result?.value || result?.items || [];
+      const completedJobs = jobs.filter((j: any) => j.job_Status === 'Completed').slice(0, 30);
+
+      const entries: HistoryEntry[] = [];
+      const seenFingerprints = new Map<string, HistoryEntry>();
+
+      const DETAIL_BATCH = 5;
+      for (let i = 0; i < Math.min(completedJobs.length, 15); i += DETAIL_BATCH) {
+        const batch = completedJobs.slice(i, i + DETAIL_BATCH);
+        const results = await Promise.allSettled(
+          batch.map((job: any) => fetchBulkProgressJobAccountDetails(job.directDepositJob_ID).then(details => ({ job, details })))
+        );
+        for (const r of results) {
+          if (r.status !== 'fulfilled') continue;
+          const { job, details } = r.value;
+          const accounts = Array.isArray(details) ? details : details?.value || [];
+          for (const acc of accounts) {
+            const accId = acc.account_ID || acc.accountID;
+            const accNo = acc.accountNumber || acc.accountNo || String(accId);
+            const name = [acc.initials, acc.lastName].filter(Boolean).join(' ') || acc.name || '';
+            const desc = job.paymentReference || '';
+            if (!desc || !accId) continue;
+            const fp = getDescFingerprint(desc);
+            const existing = seenFingerprints.get(`${fp}:${accId}`);
+            if (existing) {
+              existing.allocCount++;
+            } else {
+              const entry: HistoryEntry = { descFingerprint: fp, accountId: accId, accountNo: accNo, name, allocCount: 1 };
+              seenFingerprints.set(`${fp}:${accId}`, entry);
+              entries.push(entry);
+            }
+          }
+        }
+      }
+
+      console.log(`[HistoryCache] Loaded ${entries.length} history patterns from ${completedJobs.length} jobs`);
+      return entries;
+    } catch (err) {
+      console.error('[HistoryCache] Failed to load allocation history:', err);
+      return [];
+    }
+  })();
+  return historyCachePromise;
+}
+
 async function searchForSuggestions(note: string, reference: string): Promise<SuggestedMatch[]> {
   const clues = parseDescriptionForClues(note, reference);
   const suggestions: SuggestedMatch[] = [];
   const seenIds = new Set<number>();
 
-  const addResult = (item: any, matchType: SuggestedMatch['matchType'], matchDetail: string, confidence: number) => {
+  const addResult = (item: any, matchType: SuggestedMatch['matchType'], matchDetail: string, confidence: number, reasoning: string[]) => {
     const accId = item.account_ID || item.accountID || item.id;
     if (!accId || seenIds.has(accId)) return;
     seenIds.add(accId);
@@ -272,6 +344,7 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
       matchType,
       matchDetail,
       confidence: Math.min(confidence, 99),
+      matchReasoning: reasoning,
     });
   };
 
@@ -279,6 +352,34 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
   const unwrap = (rawData: any) => Array.isArray(rawData) ? rawData : rawData?.value || rawData?.results || [];
 
   const searchPromises: Promise<void>[] = [];
+
+  const descFp = getDescFingerprint(`${note || ''} ${reference || ''}`);
+  searchPromises.push(
+    loadHistoryCache().then((history) => {
+      const matches = history.filter(h => h.descFingerprint === descFp || descFp.includes(h.descFingerprint) || h.descFingerprint.includes(descFp));
+      matches.sort((a, b) => b.allocCount - a.allocCount);
+      for (const match of matches.slice(0, 3)) {
+        const accId = match.accountId;
+        if (!seenIds.has(accId)) {
+          seenIds.add(accId);
+          const conf = Math.min(95, 75 + (match.allocCount * 5));
+          suggestions.push({
+            accountId: accId,
+            accountNo: match.accountNo,
+            name: match.name,
+            matchType: 'history',
+            matchDetail: `Previously allocated ${match.allocCount}x to this account`,
+            confidence: conf,
+            matchReasoning: [
+              `Description pattern matches previous allocations`,
+              `This account was allocated ${match.allocCount} time(s) for similar descriptions`,
+              `History-based match — high confidence if pattern is consistent`,
+            ],
+          });
+        }
+      }
+    })
+  );
 
   for (const mtr of clues.meterNumbers.slice(0, 3)) {
     searchPromises.push(
@@ -289,7 +390,13 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
           const exactMeterMatch = meterStr.includes(mtr);
           addResult(item, 'meter_number',
             `Meter ${exactMeterMatch ? 'match' : 'ref'}: "${mtr}"${clues.serviceType ? ` (${clues.serviceType})` : ''}`,
-            exactMeterMatch ? 92 : 75
+            exactMeterMatch ? 92 : 75,
+            [
+              `Extracted "${mtr}" as meter number from description`,
+              exactMeterMatch ? `Exact meter number match found in Platinum` : `Partial meter reference found`,
+              clues.serviceType ? `Service type detected: ${clues.serviceType}` : `No specific service type detected`,
+              `Searched via DD account autocomplete API`,
+            ]
           );
         }
       })
@@ -299,7 +406,13 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
         for (const item of items.slice(0, 3)) {
           addResult(item, 'meter_number',
             `Meter number match: "${mtr}"${clues.serviceType ? ` (${clues.serviceType})` : ''}`,
-            90
+            90,
+            [
+              `Extracted "${mtr}" as meter number from description`,
+              `Exact physical meter number match in billing system`,
+              clues.serviceType ? `Service type: ${clues.serviceType}` : '',
+              `Searched via billing enquiry meter search`,
+            ].filter(Boolean)
           );
         }
       })
@@ -315,7 +428,12 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
           const exactMatch = accountNo === accNum || accountNo.endsWith(accNum) || accNum.endsWith(accountNo);
           addResult(item, 'account_number',
             `Account ${exactMatch ? 'match' : 'ref'}: "${accNum}"`,
-            exactMatch ? 90 : (accountNo.includes(accNum) ? 80 : 65)
+            exactMatch ? 90 : (accountNo.includes(accNum) ? 80 : 65),
+            [
+              `Found "${accNum}" in description text`,
+              exactMatch ? `Exact account number match` : `Partial account number match (${accountNo})`,
+              `Searched via DD autocomplete API`,
+            ]
           );
         }
       })
@@ -328,7 +446,31 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
           const nameMatch = accountNo.includes(accNum) || String(item.account_ID).includes(accNum);
           addResult(item, 'account_number',
             `Account number contains "${accNum}"`,
-            nameMatch ? 88 : 60
+            nameMatch ? 88 : 60,
+            [
+              `Extracted "${accNum}" from description`,
+              nameMatch ? `Account number ${accountNo} contains "${accNum}"` : `Loose match against "${accNum}"`,
+              `Searched via billing payment search`,
+            ]
+          );
+        }
+      })
+    );
+  }
+
+  for (const oldCode of clues.oldAccountCodes.slice(0, 3)) {
+    searchPromises.push(
+      safe(() => platinumDDOldAccountAutocomplete(oldCode)).then((rawData: any) => {
+        const items = unwrap(rawData);
+        for (const item of items.slice(0, 3)) {
+          addResult(item, 'old_account',
+            `Old account code: "${oldCode}"`,
+            78,
+            [
+              `Found "${oldCode}" matching old account code pattern in description`,
+              `Matched via DD old account autocomplete`,
+              `Old account codes are legacy references that map to current accounts`,
+            ]
           );
         }
       })
@@ -337,16 +479,62 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
 
   for (const accNum of clues.accountNumbers.slice(0, 2)) {
     searchPromises.push(
+      safe(() => platinumDDOldAccountAutocomplete(accNum)).then((rawData: any) => {
+        const items = unwrap(rawData);
+        for (const item of items.slice(0, 2)) {
+          addResult(item, 'old_account',
+            `Old account code matches "${accNum}"`,
+            75,
+            [
+              `Number "${accNum}" found in description`,
+              `Matches an old/legacy account code in the system`,
+              `This maps to a current active account`,
+            ]
+          );
+        }
+      })
+    );
+    searchPromises.push(
       safe(() => platinumSearchAccountsPayment({ oldAccountCode: accNum })).then((rawData: any) => {
         const items = unwrap(rawData);
         for (const item of items.slice(0, 2)) {
-          addResult(item, 'old_account', `Old account code matches "${accNum}"`, 75);
+          addResult(item, 'old_account', `Old account code matches "${accNum}"`, 75,
+            [
+              `Number "${accNum}" from description matches old account code`,
+              `Searched via payment account search`,
+            ]
+          );
         }
       })
     );
   }
 
   for (const erf of clues.erfNumbers.slice(0, 2)) {
+    searchPromises.push(
+      safe(() => fetchAccounts({
+        erfNumber: erf.erf,
+        ...(erf.area && erf.area !== 'george' ? { allotmentArea: erf.area } : {}),
+      })).then((items: any[]) => {
+        for (const item of items.slice(0, 3)) {
+          const hasAreaMatch = erf.area && (
+            (item.allotmentArea || '').toLowerCase().includes(erf.area) ||
+            (item.name || '').toLowerCase().includes(erf.area) ||
+            (item.address || item.locationAddress || '').toLowerCase().includes(erf.area)
+          );
+          addResult(item, 'erf_number',
+            `ERF ${erf.erf}${erf.area ? ` in ${erf.area}` : ''}${hasAreaMatch ? ' (area confirmed)' : ''}`,
+            hasAreaMatch ? 88 : 75,
+            [
+              `Found ERF number "${erf.erf}" in description`,
+              erf.area ? `Area "${erf.area}" specified in description` : `No specific area mentioned`,
+              hasAreaMatch ? `Area confirmed — allotment matches` : `Area not verified — check manually`,
+              `Searched via billing enquiry with ERF number${erf.area ? ' + allotment area' : ''}`,
+            ]
+          );
+        }
+      })
+    );
+
     const erfSearches = [`erf ${erf.erf}`];
     if (erf.area) erfSearches.push(`erf ${erf.erf} ${erf.area}`);
 
@@ -361,7 +549,12 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
             );
             addResult(item, 'erf_number',
               `Property: ERF ${erf.erf}${erf.area ? ` ${erf.area}` : ''}${hasAreaMatch ? ' (area confirmed)' : ''}`,
-              hasAreaMatch ? 80 : 70
+              hasAreaMatch ? 82 : 70,
+              [
+                `ERF "${erf.erf}" extracted from description`,
+                `Searched via payment search: "${erfSearch}"`,
+                hasAreaMatch ? `Area/name match confirmed` : `Area not confirmed in results`,
+              ]
             );
           }
         })
@@ -375,7 +568,13 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
         safe(() => platinumSearchAccountsPayment({ name: keyword })).then((rawData: any) => {
           const items = unwrap(rawData);
           for (const item of items.slice(0, 2)) {
-            addResult(item, 'reference', `Area/keyword match: "${keyword}"`, 40);
+            addResult(item, 'reference', `Area/keyword match: "${keyword}"`, 40,
+              [
+                `No specific account/meter/ERF numbers found in description`,
+                `Matched on area keyword: "${keyword}"`,
+                `Low confidence — manual verification recommended`,
+              ]
+            );
           }
         })
       );
@@ -680,7 +879,19 @@ export default function UnmatchedQueue() {
       case 'account_number': return <Hash className="w-3 h-3" />;
       case 'old_account': return <RotateCcw className="w-3 h-3" />;
       case 'erf_number': return <MapPin className="w-3 h-3" />;
+      case 'history': return <Calendar className="w-3 h-3" />;
       case 'reference': return <Building2 className="w-3 h-3" />;
+    }
+  };
+
+  const getMatchTypeLabel = (matchType: SuggestedMatch['matchType']) => {
+    switch (matchType) {
+      case 'meter_number': return 'Meter';
+      case 'account_number': return 'Account';
+      case 'old_account': return 'Old Acc';
+      case 'erf_number': return 'ERF';
+      case 'history': return 'History';
+      case 'reference': return 'Ref';
     }
   };
 
@@ -924,12 +1135,7 @@ export default function UnmatchedQueue() {
                         <div className="flex-1 min-w-0">
                           <span className="font-mono text-xs text-slate-700">{bestMatch.accountNo}</span>
                           <span className="text-[10px] text-slate-500 ml-1.5">{bestMatch.name}</span>
-                          <div className="text-[9px] text-slate-400">
-                            {bestMatch.matchType === 'meter_number' ? 'Meter' :
-                             bestMatch.matchType === 'account_number' ? 'Account' :
-                             bestMatch.matchType === 'old_account' ? 'Old Acc' :
-                             bestMatch.matchType === 'erf_number' ? 'ERF' : 'Ref'} match
-                          </div>
+                          <div className="text-[9px] text-slate-400">{getMatchTypeLabel(bestMatch.matchType)} match · {bestMatch.matchDetail}</div>
                         </div>
                         <Badge variant="outline" className={`text-[9px] px-1.5 py-0 shrink-0 ${matchInd === 'high' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>{bestMatch.confidence}%</Badge>
                         <ArrowRight className="w-3 h-3 text-slate-400 shrink-0" />
@@ -1054,12 +1260,7 @@ export default function UnmatchedQueue() {
                               <div className="flex-1 min-w-0">
                                 <div className="font-mono text-[10px] text-slate-700 truncate">{bestMatch.accountNo}</div>
                                 <div className="text-[9px] text-slate-500 truncate">{bestMatch.name}</div>
-                                <div className="text-[8px] text-slate-400 truncate">
-                                  {bestMatch.matchType === 'meter_number' ? 'Meter' :
-                                   bestMatch.matchType === 'account_number' ? 'Account' :
-                                   bestMatch.matchType === 'old_account' ? 'Old Acc' :
-                                   bestMatch.matchType === 'erf_number' ? 'ERF' : 'Ref'} match
-                                </div>
+                                <div className="text-[8px] text-slate-400 truncate">{getMatchTypeLabel(bestMatch.matchType)} match · {bestMatch.matchDetail}</div>
                               </div>
                               <Badge variant="outline" className={`text-[8px] px-1 py-0 shrink-0 ${
                                 matchIndicator === 'high' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
@@ -1254,38 +1455,55 @@ function SuggestionPanel({ posItemId, suggestions, loading, getConfidenceColor, 
       ) : (
         <div className="space-y-1.5">
           {suggestions.map((s, idx) => (
-            <div key={`${s.accountId}-${idx}`} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 bg-white/70 backdrop-blur-sm rounded-lg px-3 py-2.5 border border-amber-100/60 hover:border-amber-200 transition-colors group">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <Badge variant="outline" className={`text-[10px] px-1.5 py-0 font-bold ${getConfidenceColor(s.confidence)}`}>
-                    {s.confidence}%
-                  </Badge>
-                </div>
-                <div className="flex items-center gap-1.5 text-amber-600 shrink-0">
-                  {getMatchIcon(s.matchType)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-medium text-slate-700">{s.accountNo}</span>
-                    <span className="text-xs text-slate-500 break-words sm:truncate">{s.name}</span>
+            <div key={`${s.accountId}-${idx}`} className="bg-white/70 backdrop-blur-sm rounded-lg border border-amber-100/60 hover:border-amber-200 transition-colors group overflow-hidden">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-3 py-2.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 font-bold ${getConfidenceColor(s.confidence)}`}>
+                      {s.confidence}%
+                    </Badge>
                   </div>
-                  <div className="text-[10px] text-amber-600/80 break-words sm:truncate">{s.matchDetail}</div>
+                  <div className="flex items-center gap-1.5 text-amber-600 shrink-0">
+                    {getMatchIcon(s.matchType)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-medium text-slate-700">{s.accountNo}</span>
+                      <span className="text-xs text-slate-500 break-words sm:truncate">{s.name}</span>
+                    </div>
+                    <div className="text-[10px] text-amber-600/80 break-words sm:truncate">{s.matchDetail}</div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-end gap-2 shrink-0">
+                  {s.outstandingAmount != null && s.outstandingAmount !== 0 && (
+                    <span className="text-[10px] font-mono text-slate-500 bg-[#F7F7F7] px-1.5 py-0.5 rounded shrink-0">
+                      R {s.outstandingAmount.toFixed(2)}
+                    </span>
+                  )}
+                  <Button
+                    size="sm"
+                    className="h-9 sm:h-7 text-xs sm:text-[10px] bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-white shrink-0 px-3 sm:px-2.5 gap-1"
+                    onClick={(e) => { e.stopPropagation(); onAllocate(posItemId, s); }}
+                  >
+                    Allocate <ArrowRight className="w-3 h-3" />
+                  </Button>
                 </div>
               </div>
-              <div className="flex items-center justify-end gap-2 shrink-0">
-                {s.outstandingAmount != null && s.outstandingAmount !== 0 && (
-                  <span className="text-[10px] font-mono text-slate-500 bg-[#F7F7F7] px-1.5 py-0.5 rounded shrink-0">
-                    R {s.outstandingAmount.toFixed(2)}
-                  </span>
-                )}
-                <Button
-                  size="sm"
-                  className="h-9 sm:h-7 text-xs sm:text-[10px] bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-white shrink-0 px-3 sm:px-2.5 gap-1"
-                  onClick={(e) => { e.stopPropagation(); onAllocate(posItemId, s); }}
-                >
-                  Allocate <ArrowRight className="w-3 h-3" />
-                </Button>
-              </div>
+              {s.matchReasoning && s.matchReasoning.length > 0 && (
+                <div className="px-3 pb-2 pt-0">
+                  <div className="bg-amber-50/70 rounded-md px-2.5 py-1.5 border border-amber-100/50">
+                    <div className="text-[9px] font-semibold text-amber-700 uppercase tracking-wider mb-0.5">Match Logic</div>
+                    <ul className="space-y-0">
+                      {s.matchReasoning.map((r, ri) => (
+                        <li key={ri} className="text-[10px] text-amber-800/80 flex items-start gap-1.5">
+                          <span className="text-amber-400 mt-0.5 shrink-0">&#8226;</span>
+                          <span>{r}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
