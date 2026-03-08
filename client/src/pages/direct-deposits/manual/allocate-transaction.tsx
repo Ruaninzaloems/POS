@@ -137,12 +137,23 @@ export default function AllocateTransaction() {
         return [];
       };
 
-      const parallelTasks: Promise<void>[] = [];
+      const primaryResults: DDSearchResult[] = [];
+      const secondaryResults: DDSearchResult[] = [];
+
+      const pushResults = () => {
+        if (searchVersion !== ddSearchVersionRef.current) return;
+        const combined = [...primaryResults, ...secondaryResults].slice(0, 15);
+        setDdSearchResults(combined);
+        if (combined.length > 0) setDdDropdownOpen(true);
+      };
+
+      const primaryTasks: Promise<void>[] = [];
+      const secondaryFactories: (() => Promise<void>)[] = [];
 
       if (searchScope === 'ALL' || searchScope === 'ACCOUNT' || searchScope === 'PREPAID') {
         const resultType: 'ACCOUNT' | 'CLEARANCE' | 'DIRECT' | 'GROUP' = searchScope === 'PREPAID' ? 'ACCOUNT' : 'ACCOUNT';
         const allocType = searchScope === 'PREPAID' ? 'PREPAID' : 'ACCOUNT';
-        parallelTasks.push((async () => {
+        primaryTasks.push((async () => {
           const searchBody: Record<string, any> = {};
           if (isNumeric) {
             searchBody.accountNo = query;
@@ -150,27 +161,15 @@ export default function AllocateTransaction() {
             searchBody.name = query;
           }
 
-          let accountSearchFailed = false;
-          const searches: Promise<any>[] = [
-            platinumSearchAccountsPayment(searchBody).catch((err) => { console.error('[AllocateTransaction] Failed to search accounts:', err); accountSearchFailed = true; return []; }),
-          ];
-          if (isNumeric) {
-            searches.push(
-              platinumSearchAccountsPayment({ oldAccountCode: query }).catch((err) => { console.error('[AllocateTransaction] Failed to search by old account code:', err); return []; })
-            );
-          }
+          const accountResults = await platinumSearchAccountsPayment(searchBody).catch((err) => { console.error('[AllocateTransaction] Failed to search accounts:', err); return []; });
 
-          const [accountResults, oldAccountResults] = await Promise.all(searches);
-
-          if (accountSearchFailed && parseResults(accountResults).length === 0) {
-            toast({ title: "Account Search Failed", description: "The account search timed out or failed. Try a more specific search term.", variant: "destructive" });
-          }
-
+          let accountHits = 0;
           for (const item of parseResults(accountResults)) {
             const accId = item.account_ID || item.accountID || item.id;
             if (accId && !seen.has(accId)) {
               seen.add(accId);
-              results.push({
+              accountHits++;
+              primaryResults.push({
                 accountId: accId,
                 accountNo: item.accountNumber || item.accountNo || String(accId),
                 name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || 'Unknown',
@@ -181,13 +180,15 @@ export default function AllocateTransaction() {
               });
             }
           }
+          pushResults();
 
-          if (oldAccountResults) {
+          if (isNumeric && accountHits === 0) {
+            const oldAccountResults = await platinumSearchAccountsPayment({ oldAccountCode: query }).catch(() => []);
             for (const item of parseResults(oldAccountResults)) {
               const accId = item.account_ID || item.accountID || item.id;
               if (accId && !seen.has(accId)) {
                 seen.add(accId);
-                results.push({
+                primaryResults.push({
                   accountId: accId,
                   accountNo: item.accountNumber || item.accountNo || String(accId),
                   name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || 'Unknown',
@@ -199,69 +200,7 @@ export default function AllocateTransaction() {
                 });
               }
             }
-          }
-        })());
-      }
-
-      if (searchScope === 'ALL' || searchScope === 'CLEARANCE') {
-        if (isNumeric || searchScope === 'CLEARANCE') {
-          parallelTasks.push((async () => {
-            try {
-              if (isNumeric) {
-                const clearanceIds = await platinumSearchClearanceIds(query);
-                if (Array.isArray(clearanceIds)) {
-                  for (const formattedId of clearanceIds) {
-                    results.push({
-                      accountId: 0,
-                      accountNo: formattedId,
-                      name: `Clearance ${formattedId}`,
-                      type: 'CLEARANCE',
-                      rawData: { clearanceFormattedId: formattedId },
-                    });
-                  }
-                  return;
-                }
-              }
-              const clearanceResults = await platinumDDClearanceAutocomplete(query);
-              if (Array.isArray(clearanceResults)) {
-                for (const item of clearanceResults) {
-                  results.push({
-                    accountId: item.account_ID || item.accountId || item.id || 0,
-                    accountNo: item.accountNumber || item.certificateNo || item.displayItem || String(item.id || ''),
-                    name: item.name || item.displayItem || item.description || 'Clearance',
-                    type: 'CLEARANCE',
-                    rawData: item,
-                  });
-                }
-              }
-            } catch (err) {
-              console.error('[AllocateTransaction] Failed to search clearance IDs:', err);
-            }
-          })());
-        }
-      }
-
-      if (searchScope === 'ALL' || searchScope === 'GROUP') {
-        parallelTasks.push((async () => {
-          try {
-            const groupResults = await platinumGetGroupPaymentDetails({ searchTerm: query });
-            const groupArr = Array.isArray(groupResults) ? groupResults : (groupResults?.value || []);
-            for (const g of groupArr.slice(0, 5)) {
-              const gId = g.groupId || g.id || g.group_ID || 0;
-              if (!seen.has(gId + 100000)) {
-                seen.add(gId + 100000);
-                results.push({
-                  accountId: g.accountId || g.account_ID || 0,
-                  accountNo: g.accountNumber || g.accountNo || `GRP-${gId}`,
-                  name: g.name || g.description || g.groupName || 'Payment Group',
-                  type: 'GROUP',
-                  description: `Payment Grouping: ${g.name || g.description || g.groupName || ''}`,
-                  rawData: g,
-                });
-              }
-            }
-          } catch (err) {
-            console.error('[AllocateTransaction] Failed to search group payment details:', err);
+            pushResults();
           }
         })());
       }
@@ -273,7 +212,7 @@ export default function AllocateTransaction() {
             g.name && g.name.toLowerCase().includes(q)
           ).slice(0, 5);
           for (const g of matchedGroups) {
-            results.push({
+            primaryResults.push({
               accountId: 0,
               accountNo: `MISC-${g.id}`,
               name: g.name,
@@ -285,36 +224,121 @@ export default function AllocateTransaction() {
         }
       }
 
-      if (searchScope === 'ALL' || searchScope === 'INSTITUTION') {
-        parallelTasks.push((async () => {
-          try {
-            const institutionResults = await searchInstitutions(query);
-            for (const inst of institutionResults.slice(0, 10)) {
-              const instId = inst.institution_ID || inst.institutionID || 0;
-              if (instId && !seen.has(instId + 200000)) {
-                seen.add(instId + 200000);
-                results.push({
-                  accountId: instId,
-                  accountNo: `INST-${instId}`,
-                  name: inst.institutionDesc || inst.institutionName || 'Institution',
-                  type: 'INSTITUTION',
-                  description: `Institution: ${inst.institutionDesc || inst.institutionName || ''}`,
-                  rawData: inst,
+      const makeClearanceTask = () => async () => {
+        try {
+          if (isNumeric) {
+            const clearanceIds = await platinumSearchClearanceIds(query);
+            if (Array.isArray(clearanceIds)) {
+              for (const formattedId of clearanceIds) {
+                secondaryResults.push({
+                  accountId: 0,
+                  accountNo: formattedId,
+                  name: `Clearance ${formattedId}`,
+                  type: 'CLEARANCE',
+                  rawData: { clearanceFormattedId: formattedId },
                 });
               }
+              pushResults();
+              return;
             }
-          } catch (err) {
-            console.error('[AllocateTransaction] Failed to search institutions:', err);
-            toast({ title: "Institution Search Failed", description: "Failed to search institutions from API.", variant: "destructive" });
           }
-        })());
+          const clearanceResults = await platinumDDClearanceAutocomplete(query);
+          if (Array.isArray(clearanceResults)) {
+            for (const item of clearanceResults) {
+              secondaryResults.push({
+                accountId: item.account_ID || item.accountId || item.id || 0,
+                accountNo: item.accountNumber || item.certificateNo || item.displayItem || String(item.id || ''),
+                name: item.name || item.displayItem || item.description || 'Clearance',
+                type: 'CLEARANCE',
+                rawData: item,
+              });
+            }
+            pushResults();
+          }
+        } catch (err) {
+          console.error('[AllocateTransaction] Failed to search clearance IDs:', err);
+        }
+      };
+
+      const makeGroupTask = () => async () => {
+        try {
+          const groupResults = await platinumGetGroupPaymentDetails({ searchTerm: query });
+          const groupArr = Array.isArray(groupResults) ? groupResults : (groupResults?.value || []);
+          for (const g of groupArr.slice(0, 5)) {
+            const gId = g.groupId || g.id || g.group_ID || 0;
+            if (!seen.has(gId + 100000)) {
+              seen.add(gId + 100000);
+              secondaryResults.push({
+                accountId: g.accountId || g.account_ID || 0,
+                accountNo: g.accountNumber || g.accountNo || `GRP-${gId}`,
+                name: g.name || g.description || g.groupName || 'Payment Group',
+                type: 'GROUP',
+                description: `Payment Grouping: ${g.name || g.description || g.groupName || ''}`,
+                rawData: g,
+              });
+            }
+          }
+          pushResults();
+        } catch (err) {
+          console.error('[AllocateTransaction] Failed to search group payment details:', err);
+        }
+      };
+
+      const makeInstitutionTask = () => async () => {
+        try {
+          const institutionResults = await searchInstitutions(query);
+          for (const inst of institutionResults.slice(0, 10)) {
+            const instId = inst.institution_ID || inst.institutionID || 0;
+            if (instId && !seen.has(instId + 200000)) {
+              seen.add(instId + 200000);
+              secondaryResults.push({
+                accountId: instId,
+                accountNo: `INST-${instId}`,
+                name: inst.institutionDesc || inst.institutionName || 'Institution',
+                type: 'INSTITUTION',
+                description: `Institution: ${inst.institutionDesc || inst.institutionName || ''}`,
+                rawData: inst,
+              });
+            }
+          }
+          pushResults();
+        } catch (err) {
+          console.error('[AllocateTransaction] Failed to search institutions:', err);
+        }
+      };
+
+      if (searchScope === 'ALL' || searchScope === 'CLEARANCE') {
+        if (isNumeric || searchScope === 'CLEARANCE') {
+          if (searchScope === 'CLEARANCE') {
+            primaryTasks.push(makeClearanceTask()());
+          } else {
+            secondaryFactories.push(makeClearanceTask());
+          }
+        }
       }
 
-      await Promise.all(parallelTasks);
+      if (searchScope === 'ALL' || searchScope === 'GROUP') {
+        if (searchScope === 'GROUP') {
+          primaryTasks.push(makeGroupTask()());
+        } else {
+          secondaryFactories.push(makeGroupTask());
+        }
+      }
 
-      if (searchVersion !== ddSearchVersionRef.current) return;
-      setDdSearchResults(results.slice(0, 15));
-      setDdDropdownOpen(results.length > 0);
+      if (searchScope === 'ALL' || searchScope === 'INSTITUTION') {
+        if (searchScope === 'INSTITUTION') {
+          primaryTasks.push(makeInstitutionTask()());
+        } else {
+          secondaryFactories.push(makeInstitutionTask());
+        }
+      }
+
+      await Promise.all(primaryTasks);
+      pushResults();
+
+      if (secondaryFactories.length > 0 && searchVersion === ddSearchVersionRef.current) {
+        Promise.all(secondaryFactories.map(f => f())).then(() => pushResults()).catch(() => {});
+      }
     } catch (err) {
       console.error('DD search error:', err);
       if (searchVersion === ddSearchVersionRef.current) setDdSearchResults([]);
@@ -327,7 +351,7 @@ export default function AllocateTransaction() {
     setDdSearchQuery(value);
     if (ddSearchTimerRef.current) clearTimeout(ddSearchTimerRef.current);
     if (value.length >= 2) {
-      ddSearchTimerRef.current = setTimeout(() => performDDSearch(value), 250);
+      ddSearchTimerRef.current = setTimeout(() => performDDSearch(value), 150);
     } else {
       setDdSearchResults([]);
       setDdDropdownOpen(false);
