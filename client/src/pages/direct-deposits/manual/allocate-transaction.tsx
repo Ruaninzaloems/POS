@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { ArrowLeft, Plus, Trash2, CheckCircle, AlertCircle, Upload, X, Loader2, Search, Banknote, Building2, FileCheck, Receipt, CreditCard, RotateCcw, FileSpreadsheet, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Download, Eye, Zap, Landmark } from 'lucide-react';
-import { AllocationLine, Account, ClearanceCostSchedule, platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, createDDVirtualSession, closeDDVirtualSession, platinumLoadDetailsPaymentGrouping, platinumLoadDetailsPaymentGroupingInstitutionData, platinumLoadDetailsConsumerServices, platinumLoadConfirmPaymentDetails, platinumLoadDetailsClearance, platinumGetClearanceDetailsInfo, platinumGetConsumerDetailsData, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, platinumDDClearanceAutocomplete, platinumSearchClearanceIds, platinumGetClearanceData, platinumGetGroupPaymentDetails, fetchMiscPaymentGroups, rebuildFullAccount, platinumSearchAccountsPayment, fetchActiveFinYear, fetchPlatinumUserInfo, searchInstitutions, fetchAccountsByGroup, submitDDAllocationBatch, pollDDAllocationJob } from '@/lib/external-api';
+import { ArrowLeft, Plus, Trash2, CheckCircle, AlertCircle, Upload, X, Loader2, Search, Banknote, Building2, FileCheck, Receipt, CreditCard, RotateCcw, FileSpreadsheet, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Download, Eye, Zap, Landmark, Printer, BookOpen } from 'lucide-react';
+import { AllocationLine, Account, ClearanceCostSchedule, platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, createDDVirtualSession, closeDDVirtualSession, platinumLoadDetailsPaymentGrouping, platinumLoadDetailsPaymentGroupingInstitutionData, platinumLoadDetailsConsumerServices, platinumLoadConfirmPaymentDetails, platinumLoadDetailsClearance, platinumGetClearanceDetailsInfo, platinumGetConsumerDetailsData, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, platinumDDClearanceAutocomplete, platinumSearchClearanceIds, platinumGetClearanceData, platinumGetGroupPaymentDetails, fetchMiscPaymentGroups, rebuildFullAccount, platinumSearchAccountsPayment, fetchActiveFinYear, fetchPlatinumUserInfo, searchInstitutions, fetchAccountsByGroup, submitDDAllocationBatch, pollDDAllocationJob, platinumPrintReceiptRaw, getReceiptTransactionDetail } from '@/lib/external-api';
 import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import { AccountEnquiryDialog } from '@/components/account-enquiry-dialog';
@@ -55,7 +55,12 @@ export default function AllocateTransaction() {
   const [postingTotalSteps, setPostingTotalSteps] = useState(0);
   const [postingErrors, setPostingErrors] = useState<string[]>([]);
   const [postComplete, setPostComplete] = useState(false);
-  const [completedLines, setCompletedLines] = useState<{ accountNo: string; accountId?: number; description: string; amount: number; allocationType: string }[]>([]);
+  const [completedLines, setCompletedLines] = useState<{ accountNo: string; accountId?: number; description: string; amount: number; allocationType: string; receiptId?: number | null; depositMasterId?: number | null }[]>([]);
+  const [ledgerDialogOpen, setLedgerDialogOpen] = useState(false);
+  const [ledgerData, setLedgerData] = useState<any>(null);
+  const [ledgerLoading, setLedgerLoading] = useState(false);
+  const [ledgerTitle, setLedgerTitle] = useState('');
+  const [printingReceiptId, setPrintingReceiptId] = useState<number | null>(null);
   const [lines, setLines] = useState<AllocationLine[]>([]);
   const [linesPage, setLinesPage] = useState(1);
   const LINES_PER_PAGE = 10;
@@ -1215,6 +1220,8 @@ export default function AllocateTransaction() {
                           description: lines.find(l => l.accountNo === r.accountNo)?.description || '',
                           amount: r.amount,
                           allocationType: r.allocationType,
+                          receiptId: r.apiResponse?.receiptId || null,
+                          depositMasterId: r.apiResponse?.depositMasterId || null,
                       }));
 
                       if (successfulLines.length > 0) {
@@ -1270,6 +1277,45 @@ export default function AllocateTransaction() {
       }
   };
 
+  const handlePrintReceipt = async (receiptId: number | number[]) => {
+    const displayId = Array.isArray(receiptId) ? receiptId[0] : receiptId;
+    setPrintingReceiptId(displayId);
+    try {
+      const response = await platinumPrintReceiptRaw(receiptId);
+      if (!response.ok) {
+        toast({ title: 'Print Failed', description: `Could not fetch receipt PDF (HTTP ${response.status})`, variant: 'destructive' });
+        return;
+      }
+      const blob = await response.blob();
+      if (blob.size < 100) {
+        toast({ title: 'Print Failed', description: 'Receipt PDF is empty — the API may not have generated it yet.', variant: 'destructive' });
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+    } catch (e: any) {
+      toast({ title: 'Print Error', description: e?.message || 'Failed to print receipt', variant: 'destructive' });
+    } finally {
+      setPrintingReceiptId(null);
+    }
+  };
+
+  const handleViewLedger = async (receiptId: number, lineLabel: string) => {
+    setLedgerTitle(lineLabel);
+    setLedgerDialogOpen(true);
+    setLedgerLoading(true);
+    setLedgerData(null);
+    try {
+      const data = await getReceiptTransactionDetail(receiptId);
+      setLedgerData(data);
+    } catch (e: any) {
+      toast({ title: 'Ledger Error', description: e?.message || 'Failed to fetch ledger postings', variant: 'destructive' });
+      setLedgerData(null);
+    } finally {
+      setLedgerLoading(false);
+    }
+  };
+
   if (loadingTx) return (
     <PosLayout>
       <div className="flex-1 flex items-center justify-center">
@@ -1296,6 +1342,7 @@ export default function AllocateTransaction() {
   if (postComplete && transaction) {
     const accountLines = completedLines.filter(l => l.allocationType === 'ACCOUNT' || l.allocationType === 'PREPAID' || l.allocationType === 'CLEARANCE');
     const totalAllocated = completedLines.reduce((sum, l) => sum + l.amount, 0);
+    const linesWithReceipts = completedLines.filter(l => l.receiptId && l.receiptId > 0);
 
     return (
       <PosLayout>
@@ -1337,36 +1384,91 @@ export default function AllocateTransaction() {
 
               {completedLines.length > 0 && (
                 <div className="bg-white rounded-xl border border-[#E0E0E0] shadow-sm overflow-hidden">
-                  <div className="px-4 py-3 bg-[#F7F7F7] border-b flex items-center gap-2">
-                    <div className="h-5 w-1 bg-[var(--pos-accent)] rounded-full"></div>
-                    <h3 className="text-sm font-medium text-slate-800">Allocated Lines</h3>
-                    <span className="text-xs text-muted-foreground">— click View Enquiry to verify the payment on an account</span>
+                  <div className="px-4 py-3 bg-[#F7F7F7] border-b flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="h-5 w-1 bg-[var(--pos-accent)] rounded-full"></div>
+                      <h3 className="text-sm font-medium text-slate-800">Allocated Lines</h3>
+                      <span className="text-xs text-muted-foreground hidden sm:inline">— view receipts, ledger postings, or account enquiry</span>
+                    </div>
+                    {linesWithReceipts.length > 1 && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 h-7 text-xs"
+                        onClick={() => {
+                          const receiptIds = linesWithReceipts.map(l => l.receiptId!);
+                          handlePrintReceipt(receiptIds);
+                        }}
+                        disabled={printingReceiptId !== null}
+                        data-testid="button-print-all-receipts"
+                      >
+                        {printingReceiptId !== null ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Printer className="h-3 w-3" />
+                        )}
+                        Print All ({linesWithReceipts.length}) Receipts
+                      </Button>
+                    )}
                   </div>
                   <div className="divide-y">
                     {completedLines.map((line, i) => (
-                      <div key={i} className="px-4 py-3 flex items-center justify-between hover:bg-[#FAFAFA]" data-testid={`row-completed-line-${i}`}>
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center shrink-0">
-                            {line.allocationType === 'ACCOUNT' || line.allocationType === 'PREPAID' ? (
-                              <Building2 className="h-4 w-4 text-green-700" />
-                            ) : line.allocationType === 'CLEARANCE' ? (
-                              <FileCheck className="h-4 w-4 text-green-700" />
-                            ) : line.allocationType === 'GROUP' ? (
-                              <CreditCard className="h-4 w-4 text-green-700" />
-                            ) : (
-                              <Receipt className="h-4 w-4 text-green-700" />
-                            )}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-mono font-medium text-slate-800">{line.accountNo || '-'}</span>
-                              <Badge variant="outline" className="text-[10px]">{line.allocationType}</Badge>
+                      <div key={i} className="px-4 py-3 hover:bg-[#FAFAFA]" data-testid={`row-completed-line-${i}`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center shrink-0">
+                              {line.allocationType === 'ACCOUNT' || line.allocationType === 'PREPAID' ? (
+                                <Building2 className="h-4 w-4 text-green-700" />
+                              ) : line.allocationType === 'CLEARANCE' ? (
+                                <FileCheck className="h-4 w-4 text-green-700" />
+                              ) : line.allocationType === 'GROUP' ? (
+                                <CreditCard className="h-4 w-4 text-green-700" />
+                              ) : (
+                                <Receipt className="h-4 w-4 text-green-700" />
+                              )}
                             </div>
-                            <p className="text-xs text-muted-foreground truncate">{line.description || '-'}</p>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-mono font-medium text-slate-800">{line.accountNo || '-'}</span>
+                                <Badge variant="outline" className="text-[10px]">{line.allocationType}</Badge>
+                                {line.receiptId && line.receiptId > 0 && (
+                                  <Badge variant="secondary" className="text-[10px] bg-blue-50 text-blue-700">Receipt #{line.receiptId}</Badge>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground truncate">{line.description || '-'}</p>
+                            </div>
                           </div>
+                          <span className="text-sm font-mono font-semibold text-slate-800 shrink-0 ml-2">R {line.amount.toFixed(2)}</span>
                         </div>
-                        <div className="flex items-center gap-3 shrink-0">
-                          <span className="text-sm font-mono font-semibold text-slate-800">R {line.amount.toFixed(2)}</span>
+                        <div className="flex items-center gap-2 mt-2 ml-11 flex-wrap">
+                          {line.receiptId && line.receiptId > 0 && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="gap-1.5 h-7 text-xs"
+                                onClick={() => handlePrintReceipt(line.receiptId!)}
+                                disabled={printingReceiptId === line.receiptId}
+                                data-testid={`button-print-receipt-${i}`}
+                              >
+                                {printingReceiptId === line.receiptId ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Printer className="h-3 w-3" />
+                                )}
+                                Print Receipt
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="gap-1.5 h-7 text-xs"
+                                onClick={() => handleViewLedger(line.receiptId!, `${line.allocationType} ${line.accountNo} — R ${line.amount.toFixed(2)}`)}
+                                data-testid={`button-view-ledger-${i}`}
+                              >
+                                <BookOpen className="h-3 w-3" /> View Ledger
+                              </Button>
+                            </>
+                          )}
                           {(line.allocationType === 'ACCOUNT' || line.allocationType === 'PREPAID' || line.allocationType === 'CLEARANCE') && line.accountNo && line.accountNo !== '-' && (
                             <Button
                               size="sm"
@@ -1377,6 +1479,9 @@ export default function AllocateTransaction() {
                             >
                               <Eye className="h-3 w-3" /> View Enquiry
                             </Button>
+                          )}
+                          {!line.receiptId && (
+                            <span className="text-xs text-muted-foreground italic">No receipt generated by API</span>
                           )}
                         </div>
                       </div>
@@ -1397,6 +1502,81 @@ export default function AllocateTransaction() {
             </div>
           </div>
         </div>
+
+        <Dialog open={ledgerDialogOpen} onOpenChange={setLedgerDialogOpen}>
+          <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-[var(--pos-accent-dark)]" />
+                Ledger Postings
+              </DialogTitle>
+              <DialogDescription>{ledgerTitle}</DialogDescription>
+            </DialogHeader>
+            <div className="flex-1 overflow-auto min-h-0">
+              {ledgerLoading && (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  <span className="ml-3 text-sm text-muted-foreground">Loading ledger postings...</span>
+                </div>
+              )}
+              {!ledgerLoading && !ledgerData && (
+                <div className="text-center py-12 text-muted-foreground">
+                  <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No ledger data available for this receipt.</p>
+                  <p className="text-xs mt-1">The API may not have generated the ledger postings yet.</p>
+                </div>
+              )}
+              {!ledgerLoading && ledgerData && typeof ledgerData === 'string' && (
+                <div className="p-4">
+                  <pre className="text-xs font-mono whitespace-pre-wrap text-slate-800 bg-[#F7F7F7] rounded-lg p-4 border">{ledgerData}</pre>
+                </div>
+              )}
+              {!ledgerLoading && ledgerData && Array.isArray(ledgerData) && ledgerData.length > 0 && (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="bg-[#F7F7F7] border-b">
+                        {Object.keys(ledgerData[0]).map((key) => (
+                          <th key={key} className="px-3 py-2 text-left text-xs font-medium text-slate-600 uppercase tracking-wider whitespace-nowrap">
+                            {key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim()}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {ledgerData.map((row: any, ri: number) => (
+                        <tr key={ri} className="hover:bg-[#FAFAFA]">
+                          {Object.values(row).map((val: any, ci: number) => (
+                            <td key={ci} className="px-3 py-2 text-xs whitespace-nowrap">
+                              {val === null || val === undefined ? '-' :
+                                typeof val === 'number' ? val.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) :
+                                String(val)}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {!ledgerLoading && ledgerData && typeof ledgerData === 'object' && !Array.isArray(ledgerData) && (
+                <div className="space-y-2 p-4">
+                  {Object.entries(ledgerData).map(([key, val]: [string, any]) => (
+                    <div key={key} className="flex justify-between items-center py-1 border-b border-dashed last:border-0">
+                      <span className="text-xs font-medium text-slate-600">{key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim()}</span>
+                      <span className="text-xs text-slate-800 font-mono">
+                        {val === null || val === undefined ? '-' :
+                          typeof val === 'number' ? val.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) :
+                          String(val)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <AccountEnquiryDialog
           open={enquiryAccountId !== null}
           onClose={() => setEnquiryAccountId(null)}
