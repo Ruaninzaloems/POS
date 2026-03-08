@@ -375,11 +375,15 @@ function parseDescriptionForClues(note: string, reference: string): ParsedClues 
     }
   }
 
+  const BANKING_NOISE = new Set(['FNB', 'OB', 'PMT', 'ABSA', 'STD', 'STANDARD', 'NEDBANK', 'CAPITEC', 'EFT', 'INT', 'CREDIT',
+    'DEBIT', 'REF', 'INV', 'USER', 'MAGTAPE', 'GENERAL', 'DOM', 'INTERNET', 'PAYMENT', 'DEPOSIT',
+    'ONTEC', 'ACC', 'ACCOUNT', 'MTR', 'METER', 'ERF', 'SEQ', 'NO', 'NR', 'THE', 'AND', 'OF',
+    'FOR', 'TO', 'IN', 'AT', 'BANK', 'TRANSFER', 'FNBO', 'INVESTEC', 'CASHFOCUS', 'GEORGE', 'MUNICIPALITY', 'MUNICIPAL']);
   if (isBankingDesc && cleanNote.length >= 5) {
     const stripped = cleanNote.replace(/\b(FNB|ABSA|STD|STANDARD|NEDBANK|CAPITEC|FNBO|OB|PMT|EFT|INT|INTERNET|PAYMENT|DOM|MAGTAPE|CREDIT|DEBIT|REF)\b/gi, '')
       .replace(/\d{4,}/g, '').replace(/[\/\\]/g, ' ').trim();
-    const nameWords = stripped.split(/[\s,&]+/).map(w => w.replace(/[^A-Za-z'-]/g, '')).filter(w => w.length >= 3 && !NOISE_WORDS.has(w.toUpperCase()));
-    if (nameWords.length >= 2 && nameWords.length <= 5) {
+    const nameWords = stripped.split(/[\s,&]+/).map(w => w.replace(/[^A-Za-z'-]/g, '')).filter(w => w.length >= 3 && !BANKING_NOISE.has(w.toUpperCase()));
+    if (nameWords.length >= 1 && nameWords.length <= 5) {
       const fullName = nameWords.join(' ');
       if (!nameSearchTerms.includes(fullName)) nameSearchTerms.push(fullName);
       const longestWord = nameWords.reduce((a, b) => a.length >= b.length ? a : b);
@@ -1019,6 +1023,41 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
               [
                 `Description "${nameTerm}" appears to be a person's name`,
                 `Searched consumer accounts by name`,
+                surnameExact ? `Surname "${surnameFromSearch}" matches exactly` : `Partial name match on: ${matchedParts.join(', ')}`,
+                matchedParts.length >= 2 ? `Multiple name parts matched — higher confidence` : `Single name component matched — verify carefully`,
+                `Account holder: "${itemName}"`,
+              ]
+            );
+          }
+        }
+      })
+    );
+    searchPromises.push(
+      safe(() => billingEnquirySearch({ name: nameTerm })).then((items: any[]) => {
+        for (const item of items.slice(0, 5)) {
+          const lastName = item.surname_Company || item.lastName || '';
+          const itemName = item.name || [item.initials, lastName].filter(Boolean).join(' ') || '';
+          const nameTokens = tokenize(itemName);
+          const searchWords = nameTerm.toUpperCase().split(/[\s,&]+/).filter((w: string) => w.length >= 2);
+          let nameMatchScore = 0;
+          let matchedParts: string[] = [];
+          for (const word of searchWords) {
+            if (tokenMatchesWord(nameTokens, word)) {
+              nameMatchScore += word.length >= 4 ? 15 : 8;
+              matchedParts.push(word);
+            }
+          }
+          const surnameFromSearch = searchWords[searchWords.length - 1] || '';
+          const surnameExact = surnameFromSearch.length >= 3 && lastName.toUpperCase() === surnameFromSearch;
+          if (surnameExact) nameMatchScore += 20;
+          const confidence = Math.min(85, 45 + nameMatchScore);
+          if (matchedParts.length > 0) {
+            addResult({ ...item, account_ID: item.account_ID || item.accountID, lastName }, 'name',
+              `Name match: "${nameTerm}" → ${matchedParts.join(', ')}`,
+              confidence,
+              [
+                `Description "${nameTerm}" appears to be a name or company`,
+                `Searched via billing enquiry`,
                 surnameExact ? `Surname "${surnameFromSearch}" matches exactly` : `Partial name match on: ${matchedParts.join(', ')}`,
                 matchedParts.length >= 2 ? `Multiple name parts matched — higher confidence` : `Single name component matched — verify carefully`,
                 `Account holder: "${itemName}"`,
