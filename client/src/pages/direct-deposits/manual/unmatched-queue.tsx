@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, ArrowRight, Filter, FileSpreadsheet, FileText, X, HelpCircle, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Sparkles, Building2, MapPin, Hash, RefreshCw, ChevronDown, ChevronUp, Calendar, Banknote, RotateCcw, CheckSquare, Zap, Users, Check, Info, Clock } from 'lucide-react';
+import { Search, ArrowRight, Filter, FileSpreadsheet, FileText, X, HelpCircle, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Sparkles, Building2, MapPin, Hash, RefreshCw, ChevronDown, ChevronUp, Calendar, Banknote, RotateCcw, CheckSquare, Zap, Users, Check, Info, Clock, Landmark, Shield } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { format, parseISO, isWithinInterval, startOfDay, endOfDay, isValid } from 'date-fns';
 import { Label } from '@/components/ui/label';
@@ -13,7 +13,7 @@ import { HelpTip } from '@/components/ui/help-tip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { platinumGetBankReconPosItemList, platinumCheckSelectedItemProcessed, platinumSearchAccountsPayment, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, fetchAccounts, fetchActiveFinYear, fetchBulkAllocationList, fetchBulkProgressJobAccountDetails, submitDDAllocationBatch, pollDDAllocationJob, searchByBankStatementNote, fetchMiscPaymentGroups } from '@/lib/external-api';
+import { platinumGetBankReconPosItemList, platinumCheckSelectedItemProcessed, platinumSearchAccountsPayment, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, fetchAccounts, fetchActiveFinYear, fetchBulkAllocationList, fetchBulkProgressJobAccountDetails, submitDDAllocationBatch, pollDDAllocationJob, searchByBankStatementNote, fetchMiscPaymentGroups, fetchInstitutions, platinumDDClearanceAutocomplete, platinumGetClearanceData } from '@/lib/external-api';
 import { autocomplete as billingAutocomplete, searchAccounts as billingEnquirySearch, getAccountBalance } from '@/lib/enquiries-service';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { usePos } from '@/lib/pos-state';
@@ -43,7 +43,7 @@ interface SuggestedMatch {
   name: string;
   oldAccountCode?: string;
   outstandingAmount?: number;
-  matchType: 'account_number' | 'old_account' | 'erf_number' | 'reference' | 'meter_number' | 'history' | 'name' | 'direct_income';
+  matchType: 'account_number' | 'old_account' | 'erf_number' | 'reference' | 'meter_number' | 'history' | 'name' | 'direct_income' | 'institution' | 'clearance';
   matchDetail: string;
   confidence: number;
   matchReasoning?: string[];
@@ -63,6 +63,14 @@ interface SuggestedMatch {
   bankStatementPrior?: { receiptNo: string; paidAmount: number; date: string; status: string }[];
   miscPaymentGroupId?: number;
   miscPaymentGroupName?: string;
+  institutionId?: number;
+  institutionName?: string;
+  clearanceId?: string;
+  costScheduleId?: number;
+  clearanceTotalDue?: number;
+  clearanceStatus?: string;
+  clearanceSgNumber?: string;
+  clearanceAccountName?: string;
 }
 
 function parseSgNumber(sg: string | undefined | null): { erf?: string; portion?: string; allotment?: string } {
@@ -472,7 +480,21 @@ function loadMiscGroupsCache(): Promise<{ id: number; name: string }[]> {
   return miscGroupsCachePromise;
 }
 
-async function searchForSuggestions(note: string, reference: string): Promise<SuggestedMatch[]> {
+let institutionsCachePromise: Promise<{ id: number; name: string }[]> | null = null;
+function loadInstitutionsCache(): Promise<{ id: number; name: string }[]> {
+  if (institutionsCachePromise) return institutionsCachePromise;
+  institutionsCachePromise = fetchInstitutions().then((items: any[]) =>
+    items.map(i => ({ id: i.institutionId || i.Id || i.id, name: i.institutionName || i.Description || i.name || '' }))
+      .filter(i => i.id && i.name)
+  ).catch((err) => {
+    console.error('[Institutions] Failed to load:', err);
+    institutionsCachePromise = null;
+    return [];
+  });
+  return institutionsCachePromise;
+}
+
+async function searchForSuggestions(note: string, reference: string, transactionAmount?: number): Promise<SuggestedMatch[]> {
   const clues = parseDescriptionForClues(note, reference);
   const suggestions: SuggestedMatch[] = [];
   const seenIds = new Set<number>();
@@ -487,6 +509,8 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
       case 'name': return 'Name/Company';
       case 'reference': return 'Reference/Keyword';
       case 'direct_income': return 'Direct Income';
+      case 'institution': return 'Institution/Group';
+      case 'clearance': return 'Clearance';
       default: return mt;
     }
   };
@@ -1126,6 +1150,167 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
     })
   );
 
+  searchPromises.push(
+    safe(async () => {
+      const institutions = await loadInstitutionsCache();
+      if (institutions.length === 0) return;
+      const combinedText = `${note || ''} ${reference || ''}`.toLowerCase();
+      const words = combinedText.split(/[\s,&.\-\/]+/).filter(w => w.length >= 3);
+      for (const inst of institutions) {
+        const instName = inst.name.toLowerCase();
+        const instWords = instName.split(/[\s,&.\-\/]+/).filter(w => w.length >= 3);
+        let matchScore = 0;
+        const matchedWords: string[] = [];
+        for (const iw of instWords) {
+          if (words.some(w => w.includes(iw) || iw.includes(w))) {
+            matchScore += iw.length >= 5 ? 20 : 10;
+            matchedWords.push(iw);
+          }
+        }
+        if (matchedWords.length > 0 && matchScore >= 10) {
+          const conf = Math.min(75, 35 + matchScore);
+          suggestions.push({
+            accountId: -(100000 + inst.id),
+            accountNo: `INST-${inst.id}`,
+            name: inst.name,
+            matchType: 'institution',
+            matchDetail: `Institution/Payment Group: "${inst.name}" (matched: ${matchedWords.join(', ')})`,
+            confidence: conf,
+            matchReasoning: [
+              `Description keywords matched Institution/Payment Group: "${inst.name}"`,
+              `Matched words: ${matchedWords.join(', ')}`,
+              `Click to allocate as Institution/Group payment`,
+            ],
+            institutionId: inst.id,
+            institutionName: inst.name,
+            matchSources: ['Institution/Group'],
+          });
+        }
+      }
+    })
+  );
+
+  searchPromises.push(
+    safe(async () => {
+      const combinedText = `${note || ''} ${reference || ''}`.toUpperCase();
+      const clrIdPatterns = combinedText.match(/\b(?:CLR|CLEAR|CLEARANCE)[\s\-_:]*(\d{3,10})\b/gi) || [];
+      const csIdPatterns = combinedText.match(/\b(?:CS|COST\s*SCHED(?:ULE)?|SCHEDULE)[\s\-_:]*(\d{3,10})\b/gi) || [];
+      const allNumericIds: string[] = [];
+      for (const p of [...clrIdPatterns, ...csIdPatterns]) {
+        const m = p.match(/(\d{3,10})/);
+        if (m) allNumericIds.push(m[1]);
+      }
+
+      const clearanceSearchTerms: string[] = [];
+      for (const id of allNumericIds) clearanceSearchTerms.push(id);
+      const clueAccNums = clues.accountNumbers || [];
+      for (const acc of clueAccNums.slice(0, 2)) clearanceSearchTerms.push(acc);
+      if (clues.erfNumbers?.length) {
+        for (const e of clues.erfNumbers.slice(0, 2)) {
+          const erfStr = typeof e === 'string' ? e : e.erf;
+          if (erfStr) clearanceSearchTerms.push(erfStr);
+        }
+      }
+
+      if (clearanceSearchTerms.length === 0) return;
+
+      const uniqueTerms = [...new Set(clearanceSearchTerms)].slice(0, 4);
+      const clearanceResults: any[] = [];
+
+      await Promise.allSettled(
+        uniqueTerms.map(term =>
+          safe(() => platinumDDClearanceAutocomplete(term)).then((rawData: any) => {
+            const items = Array.isArray(rawData) ? rawData : [];
+            clearanceResults.push(...items.slice(0, 5));
+          })
+        )
+      );
+
+      if (clearanceResults.length === 0) return;
+
+      const seenClr = new Set<string>();
+      for (const clrItem of clearanceResults) {
+        const clrId = clrItem.clearanceId || clrItem.clearance_ID || clrItem.clearanceFormattedId || clrItem.costSchedule_ID || clrItem.costScheduleID || '';
+        const clrKey = String(clrId);
+        if (!clrKey || seenClr.has(clrKey)) continue;
+        seenClr.add(clrKey);
+
+        let clearanceData: any = null;
+        try {
+          clearanceData = await platinumGetClearanceData(clrKey);
+        } catch {}
+
+        if (!clearanceData) continue;
+        const items = clearanceData.items || (Array.isArray(clearanceData) ? clearanceData : [clearanceData]);
+        const firstItem = items[0];
+        if (!firstItem) continue;
+
+        const totalDue = firstItem.totalDue ?? firstItem.total ?? firstItem.totalAmount ?? 0;
+        const paid = firstItem.paid ?? firstItem.paidAmount ?? 0;
+        const remaining = totalDue - paid;
+        const status = (firstItem.status || firstItem.statusDesc || '').toUpperCase();
+        const sgNumber = firstItem.sgNumber || firstItem.sg_Number || '';
+        const accountName = firstItem.accountName || firstItem.name || '';
+        const locationAddress = firstItem.locationAddress || firstItem.address || '';
+        const costScheduleID = firstItem.costScheduleID || firstItem.costSchedule_ID || firstItem.id || 0;
+
+        const isApproved = status.includes('APPROV') || status.includes('ACTIVE') || status.includes('ISSUED') || status === '';
+
+        let confidence = 50;
+        const reasoning: string[] = [`Clearance ID: ${clrKey}`, `Status: ${status || 'Unknown'}`];
+
+        if (isApproved) {
+          confidence += 10;
+          reasoning.push('Cost schedule is in approved/active status');
+        }
+
+        if (transactionAmount && remaining > 0) {
+          const amtDiff = Math.abs(transactionAmount - remaining);
+          const amtPct = remaining > 0 ? amtDiff / remaining : 1;
+          if (amtPct < 0.01) {
+            confidence += 30;
+            reasoning.push(`Transaction amount R ${transactionAmount.toFixed(2)} matches remaining R ${remaining.toFixed(2)} exactly`);
+          } else if (amtPct < 0.05) {
+            confidence += 20;
+            reasoning.push(`Transaction amount R ${transactionAmount.toFixed(2)} close to remaining R ${remaining.toFixed(2)} (${(amtPct * 100).toFixed(1)}% diff)`);
+          } else if (transactionAmount <= remaining) {
+            confidence += 10;
+            reasoning.push(`Transaction amount R ${transactionAmount.toFixed(2)} is partial payment of remaining R ${remaining.toFixed(2)}`);
+          }
+        }
+
+        if (allNumericIds.some(id => clrKey.includes(id) || id.includes(clrKey.replace(/^0+/, '')))) {
+          confidence += 15;
+          reasoning.push('Clearance/schedule ID found in description');
+        }
+
+        const conf = Math.min(95, confidence);
+        const displayId = clrKey.replace(/^0+/, '') || clrKey;
+        const uniqueAccId = -(200000 + (Number(costScheduleID) || Math.abs(clrKey.split('').reduce((a, c) => a + c.charCodeAt(0), 0))));
+
+        suggestions.push({
+          accountId: uniqueAccId,
+          accountNo: `CLR-${displayId}`,
+          name: accountName || `Clearance ${displayId}`,
+          matchType: 'clearance',
+          matchDetail: `Clearance ${displayId}: ${accountName || 'N/A'} — Due R ${(remaining ?? totalDue).toFixed(2)}`,
+          confidence: conf,
+          matchReasoning: reasoning,
+          outstandingAmount: remaining ?? totalDue,
+          address: locationAddress,
+          sgNumber: sgNumber || undefined,
+          clearanceId: clrKey,
+          costScheduleId: Number(costScheduleID) || 0,
+          clearanceTotalDue: totalDue,
+          clearanceStatus: status,
+          clearanceSgNumber: sgNumber,
+          clearanceAccountName: accountName,
+          matchSources: ['Clearance'],
+        });
+      }
+    })
+  );
+
   const ensureStrArr = (v: any): string[] =>
     Array.isArray(v) ? v.filter((x: any) => typeof x === 'string' && x.trim()) : [];
   const norm = (s: string) => s.trim().toLowerCase().replace(/[\s\-\/]+/g, '');
@@ -1469,7 +1654,8 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
     const v = obj?.totalOutStanding ?? obj?.totalOutstanding ?? obj?.totalBalance ?? obj?.outStandingAmt ?? obj?.outstandingAmount ?? obj?.balance;
     return v != null ? (parseFloat(v) || 0) : 0;
   };
-  const needsBalance = top.filter(s => s.matchType !== 'direct_income' && (s.outstandingAmount === 0 || s.outstandingAmount == null));
+  const specialTypes = new Set(['direct_income', 'institution', 'clearance']);
+  const needsBalance = top.filter(s => !specialTypes.has(s.matchType) && (s.outstandingAmount === 0 || s.outstandingAmount == null));
   if (needsBalance.length > 0) {
     await Promise.allSettled(
       needsBalance.map(s =>
@@ -1688,9 +1874,10 @@ export default function UnmatchedQueue() {
 
   const selectedItems = useMemo(() => filtered.filter(i => selectedIds.has(i.posItem_ID)), [filtered, selectedIds]);
   const selectedTotal = selectedItems.reduce((s, i) => s + (i.amount || 0), 0);
+  const specialMatchTypes = new Set(['direct_income', 'institution', 'clearance']);
   const selectedWithMatch = selectedItems.filter(i => {
     const s = suggestions[i.posItem_ID];
-    return s && s.length > 0 && s[0].confidence >= 55;
+    return s && s.length > 0 && s[0].confidence >= 55 && !specialMatchTypes.has(s[0].matchType);
   });
 
   const selectedMatchQuality = useMemo(() => {
@@ -1744,7 +1931,7 @@ export default function UnmatchedQueue() {
       });
       await Promise.all(batch.map(async (item) => {
         try {
-          const results = await searchForSuggestions(item.note, item.reference);
+          const results = await searchForSuggestions(item.note, item.reference, item.amount);
           setSuggestions(prev => ({ ...prev, [item.posItem_ID]: results }));
           if (results.length > 0 && results[0].confidence >= 60) stats.matched++;
           else stats.noMatch++;
@@ -2165,12 +2352,12 @@ export default function UnmatchedQueue() {
   const bulkLowConfCount = bulkAllocItems.filter(i => i.match.confidence < 60).length;
   const bulkAmendedCount = bulkAllocItems.filter(i => i.amended).length;
 
-  const findMatch = async (posItemId: number, note: string, reference: string) => {
+  const findMatch = async (posItemId: number, note: string, reference: string, amount?: number) => {
     if (suggestions[posItemId] || loadingSuggestions.has(posItemId)) return;
 
     setLoadingSuggestions(prev => new Set(prev).add(posItemId));
     try {
-      const results = await searchForSuggestions(note, reference);
+      const results = await searchForSuggestions(note, reference, amount);
       setSuggestions(prev => ({ ...prev, [posItemId]: results }));
     } catch (err) {
       console.error("Failed to get suggestions:", err);
@@ -2221,6 +2408,8 @@ export default function UnmatchedQueue() {
       case 'reference': return <Building2 className="w-3 h-3" />;
       case 'name': return <Users className="w-3 h-3" />;
       case 'direct_income': return <Banknote className="w-3 h-3" />;
+      case 'institution': return <Landmark className="w-3 h-3" />;
+      case 'clearance': return <Shield className="w-3 h-3" />;
     }
   };
 
@@ -2234,6 +2423,8 @@ export default function UnmatchedQueue() {
       case 'reference': return 'Ref';
       case 'name': return 'Name';
       case 'direct_income': return 'Income';
+      case 'institution': return 'Group';
+      case 'clearance': return 'Clearance';
     }
   };
 
@@ -2472,19 +2663,24 @@ export default function UnmatchedQueue() {
                       const allMatches = suggestions[tx.posItem_ID] || [];
                       const renderMobileCard = (m: SuggestedMatch, isPrimary: boolean) => {
                         const isDI = m.matchType === 'direct_income';
-                        const ind = isDI ? 'income' : m.confidence >= 80 ? 'high' : m.confidence >= 60 ? 'medium' : 'low';
-                        const amtCmp = isDI ? null : getAmountComparison(tx.amount, m.outstandingAmount);
+                        const isInst = m.matchType === 'institution';
+                        const isClr = m.matchType === 'clearance';
+                        const isSpecial = isDI || isInst || isClr;
+                        const ind = isDI ? 'income' : isInst ? 'inst' : isClr ? 'clr' : m.confidence >= 80 ? 'high' : m.confidence >= 60 ? 'medium' : 'low';
+                        const amtCmp = isSpecial ? null : getAmountComparison(tx.amount, m.outstandingAmount);
                         return (
                         <button
                           key={m.accountId}
                           className={`flex items-start gap-2.5 w-full px-3 py-2.5 rounded-xl border mb-1.5 text-left transition-all hover:shadow-sm ${
                             isDI ? 'bg-violet-50/60 border-violet-200' :
+                            isInst ? 'bg-teal-50/60 border-teal-200' :
+                            isClr ? 'bg-cyan-50/60 border-cyan-200' :
                             ind === 'high' ? 'bg-emerald-50/60 border-emerald-200' :
                             ind === 'medium' ? 'bg-amber-50/60 border-amber-200' :
                             'bg-slate-50/60 border-slate-200'
                           } ${!isPrimary ? 'opacity-80' : ''}`}
                           onClick={() => {
-                            if (isDI) {
+                            if (isSpecial) {
                               handleAllocateClick(tx.posItem_ID);
                             } else {
                               handleAllocateClick(tx.posItem_ID, undefined, m);
@@ -2493,6 +2689,8 @@ export default function UnmatchedQueue() {
                         >
                           <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
                             isDI ? 'bg-violet-100 text-violet-600' :
+                            isInst ? 'bg-teal-100 text-teal-600' :
+                            isClr ? 'bg-cyan-100 text-cyan-600' :
                             ind === 'high' ? 'bg-emerald-100 text-emerald-600' :
                             ind === 'medium' ? 'bg-amber-100 text-amber-600' :
                             'bg-slate-100 text-slate-500'
@@ -2503,16 +2701,23 @@ export default function UnmatchedQueue() {
                             <div className="flex items-center gap-1.5 flex-wrap">
                               {isDI ? (
                                 <span className="text-xs font-semibold text-violet-700">Direct Income</span>
+                              ) : isInst ? (
+                                <span className="text-xs font-semibold text-teal-700">Institution/Group</span>
+                              ) : isClr ? (
+                                <span className="text-xs font-semibold text-cyan-700">{m.clearanceId ? `Clearance ${m.clearanceId.replace(/^0+/, '')}` : 'Clearance'}</span>
                               ) : (
                                 <span className="font-mono text-xs font-semibold text-slate-800">{m.accountNo}</span>
                               )}
-                              <Badge variant="outline" className={`text-[8px] px-1.5 py-0 font-bold ${isDI ? 'bg-violet-100 text-violet-700 border-violet-200' : ind === 'high' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : ind === 'medium' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>{m.confidence}%</Badge>
-                              {!isDI && m.statusDesc && (
+                              <Badge variant="outline" className={`text-[8px] px-1.5 py-0 font-bold ${isDI ? 'bg-violet-100 text-violet-700 border-violet-200' : isInst ? 'bg-teal-100 text-teal-700 border-teal-200' : isClr ? 'bg-cyan-100 text-cyan-700 border-cyan-200' : ind === 'high' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : ind === 'medium' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>{m.confidence}%</Badge>
+                              {!isSpecial && m.statusDesc && (
                                 <Badge variant="outline" className={`text-[7px] px-1 py-0 ${m.statusDesc === 'Active' ? 'border-emerald-200 text-emerald-600 bg-emerald-50' : 'border-red-200 text-red-600 bg-red-50'}`}>{m.statusDesc}</Badge>
+                              )}
+                              {isClr && m.clearanceStatus && (
+                                <Badge variant="outline" className={`text-[7px] px-1 py-0 ${m.clearanceStatus.includes('APPROV') || m.clearanceStatus.includes('ACTIVE') ? 'border-emerald-200 text-emerald-600 bg-emerald-50' : 'border-amber-200 text-amber-600 bg-amber-50'}`}>{m.clearanceStatus}</Badge>
                               )}
                               {amtCmp && <Badge variant="outline" className={`text-[7px] px-1 py-0 ${amtCmp.bgColor} ${amtCmp.color} border`}>{amtCmp.label}</Badge>}
                             </div>
-                            <div className={`text-[11px] font-medium mt-0.5 ${isDI ? 'text-violet-700' : 'text-slate-700'}`}>{m.miscPaymentGroupName || m.name}</div>
+                            <div className={`text-[11px] font-medium mt-0.5 ${isDI ? 'text-violet-700' : isInst ? 'text-teal-700' : isClr ? 'text-cyan-700' : 'text-slate-700'}`}>{m.institutionName || m.miscPaymentGroupName || m.clearanceAccountName || m.name}</div>
                             {m.address && (
                               <div className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
                                 <MapPin className="w-2.5 h-2.5 shrink-0" />{m.address}
@@ -2539,9 +2744,14 @@ export default function UnmatchedQueue() {
                                 ))}
                               </div>
                             )}
-                            {m.matchType !== 'direct_income' && m.outstandingAmount != null && (
+                            {!isSpecial && m.outstandingAmount != null && (
                               <div className={`text-[10px] font-mono mt-1 ${m.outstandingAmount > 0 ? 'text-red-600' : m.outstandingAmount < 0 ? 'text-emerald-600' : 'text-slate-500'}`}>
                                 Balance: <strong>R {m.outstandingAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</strong>
+                              </div>
+                            )}
+                            {isClr && m.clearanceTotalDue != null && (
+                              <div className="text-[10px] font-mono mt-1 text-cyan-700">
+                                Amount Due: <strong>R {(m.outstandingAmount ?? m.clearanceTotalDue).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</strong>
                               </div>
                             )}
                             {m.bankStatementPrior && m.bankStatementPrior.length > 0 && (
@@ -2568,7 +2778,7 @@ export default function UnmatchedQueue() {
                               );
                             })()}
                           </div>
-                          <span className="text-[8px] text-green-600 font-bold shrink-0 mt-1">Quick Allocate →</span>
+                          <span className={`text-[8px] font-bold shrink-0 mt-1 ${isClr ? 'text-cyan-600' : isInst ? 'text-teal-600' : isDI ? 'text-violet-600' : 'text-green-600'}`}>{isSpecial ? 'Allocate →' : 'Quick Allocate →'}</span>
                         </button>
                         );
                       };
@@ -2596,7 +2806,7 @@ export default function UnmatchedQueue() {
                       <div className="flex items-center gap-2">
                         <span className="font-mono font-bold text-sm text-slate-800">R {(tx.amount || 0).toFixed(2)}</span>
                         {!tx.billingAllocated && (
-                          <Button size="sm" className="h-11 text-xs bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] px-3" disabled={checkingItemId === tx.posItem_ID} onClick={(e) => { const bestM = suggestions[tx.posItem_ID]?.[0]; handleAllocateClick(tx.posItem_ID, e, bestM); }} data-testid={`button-allocate-mobile-${tx.posItem_ID}`}>
+                          <Button size="sm" className="h-11 text-xs bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] px-3" disabled={checkingItemId === tx.posItem_ID} onClick={(e) => { const bestM = suggestions[tx.posItem_ID]?.[0]; const isSpecialMatch = bestM && (bestM.matchType === 'direct_income' || bestM.matchType === 'institution' || bestM.matchType === 'clearance'); handleAllocateClick(tx.posItem_ID, e, isSpecialMatch ? undefined : bestM); }} data-testid={`button-allocate-mobile-${tx.posItem_ID}`}>
                             {checkingItemId === tx.posItem_ID ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <>Allocate <ArrowRight className="ml-1 w-3.5 h-3.5" /></>}
                           </Button>
                         )}
@@ -2680,19 +2890,24 @@ export default function UnmatchedQueue() {
                             const showMultiple = allMatches.length > 1;
                             const renderMatchCard = (m: SuggestedMatch, isPrimary: boolean) => {
                               const isDI = m.matchType === 'direct_income';
-                              const ind = isDI ? 'income' : m.confidence >= 80 ? 'high' : m.confidence >= 60 ? 'medium' : 'low';
-                              const amtCmp = isDI ? null : getAmountComparison(tx.amount, m.outstandingAmount);
+                              const isInst = m.matchType === 'institution';
+                              const isClr = m.matchType === 'clearance';
+                              const isSpecial = isDI || isInst || isClr;
+                              const ind = isDI ? 'income' : isInst ? 'inst' : isClr ? 'clr' : m.confidence >= 80 ? 'high' : m.confidence >= 60 ? 'medium' : 'low';
+                              const amtCmp = isSpecial ? null : getAmountComparison(tx.amount, m.outstandingAmount);
                               return (
                                 <button
                                   key={m.accountId}
                                   className={`flex items-start gap-2 px-2.5 py-2 rounded-lg border text-left w-full transition-all hover:border-[var(--pos-accent)] hover:shadow-sm ${
                                     isDI ? 'bg-violet-50/60 border-violet-200' :
+                                    isInst ? 'bg-teal-50/60 border-teal-200' :
+                                    isClr ? 'bg-cyan-50/60 border-cyan-200' :
                                     ind === 'high' ? 'bg-emerald-50/60 border-emerald-200' :
                                     ind === 'medium' ? 'bg-amber-50/60 border-amber-200' :
                                     'bg-slate-50/60 border-slate-200'
                                   } ${!isPrimary ? 'opacity-80 hover:opacity-100' : ''}`}
                                   onClick={() => {
-                                    if (isDI) {
+                                    if (isSpecial) {
                                       handleAllocateClick(tx.posItem_ID);
                                     } else {
                                       handleAllocateClick(tx.posItem_ID, undefined, m);
@@ -2702,6 +2917,8 @@ export default function UnmatchedQueue() {
                                 >
                                   <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 mt-0.5 ${
                                     isDI ? 'bg-violet-100 text-violet-600' :
+                                    isInst ? 'bg-teal-100 text-teal-600' :
+                                    isClr ? 'bg-cyan-100 text-cyan-600' :
                                     ind === 'high' ? 'bg-emerald-100 text-emerald-600' :
                                     ind === 'medium' ? 'bg-amber-100 text-amber-600' :
                                     'bg-slate-100 text-slate-500'
@@ -2712,21 +2929,30 @@ export default function UnmatchedQueue() {
                                     <div className="flex items-center gap-1.5 flex-wrap">
                                       {isDI ? (
                                         <span className="text-[11px] font-semibold text-violet-700">Direct Income</span>
+                                      ) : isInst ? (
+                                        <span className="text-[11px] font-semibold text-teal-700">Institution/Group</span>
+                                      ) : isClr ? (
+                                        <span className="text-[11px] font-semibold text-cyan-700">{m.clearanceId ? `Clearance ${m.clearanceId.replace(/^0+/, '')}` : 'Clearance'}</span>
                                       ) : (
                                         <span className="font-mono text-[11px] font-semibold text-slate-800">{m.accountNo}</span>
                                       )}
                                       <Badge variant="outline" className={`text-[8px] px-1.5 py-0 font-bold ${
                                         isDI ? 'bg-violet-100 text-violet-700 border-violet-200' :
+                                        isInst ? 'bg-teal-100 text-teal-700 border-teal-200' :
+                                        isClr ? 'bg-cyan-100 text-cyan-700 border-cyan-200' :
                                         ind === 'high' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
                                         ind === 'medium' ? 'bg-amber-100 text-amber-700 border-amber-200' :
                                         'bg-slate-100 text-slate-600 border-slate-200'
                                       }`}>{m.confidence}%</Badge>
-                                      {!isDI && m.statusDesc && (
+                                      {!isSpecial && m.statusDesc && (
                                         <Badge variant="outline" className={`text-[7px] px-1 py-0 ${m.statusDesc === 'Active' ? 'border-emerald-200 text-emerald-600 bg-emerald-50' : 'border-red-200 text-red-600 bg-red-50'}`}>{m.statusDesc}</Badge>
+                                      )}
+                                      {isClr && m.clearanceStatus && (
+                                        <Badge variant="outline" className={`text-[7px] px-1 py-0 ${m.clearanceStatus.includes('APPROV') || m.clearanceStatus.includes('ACTIVE') ? 'border-emerald-200 text-emerald-600 bg-emerald-50' : 'border-amber-200 text-amber-600 bg-amber-50'}`}>{m.clearanceStatus}</Badge>
                                       )}
                                       {amtCmp && <Badge variant="outline" className={`text-[7px] px-1 py-0 ${amtCmp.bgColor} ${amtCmp.color} border`}>{amtCmp.label}</Badge>}
                                     </div>
-                                    <div className={`text-[11px] font-medium mt-0.5 ${isDI ? 'text-violet-700' : 'text-slate-700'}`}>{m.miscPaymentGroupName || m.name}</div>
+                                    <div className={`text-[11px] font-medium mt-0.5 ${isDI ? 'text-violet-700' : isInst ? 'text-teal-700' : isClr ? 'text-cyan-700' : 'text-slate-700'}`}>{m.institutionName || m.miscPaymentGroupName || m.clearanceAccountName || m.name}</div>
                                     {m.address && (
                                       <div className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
                                         <MapPin className="w-2.5 h-2.5 shrink-0" />{m.address}{m.town ? `, ${m.town}` : ''}
@@ -2753,9 +2979,14 @@ export default function UnmatchedQueue() {
                                         ))}
                                       </div>
                                     )}
-                                    {m.matchType !== 'direct_income' && m.outstandingAmount != null && (
+                                    {!isSpecial && m.outstandingAmount != null && (
                                       <div className={`text-[10px] font-mono mt-1 ${m.outstandingAmount > 0 ? 'text-red-600' : m.outstandingAmount < 0 ? 'text-emerald-600' : 'text-slate-500'}`}>
                                         Balance: <strong>R {m.outstandingAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</strong>
+                                      </div>
+                                    )}
+                                    {isClr && m.clearanceTotalDue != null && (
+                                      <div className="text-[10px] font-mono mt-1 text-cyan-700">
+                                        Amount Due: <strong>R {(m.outstandingAmount ?? m.clearanceTotalDue).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</strong>
                                       </div>
                                     )}
                                     {m.bankStatementPrior && m.bankStatementPrior.length > 0 && (
@@ -2784,7 +3015,7 @@ export default function UnmatchedQueue() {
                                     })()}
                                   </div>
                                   <div className="flex flex-col items-end gap-1 shrink-0 ml-1">
-                                    <span className="text-[8px] text-green-600 font-bold whitespace-nowrap">Quick Allocate →</span>
+                                    <span className={`text-[8px] font-bold whitespace-nowrap ${isClr ? 'text-cyan-600' : isInst ? 'text-teal-600' : isDI ? 'text-violet-600' : 'text-green-600'}`}>{isSpecial ? 'Allocate →' : 'Quick Allocate →'}</span>
                                   </div>
                                 </button>
                               );
@@ -2831,7 +3062,7 @@ export default function UnmatchedQueue() {
                                 size="sm"
                                 variant="outline"
                                 className={`h-8 text-xs gap-1.5 px-3 ${loadingSuggestions.has(tx.posItem_ID) ? 'text-amber-600 border-amber-300 animate-pulse' : autoMatchQueued.has(tx.posItem_ID) ? 'text-slate-400 border-slate-200' : 'text-slate-500 hover:text-amber-600 hover:border-amber-300'}`}
-                                onClick={(e) => { e.stopPropagation(); findMatch(tx.posItem_ID, tx.note, tx.reference); }}
+                                onClick={(e) => { e.stopPropagation(); findMatch(tx.posItem_ID, tx.note, tx.reference, tx.amount); }}
                                 disabled={autoMatchQueued.has(tx.posItem_ID)}
                                 data-testid={`button-suggest-${tx.posItem_ID}`}
                               >
