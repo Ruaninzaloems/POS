@@ -290,6 +290,7 @@ function FieldAutocompleteInput({ fieldKey, placeholder, value, onChange, onSele
   const [suggestions, setSuggestions] = useState<{ displayItem: string; accountId: number }[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [openUpward, setOpenUpward] = useState(false);
   const debRef = useRef<NodeJS.Timeout | null>(null);
   const tokenRef = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -315,6 +316,10 @@ function FieldAutocompleteInput({ fieldKey, placeholder, value, onChange, onSele
         const items = await autocomplete(val.trim(), acType);
         if (tokenRef.current !== tok) return;
         setSuggestions(items.slice(0, 25));
+        if (containerRef.current) {
+          const rect = containerRef.current.getBoundingClientRect();
+          setOpenUpward(rect.bottom > window.innerHeight * 0.6);
+        }
         setOpen(true);
         const withIds = items.filter(s => s.accountId && s.accountId > 0);
         const uniqueIds = Array.from(new Set(withIds.map(s => s.accountId))).slice(0, 5);
@@ -350,14 +355,24 @@ function FieldAutocompleteInput({ fieldKey, placeholder, value, onChange, onSele
         placeholder={placeholder}
         value={value}
         onChange={(e) => handleChange(e.target.value)}
-        onFocus={() => { if (suggestions.length > 0) setOpen(true); }}
+        onFocus={() => {
+          if (suggestions.length > 0) {
+            if (containerRef.current) {
+              const rect = containerRef.current.getBoundingClientRect();
+              setOpenUpward(rect.bottom > window.innerHeight * 0.6);
+            }
+            setOpen(true);
+          }
+        }}
         onKeyDown={(e) => { if (e.key === 'Enter') { setOpen(false); onEnter(); } if (e.key === 'Escape') setOpen(false); }}
         className="w-full h-11 sm:h-8 px-2.5 sm:px-2 text-xs rounded-lg sm:rounded border border-slate-300 bg-white placeholder:text-slate-400 focus:outline-none focus:ring-2 sm:focus:ring-1 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] transition-colors"
         data-testid={`input-field-${fieldKey}`}
       />
       {loading && <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[var(--pos-accent)] animate-spin" />}
       {open && suggestions.length > 0 && (
-        <div className="absolute left-0 top-full mt-0.5 bg-white border border-[#D6D6D6] rounded-lg shadow-xl z-50 max-h-[280px] overflow-y-auto overscroll-contain min-w-[280px] sm:min-w-[320px]">
+        <div
+          className={`absolute left-0 bg-white border border-[#D6D6D6] rounded-lg shadow-xl z-[100] max-h-[280px] overflow-y-auto overscroll-contain min-w-[280px] sm:min-w-[320px] ${openUpward ? 'bottom-full mb-0.5' : 'top-full mt-0.5'}`}
+        >
           <div className="sticky top-0 bg-slate-50 border-b border-[#D6D6D6] px-2.5 py-1 text-[10px] text-slate-500 font-medium">{suggestions.length} suggestion{suggestions.length !== 1 ? 's' : ''}</div>
           {suggestions.map((s, i) => (
             <button
@@ -1228,7 +1243,7 @@ function GeneralEnquiriesContent() {
             </div>
           )}
 
-          <div className="mt-2 border border-[#D6D6D6] rounded-xl sm:rounded-lg bg-[#F7F7F7]/50 overflow-hidden">
+          <div className="mt-2 border border-[#D6D6D6] rounded-xl sm:rounded-lg bg-[#F7F7F7]/50 overflow-visible">
             <button
               onClick={() => {
                 setFieldSearchOpen(prev => !prev);
