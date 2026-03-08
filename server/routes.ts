@@ -3724,6 +3724,302 @@ export async function registerRoutes(
     }
   });
 
+  interface DDBatchLineResult {
+    lineIndex: number;
+    accountNo: string;
+    allocationType: string;
+    amount: number;
+    status: 'SUCCESS' | 'FAILED';
+    error?: string;
+    apiResponse?: any;
+  }
+
+  interface DDBatchJob {
+    jobId: string;
+    posItemId: number;
+    status: 'PROCESSING' | 'COMPLETED' | 'PARTIAL_FAILURE' | 'FAILED';
+    totalLines: number;
+    completedLines: number;
+    failedLines: number;
+    currentLine: string;
+    results: DDBatchLineResult[];
+    errors: string[];
+    createdAt: number;
+  }
+
+  const ddBatchJobs = new Map<string, DDBatchJob>();
+
+  setInterval(() => {
+    const ONE_HOUR = 60 * 60 * 1000;
+    const STALE_PROCESSING_TIMEOUT = 15 * 60 * 1000;
+    const now = Date.now();
+    for (const [jobId, job] of ddBatchJobs.entries()) {
+      if (job.status === 'PROCESSING' && now - job.createdAt > STALE_PROCESSING_TIMEOUT) {
+        job.status = 'FAILED';
+        job.currentLine = 'Job timed out (stale processing)';
+        job.errors.push('Server-side processing exceeded maximum time limit');
+        console.warn(`[DD Batch] Marked stale job ${jobId} as FAILED`);
+      }
+      if (now - job.createdAt > ONE_HOUR && job.status !== 'PROCESSING') {
+        ddBatchJobs.delete(jobId);
+      }
+    }
+  }, 10 * 60 * 1000);
+
+  app.post("/api/dd-allocation/submit-batch", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const { posItemId, reconId, financialYear, transactionDate, transactionNote, lines } = req.body;
+
+      if (!posItemId || !reconId || !financialYear || !transactionDate || !Array.isArray(lines) || lines.length === 0) {
+        return res.status(400).json({ message: "Missing required fields: posItemId, reconId, financialYear, transactionDate, lines" });
+      }
+
+      const serverUserId = session.userData?.user_ID;
+      if (!serverUserId || serverUserId <= 0) {
+        return res.status(400).json({ message: "Could not determine user ID from session." });
+      }
+
+      const jobId = `dd-${posItemId}-${Date.now()}`;
+
+      for (const [, existingJob] of ddBatchJobs.entries()) {
+        if (existingJob.posItemId === posItemId && existingJob.status === 'PROCESSING') {
+          return res.status(409).json({
+            message: "A batch job for this POS item is already being processed.",
+            jobId: existingJob.jobId,
+          });
+        }
+      }
+
+      const job: DDBatchJob = {
+        jobId,
+        posItemId,
+        status: 'PROCESSING',
+        totalLines: lines.filter((l: any) => l.allocationType !== 'CASHBOOK' && l.accountNo !== 'CASHBOOK-RTN').length,
+        completedLines: 0,
+        failedLines: 0,
+        currentLine: 'Starting...',
+        results: [],
+        errors: [],
+        createdAt: Date.now(),
+      };
+      ddBatchJobs.set(jobId, job);
+
+      let token: string;
+      let apiUrl: string;
+      try {
+        token = await refreshSessionToken(session);
+        apiUrl = getPlatinumApiUrl(session);
+      } catch (e: any) {
+        job.status = 'FAILED';
+        job.currentLine = 'Failed to initialize session';
+        job.errors.push(`Session error: ${e.message}`);
+        return res.status(500).json({ message: "Failed to initialize session for batch processing", detail: e.message });
+      }
+
+      res.json({ jobId, message: "Batch job started. Poll /api/dd-allocation/job/:jobId for progress." });
+
+      const submitUrl = `${apiUrl}/api/billing-direct-deposit-allocation/submit-details-data`;
+
+      const processBatch = async () => {
+        try {
+          const ALLOC_TYPE_ORDER: Record<string, number> = {
+            'ACCOUNT': 1, 'PREPAID': 1, 'GROUP': 2, 'CLEARANCE': 3, 'DIRECT': 4, 'CASHBOOK': 5,
+          };
+          const sortedLines = [...lines].sort((a: any, b: any) => {
+            return (ALLOC_TYPE_ORDER[a.allocationType || 'ACCOUNT'] || 99) - (ALLOC_TYPE_ORDER[b.allocationType || 'ACCOUNT'] || 99);
+          });
+
+          const submitLine = async (submitData: any, authToken: string): Promise<{ rawRes: any; responseText: string }> => {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 55000);
+            const rawRes = await fetch(submitUrl, {
+              method: "POST",
+              headers: { "Authorization": `Bearer ${authToken}`, "Accept": "*/*", "Content-Type": "application/json" },
+              body: JSON.stringify(submitData),
+              signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
+            const responseText = await rawRes.text();
+            return { rawRes, responseText };
+          };
+
+          let lineIdx = 0;
+          for (const line of sortedLines) {
+            if (line.accountNo === 'CASHBOOK-RTN' || line.allocationType === 'CASHBOOK') continue;
+            lineIdx++;
+
+            const allocType = line.allocationType || 'ACCOUNT';
+            const lineLabel = `${allocType} ${line.accountNo || ''} (R ${Number(line.amount).toFixed(2)})`;
+            job.currentLine = `Line ${lineIdx}/${job.totalLines}: ${lineLabel}`;
+
+            let billType = '1';
+            if (allocType === 'DIRECT') billType = '4';
+            else if (allocType === 'CLEARANCE') billType = '6';
+
+            const groupId = reconId;
+            const actualReference = transactionNote || '';
+
+            let derivedLastName = line.lastName || '';
+            let derivedInitials = line.initials || '';
+            if (!derivedLastName) {
+              const nameSource = line.description || transactionNote || line.accountNo || 'Unknown';
+              const cleanName = nameSource
+                .replace(/\s*\(Old:.*\)$/, '')
+                .replace(/&amp;/g, '&')
+                .replace(/CSV Import:\s*/i, '')
+                .replace(/Payment to\s*/i, '')
+                .replace(/Payment Grouping:\s*/i, '')
+                .trim();
+              const nameParts = cleanName.split(/\s+/).filter((p: string) => p && p !== '&');
+              if (nameParts.length >= 2) {
+                derivedLastName = nameParts[0];
+                derivedInitials = nameParts.slice(1).map((p: string) => p.charAt(0).toUpperCase()).join('');
+              } else if (nameParts.length === 1) {
+                derivedLastName = nameParts[0];
+                derivedInitials = nameParts[0].charAt(0).toUpperCase();
+              }
+            }
+            if (!derivedLastName) derivedLastName = 'N/A';
+            if (!derivedInitials) derivedInitials = 'N';
+
+            let submitData: any;
+            if (billType === '4') {
+              if (!line.miscPaymentGroupId || line.miscPaymentGroupId <= 0) {
+                job.failedLines++;
+                job.errors.push(`${lineLabel}: miscPaymentGroupId is missing or zero`);
+                job.results.push({ lineIndex: lineIdx, accountNo: line.accountNo, allocationType: allocType, amount: line.amount, status: 'FAILED', error: 'miscPaymentGroupId must be > 0' });
+                continue;
+              }
+              submitData = {
+                billType, amount: line.amount, vatAmount: line.vatAmount ?? 0, totalAmount: line.amount + (line.vatAmount ?? 0),
+                paidAmount: line.amount + (line.vatAmount ?? 0), paymentTypeId: 5, posItemId, miscPaymentGroupId: line.miscPaymentGroupId,
+                reconId, userId: serverUserId, financialYear, transactionDate,
+                receiptDate: transactionDate, groupId, lastName: derivedLastName, initials: derivedInitials,
+                description: line.description || transactionNote || '', reference: actualReference,
+              };
+            } else if (billType === '6') {
+              const accountId = line.accountId || 0;
+              const clearanceId = line.clearanceId || 0;
+              if (accountId <= 0 || clearanceId <= 0) {
+                job.failedLines++;
+                job.errors.push(`${lineLabel}: accountId or clearanceId is missing`);
+                job.results.push({ lineIndex: lineIdx, accountNo: line.accountNo, allocationType: allocType, amount: line.amount, status: 'FAILED', error: 'accountId and clearanceId required for clearance' });
+                continue;
+              }
+              submitData = {
+                billType, accountId, clearanceId, paidAmount: line.amount, paymentTypeId: 5, posItemId,
+                reconId, userId: serverUserId, financialYear, transactionDate, groupId, reference: actualReference,
+              };
+            } else {
+              const accountId = line.accountId || 0;
+              if (accountId <= 0) {
+                job.failedLines++;
+                job.errors.push(`${lineLabel}: accountId is missing or zero`);
+                job.results.push({ lineIndex: lineIdx, accountNo: line.accountNo, allocationType: allocType, amount: line.amount, status: 'FAILED', error: 'accountId must be > 0' });
+                continue;
+              }
+              submitData = {
+                billType, accountId, paidAmount: line.amount, paymentTypeId: 5, posItemId,
+                reconId, userId: serverUserId, financialYear, transactionDate, groupId,
+                reference: actualReference || "0", description: line.description || transactionNote || '',
+              };
+            }
+
+            try {
+              console.log(`[DD Batch ${jobId}] Submitting line ${lineIdx}/${job.totalLines}: ${lineLabel}`);
+              let { rawRes, responseText } = await submitLine(submitData, token);
+
+              if (rawRes.status === 401) {
+                console.warn(`[DD Batch ${jobId}] Got 401, refreshing token and retrying line ${lineIdx}`);
+                try {
+                  token = await refreshSessionToken(session);
+                  const retry = await submitLine(submitData, token);
+                  rawRes = retry.rawRes;
+                  responseText = retry.responseText;
+                } catch (retryErr: any) {
+                  console.error(`[DD Batch ${jobId}] Token refresh failed:`, retryErr?.message);
+                }
+              }
+
+              console.log(`[DD Batch ${jobId}] Line ${lineIdx} HTTP ${rawRes.status}: ${responseText}`);
+
+              let parsed: any;
+              try { parsed = JSON.parse(responseText); } catch { parsed = responseText; }
+
+              if (parsed && parsed.success === false) {
+                job.failedLines++;
+                const errMsg = parsed.message || `API returned success=false`;
+                job.errors.push(`${lineLabel}: ${errMsg}`);
+                job.results.push({ lineIndex: lineIdx, accountNo: line.accountNo, allocationType: allocType, amount: line.amount, status: 'FAILED', error: errMsg, apiResponse: parsed });
+              } else if (rawRes.status >= 400) {
+                job.failedLines++;
+                const errMsg = typeof parsed === 'string' ? parsed : (parsed?.message || `HTTP ${rawRes.status}`);
+                job.errors.push(`${lineLabel}: ${errMsg}`);
+                job.results.push({ lineIndex: lineIdx, accountNo: line.accountNo, allocationType: allocType, amount: line.amount, status: 'FAILED', error: errMsg, apiResponse: parsed });
+              } else {
+                job.completedLines++;
+                job.results.push({ lineIndex: lineIdx, accountNo: line.accountNo, allocationType: allocType, amount: line.amount, status: 'SUCCESS', apiResponse: parsed });
+              }
+            } catch (submitErr: any) {
+              job.failedLines++;
+              const errMsg = submitErr?.name === 'AbortError' ? 'Request timed out (55s)' : (submitErr?.message || 'Unknown error');
+              job.errors.push(`${lineLabel}: ${errMsg}`);
+              job.results.push({ lineIndex: lineIdx, accountNo: line.accountNo, allocationType: allocType, amount: line.amount, status: 'FAILED', error: errMsg });
+              console.error(`[DD Batch ${jobId}] Line ${lineIdx} exception:`, submitErr?.message);
+            }
+          }
+        } finally {
+          if (job.failedLines === 0 && job.completedLines > 0) {
+            job.status = 'COMPLETED';
+          } else if (job.completedLines > 0 && job.failedLines > 0) {
+            job.status = 'PARTIAL_FAILURE';
+          } else {
+            job.status = 'FAILED';
+          }
+          job.currentLine = job.status === 'COMPLETED' ? 'All lines processed successfully' : `Done: ${job.completedLines} succeeded, ${job.failedLines} failed`;
+          console.log(`[DD Batch ${jobId}] Finished: ${job.status} (${job.completedLines}/${job.totalLines} succeeded)`);
+        }
+      };
+
+      processBatch().catch((e) => {
+        job.status = 'FAILED';
+        job.currentLine = 'Unexpected error during processing';
+        job.errors.push(`Batch processing error: ${e?.message || 'Unknown'}`);
+        console.error(`[DD Batch ${jobId}] Unhandled error:`, e?.message);
+      });
+    } catch (e: any) {
+      console.error('[DD Batch] EXCEPTION:', e.message);
+      if (!res.headersSent) {
+        res.status(500).json({ message: "Failed to start batch job", detail: e.message });
+      }
+    }
+  });
+
+  app.get("/api/dd-allocation/job/:jobId", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const job = ddBatchJobs.get(req.params.jobId);
+      if (!job) {
+        return res.status(404).json({ message: "Job not found or expired" });
+      }
+      res.json({
+        jobId: job.jobId,
+        posItemId: job.posItemId,
+        status: job.status,
+        totalLines: job.totalLines,
+        completedLines: job.completedLines,
+        failedLines: job.failedLines,
+        processedLines: job.completedLines + job.failedLines,
+        currentLine: job.currentLine,
+        results: job.results,
+        errors: job.errors,
+      });
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to fetch job status", detail: e.message });
+    }
+  });
+
   app.post("/api/platinum/direct-deposit-allocation/submit-details-data", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;

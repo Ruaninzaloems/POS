@@ -1592,6 +1592,36 @@ export async function platinumSubmitDirectDepositAllocation(data: any): Promise<
     });
 }
 
+export async function submitDDAllocationBatch(data: {
+    posItemId: number;
+    reconId: number;
+    financialYear: string;
+    transactionDate: string;
+    transactionNote: string;
+    lines: any[];
+}): Promise<{ jobId: string; message: string }> {
+    return platinumFetch(`/api/dd-allocation/submit-batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function pollDDAllocationJob(jobId: string): Promise<{
+    jobId: string;
+    posItemId: number;
+    status: 'PROCESSING' | 'COMPLETED' | 'PARTIAL_FAILURE' | 'FAILED';
+    totalLines: number;
+    completedLines: number;
+    failedLines: number;
+    processedLines: number;
+    currentLine: string;
+    results: any[];
+    errors: string[];
+}> {
+    return platinumFetch(`/api/dd-allocation/job/${jobId}`);
+}
+
 export async function createDDVirtualSession(financialYear?: string): Promise<{ success: boolean; virtualCashierId?: number; officeId?: number; message?: string }> {
     return platinumFetch(`/api/platinum/direct-deposit-allocation/create-virtual-session`, {
         method: 'POST',

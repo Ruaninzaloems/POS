@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { ArrowLeft, Plus, Trash2, CheckCircle, AlertCircle, Upload, X, Loader2, Search, Banknote, Building2, FileCheck, Receipt, CreditCard, RotateCcw, FileSpreadsheet, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Download, Eye, Zap, Landmark } from 'lucide-react';
-import { AllocationLine, Account, ClearanceCostSchedule, platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, createDDVirtualSession, closeDDVirtualSession, platinumLoadDetailsPaymentGrouping, platinumLoadDetailsPaymentGroupingInstitutionData, platinumLoadDetailsConsumerServices, platinumLoadConfirmPaymentDetails, platinumLoadDetailsClearance, platinumGetClearanceDetailsInfo, platinumGetConsumerDetailsData, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, platinumDDClearanceAutocomplete, platinumSearchClearanceIds, platinumGetClearanceData, platinumGetGroupPaymentDetails, fetchMiscPaymentGroups, rebuildFullAccount, platinumSearchAccountsPayment, fetchActiveFinYear, fetchPlatinumUserInfo, searchInstitutions, fetchAccountsByGroup } from '@/lib/external-api';
+import { AllocationLine, Account, ClearanceCostSchedule, platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, createDDVirtualSession, closeDDVirtualSession, platinumLoadDetailsPaymentGrouping, platinumLoadDetailsPaymentGroupingInstitutionData, platinumLoadDetailsConsumerServices, platinumLoadConfirmPaymentDetails, platinumLoadDetailsClearance, platinumGetClearanceDetailsInfo, platinumGetConsumerDetailsData, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, platinumDDClearanceAutocomplete, platinumSearchClearanceIds, platinumGetClearanceData, platinumGetGroupPaymentDetails, fetchMiscPaymentGroups, rebuildFullAccount, platinumSearchAccountsPayment, fetchActiveFinYear, fetchPlatinumUserInfo, searchInstitutions, fetchAccountsByGroup, submitDDAllocationBatch, pollDDAllocationJob } from '@/lib/external-api';
 import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import { AccountEnquiryDialog } from '@/components/account-enquiry-dialog';
@@ -1101,24 +1101,24 @@ export default function AllocateTransaction() {
 
       if (!transaction) return;
 
+      const posItemId = transaction.posItem_ID || 0;
+      const reconId = transaction.bankReconID || 0;
+      if (posItemId <= 0) {
+          toast({ title: 'Validation Error', description: 'posItemId is missing or zero. Cannot proceed.', variant: 'destructive' });
+          return;
+      }
+      if (reconId <= 0) {
+          toast({ title: 'Validation Error', description: 'reconId (bankReconID) is missing or zero. Cannot proceed.', variant: 'destructive' });
+          return;
+      }
+
       setPosting(true);
       setPostingErrors([]);
       setPostingStep(0);
-      setPostingStatus('Initializing...');
+      setPostingStatus('Preparing batch...');
 
       try {
-          const activeLines = lines.filter(l => l.accountNo !== 'CASHBOOK-RTN' && l.allocationType !== 'CASHBOOK');
-          const totalSteps = 2 + activeLines.length + 1;
-          setPostingTotalSteps(totalSteps);
-          let currentStep = 0;
-
-          const updateProgress = (status: string) => {
-              currentStep++;
-              setPostingStep(currentStep);
-              setPostingStatus(status);
-          };
-
-          updateProgress('Fetching financial year...');
+          setPostingStatus('Fetching financial year...');
           let finYear: string;
           try {
               finYear = await fetchActiveFinYear();
@@ -1128,24 +1128,6 @@ export default function AllocateTransaction() {
               setPostingStatus('');
               return;
           }
-
-          updateProgress('Verifying user session...');
-          const VIRTUAL_CASHIER_USER_ID = -1;
-          let allocatingUserId = 0;
-          try {
-              const userInfo = await fetchPlatinumUserInfo();
-              if (userInfo?.user_ID) allocatingUserId = userInfo.user_ID;
-          } catch (err) {
-              console.error('[AllocateTransaction] Failed to fetch Platinum user info:', err);
-          }
-
-          if (allocatingUserId <= 0) {
-              toast({ title: 'User Session Error', description: 'Could not determine your user ID. Please log in again and retry.', variant: 'destructive' });
-              setPosting(false);
-              setPostingStatus('');
-              return;
-          }
-          console.log(`[Direct Deposit] Allocating as userId=${allocatingUserId} (logged-in user)`);
 
           const now = new Date();
           const saFormatter = new Intl.DateTimeFormat('en-ZA', {
@@ -1158,251 +1140,125 @@ export default function AllocateTransaction() {
           const receiptDate = `${getPart('year')}-${getPart('month')}-${getPart('day')}T${getPart('hour')}:${getPart('minute')}:${getPart('second')}`;
           const transactionDate = transaction.dateOfTransaction || receiptDate;
 
-          const ALLOC_TYPE_ORDER: Record<string, number> = {
-              'ACCOUNT': 1,
-              'PREPAID': 1,
-              'GROUP': 2,
-              'CLEARANCE': 3,
-              'DIRECT': 4,
-              'CASHBOOK': 5,
+          setPostingStatus('Submitting batch to server...');
+          const batchPayload = {
+              posItemId,
+              reconId,
+              financialYear: finYear,
+              transactionDate,
+              transactionNote: transaction.note || transaction.reference || '',
+              lines: lines.map(l => ({
+                  accountNo: l.accountNo,
+                  accountId: l.accountId,
+                  amount: l.amount,
+                  allocationType: l.allocationType || 'ACCOUNT',
+                  description: l.description,
+                  miscPaymentGroupId: l.miscPaymentGroupId,
+                  clearanceId: l.clearanceId,
+                  vatAmount: l.vatAmount,
+                  lastName: l.lastName,
+                  initials: l.initials,
+              })),
           };
 
-          const sortedLines = [...lines].sort((a, b) => {
-              const orderA = ALLOC_TYPE_ORDER[a.allocationType || 'ACCOUNT'] || 99;
-              const orderB = ALLOC_TYPE_ORDER[b.allocationType || 'ACCOUNT'] || 99;
-              return orderA - orderB;
-          });
-
-          console.log('[Direct Deposit] Processing order:', sortedLines.map(l => `${l.allocationType}:${l.accountNo}:R${l.amount}`));
-
-          let submittedCount = 0;
-          let lineIdx = 0;
-          const lineErrors: string[] = [];
-          const successfulLines: { accountNo: string; accountId?: number; description: string; amount: number; allocationType: string }[] = [];
-          for (const line of sortedLines) {
-              if (line.accountNo === 'CASHBOOK-RTN' || line.allocationType === 'CASHBOOK') continue;
-              lineIdx++;
-
-              const allocType = line.allocationType || 'ACCOUNT';
-              const lineLabel = `${allocType} ${line.accountNo || ''} (R ${line.amount.toFixed(2)})`;
-
-              let billType = '1';
-              if (allocType === 'DIRECT') {
-                  billType = '4';
-              } else if (allocType === 'CLEARANCE') {
-                  billType = '6';
+          let batchResult: { jobId: string; message: string };
+          try {
+              batchResult = await submitDDAllocationBatch(batchPayload);
+          } catch (e: any) {
+              if (e?.message?.includes('already being processed')) {
+                  toast({ title: 'Already Processing', description: 'This allocation is already being processed on the server. Please wait.', variant: 'destructive' });
+                  setPosting(false);
+                  setPostingStatus('');
+                  return;
               }
+              throw e;
+          }
 
-              updateProgress(`Line ${lineIdx}/${activeLines.length}: Submitting ${lineLabel}...`);
+          const { jobId } = batchResult;
+          console.log(`[Direct Deposit] Batch job started: ${jobId}`);
 
-              const posItemId = transaction.posItem_ID || 0;
-              const reconId = transaction.bankReconID || 0;
-              if (posItemId <= 0) {
-                  lineErrors.push(`${lineLabel}: posItemId is missing or zero`);
-                  setPostingErrors(prev => [...prev, `Validation failed for ${lineLabel}: posItemId must be > 0`]);
-                  console.error(`[Direct Deposit] posItemId=${posItemId} is invalid for ${lineLabel}`);
-                  continue;
-              }
-              if (reconId <= 0) {
-                  lineErrors.push(`${lineLabel}: reconId (bankReconID) is missing or zero`);
-                  setPostingErrors(prev => [...prev, `Validation failed for ${lineLabel}: reconId must be > 0`]);
-                  console.error(`[Direct Deposit] reconId=${reconId} is invalid for ${lineLabel}`);
-                  continue;
-              }
+          const activeLines = lines.filter(l => l.accountNo !== 'CASHBOOK-RTN' && l.allocationType !== 'CASHBOOK');
+          setPostingTotalSteps(activeLines.length);
 
-              let derivedLastName = line.lastName || '';
-              let derivedInitials = line.initials || '';
-              if (!derivedLastName) {
-                  const nameSource = line.description || transaction.note || line.accountNo || 'Unknown';
-                  const cleanName = nameSource
-                      .replace(/\s*\(Old:.*\)$/, '')
-                      .replace(/&amp;/g, '&')
-                      .replace(/CSV Import:\s*/i, '')
-                      .replace(/Payment to\s*/i, '')
-                      .replace(/Payment Grouping:\s*/i, '')
-                      .trim();
-                  const nameParts = cleanName.split(/\s+/).filter(p => p && p !== '&');
-                  if (nameParts.length >= 2) {
-                      derivedLastName = nameParts[0];
-                      derivedInitials = nameParts.slice(1).map(p => p.charAt(0).toUpperCase()).join('');
-                  } else if (nameParts.length === 1) {
-                      derivedLastName = nameParts[0];
-                      derivedInitials = nameParts[0].charAt(0).toUpperCase();
-                  }
-              }
-              if (!derivedLastName) derivedLastName = 'N/A';
-              if (!derivedInitials) derivedInitials = 'N';
+          const pollInterval = 1500;
+          const maxPollTime = 10 * 60 * 1000;
+          const startTime = Date.now();
 
-              const actualReference = transaction.note || transaction.reference || '';
+          while (true) {
+              await new Promise(resolve => setTimeout(resolve, pollInterval));
 
-              let submitData: any;
-
-              const groupId = transaction.bankReconID || reconId;
-
-              if (billType === '4') {
-                  const miscPaymentGroupId = line.miscPaymentGroupId || 0;
-                  if (miscPaymentGroupId <= 0) {
-                      lineErrors.push(`${lineLabel}: miscPaymentGroupId is missing or zero (required for billType "4")`);
-                      setPostingErrors(prev => [...prev, `Validation failed for ${lineLabel}: miscPaymentGroupId must be > 0`]);
-                      console.error(`[Direct Deposit] miscPaymentGroupId=${miscPaymentGroupId} is invalid for billType "4" on ${lineLabel}`);
-                      continue;
-                  }
-                  submitData = {
-                      billType,
-                      amount: line.amount,
-                      vatAmount: line.vatAmount ?? 0,
-                      totalAmount: line.amount + (line.vatAmount ?? 0),
-                      paidAmount: line.amount + (line.vatAmount ?? 0),
-                      paymentTypeId: 5,
-                      posItemId,
-                      miscPaymentGroupId,
-                      reconId,
-                      userId: allocatingUserId,
-                      financialYear: finYear,
-                      transactionDate,
-                      receiptDate,
-                      groupId,
-                      lastName: derivedLastName,
-                      initials: derivedInitials,
-                      description: line.description || transaction.note || '',
-                      reference: actualReference,
-                  };
-              } else if (billType === '6') {
-                  const accountId = line.accountId || 0;
-                  const clearanceId = line.clearanceId || 0;
-                  if (accountId <= 0) {
-                      lineErrors.push(`${lineLabel}: accountId is missing or zero (required for billType "6")`);
-                      setPostingErrors(prev => [...prev, `Validation failed for ${lineLabel}: accountId must be > 0`]);
-                      console.error(`[Direct Deposit] accountId=${accountId} is invalid for billType "6" on ${lineLabel}`);
-                      continue;
-                  }
-                  if (clearanceId <= 0) {
-                      lineErrors.push(`${lineLabel}: clearanceId is missing or zero (required for billType "6")`);
-                      setPostingErrors(prev => [...prev, `Validation failed for ${lineLabel}: clearanceId must be > 0`]);
-                      console.error(`[Direct Deposit] clearanceId=${clearanceId} is invalid for billType "6" on ${lineLabel}`);
-                      continue;
-                  }
-                  submitData = {
-                      billType,
-                      accountId,
-                      clearanceId,
-                      paidAmount: line.amount,
-                      paymentTypeId: 5,
-                      posItemId,
-                      reconId,
-                      userId: allocatingUserId,
-                      financialYear: finYear,
-                      transactionDate,
-                      groupId,
-                      reference: actualReference,
-                  };
-              } else if (billType === '1') {
-                  const accountId = line.accountId || 0;
-                  if (accountId <= 0) {
-                      lineErrors.push(`${lineLabel}: accountId is missing or zero (required for billType "1")`);
-                      setPostingErrors(prev => [...prev, `Validation failed for ${lineLabel}: accountId must be > 0`]);
-                      console.error(`[Direct Deposit] accountId=${accountId} is invalid for billType "1" on ${lineLabel}`);
-                      continue;
-                  }
-                  submitData = {
-                      billType,
-                      accountId,
-                      paidAmount: line.amount,
-                      paymentTypeId: 5,
-                      posItemId,
-                      reconId,
-                      userId: allocatingUserId,
-                      financialYear: finYear,
-                      transactionDate,
-                      groupId,
-                      reference: actualReference || "0",
-                      description: line.description || transaction.note || '',
-                  };
+              if (Date.now() - startTime > maxPollTime) {
+                  toast({
+                      title: 'Polling Timeout',
+                      description: 'The server is still processing your allocation. It will complete in the background. Check the allocation history for results.',
+                      variant: 'destructive',
+                  });
+                  break;
               }
 
               try {
-                  console.log(`[Direct Deposit] submit-details-data (${allocType}, billType=${billType}):`, submitData);
-                  const result = await platinumSubmitDirectDepositAllocation(submitData);
-                  console.log('[Direct Deposit] Submit result:', result);
+                  const jobStatus = await pollDDAllocationJob(jobId);
 
-                  if (result && result.success === false) {
-                      const errMsg = result.message || `Failed to submit line ${lineIdx} for ${line.accountNo}`;
-                      lineErrors.push(errMsg);
-                      setPostingErrors(prev => [...prev, `Submit failed for ${lineLabel}: ${errMsg}`]);
-                      console.error(`[Direct Deposit] Submit returned success=false for ${lineLabel}:`, errMsg);
-                      continue;
+                  setPostingStep(jobStatus.processedLines);
+                  setPostingTotalSteps(jobStatus.totalLines);
+                  setPostingStatus(jobStatus.currentLine);
+
+                  if (jobStatus.errors.length > 0) {
+                      setPostingErrors(jobStatus.errors);
                   }
-                  submittedCount++;
-                  successfulLines.push({
-                      accountNo: line.accountNo,
-                      accountId: line.accountId,
-                      description: line.description,
-                      amount: line.amount,
-                      allocationType: allocType,
-                  });
-              } catch (submitErr: any) {
-                  const errMsg = submitErr?.message || 'Unknown submit error';
-                  lineErrors.push(`${lineLabel}: ${errMsg}`);
-                  setPostingErrors(prev => [...prev, `Submit error for ${lineLabel}: ${errMsg}`]);
-                  console.error(`[Direct Deposit] Submit exception for ${lineLabel}:`, submitErr);
-                  continue;
-              }
-          }
 
-          if (submittedCount === 0 && lineErrors.length > 0) {
-              toast({
-                  title: 'Allocation Failed',
-                  description: `No lines could be submitted. ${lineErrors[0]}`,
-                  variant: 'destructive',
-              });
-              setPosting(false);
-              setPostingStatus('');
-              return;
-          }
+                  if (jobStatus.status !== 'PROCESSING') {
+                      const successResults = jobStatus.results.filter((r: any) => r.status === 'SUCCESS');
+                      const successfulLines = successResults.map((r: any) => ({
+                          accountNo: r.accountNo,
+                          accountId: lines.find(l => l.accountNo === r.accountNo)?.accountId,
+                          description: lines.find(l => l.accountNo === r.accountNo)?.description || '',
+                          amount: r.amount,
+                          allocationType: r.allocationType,
+                      }));
 
-          const accountLines = lines.filter(l =>
-              (l.allocationType === 'ACCOUNT' || l.allocationType === 'PREPAID' || l.allocationType === 'CLEARANCE' || l.allocationType === 'GROUP')
-              && l.accountNo && l.accountNo !== 'CASHBOOK-RTN'
-          );
-          const uniqueAccountNos = Array.from(new Set(accountLines.map(l => l.accountNo)));
-
-          updateProgress(uniqueAccountNos.length > 0 ? `Rebuilding ${uniqueAccountNos.length} account(s)...` : 'Finalizing...');
-
-          if (uniqueAccountNos.length > 0) {
-              console.log('[Direct Deposit] Running account rebuilds for:', uniqueAccountNos);
-              const rebuildResults = await Promise.allSettled(
-                  uniqueAccountNos.map(accNo => {
-                      const accId = accountLines.find(l => l.accountNo === accNo)?.accountId;
-                      if (accId) {
-                          return rebuildFullAccount(accId);
+                      if (successfulLines.length > 0) {
+                          const accountLinesToRebuild = successfulLines.filter((l: any) =>
+                              (l.allocationType === 'ACCOUNT' || l.allocationType === 'PREPAID' || l.allocationType === 'CLEARANCE' || l.allocationType === 'GROUP')
+                              && l.accountId && l.accountId > 0
+                          );
+                          const uniqueAccountIds = Array.from(new Set(accountLinesToRebuild.map((l: any) => l.accountId)));
+                          if (uniqueAccountIds.length > 0) {
+                              setPostingStatus(`Rebuilding ${uniqueAccountIds.length} account(s)...`);
+                              await Promise.allSettled(uniqueAccountIds.map(id => rebuildFullAccount(id as number)));
+                          }
                       }
-                      return rebuildFullAccount(parseInt(accNo.replace(/^0+/, ''), 10));
-                  })
-              );
-              const failures = rebuildResults.filter(r => r.status === 'rejected');
-              if (failures.length > 0) {
-                  console.warn('[Direct Deposit] Some rebuilds failed:', failures);
+
+                      setCompletedLines(successfulLines);
+
+                      if (jobStatus.status === 'COMPLETED') {
+                          toast({
+                              title: "Allocation Posted Successfully",
+                              description: `POS Item #${posItemId} — all ${jobStatus.completedLines} line(s) submitted successfully.`,
+                          });
+                      } else if (jobStatus.status === 'PARTIAL_FAILURE') {
+                          toast({
+                              title: 'Allocation Partially Complete',
+                              description: `${jobStatus.completedLines} of ${jobStatus.totalLines} line(s) submitted. ${jobStatus.failedLines} failed.`,
+                              variant: 'destructive',
+                          });
+                      } else {
+                          toast({
+                              title: 'Allocation Failed',
+                              description: `No lines could be submitted. ${jobStatus.errors[0] || 'Unknown error'}`,
+                              variant: 'destructive',
+                          });
+                      }
+
+                      setPostComplete(true);
+                      break;
+                  }
+              } catch (pollErr) {
+                  console.warn('[Direct Deposit] Poll error (retrying):', pollErr);
               }
           }
-
-          setCompletedLines(successfulLines);
-
-          if (lineErrors.length > 0) {
-              toast({
-                  title: `Allocation Partially Complete`,
-                  description: `${submittedCount} of ${activeLines.length} line(s) submitted. ${lineErrors.length} failed: ${lineErrors[0]}`,
-                  variant: 'destructive',
-              });
-          } else {
-              toast({
-                  title: "Allocation Posted Successfully",
-                  description: `POS Item #${transaction.posItem_ID} allocated (R ${transaction.amount.toFixed(2)}).${uniqueAccountNos.length > 0 ? ` ${uniqueAccountNos.length} account(s) rebuilt.` : ''}`,
-              });
-          }
-
-          setPostComplete(true);
       } catch (e: any) {
-          console.error("Failed to submit allocation", e);
+          console.error("Failed to submit allocation batch", e);
           toast({
               title: 'Submission Error',
               description: e.message || 'An unexpected error occurred while posting the allocation.',
