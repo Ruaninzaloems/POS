@@ -3061,7 +3061,7 @@ export default function UnmatchedQueue() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className={`h-8 text-xs gap-1.5 px-3 ${loadingSuggestions.has(tx.posItem_ID) ? 'text-amber-600 border-amber-300 animate-pulse' : autoMatchQueued.has(tx.posItem_ID) ? 'text-slate-400 border-slate-200' : 'text-slate-500 hover:text-amber-600 hover:border-amber-300'}`}
+                                className={`h-8 text-xs gap-1.5 px-3 w-[130px] justify-center shrink-0 ${loadingSuggestions.has(tx.posItem_ID) ? 'text-amber-600 border-amber-300 animate-pulse' : autoMatchQueued.has(tx.posItem_ID) ? 'text-slate-400 border-slate-200' : 'text-slate-500 hover:text-amber-600 hover:border-amber-300'}`}
                                 onClick={(e) => { e.stopPropagation(); findMatch(tx.posItem_ID, tx.note, tx.reference, tx.amount); }}
                                 disabled={autoMatchQueued.has(tx.posItem_ID)}
                                 data-testid={`button-suggest-${tx.posItem_ID}`}
