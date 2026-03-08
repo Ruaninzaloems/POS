@@ -65,6 +65,7 @@ export default function AllocationHistory() {
   const [page, setPage] = useState(1);
   const pageSize = 20;
   const [retrying, setRetrying] = useState<number | null>(null);
+  const [pollingJobs, setPollingJobs] = useState<Set<number>>(new Set());
   const [enquiryAccountId, setEnquiryAccountId] = useState<string | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [jobAccountDetails, setJobAccountDetails] = useState<any[] | null>(null);
@@ -194,7 +195,39 @@ export default function AllocationHistory() {
       try {
           await retryBulkAllocationJob(tx.directDepositJob_ID, currentUserId);
           toast({ title: 'Retry Initiated', description: `Job #${tx.directDepositJob_ID} has been resubmitted for processing.` });
-          loadData();
+
+          setAllocationData(prev => prev.map(item =>
+            item.directDepositJob_ID === tx.directDepositJob_ID
+              ? { ...item, job_Status: 'Resubmitted' }
+              : item
+          ));
+
+          setPollingJobs(prev => new Set(prev).add(tx.directDepositJob_ID));
+
+          let pollAttempts = 0;
+          const maxPolls = 20;
+          while (pollAttempts < maxPolls) {
+            await new Promise(r => setTimeout(r, 3000));
+            try {
+              const details = await fetchDirectDepositJobDetails(tx.directDepositJob_ID);
+              const newStatus = details?.job_Status || details?.status;
+              if (newStatus && newStatus !== 'Resubmitted' && newStatus !== 'Processing') {
+                setAllocationData(prev => prev.map(item =>
+                  item.directDepositJob_ID === tx.directDepositJob_ID
+                    ? { ...item, job_Status: newStatus, allocatedAmount: details.allocatedAmount ?? item.allocatedAmount, records: details.records ?? item.records }
+                    : item
+                ));
+                setPollingJobs(prev => { const n = new Set(prev); n.delete(tx.directDepositJob_ID); return n; });
+                toast({ title: 'Retry Complete', description: `Job #${tx.directDepositJob_ID} status: ${newStatus}` });
+                return;
+              }
+            } catch (pollErr: any) {
+              console.warn(`[RetryPoll] Error polling job ${tx.directDepositJob_ID}:`, pollErr?.message);
+            }
+            pollAttempts++;
+          }
+          setPollingJobs(prev => { const n = new Set(prev); n.delete(tx.directDepositJob_ID); return n; });
+          toast({ title: 'Polling Timeout', description: `Job #${tx.directDepositJob_ID} is still processing. Use Refresh to check status.` });
       } catch (err: any) {
           toast({ title: 'Retry Failed', description: err.message || 'Failed to retry allocation job.', variant: 'destructive' });
       } finally {
@@ -581,10 +614,11 @@ export default function AllocationHistory() {
                     <Badge variant="secondary" className={`text-xs ${isManual(tx) ? 'bg-[var(--pos-accent-tint)] text-[#6B6B6B] border-[#D6D6D6]' : 'bg-purple-100 text-purple-700 border-purple-200'}`}>
                       {isManual(tx) ? 'Manual' : 'Bulk'}
                     </Badge>
-                    <Badge className={`shadow-none border text-xs ${getStatusBadge(tx.job_Status)}`}>
+                    <Badge className={`shadow-none border text-xs ${pollingJobs.has(tx.directDepositJob_ID) ? 'bg-blue-100 text-blue-700 border-blue-200' : getStatusBadge(tx.job_Status)}`}>
+                      {pollingJobs.has(tx.directDepositJob_ID) && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
                       {tx.job_Status === 'Bulk allocations complete' ? 'Completed' : tx.job_Status}
                     </Badge>
-                    {isJobStale(tx) && (
+                    {isJobStale(tx) && !pollingJobs.has(tx.directDepositJob_ID) && (
                       <Badge className="shadow-none border text-xs bg-amber-100 text-amber-700 border-amber-200">
                         <AlertCircle className="w-3 h-3 mr-1" />Stuck
                       </Badge>
@@ -594,8 +628,8 @@ export default function AllocationHistory() {
                     <span className="text-xs text-muted-foreground">{tx.records} record{tx.records !== 1 ? 's' : ''}</span>
                     <div className="flex gap-2">
                       {canRetryJob(tx) && (
-                        <Button variant="outline" size="sm" className="min-h-[44px] min-w-[44px] text-xs px-3 text-amber-600 border-amber-200" onClick={() => handleRetry(tx)} disabled={retrying === tx.directDepositJob_ID} data-testid={`button-retry-mobile-${tx.directDepositJob_ID}`}>
-                          {retrying === tx.directDepositJob_ID ? <Loader2 className="w-4 h-4 animate-spin" /> : <><RotateCcw className="w-4 h-4 mr-1" /> Retry</>}
+                        <Button variant="outline" size="sm" className="min-h-[44px] min-w-[44px] text-xs px-3 text-amber-600 border-amber-200" onClick={() => handleRetry(tx)} disabled={retrying === tx.directDepositJob_ID || pollingJobs.has(tx.directDepositJob_ID)} data-testid={`button-retry-mobile-${tx.directDepositJob_ID}`}>
+                          {retrying === tx.directDepositJob_ID || pollingJobs.has(tx.directDepositJob_ID) ? <Loader2 className="w-4 h-4 animate-spin" /> : <><RotateCcw className="w-4 h-4 mr-1" /> Retry</>}
                         </Button>
                       )}
                       <Button variant="ghost" size="sm" className="min-h-[44px] min-w-[44px] text-xs px-3" onClick={() => openDetails(tx)} data-testid={`button-view-mobile-${tx.directDepositJob_ID}`}>
@@ -663,16 +697,17 @@ export default function AllocationHistory() {
                                 </TableCell>
                                 <TableCell className="text-center">
                                     <div className="flex flex-col items-center gap-1">
-                                        <Badge className={`shadow-none border text-[11px] whitespace-nowrap ${getStatusBadge(tx.job_Status)}`}>
-                                            {isStuckStatus(tx.job_Status) && !isErrorStatus(tx.job_Status) && !isJobStale(tx) && (
+                                        <Badge className={`shadow-none border text-[11px] whitespace-nowrap ${pollingJobs.has(tx.directDepositJob_ID) ? 'bg-blue-100 text-blue-700 border-blue-200' : getStatusBadge(tx.job_Status)}`}>
+                                            {pollingJobs.has(tx.directDepositJob_ID) ? (
                                                 <Loader2 className="w-3 h-3 mr-1 animate-spin inline-block" />
-                                            )}
-                                            {isErrorStatus(tx.job_Status) && (
+                                            ) : isStuckStatus(tx.job_Status) && !isErrorStatus(tx.job_Status) && !isJobStale(tx) ? (
+                                                <Loader2 className="w-3 h-3 mr-1 animate-spin inline-block" />
+                                            ) : isErrorStatus(tx.job_Status) ? (
                                                 <AlertCircle className="w-3 h-3 mr-1 inline-block" />
-                                            )}
+                                            ) : null}
                                             {tx.job_Status === 'Bulk allocations complete' ? 'Completed' : tx.job_Status}
                                         </Badge>
-                                        {isJobStale(tx) && (
+                                        {isJobStale(tx) && !pollingJobs.has(tx.directDepositJob_ID) && (
                                             <Badge className="shadow-none border text-[10px] bg-amber-100 text-amber-700 border-amber-200 whitespace-nowrap">
                                                 <AlertCircle className="w-2.5 h-2.5 mr-0.5 inline" />Stuck &gt;30min
                                             </Badge>
@@ -686,16 +721,16 @@ export default function AllocationHistory() {
                                                 variant="outline"
                                                 size="sm"
                                                 onClick={() => handleRetry(tx)}
-                                                disabled={retrying === tx.directDepositJob_ID}
+                                                disabled={retrying === tx.directDepositJob_ID || pollingJobs.has(tx.directDepositJob_ID)}
                                                 className="h-8 px-2 text-amber-600 border-amber-200 hover:bg-amber-50"
                                                 data-testid={`button-retry-${tx.directDepositJob_ID}`}
                                             >
-                                                {retrying === tx.directDepositJob_ID ? (
+                                                {retrying === tx.directDepositJob_ID || pollingJobs.has(tx.directDepositJob_ID) ? (
                                                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                                                 ) : (
                                                     <RotateCcw className="w-3.5 h-3.5 mr-1" />
                                                 )}
-                                                {retrying !== tx.directDepositJob_ID && 'Retry'}
+                                                {retrying !== tx.directDepositJob_ID && !pollingJobs.has(tx.directDepositJob_ID) && 'Retry'}
                                             </Button>
                                         )}
                                         <Button variant="ghost" size="sm" onClick={() => openDetails(tx)} className="h-8 px-2" data-testid={`button-view-${tx.directDepositJob_ID}`}>
@@ -746,8 +781,8 @@ export default function AllocationHistory() {
                     </div>
                     <div className="flex gap-2">
                          {selectedTx && canRetryJob(selectedTx) && (
-                             <Button size="sm" variant="outline" className="min-h-[44px] sm:min-h-0 text-xs sm:text-sm text-amber-600 border-amber-200 hover:bg-amber-50" onClick={() => selectedTx && handleRetry(selectedTx)} disabled={retrying === selectedTx?.directDepositJob_ID} data-testid="button-retry-dialog">
-                                 {retrying === selectedTx?.directDepositJob_ID ? <Loader2 className="w-4 h-4 animate-spin" /> : <><RotateCcw className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">{isJobStale(selectedTx) && !isErrorStatus(selectedTx.job_Status) ? 'Retry Stuck' : 'Retry'}</span></>}
+                             <Button size="sm" variant="outline" className="min-h-[44px] sm:min-h-0 text-xs sm:text-sm text-amber-600 border-amber-200 hover:bg-amber-50" onClick={() => selectedTx && handleRetry(selectedTx)} disabled={retrying === selectedTx?.directDepositJob_ID || pollingJobs.has(selectedTx?.directDepositJob_ID ?? -1)} data-testid="button-retry-dialog">
+                                 {retrying === selectedTx?.directDepositJob_ID || pollingJobs.has(selectedTx?.directDepositJob_ID ?? -1) ? <Loader2 className="w-4 h-4 animate-spin" /> : <><RotateCcw className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">{isJobStale(selectedTx) && !isErrorStatus(selectedTx.job_Status) ? 'Retry Stuck' : 'Retry'}</span></>}
                              </Button>
                          )}
                          <Button size="sm" variant="outline" className="min-h-[44px] sm:min-h-0 text-xs sm:text-sm" onClick={handlePrint} data-testid="button-print-dialog">
@@ -817,10 +852,11 @@ export default function AllocationHistory() {
                                 <div className="grid grid-cols-3">
                                     <dt className="text-muted-foreground">Status:</dt>
                                     <dd className="col-span-2 flex items-center gap-1.5 flex-wrap">
-                                        <Badge className={`shadow-none border ${getStatusBadge(selectedTx.job_Status)}`}>
+                                        <Badge className={`shadow-none border ${pollingJobs.has(selectedTx.directDepositJob_ID) ? 'bg-blue-100 text-blue-700 border-blue-200' : getStatusBadge(selectedTx.job_Status)}`}>
+                                            {pollingJobs.has(selectedTx.directDepositJob_ID) && <Loader2 className="w-3 h-3 mr-1 animate-spin inline-block" />}
                                             {selectedTx.job_Status === 'Bulk allocations complete' ? 'Completed' : selectedTx.job_Status}
                                         </Badge>
-                                        {isJobStale(selectedTx) && (
+                                        {isJobStale(selectedTx) && !pollingJobs.has(selectedTx.directDepositJob_ID) && (
                                             <Badge className="shadow-none border text-[10px] bg-amber-100 text-amber-700 border-amber-200">
                                                 <AlertCircle className="w-2.5 h-2.5 mr-0.5" />Stuck &gt;30min
                                             </Badge>
