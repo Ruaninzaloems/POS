@@ -1733,8 +1733,68 @@ export default function AllocateTransaction() {
                 </div>
               )}
               {!ledgerLoading && ledgerData && typeof ledgerData === 'string' && (
-                <div className="p-4">
-                  <pre className="text-xs font-mono whitespace-pre-wrap text-slate-800 bg-[#F7F7F7] rounded-lg p-4 border">{ledgerData}</pre>
+                <div className="p-4 space-y-6">
+                  {(() => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(ledgerData, 'text/html');
+                    const sections: { title: string; headers: string[]; rows: string[][] }[] = [];
+
+                    const tables = doc.querySelectorAll('table');
+                    const headers3 = doc.querySelectorAll('h3');
+                    const sectionTitles = Array.from(headers3).map(h => h.textContent?.trim() || '');
+
+                    tables.forEach((table, tableIdx) => {
+                      const title = tableIdx === 0 ? 'Receipt Details'
+                        : sectionTitles[tableIdx - 1] || `Section ${tableIdx + 1}`;
+                      const ths = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent?.trim() || '');
+                      const trs = Array.from(table.querySelectorAll('tbody tr'));
+                      const rows = trs.map(tr =>
+                        Array.from(tr.querySelectorAll('td')).map(td => td.textContent?.trim() || '-')
+                      );
+                      if (ths.length > 0 || rows.length > 0) {
+                        sections.push({ title, headers: ths, rows });
+                      }
+                    });
+
+                    if (sections.length === 0) {
+                      return <pre className="text-xs font-mono whitespace-pre-wrap text-slate-800 bg-[#F7F7F7] rounded-lg p-4 border">{ledgerData}</pre>;
+                    }
+
+                    return sections.map((section, si) => (
+                      <div key={si} className="bg-white rounded-lg border border-[#E0E0E0] overflow-hidden">
+                        <div className="px-3 py-2 bg-[#F7F7F7] border-b">
+                          <h4 className="text-xs font-semibold text-slate-700 uppercase tracking-wider">{section.title}</h4>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm border-collapse">
+                            {section.headers.length > 0 && (
+                              <thead>
+                                <tr className="border-b bg-slate-50/50">
+                                  {section.headers.map((h, hi) => (
+                                    <th key={hi} className="px-3 py-2 text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                            )}
+                            <tbody className="divide-y divide-slate-100">
+                              {section.rows.map((row, ri) => (
+                                <tr key={ri} className="hover:bg-[#FAFAFA]">
+                                  {row.map((cell, ci) => {
+                                    const isAmount = /^\s*-?\d[\d\s,.]*\d?\s*$/.test(cell) && cell.includes('.');
+                                    return (
+                                      <td key={ci} className={`px-3 py-2 text-xs whitespace-nowrap ${isAmount ? 'text-right font-mono tabular-nums' : ''} ${cell === '-' ? 'text-slate-400' : 'text-slate-700'}`}>
+                                        {isAmount ? `R ${parseFloat(cell.replace(/\s/g, '')).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : cell}
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ));
+                  })()}
                 </div>
               )}
               {!ledgerLoading && ledgerData && Array.isArray(ledgerData) && ledgerData.length > 0 && (
