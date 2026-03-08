@@ -9,7 +9,8 @@ import { AllocationLine, Account, ClearanceCostSchedule, platinumGetPosItemDetai
 import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import { AccountEnquiryDialog } from '@/components/account-enquiry-dialog';
-import { getPaymentAmountByAccountIds, clearCacheKey } from '@/lib/enquiries-service';
+import { getPaymentAmountByAccountIds, clearCacheKey, searchAccounts } from '@/lib/enquiries-service';
+import { detectSearchType } from '@/pages/enquiries/search-components';
 
 interface BankReconPosItem {
   posItem_ID: number;
@@ -91,6 +92,7 @@ export default function AllocateTransaction({ dialogMode, dialogPosItemId, onDia
   const [ddSearchResults, setDdSearchResults] = useState<DDSearchResult[]>([]);
   const [ddSearching, setDdSearching] = useState(false);
   const [ddDropdownOpen, setDdDropdownOpen] = useState(false);
+  const [detectedSearchType, setDetectedSearchType] = useState<{ field: string; label: string } | null>(null);
   const ddSearchRef = useRef<HTMLDivElement>(null);
   const ddSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ddSearchVersionRef = useRef(0);
@@ -168,57 +170,87 @@ export default function AllocateTransaction({ dialogMode, dialogPosItemId, onDia
       const secondaryFactories: (() => Promise<void>)[] = [];
 
       if (searchScope === 'ALL' || searchScope === 'ACCOUNT' || searchScope === 'PREPAID') {
-        const resultType: 'ACCOUNT' | 'CLEARANCE' | 'DIRECT' | 'GROUP' = searchScope === 'PREPAID' ? 'ACCOUNT' : 'ACCOUNT';
+        const resultType: 'ACCOUNT' | 'CLEARANCE' | 'DIRECT' | 'GROUP' = 'ACCOUNT';
         const allocType = searchScope === 'PREPAID' ? 'PREPAID' : 'ACCOUNT';
+        const detected = detectSearchType(query);
+
+        const addAccountHit = (item: any, source?: string) => {
+          const accId = item.account_ID || item.accountID || item.id;
+          if (accId && !seen.has(accId)) {
+            seen.add(accId);
+            primaryResults.push({
+              accountId: accId,
+              accountNo: item.accountNumber || item.accountNo || String(accId),
+              name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.surname_Company || item.name || 'Unknown',
+              oldAccountCode: item.oldAccountCode || '',
+              outstandingAmount: item.outStandingAmt || item.outStandingAmount || item.outstandingAmount || 0,
+              type: resultType,
+              description: source || undefined,
+              rawData: { ...item, _allocationType: allocType },
+            });
+          }
+        };
+
         primaryTasks.push((async () => {
-          const searchBody: Record<string, any> = {};
-          if (isNumeric) {
-            searchBody.accountNo = query;
+          const searchTasks: Promise<void>[] = [];
+
+          const primaryBody: Record<string, any> = {};
+          if (detected.field === 'accountNo' && isNumeric) {
+            primaryBody.accountNo = query;
+          } else if (detected.field === 'name') {
+            primaryBody.name = query;
+          } else if (detected.field === 'mobileNumber') {
+            primaryBody.mobileNumber = query;
+          } else if (detected.field === 'idNo') {
+            primaryBody.idNo = query;
+          } else if (detected.field === 'emailAddress') {
+            primaryBody.emailAddress = query;
+          } else if (detected.field === 'sgNumber') {
+            primaryBody.sgNumber = query;
           } else {
-            searchBody.name = query;
+            primaryBody[isNumeric ? 'accountNo' : 'name'] = query;
           }
 
-          const accountResults = await platinumSearchAccountsPayment(searchBody).catch((err) => { console.error('[AllocateTransaction] Failed to search accounts:', err); return []; });
+          searchTasks.push(
+            searchAccounts(primaryBody).then(items => {
+              for (const item of items.slice(0, 15)) addAccountHit(item, detected.field !== 'accountNo' && detected.field !== 'name' ? `Found via ${detected.label}` : undefined);
+              pushResults();
+            }).catch(err => { console.error('[AllocateTransaction] Primary search failed:', err); })
+          );
 
-          let accountHits = 0;
-          for (const item of parseResults(accountResults)) {
-            const accId = item.account_ID || item.accountID || item.id;
-            if (accId && !seen.has(accId)) {
-              seen.add(accId);
-              accountHits++;
-              primaryResults.push({
-                accountId: accId,
-                accountNo: item.accountNumber || item.accountNo || String(accId),
-                name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || 'Unknown',
-                oldAccountCode: item.oldAccountCode || '',
-                outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
-                type: resultType,
-                rawData: { ...item, _allocationType: allocType },
-              });
-            }
-          }
-          pushResults();
+          searchTasks.push(
+            searchAccounts({ oldAccountCode: query }).then(items => {
+              for (const item of items.slice(0, 5)) addAccountHit(item, `Found via old account code`);
+              pushResults();
+            }).catch(() => {})
+          );
 
-          if (isNumeric && accountHits === 0) {
-            const oldAccountResults = await platinumSearchAccountsPayment({ oldAccountCode: query }).catch(() => []);
-            for (const item of parseResults(oldAccountResults)) {
-              const accId = item.account_ID || item.accountID || item.id;
-              if (accId && !seen.has(accId)) {
-                seen.add(accId);
-                primaryResults.push({
-                  accountId: accId,
-                  accountNo: item.accountNumber || item.accountNo || String(accId),
-                  name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || 'Unknown',
-                  oldAccountCode: item.oldAccountCode || query,
-                  outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
-                  type: resultType,
-                  description: `Found via old account code: ${query}`,
-                  rawData: { ...item, _allocationType: allocType },
-                });
-              }
-            }
-            pushResults();
+          if (isNumeric) {
+            searchTasks.push(
+              searchAccounts({ erfNumber: query }).then(items => {
+                for (const item of items.slice(0, 5)) addAccountHit(item, `Found via ERF number`);
+                pushResults();
+              }).catch(() => {})
+            );
+
+            searchTasks.push(
+              searchAccounts({ physicalMeterNumber: query }).then(items => {
+                for (const item of items.slice(0, 5)) addAccountHit(item, `Found via meter number`);
+                pushResults();
+              }).catch(() => {})
+            );
           }
+
+          if (!isNumeric && detected.field === 'name') {
+            searchTasks.push(
+              searchAccounts({ locationAddress: query }).then(items => {
+                for (const item of items.slice(0, 3)) addAccountHit(item, `Found via location/address`);
+                pushResults();
+              }).catch(() => {})
+            );
+          }
+
+          await Promise.all(searchTasks);
         })());
       }
 
@@ -366,6 +398,12 @@ export default function AllocateTransaction({ dialogMode, dialogPosItemId, onDia
 
   const handleDDSearchInput = (value: string) => {
     setDdSearchQuery(value);
+    if (value.length >= 2) {
+      const detected = detectSearchType(value);
+      setDetectedSearchType(detected);
+    } else {
+      setDetectedSearchType(null);
+    }
     if (ddSearchTimerRef.current) clearTimeout(ddSearchTimerRef.current);
     if (value.length >= 2) {
       ddSearchTimerRef.current = setTimeout(() => performDDSearch(value), 150);
@@ -2085,33 +2123,46 @@ export default function AllocateTransaction({ dialogMode, dialogPosItemId, onDia
                         })}
                     </div>
 
-                    <div className="relative" ref={ddSearchRef}>
-                        <Search className="absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <HelpTip text="Search for the consumer account to receive this deposit allocation." side="top" className="absolute right-10 top-1/2 -translate-y-1/2 z-10" />
-                        <Input
-                            data-testid="input-dd-search"
-                            placeholder={
-                                searchScope === 'ALL' ? "Search account, name, old code..." :
-                                searchScope === 'ACCOUNT' ? "Search account number or name..." :
-                                searchScope === 'PREPAID' ? "Search account for prepaid recharge..." :
-                                searchScope === 'INSTITUTION' ? "Search institution name..." :
-                                searchScope === 'GROUP' ? "Search payment grouping..." :
-                                searchScope === 'CLEARANCE' ? "Search clearance certificate..." :
-                                "Search direct income group..."
-                            }
-                            className="h-10 sm:h-11 pl-9 sm:pl-10 pr-10 bg-[#F7F7F7] border-[#D6D6D6] rounded-lg focus:bg-white transition-colors text-sm"
-                            value={ddSearchQuery}
-                            onChange={e => handleDDSearchInput(e.target.value)}
-                            onFocus={() => { if (ddSearchResults.length > 0) setDdDropdownOpen(true); }}
-                        />
-                        {ddSearching && <Loader2 className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-[var(--pos-accent)]" />}
-                        {ddSearchQuery && !ddSearching && (
-                            <button className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors" onClick={() => { setDdSearchQuery(''); setDdSearchResults([]); setDdDropdownOpen(false); }}>
-                                <X className="w-4 h-4" />
-                            </button>
+                    <div ref={ddSearchRef}>
+                        <div className="relative">
+                            <Search className="absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <HelpTip text="Search by account number, name, ERF, meter, ID, email, mobile, SG number, old code, address, or passport." side="top" className="absolute right-10 top-1/2 -translate-y-1/2 z-10" />
+                            <Input
+                                data-testid="input-dd-search"
+                                placeholder={
+                                    searchScope === 'ALL' ? "Search account, name, ERF, meter, ID, email, old code..." :
+                                    searchScope === 'ACCOUNT' ? "Account, name, ERF, meter, ID, SG, email..." :
+                                    searchScope === 'PREPAID' ? "Search account for prepaid recharge..." :
+                                    searchScope === 'INSTITUTION' ? "Search institution name..." :
+                                    searchScope === 'GROUP' ? "Search payment grouping..." :
+                                    searchScope === 'CLEARANCE' ? "Search clearance certificate..." :
+                                    "Search direct income group..."
+                                }
+                                className="h-10 sm:h-11 pl-9 sm:pl-10 pr-10 bg-[#F7F7F7] border-[#D6D6D6] rounded-lg focus:bg-white transition-colors text-sm"
+                                value={ddSearchQuery}
+                                onChange={e => handleDDSearchInput(e.target.value)}
+                                onFocus={() => { if (ddSearchResults.length > 0) setDdDropdownOpen(true); }}
+                            />
+                            {ddSearching && <Loader2 className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-[var(--pos-accent)]" />}
+                            {ddSearchQuery && !ddSearching && (
+                                <button className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors" onClick={() => { setDdSearchQuery(''); setDdSearchResults([]); setDdDropdownOpen(false); setDetectedSearchType(null); }}>
+                                    <X className="w-4 h-4" />
+                                </button>
+                            )}
+                        </div>
+                        {detectedSearchType && ddSearchQuery.length >= 2 && (searchScope === 'ALL' || searchScope === 'ACCOUNT' || searchScope === 'PREPAID') && (
+                            <div className="flex items-center gap-1.5 mt-1.5 px-1">
+                                <span className="text-[10px] text-slate-400">Searching as:</span>
+                                <Badge variant="secondary" className="text-[9px] h-4 px-1.5 bg-[var(--pos-accent-tint)] text-[var(--pos-accent)] border-0 font-medium">
+                                    {detectedSearchType.label}
+                                </Badge>
+                                {detectedSearchType.field === 'accountNo' && /^\d+$/.test(ddSearchQuery) && (
+                                    <span className="text-[9px] text-slate-400">+ ERF, meter, old code</span>
+                                )}
+                            </div>
                         )}
                         {ddDropdownOpen && ddSearchResults.length > 0 && (
-                            <div className="absolute z-50 top-full left-0 right-0 mt-1.5 bg-white border border-[#D6D6D6] rounded-xl shadow-xl shadow-slate-200/50 max-h-[60vh] sm:max-h-80 overflow-y-auto overscroll-contain">
+                            <div className="bg-white border border-[#D6D6D6] rounded-xl shadow-xl shadow-slate-200/50 max-h-[60vh] sm:max-h-80 overflow-y-auto overscroll-contain mt-1 relative z-50">
                                 {ddSearchResults.map((result, idx) => (
                                     <button
                                         key={`${result.type}-${result.accountId}-${idx}`}
@@ -2133,13 +2184,19 @@ export default function AllocateTransaction({ dialogMode, dialogPosItemId, onDia
                                              <Receipt className="w-4 h-4 sm:w-3.5 sm:h-3.5" />}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <div className="font-medium text-sm text-slate-800 truncate">
-                                                {result.name}
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="font-medium text-sm text-slate-800 truncate">{result.name}</span>
+                                                {result.description && result.type === 'ACCOUNT' && (
+                                                    <Badge variant="secondary" className="text-[8px] h-3.5 px-1 shrink-0 bg-blue-50 text-blue-600 border-0 font-normal">
+                                                        {result.description}
+                                                    </Badge>
+                                                )}
                                             </div>
                                             <div className="text-xs text-muted-foreground truncate">
                                                 {result.accountNo}
                                                 {result.oldAccountCode ? ` | Old: ${result.oldAccountCode}` : ''}
-                                                {result.description && !result.oldAccountCode ? ` | ${result.description}` : ''}
+                                                {result.description && result.type !== 'ACCOUNT' && !result.oldAccountCode ? ` | ${result.description}` : ''}
+                                                {result.rawData?.locationAddress ? ` | ${result.rawData.locationAddress.replace(/\r\n/g, ', ')}` : ''}
                                             </div>
                                         </div>
                                         {result.outstandingAmount != null && result.outstandingAmount !== 0 && (
@@ -2152,7 +2209,7 @@ export default function AllocateTransaction({ dialogMode, dialogPosItemId, onDia
                             </div>
                         )}
                         {ddDropdownOpen && ddSearchResults.length === 0 && !ddSearching && ddSearchQuery.length >= 2 && (
-                            <div className="absolute z-50 top-full left-0 right-0 mt-1.5 bg-white border border-[#D6D6D6] rounded-xl shadow-xl shadow-slate-200/50 p-6 text-center">
+                            <div className="bg-white border border-[#D6D6D6] rounded-xl shadow-xl shadow-slate-200/50 p-6 text-center mt-1 relative z-50">
                                 <Search className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                                 <p className="text-sm text-muted-foreground">No results found for "<span className="font-medium text-slate-600">{ddSearchQuery}</span>"</p>
                             </div>
