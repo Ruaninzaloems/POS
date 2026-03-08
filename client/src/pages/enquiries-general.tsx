@@ -635,6 +635,13 @@ function GeneralEnquiriesContent() {
       }
       let data = await searchAccounts(searchCriteria);
       if (fullSearchTokenRef.current !== token) return;
+      if (searchCriteria.sgNumber && searchCriteria.sgNumber.trim()) {
+        const sgTerm = searchCriteria.sgNumber.trim().toLowerCase();
+        data = data.filter((r: any) => {
+          const sg = (r.sgNumber || '').toLowerCase();
+          return sg.includes(sgTerm);
+        });
+      }
       if (data.length === 0 && hasQuick) {
         const { field } = detectSearchType(quickQuery);
         data = await autocompleteSearch(quickQuery.trim(), field).catch((e) => { console.error('Failed to autocomplete search in full search:', e); return [] as EnquirySearchResult[]; });
@@ -1306,7 +1313,7 @@ function GeneralEnquiriesContent() {
                             onSelectAllLinked={handleSelectAllLinked}
                             onSelectByFieldValue={handleSelectByFieldValue}
                             onEnter={handleFullSearch}
-                            onAutoResults={handleAutoResults}
+                            onAutoResults={undefined}
                           />
                         </div>
                       ))}
