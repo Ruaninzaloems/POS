@@ -1232,7 +1232,12 @@ export default function AllocateTransaction() {
                           const uniqueAccountIds = Array.from(new Set(accountLinesToRebuild.map((l: any) => l.accountId)));
                           if (uniqueAccountIds.length > 0) {
                               setPostingStatus(`Rebuilding ${uniqueAccountIds.length} account(s)...`);
-                              await Promise.allSettled(uniqueAccountIds.map(id => rebuildFullAccount(id as number)));
+                              const REBUILD_TIMEOUT = 15000;
+                              const rebuildWithTimeout = (id: number) => Promise.race([
+                                  rebuildFullAccount(id),
+                                  new Promise((_, reject) => setTimeout(() => reject(new Error('Rebuild timeout')), REBUILD_TIMEOUT))
+                              ]);
+                              await Promise.allSettled(uniqueAccountIds.map(id => rebuildWithTimeout(id as number)));
                           }
                       }
 
