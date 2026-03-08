@@ -12,7 +12,7 @@ import { HelpTip } from '@/components/ui/help-tip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { platinumGetBankReconPosItemList, platinumCheckSelectedItemProcessed, platinumSearchAccountsPayment, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, fetchAccounts, fetchActiveFinYear, fetchBulkAllocationList, fetchBulkProgressJobAccountDetails, submitDDAllocationBatch, pollDDAllocationJob } from '@/lib/external-api';
+import { platinumGetBankReconPosItemList, platinumCheckSelectedItemProcessed, platinumSearchAccountsPayment, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, fetchAccounts, fetchActiveFinYear, fetchBulkAllocationList, fetchBulkProgressJobAccountDetails, submitDDAllocationBatch, pollDDAllocationJob, searchByBankStatementNote } from '@/lib/external-api';
 import { autocomplete as billingAutocomplete, searchAccounts as billingEnquirySearch } from '@/lib/enquiries-service';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { usePos } from '@/lib/pos-state';
@@ -58,6 +58,8 @@ interface SuggestedMatch {
   suburb?: string;
   portion?: string;
   allotment?: string;
+  matchSources?: string[];
+  bankStatementPrior?: { receiptNo: string; paidAmount: number; date: string; status: string }[];
 }
 
 function parseSgNumber(sg: string | undefined | null): { erf?: string; portion?: string; allotment?: string } {
@@ -471,17 +473,44 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
   const suggestions: SuggestedMatch[] = [];
   const seenIds = new Set<number>();
 
+  const sourceLabel = (mt: SuggestedMatch['matchType']): string => {
+    switch (mt) {
+      case 'history': return 'Prior DD Allocation';
+      case 'account_number': return 'Account Number';
+      case 'erf_number': return 'ERF Number';
+      case 'meter_number': return 'Meter Number';
+      case 'old_account': return 'Old Account Code';
+      case 'name': return 'Name/Company';
+      case 'reference': return 'Reference/Keyword';
+      default: return mt;
+    }
+  };
+
   const addResult = (item: any, matchType: SuggestedMatch['matchType'], matchDetail: string, confidence: number, reasoning: string[]) => {
     const accId = item.account_ID || item.accountID || item.id;
     if (!accId) return;
     const clampedConf = Math.min(confidence, 99);
     const existing = suggestions.find(s => s.accountId === accId);
     if (existing) {
-      if (clampedConf > existing.confidence) {
+      const newSource = sourceLabel(matchType);
+      if (!existing.matchSources) existing.matchSources = [sourceLabel(existing.matchType)];
+      const isStronger = clampedConf > existing.confidence;
+      if (!existing.matchSources.includes(newSource)) {
+        existing.matchSources.push(newSource);
+        const multiSourceBoost = Math.min(8, existing.matchSources.length * 4);
+        existing.confidence = Math.min(99, Math.max(existing.confidence, clampedConf) + multiSourceBoost);
+        existing.matchReasoning = [
+          ...(existing.matchReasoning || []),
+          `✓ Also confirmed by: ${newSource}`,
+        ];
+        if (isStronger) {
+          existing.matchDetail = matchDetail;
+          existing.matchType = matchType;
+        }
+      } else if (isStronger) {
         existing.confidence = clampedConf;
         existing.matchDetail = matchDetail;
         existing.matchType = matchType;
-        existing.matchReasoning = reasoning;
       }
       if (!existing.sgNumber && item.sgNumber) {
         const sgP = parseSgNumber(item.sgNumber);
@@ -500,6 +529,9 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
       if (!existing.accountNo || existing.accountNo === String(accId)) {
         const betterNo = item.accountNumber || item.accountNo;
         if (betterNo && betterNo !== String(accId)) existing.accountNo = betterNo;
+      }
+      if (item._bankStatementPrior && !existing.bankStatementPrior) {
+        existing.bankStatementPrior = item._bankStatementPrior;
       }
       return;
     }
@@ -529,6 +561,8 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
       suburb: item.suburb || '',
       portion: sgParsed.portion,
       allotment: sgParsed.allotment,
+      matchSources: [sourceLabel(matchType)],
+      bankStatementPrior: item._bankStatementPrior || undefined,
     });
   };
 
@@ -580,6 +614,67 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
       }
     })
   );
+
+  const decodedNote = decodeHtmlEntities(note || '');
+  if (decodedNote.length >= 5) {
+    searchPromises.push(
+      safe(() => searchByBankStatementNote(decodedNote)).then(async (results: any[]) => {
+        const allocated = results.filter((r: any) => {
+          const hasAccount = r.accountId && r.accountId > 0;
+          const isAllocated = r.allocationStatus === 'Account Allocation' || r.billingAllocated === true || r.billingAllocated === 1;
+          return hasAccount && isAllocated;
+        });
+        const byAccount = new Map<number, any[]>();
+        for (const r of allocated) {
+          const list = byAccount.get(r.accountId) || [];
+          list.push(r);
+          byAccount.set(r.accountId, list);
+        }
+        for (const [accId, recs] of byAccount) {
+          const priorEntries = recs.map((r: any) => ({
+            receiptNo: String(r.receiptNo || ''),
+            paidAmount: r.paidAmount || r.bankAmount || 0,
+            date: r.billingAllocationDate || r.dateCaptured || r.bankStatementDate || '',
+            status: r.allocationStatus || 'Allocated',
+          }));
+          const totalPaid = priorEntries.reduce((s: number, p: any) => s + p.paidAmount, 0);
+          const latestDate = priorEntries.reduce((best: string, p: any) => (!best || p.date > best) ? p.date : best, '');
+          const dateStr = latestDate ? new Date(latestDate).toLocaleDateString('en-GB') : 'unknown';
+          const conf = Math.min(95, 80 + (recs.length * 5));
+          const accountNo = String(recs[0].accountNumber || recs[0].accountNo || accId);
+          addResult(
+            { account_ID: accId, accountNumber: accountNo, name: '', lastName: '', _bankStatementPrior: priorEntries },
+            'history',
+            `Previously allocated via EFT (${recs.length}x) — account ${accountNo}`,
+            conf,
+            [
+              `Bank statement search found ${recs.length} prior allocation(s) for this description`,
+              `Last allocated: ${dateStr} for R ${totalPaid.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`,
+              latestDate ? `Receipt: ${priorEntries[0].receiptNo}` : '',
+              `This is the same API used on the View Receipts → Bank Statement tab`,
+              `High confidence — same bank note was previously processed`,
+            ].filter(Boolean),
+          );
+          if (accountNo && accountNo !== String(accId)) {
+            try {
+              const enrichItems = await safe(() => billingEnquirySearch({ accountNo }));
+              if (enrichItems && enrichItems.length > 0) {
+                const item = enrichItems[0];
+                addResult({ ...item, account_ID: accId, _bankStatementPrior: priorEntries }, 'history',
+                  `Previously allocated via EFT — account ${accountNo}`,
+                  conf,
+                  [
+                    `Bank statement prior allocation to account ${accountNo}`,
+                    `Account details enriched from billing enquiry`,
+                  ]
+                );
+              }
+            } catch (e) { /* enrichment is best-effort */ }
+          }
+        }
+      })
+    );
+  }
 
   for (const mtr of clues.meterNumbers.slice(0, 3)) {
     searchPromises.push(
@@ -2045,8 +2140,30 @@ export default function UnmatchedQueue() {
                             {m.sgNumber && (
                               <div className="text-[9px] font-mono text-slate-400 mt-0.5">SG {m.sgNumber}</div>
                             )}
+                            {m.matchSources && m.matchSources.length > 1 && (
+                              <div className="flex items-center gap-1 mt-1 flex-wrap">
+                                <Check className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+                                <span className="text-[8px] font-semibold text-emerald-700">{m.matchSources.length} sources:</span>
+                                {m.matchSources.map((src, i) => (
+                                  <span key={i} className="text-[8px] text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-100">{src}</span>
+                                ))}
+                              </div>
+                            )}
                             {m.outstandingAmount != null && m.outstandingAmount !== 0 && (
                               <div className="text-[10px] font-mono text-slate-600 mt-1">Outstanding: <strong>R {m.outstandingAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</strong></div>
+                            )}
+                            {m.bankStatementPrior && m.bankStatementPrior.length > 0 && (
+                              <div className="bg-blue-50/80 rounded-md px-2 py-1 mt-1 border border-blue-100">
+                                <div className="text-[8px] font-semibold text-blue-700 flex items-center gap-1">
+                                  <HistoryIcon className="w-2.5 h-2.5" /> Prior EFT Receipt
+                                </div>
+                                {m.bankStatementPrior.slice(0, 2).map((bp, i) => (
+                                  <div key={i} className="text-[8px] text-blue-600 mt-0.5">
+                                    {bp.receiptNo} · R {bp.paidAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                                    {bp.date && ` · ${new Date(bp.date).toLocaleDateString('en-GB')}`}
+                                  </div>
+                                ))}
+                              </div>
                             )}
                             {m.priorAllocations && m.priorAllocations.length > 0 && (() => {
                               const latest = m.priorAllocations[0];
@@ -2054,7 +2171,7 @@ export default function UnmatchedQueue() {
                               return (
                                 <div className="text-[9px] text-blue-500 flex items-center gap-1 mt-1">
                                   <HistoryIcon className="w-2.5 h-2.5" />
-                                  Prior: {dateStr} · R {latest.allocatedAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                                  Prior DD: {dateStr} · R {latest.allocatedAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
                                 </div>
                               );
                             })()}
@@ -2221,9 +2338,32 @@ export default function UnmatchedQueue() {
                                     {m.sgNumber && (
                                       <div className="text-[9px] font-mono text-slate-400 mt-0.5">SG {m.sgNumber}</div>
                                     )}
+                                    {m.matchSources && m.matchSources.length > 1 && (
+                                      <div className="flex items-center gap-1 mt-1 flex-wrap">
+                                        <Check className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+                                        <span className="text-[9px] font-semibold text-emerald-700">Confirmed by {m.matchSources.length} sources:</span>
+                                        {m.matchSources.map((src, i) => (
+                                          <span key={i} className="text-[8px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">{src}</span>
+                                        ))}
+                                      </div>
+                                    )}
                                     {m.outstandingAmount != null && m.outstandingAmount !== 0 && (
                                       <div className="text-[10px] font-mono text-slate-600 mt-1">
                                         Outstanding: <strong>R {m.outstandingAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</strong>
+                                      </div>
+                                    )}
+                                    {m.bankStatementPrior && m.bankStatementPrior.length > 0 && (
+                                      <div className="bg-blue-50/80 rounded-md px-2 py-1 mt-1 border border-blue-100">
+                                        <div className="text-[9px] font-semibold text-blue-700 flex items-center gap-1">
+                                          <HistoryIcon className="w-2.5 h-2.5" /> Previously Allocated (EFT Receipt)
+                                        </div>
+                                        {m.bankStatementPrior.slice(0, 3).map((bp, i) => (
+                                          <div key={i} className="text-[9px] text-blue-600 mt-0.5 flex items-center gap-2">
+                                            <span className="font-mono">{bp.receiptNo}</span>
+                                            <span>R {bp.paidAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+                                            {bp.date && <span className="text-blue-400">{new Date(bp.date).toLocaleDateString('en-GB')}</span>}
+                                          </div>
+                                        ))}
                                       </div>
                                     )}
                                     {m.priorAllocations && m.priorAllocations.length > 0 && (() => {
@@ -2232,7 +2372,7 @@ export default function UnmatchedQueue() {
                                       return (
                                         <div className="text-[9px] text-blue-600 flex items-center gap-1 mt-1">
                                           <HistoryIcon className="w-2.5 h-2.5" />
-                                          Prior allocation: {dateStr} · R {latest.allocatedAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                                          Prior DD allocation: {dateStr} · R {latest.allocatedAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
                                         </div>
                                       );
                                     })()}
