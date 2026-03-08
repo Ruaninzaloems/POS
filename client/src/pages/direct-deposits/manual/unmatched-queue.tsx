@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, ArrowRight, Filter, FileSpreadsheet, FileText, X, HelpCircle, Loader2, ChevronLeft, ChevronRight, Sparkles, Building2, MapPin, Hash, RefreshCw, ChevronDown, ChevronUp, Calendar, Banknote, RotateCcw, CheckSquare, Zap, Users } from 'lucide-react';
+import { Search, ArrowRight, Filter, FileSpreadsheet, FileText, X, HelpCircle, Loader2, ChevronLeft, ChevronRight, Sparkles, Building2, MapPin, Hash, RefreshCw, ChevronDown, ChevronUp, Calendar, Banknote, RotateCcw, CheckSquare, Zap, Users, Check, Info } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { format, parseISO, isWithinInterval, startOfDay, endOfDay, isValid } from 'date-fns';
 import { Label } from '@/components/ui/label';
@@ -773,6 +773,9 @@ export default function UnmatchedQueue() {
   const [loadingSuggestions, setLoadingSuggestions] = useState<Set<number>>(new Set());
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [quickAllocItem, setQuickAllocItem] = useState<{ tx: BankReconPosItem; match: SuggestedMatch } | null>(null);
+  const [quickAllocRunning, setQuickAllocRunning] = useState(false);
+  const [quickAllocStatus, setQuickAllocStatus] = useState('');
   const [autoMatchRunning, setAutoMatchRunning] = useState(false);
   const [autoMatchProgress, setAutoMatchProgress] = useState({ done: 0, total: 0 });
   const autoMatchAbort = useRef(false);
@@ -955,6 +958,15 @@ export default function UnmatchedQueue() {
 
   const handleAllocateClick = async (posItemId: number, e?: React.MouseEvent, preselectedAccount?: SuggestedMatch) => {
     if (e) e.stopPropagation();
+
+    if (preselectedAccount) {
+      const txItem = items.find(i => i.posItem_ID === posItemId);
+      if (txItem) {
+        setQuickAllocItem({ tx: txItem, match: preselectedAccount });
+        return;
+      }
+    }
+
     setCheckingItemId(posItemId);
     try {
       let finYear: string;
@@ -983,32 +995,104 @@ export default function UnmatchedQueue() {
         });
         return;
       }
-      let url = `/direct-deposits/manual/allocate/${posItemId}`;
-      if (preselectedAccount) {
-        const params = new URLSearchParams();
-        params.set('accountId', String(preselectedAccount.accountId));
-        params.set('accountNo', preselectedAccount.accountNo);
-        params.set('name', preselectedAccount.name);
-        const txItem = items.find(i => i.posItem_ID === posItemId);
-        if (txItem?.amount) params.set('amount', String(txItem.amount));
-        url += `?${params.toString()}`;
-      }
-      setLocation(url);
+      setLocation(`/direct-deposits/manual/allocate/${posItemId}`);
     } catch (e: any) {
       console.error("Failed to check item processed status", e);
-      let url = `/direct-deposits/manual/allocate/${posItemId}`;
-      if (preselectedAccount) {
-        const params = new URLSearchParams();
-        params.set('accountId', String(preselectedAccount.accountId));
-        params.set('accountNo', preselectedAccount.accountNo);
-        params.set('name', preselectedAccount.name);
-        const txItem = items.find(i => i.posItem_ID === posItemId);
-        if (txItem?.amount) params.set('amount', String(txItem.amount));
-        url += `?${params.toString()}`;
-      }
-      setLocation(url);
+      setLocation(`/direct-deposits/manual/allocate/${posItemId}`);
     } finally {
       setCheckingItemId(null);
+    }
+  };
+
+  const executeQuickAllocate = async () => {
+    if (!quickAllocItem) return;
+    const { tx, match } = quickAllocItem;
+    setQuickAllocRunning(true);
+    setQuickAllocStatus('Checking item...');
+    try {
+      let finYear: string;
+      try {
+        finYear = await fetchActiveFinYear();
+      } catch (e: any) {
+        toast({ title: 'Financial Year Error', description: e?.message || 'Unknown error', variant: 'destructive' });
+        setQuickAllocRunning(false);
+        setQuickAllocStatus('');
+        return;
+      }
+
+      const checkUserId = currentUser?.id ? Number(currentUser.id) : -1;
+      try {
+        const checkResult = await platinumCheckSelectedItemProcessed(checkUserId, finYear, tx.posItem_ID);
+        const msg = (checkResult?.message || '').toLowerCase();
+        const isCashierError = msg.includes('active cashier') || msg.includes('cashier count');
+        if (checkResult && checkResult.success === false && !isCashierError) {
+          toast({ title: 'Item Already Processed', description: checkResult.message || 'Cannot allocate.', variant: 'destructive' });
+          setQuickAllocRunning(false);
+          setQuickAllocStatus('');
+          setQuickAllocItem(null);
+          return;
+        }
+      } catch {}
+
+      setQuickAllocStatus('Submitting allocation...');
+      const now = new Date();
+      const saFormatter = new Intl.DateTimeFormat('en-ZA', {
+        timeZone: 'Africa/Johannesburg',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+      });
+      const saParts = saFormatter.formatToParts(now);
+      const getPart = (type: string) => saParts.find(p => p.type === type)?.value || '';
+      const receiptDate = `${getPart('year')}-${getPart('month')}-${getPart('day')}T${getPart('hour')}:${getPart('minute')}:${getPart('second')}`;
+
+      const batchPayload = {
+        posItemId: tx.posItem_ID,
+        reconId: tx.bankReconID || tx.posItem_ID,
+        financialYear: finYear,
+        transactionDate: tx.dateOfTransaction || receiptDate,
+        transactionNote: tx.note || tx.reference || '',
+        lines: [{
+          accountNo: match.accountNo,
+          accountId: match.accountId,
+          amount: tx.amount,
+          allocationType: 'ACCOUNT',
+          description: tx.note || tx.reference || '',
+        }],
+      };
+
+      const result = await submitDDAllocationBatch(batchPayload);
+      setQuickAllocStatus('Processing...');
+
+      let pollAttempts = 0;
+      const maxPolls = 30;
+      while (pollAttempts < maxPolls) {
+        await new Promise(r => setTimeout(r, 1500));
+        try {
+          const jobStatus = await pollDDAllocationJob(result.jobId);
+          if (jobStatus.status === 'COMPLETED') {
+            toast({ title: 'Allocation Successful', description: `POS Item #${tx.posItem_ID} allocated to ${match.accountNo} — ${match.name}` });
+            setQuickAllocItem(null);
+            setQuickAllocStatus('');
+            loadData(page);
+            return;
+          } else if (jobStatus.status === 'FAILED' || jobStatus.status === 'PARTIAL_FAILURE') {
+            const errMsg = jobStatus.errors?.join(', ') || 'Allocation failed';
+            toast({ title: 'Allocation Failed', description: errMsg, variant: 'destructive' });
+            setQuickAllocStatus('');
+            return;
+          }
+        } catch (pollErr: any) {
+          console.warn(`[QuickAllocate] Poll error:`, pollErr?.message);
+        }
+        pollAttempts++;
+        setQuickAllocStatus(`Processing... (${pollAttempts}/${maxPolls})`);
+      }
+      toast({ title: 'Timeout', description: 'Allocation is still processing. Please check the allocation history.', variant: 'destructive' });
+    } catch (e: any) {
+      toast({ title: 'Allocation Error', description: e?.message || 'Failed to submit allocation', variant: 'destructive' });
+    } finally {
+      setQuickAllocRunning(false);
+      setQuickAllocStatus('');
     }
   };
 
@@ -1427,6 +1511,10 @@ export default function UnmatchedQueue() {
                 <Zap className="w-3 h-3" /> Auto-Match Page
               </Button>
             )}
+            <div className="hidden sm:flex items-center gap-1.5 ml-auto text-muted-foreground text-[11px] max-w-[370px]">
+              <Info className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+              <span><strong className="text-slate-600">Matched items</strong> → click match to quick-allocate &nbsp;|&nbsp; <strong className="text-slate-600">No match</strong> → click Allocate for full search</span>
+            </div>
             {autoMatchRunning && (
               <div className="flex items-center gap-2.5 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600 flex-shrink-0" />
@@ -1462,6 +1550,13 @@ export default function UnmatchedQueue() {
               <span className="hidden sm:inline">Page total: </span>
               <span className="font-mono font-medium text-slate-700">R {pageTotalAmount.toFixed(2)}</span>
             </div>
+          </div>
+        </div>
+
+        <div className="sm:hidden px-4 pt-2 pb-1 bg-[#F2F4F7]">
+          <div className="flex items-start gap-2 text-[11px] text-slate-500 bg-white/70 rounded-lg px-3 py-2 border border-slate-200/60">
+            <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-slate-400" />
+            <span><strong className="text-slate-600">Matched items</strong> → tap match card to quick-allocate &nbsp;|&nbsp; <strong className="text-slate-600">No match</strong> → tap Allocate for full search screen</span>
           </div>
         </div>
 
@@ -1562,7 +1657,7 @@ export default function UnmatchedQueue() {
                         </div>
                         <div className="flex flex-col items-end gap-1 shrink-0">
                           <Badge variant="outline" className={`text-[9px] px-1.5 py-0 font-bold ${matchInd === 'high' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : matchInd === 'medium' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>{bestMatch.confidence}%</Badge>
-                          <span className="text-[8px] text-[var(--pos-accent)] font-medium">Allocate →</span>
+                          <span className="text-[8px] text-green-600 font-semibold">Quick Allocate →</span>
                         </div>
                       </button>
                       );
@@ -1579,7 +1674,7 @@ export default function UnmatchedQueue() {
                                 <span className="text-[9px] font-medium">{suggestions[tx.posItem_ID]!.length}</span>
                               )}
                             </Button>
-                            <Button size="sm" className="h-11 text-xs bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] px-3" disabled={checkingItemId === tx.posItem_ID} onClick={(e) => handleAllocateClick(tx.posItem_ID, e)} data-testid={`button-allocate-mobile-${tx.posItem_ID}`}>
+                            <Button size="sm" className="h-11 text-xs bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] px-3" disabled={checkingItemId === tx.posItem_ID} onClick={(e) => { const bestM = suggestions[tx.posItem_ID]?.[0]; handleAllocateClick(tx.posItem_ID, e, bestM); }} data-testid={`button-allocate-mobile-${tx.posItem_ID}`}>
                               {checkingItemId === tx.posItem_ID ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <>Allocate <ArrowRight className="ml-1 w-3.5 h-3.5" /></>}
                             </Button>
                           </div>
@@ -1651,7 +1746,7 @@ export default function UnmatchedQueue() {
                       <tr
                         data-testid={`row-positem-${tx.posItem_ID}`}
                         className={`transition-colors ${!tx.billingAllocated ? 'cursor-pointer hover:bg-[#F7F7F7]' : ''} ${expandedSuggestion === tx.posItem_ID ? 'bg-amber-50/30' : ''} ${isSelected ? 'bg-blue-50/40' : ''}`}
-                        onClick={() => !tx.billingAllocated && checkingItemId === null && handleAllocateClick(tx.posItem_ID)}
+                        onClick={() => { if (!tx.billingAllocated && checkingItemId === null) { const bestM = suggestions[tx.posItem_ID]?.[0]; handleAllocateClick(tx.posItem_ID, undefined, bestM); } }}
                       >
                         <td className="px-2 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
                           {!tx.billingAllocated && (
@@ -1723,7 +1818,7 @@ export default function UnmatchedQueue() {
                                 matchIndicator === 'medium' ? 'bg-amber-100 text-amber-700 border-amber-200' :
                                 'bg-slate-100 text-slate-600 border-slate-200'
                               }`}>{bestMatch.confidence}%</Badge>
-                              <span className="text-[7px] text-[var(--pos-accent)] font-medium mt-0.5">Allocate →</span>
+                              <span className="text-[7px] text-green-600 font-semibold mt-0.5">Quick Allocate →</span>
                             </button>
                             );
                           })() : !tx.billingAllocated && suggestions[tx.posItem_ID] !== undefined ? (
@@ -1766,7 +1861,7 @@ export default function UnmatchedQueue() {
                                 size="sm"
                                 className="h-8 bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-xs gap-1 px-3"
                                 disabled={checkingItemId === tx.posItem_ID}
-                                onClick={(e) => handleAllocateClick(tx.posItem_ID, e)}
+                                onClick={(e) => { const bestM = suggestions[tx.posItem_ID]?.[0]; handleAllocateClick(tx.posItem_ID, e, bestM); }}
                                 data-testid={`button-allocate-${tx.posItem_ID}`}
                               >
                                 {checkingItemId === tx.posItem_ID ? (
@@ -2338,6 +2433,79 @@ function SuggestionPanel({ posItemId, suggestions, loading, getConfidenceColor, 
           })}
         </div>
       )}
+
+      <Dialog open={!!quickAllocItem} onOpenChange={(open) => { if (!open && !quickAllocRunning) { setQuickAllocItem(null); setQuickAllocStatus(''); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Zap className="w-5 h-5 text-green-500" />
+              Quick Allocate — Confirm Match
+            </DialogTitle>
+            <DialogDescription>
+              This item was auto-matched. Review the details below and click Allocate to confirm.
+            </DialogDescription>
+          </DialogHeader>
+          {quickAllocItem && (
+            <div className="space-y-4 py-2">
+              <div className="rounded-lg border bg-slate-50 p-3 space-y-2">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="text-xs text-muted-foreground">POS Item #{quickAllocItem.tx.posItem_ID}</div>
+                    <div className="text-sm font-medium mt-0.5">{quickAllocItem.tx.note || quickAllocItem.tx.reference || '—'}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs text-muted-foreground">Amount</div>
+                    <div className="text-base font-bold text-green-700">R {quickAllocItem.tx.amount?.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</div>
+                  </div>
+                </div>
+                {quickAllocItem.tx.dateOfTransaction && (
+                  <div className="text-xs text-muted-foreground">
+                    Date: {(() => { try { return format(parseISO(quickAllocItem.tx.dateOfTransaction), 'dd/MM/yyyy'); } catch { return quickAllocItem.tx.dateOfTransaction; } })()}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <ArrowRight className="w-4 h-4" />
+                <span>Allocating to:</span>
+              </div>
+
+              <div className="rounded-lg border-2 border-green-200 bg-green-50 p-3 space-y-1">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs border-green-300 text-green-700 font-mono">{quickAllocItem.match.accountNo}</Badge>
+                  <Badge className="text-[10px]" style={{ backgroundColor: quickAllocItem.match.confidence >= 80 ? '#16a34a' : quickAllocItem.match.confidence >= 60 ? '#d97706' : '#6b7280' }}>
+                    {quickAllocItem.match.confidence}%
+                  </Badge>
+                </div>
+                <div className="text-sm font-semibold">{quickAllocItem.match.name}</div>
+                {quickAllocItem.match.matchDetail && (
+                  <div className="text-xs text-muted-foreground">{quickAllocItem.match.matchDetail}</div>
+                )}
+              </div>
+
+              {quickAllocStatus && (
+                <div className="flex items-center gap-2 text-sm text-blue-600">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {quickAllocStatus}
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter className="flex gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => { setQuickAllocItem(null); setQuickAllocStatus(''); }} disabled={quickAllocRunning} data-testid="button-quick-alloc-cancel">
+              Cancel
+            </Button>
+            <Button
+              onClick={executeQuickAllocate}
+              disabled={quickAllocRunning}
+              className="bg-green-600 hover:bg-green-700 text-white"
+              data-testid="button-quick-alloc-confirm"
+            >
+              {quickAllocRunning ? <><Loader2 className="w-4 h-4 animate-spin mr-1" /> Allocating...</> : <><Check className="w-4 h-4 mr-1" /> Allocate</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );
