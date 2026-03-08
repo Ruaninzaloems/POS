@@ -44,6 +44,7 @@ interface SuggestedMatch {
   matchDetail: string;
   confidence: number;
   matchReasoning?: string[];
+  priorAllocations?: PriorAllocation[];
 }
 
 const AREA_ABBREVIATIONS: Record<string, string> = {
@@ -243,12 +244,21 @@ function parseDescriptionForClues(note: string, reference: string): ParsedClues 
   return { accountNumbers, meterNumbers, erfNumbers, oldAccountCodes, keywords, bankingRef, serviceType };
 }
 
+interface PriorAllocation {
+  jobId: number;
+  paymentReference: string;
+  dateCaptured: string;
+  allocatedAmount: number;
+  posItemId: number;
+}
+
 interface HistoryEntry {
   descFingerprint: string;
   accountId: number;
   accountNo: string;
   name: string;
   allocCount: number;
+  priorAllocations: PriorAllocation[];
 }
 let historyCachePromise: Promise<HistoryEntry[]> | null = null;
 
@@ -292,11 +302,19 @@ function loadHistoryCache(): Promise<HistoryEntry[]> {
             const desc = job.paymentReference || '';
             if (!desc || !accId) continue;
             const fp = getDescFingerprint(desc);
+            const prior: PriorAllocation = {
+              jobId: job.directDepositJob_ID,
+              paymentReference: job.paymentReference || '',
+              dateCaptured: job.dateCaptured || '',
+              allocatedAmount: acc.paidAmount || acc.amount || job.allocatedAmount || 0,
+              posItemId: job.posItemID || 0,
+            };
             const existing = seenFingerprints.get(`${fp}:${accId}`);
             if (existing) {
               existing.allocCount++;
+              existing.priorAllocations.push(prior);
             } else {
-              const entry: HistoryEntry = { descFingerprint: fp, accountId: accId, accountNo: accNo, name, allocCount: 1 };
+              const entry: HistoryEntry = { descFingerprint: fp, accountId: accId, accountNo: accNo, name, allocCount: 1, priorAllocations: [prior] };
               seenFingerprints.set(`${fp}:${accId}`, entry);
               entries.push(entry);
             }
@@ -351,6 +369,25 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
         if (!seenIds.has(accId)) {
           seenIds.add(accId);
           const conf = Math.min(95, 75 + (match.allocCount * 5));
+          const sortedPrior = [...match.priorAllocations].sort((a, b) =>
+            new Date(b.dateCaptured).getTime() - new Date(a.dateCaptured).getTime()
+          );
+          const latestPrior = sortedPrior[0];
+          const totalPriorAmount = sortedPrior.reduce((s, p) => s + p.allocatedAmount, 0);
+          const reasoning = [
+            `Description pattern matches ${match.allocCount} previous allocation(s)`,
+          ];
+          if (latestPrior) {
+            const dateStr = latestPrior.dateCaptured ? new Date(latestPrior.dateCaptured).toLocaleDateString('en-GB') : 'unknown date';
+            reasoning.push(`Last allocated on ${dateStr} for R ${latestPrior.allocatedAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`);
+            if (latestPrior.paymentReference) {
+              reasoning.push(`Payment reference: "${latestPrior.paymentReference}"`);
+            }
+          }
+          if (match.allocCount > 1) {
+            reasoning.push(`Total in recent history: R ${totalPriorAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })} across ${match.allocCount} allocation(s)`);
+          }
+          reasoning.push(`Based on recent completed jobs — verify account details before allocating`);
           suggestions.push({
             accountId: accId,
             accountNo: match.accountNo,
@@ -358,11 +395,8 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
             matchType: 'history',
             matchDetail: `Previously allocated ${match.allocCount}x to this account`,
             confidence: conf,
-            matchReasoning: [
-              `Description pattern matches previous allocations`,
-              `This account was allocated ${match.allocCount} time(s) for similar descriptions`,
-              `History-based match — high confidence if pattern is consistent`,
-            ],
+            matchReasoning: reasoning,
+            priorAllocations: sortedPrior,
           });
         }
       }
@@ -1260,6 +1294,16 @@ export default function UnmatchedQueue() {
                           <span className="font-mono text-xs text-slate-700">{bestMatch.accountNo}</span>
                           <span className="text-[10px] text-slate-500 ml-1.5">{bestMatch.name}</span>
                           <div className="text-[9px] text-slate-400">{getMatchTypeLabel(bestMatch.matchType)} match · {bestMatch.matchDetail}</div>
+                          {bestMatch.priorAllocations && bestMatch.priorAllocations.length > 0 && (() => {
+                            const latest = bestMatch.priorAllocations[0];
+                            const dateStr = latest.dateCaptured ? new Date(latest.dateCaptured).toLocaleDateString('en-GB') : '—';
+                            return (
+                              <div className="text-[9px] text-blue-500 flex items-center gap-1 mt-0.5">
+                                <HistoryIcon className="w-2.5 h-2.5" />
+                                Last: {dateStr} · R {latest.allocatedAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                              </div>
+                            );
+                          })()}
                         </div>
                         <Badge variant="outline" className={`text-[9px] px-1.5 py-0 shrink-0 ${matchInd === 'high' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>{bestMatch.confidence}%</Badge>
                         <ArrowRight className="w-3 h-3 text-slate-400 shrink-0" />
@@ -1385,6 +1429,16 @@ export default function UnmatchedQueue() {
                                 <div className="font-mono text-[10px] text-slate-700 truncate">{bestMatch.accountNo}</div>
                                 <div className="text-[9px] text-slate-500 truncate">{bestMatch.name}</div>
                                 <div className="text-[8px] text-slate-400 truncate">{getMatchTypeLabel(bestMatch.matchType)} match · {bestMatch.matchDetail}</div>
+                                {bestMatch.priorAllocations && bestMatch.priorAllocations.length > 0 && (() => {
+                                  const latest = bestMatch.priorAllocations[0];
+                                  const dateStr = latest.dateCaptured ? new Date(latest.dateCaptured).toLocaleDateString('en-GB') : '—';
+                                  return (
+                                    <div className="text-[8px] text-blue-500 flex items-center gap-1 mt-0.5">
+                                      <HistoryIcon className="w-2.5 h-2.5" />
+                                      Last: {dateStr} · R {latest.allocatedAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                                    </div>
+                                  );
+                                })()}
                               </div>
                               <Badge variant="outline" className={`text-[8px] px-1 py-0 shrink-0 ${
                                 matchIndicator === 'high' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
@@ -1774,6 +1828,50 @@ function SuggestionPanel({ posItemId, suggestions, loading, getConfidenceColor, 
                         </li>
                       ))}
                     </ul>
+                  </div>
+                </div>
+              )}
+              {s.priorAllocations && s.priorAllocations.length > 0 && (
+                <div className="px-3 pb-2.5 pt-0">
+                  <div className="bg-blue-50/70 rounded-md px-2.5 py-2 border border-blue-100/60">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <HistoryIcon className="w-3 h-3 text-blue-600" />
+                      <span className="text-[9px] font-semibold text-blue-700 uppercase tracking-wider">
+                        Recent Allocations ({s.priorAllocations.length})
+                      </span>
+                      <span className="text-[8px] text-blue-400 ml-auto">from recent completed jobs</span>
+                    </div>
+                    <div className="space-y-1">
+                      {s.priorAllocations.slice(0, 5).map((pa, pi) => {
+                        const dateStr = pa.dateCaptured
+                          ? new Date(pa.dateCaptured).toLocaleDateString('en-GB')
+                          : '—';
+                        return (
+                          <div key={pi} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 bg-white/60 rounded px-2 py-1.5 border border-blue-100/40" data-testid={`prior-alloc-${pi}`}>
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <Calendar className="w-3 h-3 text-blue-400 shrink-0" />
+                              <span className="text-[10px] text-slate-600 font-medium shrink-0">{dateStr}</span>
+                              <span className="text-[10px] text-slate-400 truncate" title={pa.paymentReference}>
+                                {pa.paymentReference || 'No reference'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-[10px] font-mono font-semibold text-blue-700">
+                                R {pa.allocatedAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                              </span>
+                              <Badge variant="outline" className="text-[8px] border-blue-200 text-blue-500 px-1 py-0">
+                                Job #{pa.jobId}
+                              </Badge>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {s.priorAllocations.length > 5 && (
+                        <div className="text-[10px] text-blue-500 text-center pt-0.5">
+                          + {s.priorAllocations.length - 5} more previous allocation(s)
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
