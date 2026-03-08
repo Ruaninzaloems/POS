@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { PosLayout } from '@/components/layout/pos-layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1993,62 +1994,6 @@ export default function UnmatchedQueue() {
           </div>
         </div>
 
-        {autoMatchRunning && (
-          <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-xl">
-            <div className="bg-white/95 backdrop-blur-md border border-amber-200 rounded-2xl px-4 py-3 shadow-2xl shadow-amber-200/40">
-              <div className="flex items-center gap-3">
-                <div className="relative flex-shrink-0 w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
-                  <Loader2 className="w-5 h-5 animate-spin text-amber-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-semibold text-amber-800">
-                      Auto-matching: {autoMatchProgress.done} of {autoMatchProgress.total} done
-                    </span>
-                    <span className="text-sm font-mono font-bold text-amber-700">
-                      {autoMatchProgress.total > 0 ? Math.round((autoMatchProgress.done / autoMatchProgress.total) * 100) : 0}%
-                    </span>
-                  </div>
-                  <div className="h-2.5 bg-amber-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-500 ease-out"
-                      style={{
-                        width: `${autoMatchProgress.total > 0 ? Math.round((autoMatchProgress.done / autoMatchProgress.total) * 100) : 0}%`,
-                        backgroundColor: 'var(--pos-accent)',
-                      }}
-                    />
-                  </div>
-                  <div className="flex items-center gap-3 mt-1.5 text-[11px]">
-                    {autoMatchStats && autoMatchProgress.done > 0 ? (
-                      <>
-                        <span className="flex items-center gap-1 text-emerald-700 font-medium">
-                          <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                          {autoMatchStats.matched} matched
-                        </span>
-                        <span className="flex items-center gap-1 text-slate-500">
-                          <div className="w-2 h-2 rounded-full bg-slate-300" />
-                          {autoMatchStats.noMatch} no match
-                        </span>
-                        <span className="text-amber-500 font-medium ml-auto">
-                          {autoMatchProgress.total - autoMatchProgress.done} remaining
-                        </span>
-                      </>
-                    ) : (
-                      <span className="text-amber-500">Starting analysis...</span>
-                    )}
-                  </div>
-                </div>
-                <button
-                  className="flex-shrink-0 text-[11px] font-semibold text-amber-700 hover:text-white bg-amber-100 hover:bg-amber-500 px-3 py-1.5 rounded-lg transition-colors"
-                  onClick={() => { autoMatchAbort.current = true; }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         <div className="sm:flex-1 sm:overflow-auto bg-[#F2F4F7] p-4 sm:p-6">
           {error && (
             <Alert variant="destructive" className="mb-3 rounded-xl">
@@ -2578,6 +2523,63 @@ export default function UnmatchedQueue() {
         </div>
       </div>
     </PosLayout>
+
+    {autoMatchRunning && ReactDOM.createPortal(
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[9999] w-[calc(100%-2rem)] max-w-xl" data-testid="auto-match-progress-bar">
+        <div className="bg-white border-2 border-amber-300 rounded-2xl px-4 py-3 shadow-2xl" style={{ boxShadow: '0 8px 32px rgba(217,119,6,0.25), 0 0 0 1px rgba(217,119,6,0.1)' }}>
+          <div className="flex items-center gap-3">
+            <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+              <Loader2 className="w-5 h-5 animate-spin text-amber-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-semibold text-amber-800">
+                  Auto-matching: {autoMatchProgress.done} of {autoMatchProgress.total} done
+                </span>
+                <span className="text-sm font-mono font-bold text-amber-700">
+                  {autoMatchProgress.total > 0 ? Math.round((autoMatchProgress.done / autoMatchProgress.total) * 100) : 0}%
+                </span>
+              </div>
+              <div className="h-2.5 bg-amber-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500 ease-out"
+                  style={{
+                    width: `${autoMatchProgress.total > 0 ? Math.round((autoMatchProgress.done / autoMatchProgress.total) * 100) : 0}%`,
+                    backgroundColor: 'var(--pos-accent)',
+                  }}
+                />
+              </div>
+              <div className="flex items-center gap-3 mt-1.5 text-[11px]">
+                {autoMatchStats && autoMatchProgress.done > 0 ? (
+                  <>
+                    <span className="flex items-center gap-1 text-emerald-700 font-medium">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                      {autoMatchStats.matched} matched
+                    </span>
+                    <span className="flex items-center gap-1 text-slate-500">
+                      <div className="w-2 h-2 rounded-full bg-slate-300" />
+                      {autoMatchStats.noMatch} no match
+                    </span>
+                    <span className="text-amber-500 font-medium ml-auto">
+                      {autoMatchProgress.total - autoMatchProgress.done} remaining
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-amber-500">Starting analysis...</span>
+                )}
+              </div>
+            </div>
+            <button
+              className="flex-shrink-0 text-[11px] font-semibold text-amber-700 hover:text-white bg-amber-100 hover:bg-amber-500 px-3 py-1.5 rounded-lg transition-colors"
+              onClick={() => { autoMatchAbort.current = true; }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body
+    )}
 
     <Dialog open={bulkAllocOpen} onOpenChange={(open) => { if (!bulkAllocRunning) setBulkAllocOpen(open); }}>
       <DialogContent className="max-w-4xl w-[95vw] max-h-[92vh] flex flex-col p-0 bg-white border-[#D6D6D6] overflow-hidden" style={{ borderRadius: '16px' }}>
