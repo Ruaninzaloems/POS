@@ -1154,6 +1154,7 @@ export default function UnmatchedQueue() {
   const autoMatchAbort = useRef(false);
   const [autoMatchQueued, setAutoMatchQueued] = useState<Set<number>>(new Set());
   const [autoMatchOrder, setAutoMatchOrder] = useState<Map<number, number>>(new Map());
+  const autoMatchTotalRef = useRef(0);
   
   const [allocateDialogPosItemId, setAllocateDialogPosItemId] = useState<number | null>(null);
   const [allocateDialogKey, setAllocateDialogKey] = useState(0);
@@ -1325,6 +1326,7 @@ export default function UnmatchedQueue() {
     const orderMap = new Map<number, number>();
     targets.forEach((t, idx) => orderMap.set(t.posItem_ID, idx + 1));
     setAutoMatchOrder(orderMap);
+    autoMatchTotalRef.current = targets.length;
     const stats = { matched: 0, noMatch: 0 };
     setAutoMatchStats({ matched: 0, noMatch: 0 });
 
@@ -1992,22 +1994,22 @@ export default function UnmatchedQueue() {
         </div>
 
         {autoMatchRunning && (
-          <div className="sticky top-0 z-30 mx-0 sm:mx-0">
-            <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border-b border-amber-200 px-4 sm:px-6 py-2.5 shadow-md">
+          <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-xl">
+            <div className="bg-white/95 backdrop-blur-md border border-amber-200 rounded-2xl px-4 py-3 shadow-2xl shadow-amber-200/40">
               <div className="flex items-center gap-3">
-                <div className="relative flex-shrink-0">
+                <div className="relative flex-shrink-0 w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
                   <Loader2 className="w-5 h-5 animate-spin text-amber-600" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs font-semibold text-amber-800">
-                      Auto-matching {autoMatchProgress.done} of {autoMatchProgress.total} items
+                      Auto-matching: {autoMatchProgress.done} of {autoMatchProgress.total} done
                     </span>
-                    <span className="text-xs font-mono font-bold text-amber-700">
+                    <span className="text-sm font-mono font-bold text-amber-700">
                       {autoMatchProgress.total > 0 ? Math.round((autoMatchProgress.done / autoMatchProgress.total) * 100) : 0}%
                     </span>
                   </div>
-                  <div className="h-2 bg-amber-100 rounded-full overflow-hidden">
+                  <div className="h-2.5 bg-amber-100 rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all duration-500 ease-out"
                       style={{
@@ -2016,24 +2018,28 @@ export default function UnmatchedQueue() {
                       }}
                     />
                   </div>
-                  {autoMatchStats && autoMatchProgress.done > 0 && (
-                    <div className="flex items-center gap-3 mt-1 text-[11px]">
-                      <span className="flex items-center gap-1 text-emerald-700">
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                        {autoMatchStats.matched} matched
-                      </span>
-                      <span className="flex items-center gap-1 text-slate-500">
-                        <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
-                        {autoMatchStats.noMatch} no match
-                      </span>
-                      <span className="text-amber-500 ml-auto">
-                        {autoMatchProgress.total - autoMatchProgress.done} remaining
-                      </span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-3 mt-1.5 text-[11px]">
+                    {autoMatchStats && autoMatchProgress.done > 0 ? (
+                      <>
+                        <span className="flex items-center gap-1 text-emerald-700 font-medium">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                          {autoMatchStats.matched} matched
+                        </span>
+                        <span className="flex items-center gap-1 text-slate-500">
+                          <div className="w-2 h-2 rounded-full bg-slate-300" />
+                          {autoMatchStats.noMatch} no match
+                        </span>
+                        <span className="text-amber-500 font-medium ml-auto">
+                          {autoMatchProgress.total - autoMatchProgress.done} remaining
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-amber-500">Starting analysis...</span>
+                    )}
+                  </div>
                 </div>
                 <button
-                  className="flex-shrink-0 text-[11px] font-semibold text-amber-700 hover:text-white bg-amber-100 hover:bg-amber-500 px-3 py-1 rounded-md transition-colors"
+                  className="flex-shrink-0 text-[11px] font-semibold text-amber-700 hover:text-white bg-amber-100 hover:bg-amber-500 px-3 py-1.5 rounded-lg transition-colors"
                   onClick={() => { autoMatchAbort.current = true; }}
                 >
                   Cancel
@@ -2433,9 +2439,9 @@ export default function UnmatchedQueue() {
                               >
                                 {loadingSuggestions.has(tx.posItem_ID) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : autoMatchQueued.has(tx.posItem_ID) ? <Clock className="w-3.5 h-3.5 text-slate-400" /> : <Sparkles className="w-3.5 h-3.5" />}
                                 {loadingSuggestions.has(tx.posItem_ID)
-                                  ? `${autoMatchOrder.get(tx.posItem_ID) || ''}/${autoMatchProgress.total} Searching...`
+                                  ? `${autoMatchOrder.get(tx.posItem_ID) || ''}/${autoMatchTotalRef.current || autoMatchProgress.total} Searching...`
                                   : autoMatchQueued.has(tx.posItem_ID)
-                                    ? `#${autoMatchOrder.get(tx.posItem_ID) || ''} Queued`
+                                    ? `#${autoMatchOrder.get(tx.posItem_ID) || ''}/${autoMatchTotalRef.current || autoMatchProgress.total} Queued`
                                     : 'Find Match'}
                               </Button>
                               <Button
