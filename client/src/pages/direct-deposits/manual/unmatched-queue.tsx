@@ -1157,6 +1157,7 @@ export default function UnmatchedQueue() {
   const [autoMatchQueued, setAutoMatchQueued] = useState<Set<number>>(new Set());
   const [autoMatchOrder, setAutoMatchOrder] = useState<Map<number, number>>(new Map());
   const autoMatchTotalRef = useRef(0);
+  const [autoMatchEta, setAutoMatchEta] = useState<number | null>(null);
   
   const [allocateDialogPosItemId, setAllocateDialogPosItemId] = useState<number | null>(null);
   const [allocateDialogKey, setAllocateDialogKey] = useState(0);
@@ -1338,9 +1339,11 @@ export default function UnmatchedQueue() {
     autoMatchTotalRef.current = targets.length;
     const stats = { matched: 0, noMatch: 0 };
     setAutoMatchStats({ matched: 0, noMatch: 0 });
+    setAutoMatchEta(null);
 
-    const BATCH_SIZE = 3;
+    const BATCH_SIZE = 5;
     let doneCount = 0;
+    const startTime = Date.now();
     for (let i = 0; i < targets.length; i += BATCH_SIZE) {
       if (autoMatchAbort.current) break;
       const batch = targets.slice(i, i + BATCH_SIZE);
@@ -1368,6 +1371,11 @@ export default function UnmatchedQueue() {
         doneCount++;
         setAutoMatchProgress({ done: doneCount, total: targets.length });
         setAutoMatchStats({ ...stats });
+        const elapsed = (Date.now() - startTime) / 1000;
+        const avgPerItem = elapsed / doneCount;
+        const remaining = targets.length - doneCount;
+        const etaSecs = Math.round(avgPerItem * remaining);
+        setAutoMatchEta(etaSecs);
         setLoadingSuggestions(prev => {
           const next = new Set(prev);
           next.delete(item.posItem_ID);
@@ -1993,11 +2001,16 @@ export default function UnmatchedQueue() {
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <span className="text-slate-400">{isSearchActive ? `${filtered.length} match${filtered.length !== 1 ? 'es' : ''} found` : `on this page (${filtered.length} of ${totalCount.toLocaleString()})`}</span>
             </div>
-            {!autoMatchRunning && pageUnmatchedCount > 0 && (
-              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5 text-amber-600 hover:text-amber-700 hover:bg-amber-50 px-2" onClick={runAutoMatchAll} data-testid="button-auto-match-page">
-                <Zap className="w-3 h-3" /> Auto-Match Page
-              </Button>
-            )}
+            {!autoMatchRunning && pageUnmatchedCount > 0 && (() => {
+              const unmatchedNotAnalyzed = unmatchedFiltered.filter(i => !suggestions[i.posItem_ID]).length;
+              const estSecs = Math.round(unmatchedNotAnalyzed * 1.2);
+              const estLabel = estSecs >= 60 ? `~${Math.floor(estSecs / 60)}m ${estSecs % 60}s` : `~${estSecs}s`;
+              return unmatchedNotAnalyzed > 0 ? (
+                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5 text-amber-600 hover:text-amber-700 hover:bg-amber-50 px-2" onClick={runAutoMatchAll} data-testid="button-auto-match-page" title={`Analyze ${unmatchedNotAnalyzed} items (est. ${estLabel})`}>
+                  <Zap className="w-3 h-3" /> Auto-Match {unmatchedNotAnalyzed} items <span className="text-[10px] text-amber-400 ml-0.5">({estLabel})</span>
+                </Button>
+              ) : null;
+            })()}
             <div className="hidden sm:flex items-center gap-1.5 ml-auto text-muted-foreground text-[11px] max-w-[370px]">
               <Info className="w-3.5 h-3.5 shrink-0 text-slate-400" />
               <span><strong className="text-slate-600">Matched items</strong> → click match to quick-allocate &nbsp;|&nbsp; <strong className="text-slate-600">No match</strong> → click Allocate for full search</span>
@@ -2675,7 +2688,12 @@ export default function UnmatchedQueue() {
                       {autoMatchStats.noMatch} no match
                     </span>
                     <span className="text-amber-500 font-medium ml-auto">
-                      {autoMatchProgress.total - autoMatchProgress.done} remaining
+                      {autoMatchEta != null && autoMatchEta > 0
+                        ? autoMatchEta >= 60
+                          ? `~${Math.floor(autoMatchEta / 60)}m ${autoMatchEta % 60}s left`
+                          : `~${autoMatchEta}s left`
+                        : `${autoMatchProgress.total - autoMatchProgress.done} remaining`
+                      }
                     </span>
                   </>
                 ) : (
