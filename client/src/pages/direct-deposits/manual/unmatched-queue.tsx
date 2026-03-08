@@ -2799,19 +2799,18 @@ export default function UnmatchedQueue() {
                       return (
                         <div className="mb-1">
                           {renderMobileCard(bestMatch, true)}
-                          {allMatches.length > 1 && (
+                          {allMatches.length > 1 && bestMatch.confidence < 90 && (() => {
+                            const extras = allMatches.slice(1, 5).filter(m => m.confidence >= Math.max(bestMatch.confidence - 20, 40));
+                            if (extras.length === 0) return null;
+                            return (
                             <>
                               <div className="text-[9px] text-slate-400 px-1 mb-1 flex items-center gap-1">
-                                <Users className="w-2.5 h-2.5" /> {allMatches.length - 1} more account{allMatches.length > 2 ? 's' : ''} on this property — select to allocate:
+                                <Users className="w-2.5 h-2.5" /> {extras.length} more account{extras.length > 1 ? 's' : ''} on this property — select to allocate:
                               </div>
-                              {allMatches.slice(1, 5).map(m => renderMobileCard(m, false))}
-                              {allMatches.length > 5 && (
-                                <div className="text-[9px] text-slate-400 px-1 font-medium mb-1">
-                                  +{allMatches.length - 5} more match{allMatches.length - 5 > 1 ? 'es' : ''}
-                                </div>
-                              )}
+                              {extras.map(m => renderMobileCard(m, false))}
                             </>
-                          )}
+                            );
+                          })()}
                         </div>
                       );
                     })()}
@@ -2901,7 +2900,7 @@ export default function UnmatchedQueue() {
                         <td className="px-3 py-2.5">
                           {!tx.billingAllocated && bestMatch ? (() => {
                             const allMatches = suggestions[tx.posItem_ID] || [];
-                            const showMultiple = allMatches.length > 1;
+                            const showMultiple = allMatches.length > 1 && bestMatch.confidence < 90;
                             const renderMatchCard = (m: SuggestedMatch, isPrimary: boolean) => {
                               const isDI = m.matchType === 'direct_income';
                               const isInst = m.matchType === 'institution';
@@ -3040,20 +3039,19 @@ export default function UnmatchedQueue() {
                             return (
                               <div className="space-y-1.5">
                                 {renderMatchCard(bestMatch, true)}
-                                {showMultiple && (
+                                {showMultiple && (() => {
+                                  const extras = allMatches.slice(1, 5).filter(m => m.confidence >= Math.max(bestMatch.confidence - 20, 40));
+                                  if (extras.length === 0) return null;
+                                  return (
                                   <div className="space-y-1">
                                     <div className="text-[9px] text-slate-400 px-1 flex items-center gap-1">
                                       <Users className="w-2.5 h-2.5" />
-                                      {allMatches.length - 1} more account{allMatches.length > 2 ? 's' : ''} on this property — select to allocate:
+                                      {extras.length} more account{extras.length > 1 ? 's' : ''} on this property — select to allocate:
                                     </div>
-                                    {allMatches.slice(1, 5).map(m => renderMatchCard(m, false))}
-                                    {allMatches.length > 5 && (
-                                      <div className="text-[9px] text-slate-400 px-1 font-medium">
-                                        +{allMatches.length - 5} more match{allMatches.length - 5 > 1 ? 'es' : ''}
-                                      </div>
-                                    )}
+                                    {extras.map(m => renderMatchCard(m, false))}
                                   </div>
-                                )}
+                                  );
+                                })()}
                               </div>
                             );
                           })() : !tx.billingAllocated && suggestions[tx.posItem_ID] !== undefined ? (
