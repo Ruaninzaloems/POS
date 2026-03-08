@@ -181,7 +181,7 @@ export default function AllocateTransaction({ dialogMode, dialogPosItemId, onDia
             primaryResults.push({
               accountId: accId,
               accountNo: item.accountNumber || item.accountNo || String(accId),
-              name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.surname_Company || item.name || 'Unknown',
+              name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.surname_Company || item.name || item.accountDesc || item.typeOfUseDesc || '',
               oldAccountCode: item.oldAccountCode || '',
               outstandingAmount: item.outStandingAmt || item.outStandingAmount || item.outstandingAmount || 0,
               type: resultType,
@@ -192,8 +192,6 @@ export default function AllocateTransaction({ dialogMode, dialogPosItemId, onDia
         };
 
         primaryTasks.push((async () => {
-          const searchTasks: Promise<void>[] = [];
-
           const primaryBody: Record<string, any> = {};
           if (detected.field === 'accountNo' && isNumeric) {
             primaryBody.accountNo = query;
@@ -211,14 +209,15 @@ export default function AllocateTransaction({ dialogMode, dialogPosItemId, onDia
             primaryBody[isNumeric ? 'accountNo' : 'name'] = query;
           }
 
-          searchTasks.push(
-            searchAccounts(primaryBody).then(items => {
-              for (const item of items.slice(0, 15)) addAccountHit(item, detected.field !== 'accountNo' && detected.field !== 'name' ? `Found via ${detected.label}` : undefined);
-              pushResults();
-            }).catch(err => { console.error('[AllocateTransaction] Primary search failed:', err); })
-          );
+          try {
+            const items = await searchAccounts(primaryBody);
+            for (const item of items.slice(0, 15)) addAccountHit(item, detected.field !== 'accountNo' && detected.field !== 'name' ? `Found via ${detected.label}` : undefined);
+            pushResults();
+          } catch (err) { console.error('[AllocateTransaction] Primary search failed:', err); }
 
-          searchTasks.push(
+          const secondarySearches: Promise<void>[] = [];
+
+          secondarySearches.push(
             searchAccounts({ oldAccountCode: query }).then(items => {
               for (const item of items.slice(0, 5)) addAccountHit(item, `Found via old account code`);
               pushResults();
@@ -226,14 +225,14 @@ export default function AllocateTransaction({ dialogMode, dialogPosItemId, onDia
           );
 
           if (isNumeric) {
-            searchTasks.push(
+            secondarySearches.push(
               searchAccounts({ erfNumber: query }).then(items => {
                 for (const item of items.slice(0, 5)) addAccountHit(item, `Found via ERF number`);
                 pushResults();
               }).catch(() => {})
             );
 
-            searchTasks.push(
+            secondarySearches.push(
               searchAccounts({ physicalMeterNumber: query }).then(items => {
                 for (const item of items.slice(0, 5)) addAccountHit(item, `Found via meter number`);
                 pushResults();
@@ -242,7 +241,7 @@ export default function AllocateTransaction({ dialogMode, dialogPosItemId, onDia
           }
 
           if (!isNumeric && detected.field === 'name') {
-            searchTasks.push(
+            secondarySearches.push(
               searchAccounts({ locationAddress: query }).then(items => {
                 for (const item of items.slice(0, 3)) addAccountHit(item, `Found via location/address`);
                 pushResults();
@@ -250,7 +249,7 @@ export default function AllocateTransaction({ dialogMode, dialogPosItemId, onDia
             );
           }
 
-          await Promise.all(searchTasks);
+          await Promise.all(secondarySearches);
         })());
       }
 
