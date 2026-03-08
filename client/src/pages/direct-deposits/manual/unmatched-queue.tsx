@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, ArrowRight, Filter, FileSpreadsheet, FileText, X, HelpCircle, Loader2, ChevronLeft, ChevronRight, Sparkles, Building2, MapPin, Hash, RefreshCw, ChevronDown, ChevronUp, Calendar, Banknote, RotateCcw, CheckSquare, Zap, Users, Check, Info } from 'lucide-react';
+import { Search, ArrowRight, Filter, FileSpreadsheet, FileText, X, HelpCircle, Loader2, ChevronLeft, ChevronRight, Sparkles, Building2, MapPin, Hash, RefreshCw, ChevronDown, ChevronUp, Calendar, Banknote, RotateCcw, CheckSquare, Zap, Users, Check, Info, Clock } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { format, parseISO, isWithinInterval, startOfDay, endOfDay, isValid } from 'date-fns';
 import { Label } from '@/components/ui/label';
@@ -1113,6 +1113,7 @@ export default function UnmatchedQueue() {
   const [autoMatchRunning, setAutoMatchRunning] = useState(false);
   const [autoMatchProgress, setAutoMatchProgress] = useState({ done: 0, total: 0 });
   const autoMatchAbort = useRef(false);
+  const [autoMatchQueued, setAutoMatchQueued] = useState<Set<number>>(new Set());
   
   const [allocateDialogPosItemId, setAllocateDialogPosItemId] = useState<number | null>(null);
   const [allocateDialogKey, setAllocateDialogKey] = useState(0);
@@ -1280,13 +1281,25 @@ export default function UnmatchedQueue() {
     setAutoMatchRunning(true);
     autoMatchAbort.current = false;
     setAutoMatchProgress({ done: 0, total: targets.length });
+    setAutoMatchQueued(new Set(targets.map(t => t.posItem_ID)));
     const stats = { matched: 0, noMatch: 0 };
+    setAutoMatchStats({ matched: 0, noMatch: 0 });
 
     const BATCH_SIZE = 3;
     let doneCount = 0;
     for (let i = 0; i < targets.length; i += BATCH_SIZE) {
       if (autoMatchAbort.current) break;
       const batch = targets.slice(i, i + BATCH_SIZE);
+      setLoadingSuggestions(prev => {
+        const next = new Set(prev);
+        batch.forEach(item => next.add(item.posItem_ID));
+        return next;
+      });
+      setAutoMatchQueued(prev => {
+        const next = new Set(prev);
+        batch.forEach(item => next.delete(item.posItem_ID));
+        return next;
+      });
       await Promise.all(batch.map(async (item) => {
         try {
           const results = await searchForSuggestions(item.note, item.reference);
@@ -1300,11 +1313,18 @@ export default function UnmatchedQueue() {
         }
         doneCount++;
         setAutoMatchProgress({ done: doneCount, total: targets.length });
+        setAutoMatchStats({ ...stats });
+        setLoadingSuggestions(prev => {
+          const next = new Set(prev);
+          next.delete(item.posItem_ID);
+          return next;
+        });
       }));
     }
 
     setAutoMatchStats(stats);
     setAutoMatchRunning(false);
+    setAutoMatchQueued(new Set());
     if (!autoMatchAbort.current && showToast) {
       const highConf = stats.matched;
       toast({
@@ -1930,7 +1950,7 @@ export default function UnmatchedQueue() {
                   </div>
                   <span className="text-[10px] text-amber-600">
                     {autoMatchProgress.total > 0 ? `${Math.round((autoMatchProgress.done / autoMatchProgress.total) * 100)}%` : '0%'}
-                    {' · '}Searching meters, accounts & references
+                    {autoMatchProgress.done > 0 && autoMatchStats ? ` · ${autoMatchStats.matched} matched, ${autoMatchStats.noMatch} no match` : ' · Searching...'}
                   </span>
                 </div>
                 <button
@@ -2339,12 +2359,13 @@ export default function UnmatchedQueue() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className={`h-8 text-xs gap-1.5 px-3 ${loadingSuggestions.has(tx.posItem_ID) ? 'text-amber-600 border-amber-300' : 'text-slate-500 hover:text-amber-600 hover:border-amber-300'}`}
+                                className={`h-8 text-xs gap-1.5 px-3 ${loadingSuggestions.has(tx.posItem_ID) ? 'text-amber-600 border-amber-300 animate-pulse' : autoMatchQueued.has(tx.posItem_ID) ? 'text-slate-400 border-slate-200' : 'text-slate-500 hover:text-amber-600 hover:border-amber-300'}`}
                                 onClick={(e) => { e.stopPropagation(); findMatch(tx.posItem_ID, tx.note, tx.reference); }}
+                                disabled={autoMatchQueued.has(tx.posItem_ID)}
                                 data-testid={`button-suggest-${tx.posItem_ID}`}
                               >
-                                {loadingSuggestions.has(tx.posItem_ID) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                                Find Match
+                                {loadingSuggestions.has(tx.posItem_ID) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : autoMatchQueued.has(tx.posItem_ID) ? <Clock className="w-3.5 h-3.5 text-slate-400" /> : <Sparkles className="w-3.5 h-3.5" />}
+                                {loadingSuggestions.has(tx.posItem_ID) ? 'Searching...' : autoMatchQueued.has(tx.posItem_ID) ? 'Queued' : 'Find Match'}
                               </Button>
                               <Button
                                 size="sm"
