@@ -2652,8 +2652,8 @@ export default function UnmatchedQueue() {
     </PosLayout>
 
     {autoMatchRunning && ReactDOM.createPortal(
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[9999] w-[calc(100%-2rem)] max-w-xl" data-testid="auto-match-progress-bar">
-        <div className="bg-white border-2 border-amber-300 rounded-2xl px-4 py-3 shadow-2xl" style={{ boxShadow: '0 8px 32px rgba(217,119,6,0.25), 0 0 0 1px rgba(217,119,6,0.1)' }}>
+      <div className={`fixed left-1/2 -translate-x-1/2 z-[9999] w-[calc(100%-2rem)] max-w-xl transition-all duration-300 ${selectedIds.size > 0 ? 'bottom-20' : 'bottom-4'}`} data-testid="auto-match-progress-bar">
+        <div className="bg-white border-2 border-amber-300 rounded-2xl px-4 py-3" style={{ boxShadow: '0 8px 32px rgba(217,119,6,0.25), 0 0 0 1px rgba(217,119,6,0.1)' }}>
           <div className="flex items-center gap-3">
             <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
               <Loader2 className="w-5 h-5 animate-spin text-amber-600" />
@@ -2688,10 +2688,12 @@ export default function UnmatchedQueue() {
                       {autoMatchStats.noMatch} no match
                     </span>
                     <span className="text-amber-500 font-medium ml-auto">
-                      {autoMatchEta != null && autoMatchEta > 0
+                      {autoMatchEta != null
                         ? autoMatchEta >= 60
                           ? `~${Math.floor(autoMatchEta / 60)}m ${autoMatchEta % 60}s left`
-                          : `~${autoMatchEta}s left`
+                          : autoMatchEta > 0
+                            ? `~${autoMatchEta}s left`
+                            : 'Almost done...'
                         : `${autoMatchProgress.total - autoMatchProgress.done} remaining`
                       }
                     </span>
