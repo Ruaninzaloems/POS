@@ -263,6 +263,15 @@ function parseDescriptionForClues(note: string, reference: string): ParsedClues 
     }
   }
 
+  if (erfNumbers.length > 0) {
+    const erfNums = new Set(erfNumbers.map(e => e.erf));
+    for (let i = accountNumbers.length - 1; i >= 0; i--) {
+      if (erfNums.has(accountNumbers[i])) {
+        accountNumbers.splice(i, 1);
+      }
+    }
+  }
+
   const oldCodePatterns = [
     /SEQ\/?(\w+)/gi,
     /\/(\d{6,})\b/g,
@@ -1188,7 +1197,8 @@ export default function UnmatchedQueue() {
     if (e) e.stopPropagation();
 
     if (preselectedAccount) {
-      const txItem = items.find(i => i.posItem_ID === posItemId);
+      const txItem = items.find(i => i.posItem_ID === posItemId)
+        || allItemsCacheRef.current?.find(i => i.posItem_ID === posItemId);
       if (txItem) {
         setQuickAllocItem({ tx: txItem, match: preselectedAccount });
         return;
@@ -1707,7 +1717,7 @@ export default function UnmatchedQueue() {
                 </PopoverContent>
              </Popover>
 
-             <Button variant="outline" size="sm" className="h-11 sm:h-10 px-3 gap-1.5 border-[#D6D6D6]" onClick={() => { allItemsCacheRef.current = null; loadData(page); }} disabled={loading} data-testid="button-refresh">
+             <Button variant="outline" size="sm" className="h-11 sm:h-10 px-3 gap-1.5 border-[#D6D6D6]" onClick={() => { allItemsCacheRef.current = null; loadData(page); if (searchTerm.trim().length >= 2) loadAllForSearch(); }} disabled={loading} data-testid="button-refresh">
                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
                  <span className="text-xs hidden sm:inline">Refresh</span>
              </Button>
@@ -2555,7 +2565,7 @@ export default function UnmatchedQueue() {
               <span>Allocating to:</span>
             </div>
 
-            <div className="rounded-lg border-2 border-green-200 bg-green-50 p-3 space-y-1">
+            <div className="rounded-lg border-2 border-green-200 bg-green-50 p-3 space-y-1.5">
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-xs border-green-300 text-green-700 font-mono">{quickAllocItem.match.accountNo}</Badge>
                 <Badge className="text-[10px]" style={{ backgroundColor: quickAllocItem.match.confidence >= 80 ? '#16a34a' : quickAllocItem.match.confidence >= 60 ? '#d97706' : '#6b7280' }}>
@@ -2565,6 +2575,20 @@ export default function UnmatchedQueue() {
               <div className="text-sm font-semibold">{quickAllocItem.match.name}</div>
               {quickAllocItem.match.matchDetail && (
                 <div className="text-xs text-muted-foreground">{quickAllocItem.match.matchDetail}</div>
+              )}
+              {quickAllocItem.match.outstandingAmount != null && (
+                <div className="text-xs text-muted-foreground mt-1">
+                  Outstanding: R {quickAllocItem.match.outstandingAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                </div>
+              )}
+              {quickAllocItem.match.matchReasoning && quickAllocItem.match.matchReasoning.length > 0 && (
+                <div className="mt-1.5 pt-1.5 border-t border-green-200 space-y-0.5">
+                  {quickAllocItem.match.matchReasoning.map((r: string, i: number) => (
+                    <div key={i} className="text-[10px] text-muted-foreground flex items-start gap-1">
+                      <span className="text-green-500 mt-px">•</span> {r}
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
 
