@@ -566,12 +566,15 @@ function GeneralEnquiriesContent() {
         if (quickSearchTokenRef.current !== token) return;
       }
       if (results.length === 0 && field === 'accountNo' && /^\d{4,}$/.test(query.trim())) {
-        const [oldAccResults, oldAutoResults] = await Promise.all([
-          searchAccounts({ oldAccountCode: query.trim() } as any).catch(() => [] as EnquirySearchResult[]),
-          autocompleteSearch(query.trim(), 'oldAccountCode').catch(() => [] as EnquirySearchResult[]),
+        const num = query.trim();
+        const padded = num.padStart(12, '0');
+        const [oldAccResults, oldAutoResults, paddedResults] = await Promise.all([
+          searchAccounts({ oldAccountCode: num } as any).catch(() => [] as EnquirySearchResult[]),
+          autocompleteSearch(num, 'oldAccountCode').catch(() => [] as EnquirySearchResult[]),
+          padded !== num ? searchAccounts({ accountNo: padded } as any).catch(() => [] as EnquirySearchResult[]) : Promise.resolve([] as EnquirySearchResult[]),
         ]);
         if (quickSearchTokenRef.current !== token) return;
-        results = oldAccResults.length > 0 ? oldAccResults : oldAutoResults;
+        results = oldAccResults.length > 0 ? oldAccResults : oldAutoResults.length > 0 ? oldAutoResults : paddedResults;
       }
       setDropdownResults(results);
       setShowDropdown(true);
@@ -708,15 +711,28 @@ function GeneralEnquiriesContent() {
         data = await autocompleteSearch(quickQuery.trim(), field).catch((e) => { console.error('Failed to autocomplete search in full search:', e); return [] as EnquirySearchResult[]; });
         if (fullSearchTokenRef.current !== token) return;
       }
-      if (data.length === 0 && hasQuick && /^\d{4,}$/.test(quickQuery.trim())) {
-        const { field } = detectSearchType(quickQuery);
-        if (field === 'accountNo') {
-          const [oldAccResults, oldAutoResults] = await Promise.all([
-            searchAccounts({ ...criteria, oldAccountCode: quickQuery.trim() } as any).catch(() => [] as EnquirySearchResult[]),
-            autocompleteSearch(quickQuery.trim(), 'oldAccountCode').catch(() => [] as EnquirySearchResult[]),
-          ]);
-          if (fullSearchTokenRef.current !== token) return;
+      if (data.length === 0 && /^\d{4,}$/.test((hasQuick ? quickQuery : searchCriteria.oldAccountCode || searchCriteria.accountNo || '').trim())) {
+        const searchNum = (hasQuick ? quickQuery : searchCriteria.oldAccountCode || searchCriteria.accountNo || '').trim();
+        const [oldAccResults, oldAutoResults] = await Promise.all([
+          searchAccounts({ oldAccountCode: searchNum } as any).catch(() => [] as EnquirySearchResult[]),
+          autocompleteSearch(searchNum, 'oldAccountCode').catch(() => [] as EnquirySearchResult[]),
+        ]);
+        if (fullSearchTokenRef.current !== token) return;
+        if (oldAccResults.length > 0 || oldAutoResults.length > 0) {
           data = oldAccResults.length > 0 ? oldAccResults : oldAutoResults;
+        }
+      }
+      if (data.length === 0 && searchCriteria.oldAccountCode && searchCriteria.oldAccountCode.trim()) {
+        const oldCode = searchCriteria.oldAccountCode.trim();
+        const paddedVariants = [
+          oldCode.padStart(12, '0'),
+          oldCode,
+        ];
+        for (const variant of paddedVariants) {
+          if (data.length > 0) break;
+          const acResults = await autocompleteSearch(variant, 'accountNo').catch(() => [] as EnquirySearchResult[]);
+          if (fullSearchTokenRef.current !== token) return;
+          if (acResults.length > 0) data = acResults;
         }
       }
       setResults(data);
