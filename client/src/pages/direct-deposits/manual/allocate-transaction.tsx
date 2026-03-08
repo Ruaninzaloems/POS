@@ -317,7 +317,7 @@ export default function AllocateTransaction() {
         }
       }
 
-      if (searchScope === 'ALL' || searchScope === 'GROUP') {
+      if (searchScope === 'GROUP' || (searchScope === 'ALL' && !isNumeric)) {
         if (searchScope === 'GROUP') {
           primaryTasks.push(makeGroupTask()());
         } else {
@@ -325,7 +325,7 @@ export default function AllocateTransaction() {
         }
       }
 
-      if (searchScope === 'ALL' || searchScope === 'INSTITUTION') {
+      if (searchScope === 'INSTITUTION' || (searchScope === 'ALL' && !isNumeric)) {
         if (searchScope === 'INSTITUTION') {
           primaryTasks.push(makeInstitutionTask()());
         } else {
