@@ -73,36 +73,13 @@ function parseSgNumber(sg: string | undefined | null): { erf?: string; portion?:
   };
 }
 
-const AREA_ABBREVIATIONS: Record<string, string> = {
-  'grg': 'george',
-  'oud': 'oudtshoorn',
-  'pac': 'pacaltsdorp',
-  'her': 'herold',
-  'hrl': 'herolds bay',
-  'wil': 'wilderness',
-  'hoe': 'hoekwil',
-  'tou': 'touwsranten',
-  'bla': 'blanco',
-  'con': 'conville',
-  'ros': 'rosemoor',
-  'lav': 'lawaaikamp',
-  'the': 'thembalethu',
-  'bor': 'borchards',
-  'uni': 'uniondale',
-  'wtr': 'water',
-  'mtr': 'meter',
-  'pmt': 'payment',
-};
-
-const KNOWN_AREA_NAMES = new Set([
-  'george', 'wilderness', 'pacaltsdorp', 'blanco', 'conville', 'thembalethu',
-  'oudtshoorn', 'uniondale', 'herold', 'hoekwil', 'touwsranten',
-  'rosemoor', 'lawaaikamp', 'borchards', 'sandkraal', 'denneoord',
-  'kraaibosch', 'fernridge', 'camphersdrift', 'hansmoeskraal', 'parkdene',
-  'rosedale', 'bergsig', 'syferfontein', 'geelhoutboom', 'kleinkrantz',
-  'kingswood', 'glenbarrie', 'ballotsview', 'maraiskamp', 'ru', 'rural',
-  'heatherpark', 'heather park', 'loeriepark', 'loerie park', 'herolds bay',
-  'protea park', 'bodorp', 'bo-dorp', 'le vallia',
+const GENERIC_WORDS = new Set([
+  'dep', 'deposit', 'payment', 'pmt', 'water', 'meter', 'mtr', 'wtr',
+  'acc', 'account', 'no', 'nr', 'number', 'ref', 'the', 'and', 'for',
+  'of', 'to', 'in', 'at', 'ob', 'eft', 'fnb', 'absa', 'std', 'nedbank',
+  'capitec', 'investec', 'credit', 'debit', 'int', 'dom', 'internet',
+  'general', 'magtape', 'bank', 'transfer', 'municipality',
+  'municipal', 'seq', 'inv', 'user',
 ]);
 
 interface ParsedErf {
@@ -269,15 +246,11 @@ function parseDescriptionForClues(note: string, reference: string): ParsedClues 
 
       if (erfNum && erfNum.length > 8) continue;
 
-      if (area && AREA_ABBREVIATIONS[area]) {
-        area = AREA_ABBREVIATIONS[area];
+      if (area && GENERIC_WORDS.has(area)) {
+        area = '';
       }
-      if (area && !KNOWN_AREA_NAMES.has(area) && !AREA_ABBREVIATIONS[area]) {
-        const remaining = text.substring(match.index + match[0].length).trim();
-        const nextWord = remaining.match(/^(\w+)/)?.[1]?.toLowerCase();
-        if (nextWord && KNOWN_AREA_NAMES.has(`${area} ${nextWord}`)) {
-          area = `${area} ${nextWord}`;
-        }
+      if (area && area.length <= 2) {
+        area = '';
       }
       if (qualifier === 'ru' || qualifier === 'rural') {
         qualifier = 'rural';
@@ -288,21 +261,20 @@ function parseDescriptionForClues(note: string, reference: string): ParsedClues 
     }
   }
 
-  const AREA_CODE_KEYS = Object.keys(AREA_ABBREVIATIONS).map(k => k.toUpperCase());
-  const areaAccountPattern = new RegExp(`\\b(${AREA_CODE_KEYS.join('|')})\\s+(\\d{7,12})\\b`, 'gi');
+  const areaAccountPattern = /\b([A-Z]{3,})\s+(\d{7,12})\b/gi;
   let areaAccMatch;
   while ((areaAccMatch = areaAccountPattern.exec(text)) !== null) {
     const areaCode = areaAccMatch[1].toLowerCase();
     const accNum = areaAccMatch[2];
-    const resolvedArea = AREA_ABBREVIATIONS[areaCode] || areaCode;
+    if (GENERIC_WORDS.has(areaCode)) continue;
     if (!accountNumbers.includes(accNum)) {
       accountNumbers.push(accNum);
     }
     if (accNum.length >= 7 && accNum.length <= 10 && !oldAccountCodes.includes(accNum)) {
       oldAccountCodes.push(accNum);
     }
-    if (resolvedArea && !keywords.includes(resolvedArea)) {
-      keywords.push(resolvedArea);
+    if (!keywords.includes(areaCode)) {
+      keywords.push(areaCode);
     }
   }
 
@@ -341,23 +313,6 @@ function parseDescriptionForClues(note: string, reference: string): ParsedClues 
     }
   }
 
-  const areaAbbrsInText = ['GRG', 'OUD', 'PAC', 'BLA', 'CON', 'THE', 'WIL', 'HOE', 'TOU', 'ROS', 'LAV', 'BOR', 'UNI', 'HER', 'HRL'];
-  for (const abbr of areaAbbrsInText) {
-    if (text.includes(abbr) && AREA_ABBREVIATIONS[abbr.toLowerCase()]) {
-      const full = AREA_ABBREVIATIONS[abbr.toLowerCase()];
-      if (full !== 'water' && full !== 'meter' && full !== 'payment' && !keywords.includes(full)) {
-        keywords.push(full);
-      }
-    }
-  }
-
-  const areaNames = text.match(/\b(GEORGE|WILDERNESS|PACALTSDORP|BLANCO|CONVILLE|THEMBALETHU|OUDTSHOORN|UNIONDALE|HEROLDS?\s*BAY|SANDKRAAL|DENNEOORD|HEATHER\s*PARK|KRAAIBOSCH|FERNRIDGE|LOERIE\s*PARK|CAMPHERSDRIFT|PARKDENE|ROSEDALE|PROTEA\s*PARK|BERGSIG|SYFERFONTEIN|GLENBARRIE|KINGSWOOD)\b/gi);
-  if (areaNames) {
-    for (const area of areaNames) {
-      const a = area.toLowerCase();
-      if (!keywords.includes(a)) keywords.push(a);
-    }
-  }
 
   const nameSearchTerms: string[] = [];
   const NOISE_WORDS = new Set(['FNB', 'OB', 'PMT', 'ABSA', 'STD', 'STANDARD', 'NEDBANK', 'CAPITEC', 'EFT', 'INT', 'CREDIT',
