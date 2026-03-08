@@ -2908,7 +2908,7 @@ export default function UnmatchedQueue() {
     </Dialog>
 
     <Dialog open={!!quickAllocItem} onOpenChange={(open) => { if (!open && !quickAllocRunning) { setQuickAllocItem(null); setQuickAllocStatus(''); } }}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg lg:max-w-xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Zap className="w-5 h-5 text-green-500" />
@@ -2920,15 +2920,15 @@ export default function UnmatchedQueue() {
         </DialogHeader>
         {quickAllocItem && (
           <div className="space-y-4 py-2">
-            <div className="rounded-lg border bg-slate-50 p-3 space-y-2">
-              <div className="flex justify-between items-start">
-                <div>
+            <div className="rounded-lg border bg-slate-50 p-4 space-y-2">
+              <div className="flex justify-between items-start gap-4">
+                <div className="min-w-0 flex-1">
                   <div className="text-xs text-muted-foreground">POS Item #{quickAllocItem.tx.posItem_ID}</div>
-                  <div className="text-sm font-medium mt-0.5">{quickAllocItem.tx.note || quickAllocItem.tx.reference || '—'}</div>
+                  <div className="text-sm font-medium mt-0.5 break-words">{quickAllocItem.tx.note || quickAllocItem.tx.reference || '—'}</div>
                 </div>
-                <div className="text-right">
+                <div className="text-right shrink-0">
                   <div className="text-xs text-muted-foreground">Amount</div>
-                  <div className="text-base font-bold text-green-700">R {quickAllocItem.tx.amount?.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</div>
+                  <div className="text-lg font-bold text-green-700 whitespace-nowrap">R {quickAllocItem.tx.amount?.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</div>
                 </div>
               </div>
               {quickAllocItem.tx.dateOfTransaction && (
@@ -2943,20 +2943,50 @@ export default function UnmatchedQueue() {
               <span>Allocating to:</span>
             </div>
 
-            <div className="rounded-lg border-2 border-green-200 bg-green-50 p-3 space-y-1.5">
-              <div className="flex items-center gap-2">
+            <div className="rounded-lg border-2 border-green-200 bg-green-50 p-4 space-y-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Badge variant="outline" className="text-xs border-green-300 text-green-700 font-mono">{quickAllocItem.match.accountNo}</Badge>
                 <Badge className="text-[10px]" style={{ backgroundColor: quickAllocItem.match.confidence >= 80 ? '#16a34a' : quickAllocItem.match.confidence >= 60 ? '#d97706' : '#6b7280' }}>
                   {quickAllocItem.match.confidence}%
                 </Badge>
+                {quickAllocItem.match.erfNumber && (
+                  <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-600 font-mono">ERF {quickAllocItem.match.erfNumber}</Badge>
+                )}
+                {quickAllocItem.match.matchSources && quickAllocItem.match.matchSources.length > 1 && (
+                  <Badge variant="outline" className="text-[10px] border-emerald-200 text-emerald-700">
+                    <Check className="w-3 h-3 mr-0.5" /> {quickAllocItem.match.matchSources.length} sources
+                  </Badge>
+                )}
               </div>
               <div className="text-sm font-semibold">{quickAllocItem.match.name}</div>
+              {quickAllocItem.match.address && (
+                <div className="text-xs text-muted-foreground">{quickAllocItem.match.address}</div>
+              )}
               {quickAllocItem.match.matchDetail && (
                 <div className="text-xs text-muted-foreground">{quickAllocItem.match.matchDetail}</div>
               )}
-              {quickAllocItem.match.outstandingAmount != null && (
-                <div className="text-xs text-muted-foreground mt-1">
-                  Outstanding: R {quickAllocItem.match.outstandingAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+              <div className="flex items-center gap-4 flex-wrap">
+                {quickAllocItem.match.outstandingAmount != null && (
+                  <div className="text-xs text-muted-foreground">
+                    Outstanding: <span className="font-mono font-semibold text-slate-700">R {quickAllocItem.match.outstandingAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+                {quickAllocItem.match.suburb && (
+                  <div className="text-xs text-muted-foreground">Suburb: <span className="font-medium text-slate-700">{quickAllocItem.match.suburb}</span></div>
+                )}
+              </div>
+              {quickAllocItem.match.bankStatementPrior && quickAllocItem.match.bankStatementPrior.length > 0 && (
+                <div className="bg-blue-50 rounded-md px-3 py-2 border border-blue-100 mt-1">
+                  <div className="text-[10px] font-semibold text-blue-700 flex items-center gap-1 mb-1">
+                    <HistoryIcon className="w-3 h-3" /> Previously Allocated (EFT Receipt)
+                  </div>
+                  {quickAllocItem.match.bankStatementPrior.slice(0, 3).map((bp: any, i: number) => (
+                    <div key={i} className="text-xs text-blue-600 flex items-center gap-3">
+                      <span className="font-mono">{bp.receiptNo}</span>
+                      <span className="font-mono font-medium">R {bp.paidAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+                      {bp.date && <span className="text-blue-400">{new Date(bp.date).toLocaleDateString('en-GB')}</span>}
+                    </div>
+                  ))}
                 </div>
               )}
               {quickAllocItem.match.matchReasoning && quickAllocItem.match.matchReasoning.length > 0 && (
