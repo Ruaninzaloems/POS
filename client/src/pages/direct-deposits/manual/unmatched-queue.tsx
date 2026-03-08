@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, ArrowRight, Filter, FileSpreadsheet, FileText, X, HelpCircle, Loader2, ChevronLeft, ChevronRight, Sparkles, Building2, MapPin, Hash, RefreshCw, ChevronDown, ChevronUp, Calendar, Banknote, RotateCcw, CheckSquare, Zap, Users, Check, Info, Clock } from 'lucide-react';
+import { Search, ArrowRight, Filter, FileSpreadsheet, FileText, X, HelpCircle, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Sparkles, Building2, MapPin, Hash, RefreshCw, ChevronDown, ChevronUp, Calendar, Banknote, RotateCcw, CheckSquare, Zap, Users, Check, Info, Clock } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { format, parseISO, isWithinInterval, startOfDay, endOfDay, isValid } from 'date-fns';
 import { Label } from '@/components/ui/label';
@@ -1137,7 +1137,8 @@ export default function UnmatchedQueue() {
   const [checkingItemId, setCheckingItemId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const pageSize = 25;
+  const [pageSize, setPageSize] = useState(25);
+  const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
   const [showHelp, setShowHelp] = useState(false);
 
   const [txnDateFrom, setTxnDateFrom] = useState<Date | undefined>();
@@ -1167,13 +1168,13 @@ export default function UnmatchedQueue() {
   const allItemsCacheRef = useRef<BankReconPosItem[] | null>(null);
   const allItemsLoadingRef = useRef(false);
 
-  const loadData = useCallback(async (pageNum: number) => {
+  const loadData = useCallback(async (pageNum: number, ps?: number) => {
     setLoading(true);
     setError(null);
     try {
       const result = await platinumGetBankReconPosItemList({
         page: pageNum,
-        pageSize,
+        pageSize: ps ?? pageSize,
         orderby: 'dateOfTransaction',
         shortDirection: 'desc',
       });
@@ -1187,7 +1188,7 @@ export default function UnmatchedQueue() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [pageSize]);
 
   const loadAllForSearch = useCallback(async () => {
     if (allItemsCacheRef.current || allItemsLoadingRef.current) return;
@@ -1237,7 +1238,14 @@ export default function UnmatchedQueue() {
 
   useEffect(() => {
     loadData(page);
-  }, [page, loadData]);
+  }, [page, pageSize, loadData]);
+
+  const handlePageSizeChange = useCallback((newSize: number) => {
+    const firstItemIndex = (page - 1) * pageSize;
+    const newPage = Math.max(1, Math.floor(firstItemIndex / newSize) + 1);
+    setPageSize(newSize);
+    setPage(newPage);
+  }, [page, pageSize]);
 
   useEffect(() => {
     if (searchTerm.trim().length >= 2 && !allItemsCacheRef.current) {
@@ -1834,6 +1842,22 @@ export default function UnmatchedQueue() {
     }
   };
 
+  const getPageNumbers = (current: number, total: number): (number | 'ellipsis')[] => {
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+    const pages: (number | 'ellipsis')[] = [];
+    pages.push(1);
+    if (current > 3) pages.push('ellipsis');
+    const start = Math.max(2, current - 1);
+    const end = Math.min(total - 1, current + 1);
+    for (let i = start; i <= end; i++) pages.push(i);
+    if (current < total - 2) pages.push('ellipsis');
+    if (total > 1) pages.push(total);
+    return pages;
+  };
+
+  const startItem = (page - 1) * pageSize + 1;
+  const endItem = Math.min(page * pageSize, totalCount);
+
   const pageUnmatchedCount = filtered.filter(i => !i.billingAllocated).length;
   const pageAllocatedCount = filtered.filter(i => i.billingAllocated).length;
   const pageTotalAmount = filtered.reduce((sum, i) => sum + (i.amount || 0), 0);
@@ -2419,35 +2443,125 @@ export default function UnmatchedQueue() {
               </table>
               </div>
 
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between px-5 py-3.5 border-t bg-[#F7F7F7]/50">
-                  <p className="text-xs text-muted-foreground">
-                    Page <span className="font-medium text-slate-700">{page}</span> of <span className="font-medium text-slate-700">{totalPages}</span> <span className="text-slate-400">({totalCount.toLocaleString()} items)</span>
-                  </p>
-                  <div className="flex gap-1.5">
-                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1 border-[#D6D6D6]" disabled={page <= 1 || loading} onClick={() => setPage(p => p - 1)} data-testid="button-prev-page">
-                      <ChevronLeft className="w-3.5 h-3.5" /> Prev
-                    </Button>
-                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1 border-[#D6D6D6]" disabled={page >= totalPages || loading} onClick={() => setPage(p => p + 1)} data-testid="button-next-page">
-                      Next <ChevronRight className="w-3.5 h-3.5" />
-                    </Button>
+              {totalPages >= 1 && (
+                <div className="flex items-center justify-between px-5 py-3 border-t bg-[#F7F7F7]/50 gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-[11px] text-slate-500 whitespace-nowrap">Rows:</span>
+                    <div className="flex items-center rounded-lg border border-[#D6D6D6] overflow-hidden">
+                      {PAGE_SIZE_OPTIONS.map(size => (
+                        <button
+                          key={size}
+                          className={`px-2.5 py-1 text-[11px] font-medium transition-all ${pageSize === size
+                            ? 'bg-[var(--pos-accent)] text-white shadow-sm'
+                            : 'text-slate-600 hover:bg-slate-100'
+                          } ${size !== PAGE_SIZE_OPTIONS[0] ? 'border-l border-[#D6D6D6]' : ''}`}
+                          onClick={() => handlePageSizeChange(size)}
+                          disabled={loading}
+                          data-testid={`button-pagesize-${size}`}
+                        >
+                          {size}
+                        </button>
+                      ))}
+                    </div>
+                    <span className="text-[11px] text-slate-400 hidden lg:inline">
+                      Showing {startItem}–{endItem} of {totalCount.toLocaleString()}
+                    </span>
                   </div>
+                  {totalPages > 1 && (
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page <= 1 || loading} onClick={() => setPage(1)} data-testid="button-first-page" title="First page">
+                        <ChevronsLeft className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page <= 1 || loading} onClick={() => setPage(p => p - 1)} data-testid="button-prev-page" title="Previous page">
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                      </Button>
+                      {getPageNumbers(page, totalPages).map((p, idx) =>
+                        p === 'ellipsis' ? (
+                          <span key={`e${idx}`} className="px-1 text-[11px] text-slate-400">…</span>
+                        ) : (
+                          <button
+                            key={p}
+                            className={`w-7 h-7 rounded-md text-[11px] font-medium transition-all ${p === page
+                              ? 'bg-[var(--pos-accent)] text-white shadow-sm'
+                              : 'text-slate-600 hover:bg-slate-100'
+                            }`}
+                            onClick={() => setPage(p)}
+                            disabled={loading}
+                            data-testid={`button-page-${p}`}
+                          >
+                            {p}
+                          </button>
+                        )
+                      )}
+                      <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page >= totalPages || loading} onClick={() => setPage(p => p + 1)} data-testid="button-next-page" title="Next page">
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page >= totalPages || loading} onClick={() => setPage(totalPages)} data-testid="button-last-page" title="Last page">
+                        <ChevronsRight className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
             {/* Mobile pagination */}
-            {totalPages > 1 && (
-              <div className="sm:hidden flex items-center justify-between mt-3">
-                <p className="text-xs text-muted-foreground">Page {page}/{totalPages}</p>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="h-11 text-xs px-3" disabled={page <= 1 || loading} onClick={() => setPage(p => p - 1)} data-testid="button-prev-page-mobile">
-                    <ChevronLeft className="w-4 h-4" /> Prev
-                  </Button>
-                  <Button variant="outline" size="sm" className="h-11 text-xs px-3" disabled={page >= totalPages || loading} onClick={() => setPage(p => p + 1)} data-testid="button-next-page-mobile">
-                    Next <ChevronRight className="w-4 h-4" />
-                  </Button>
+            {totalPages >= 1 && (
+              <div className="sm:hidden mt-3 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-slate-500">Rows:</span>
+                    <div className="flex items-center rounded-lg border border-[#D6D6D6] overflow-hidden">
+                      {PAGE_SIZE_OPTIONS.map(size => (
+                        <button
+                          key={size}
+                          className={`px-3 py-1.5 text-xs font-medium transition-all ${pageSize === size
+                            ? 'bg-[var(--pos-accent)] text-white'
+                            : 'text-slate-600'
+                          } ${size !== PAGE_SIZE_OPTIONS[0] ? 'border-l border-[#D6D6D6]' : ''}`}
+                          onClick={() => handlePageSizeChange(size)}
+                          disabled={loading}
+                        >
+                          {size}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <span className="text-[11px] text-slate-400">{startItem}–{endItem} of {totalCount.toLocaleString()}</span>
                 </div>
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-center gap-1">
+                    <Button variant="ghost" size="icon" className="h-9 w-9" disabled={page <= 1 || loading} onClick={() => setPage(1)}>
+                      <ChevronsLeft className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-9 w-9" disabled={page <= 1 || loading} onClick={() => setPage(p => p - 1)}>
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    {getPageNumbers(page, totalPages).map((p, idx) =>
+                      p === 'ellipsis' ? (
+                        <span key={`e${idx}`} className="px-1 text-xs text-slate-400">…</span>
+                      ) : (
+                        <button
+                          key={p}
+                          className={`w-9 h-9 rounded-lg text-xs font-medium transition-all ${p === page
+                            ? 'bg-[var(--pos-accent)] text-white shadow-sm'
+                            : 'text-slate-600 hover:bg-slate-100'
+                          }`}
+                          onClick={() => setPage(p)}
+                          disabled={loading}
+                        >
+                          {p}
+                        </button>
+                      )
+                    )}
+                    <Button variant="ghost" size="icon" className="h-9 w-9" disabled={page >= totalPages || loading} onClick={() => setPage(p => p + 1)}>
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-9 w-9" disabled={page >= totalPages || loading} onClick={() => setPage(totalPages)}>
+                      <ChevronsRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </div>
