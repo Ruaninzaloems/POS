@@ -524,6 +524,14 @@ function GeneralEnquiriesContent() {
         results = await autocompleteSearch(query.trim(), field).catch((e) => { console.error('Failed to autocomplete search in quick search:', e); return [] as EnquirySearchResult[]; });
         if (quickSearchTokenRef.current !== token) return;
       }
+      if (results.length === 0 && field === 'accountNo' && /^\d{4,}$/.test(query.trim())) {
+        const [oldAccResults, oldAutoResults] = await Promise.all([
+          searchAccounts({ oldAccountCode: query.trim() } as any).catch(() => [] as EnquirySearchResult[]),
+          autocompleteSearch(query.trim(), 'oldAccountCode').catch(() => [] as EnquirySearchResult[]),
+        ]);
+        if (quickSearchTokenRef.current !== token) return;
+        results = oldAccResults.length > 0 ? oldAccResults : oldAutoResults;
+      }
       setDropdownResults(results);
       setShowDropdown(true);
       if (results.length > 0) {
@@ -614,6 +622,17 @@ function GeneralEnquiriesContent() {
         const { field } = detectSearchType(quickQuery);
         data = await autocompleteSearch(quickQuery.trim(), field).catch((e) => { console.error('Failed to autocomplete search in full search:', e); return [] as EnquirySearchResult[]; });
         if (fullSearchTokenRef.current !== token) return;
+      }
+      if (data.length === 0 && hasQuick && /^\d{4,}$/.test(quickQuery.trim())) {
+        const { field } = detectSearchType(quickQuery);
+        if (field === 'accountNo') {
+          const [oldAccResults, oldAutoResults] = await Promise.all([
+            searchAccounts({ ...criteria, oldAccountCode: quickQuery.trim() } as any).catch(() => [] as EnquirySearchResult[]),
+            autocompleteSearch(quickQuery.trim(), 'oldAccountCode').catch(() => [] as EnquirySearchResult[]),
+          ]);
+          if (fullSearchTokenRef.current !== token) return;
+          data = oldAccResults.length > 0 ? oldAccResults : oldAutoResults;
+        }
       }
       setResults(data);
       setMobileFormCollapsed(true); setFieldSearchOpen(false);
