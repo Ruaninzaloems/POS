@@ -2184,7 +2184,7 @@ export default function UnmatchedQueue() {
                               {m.typeOfUseDesc && <span className="text-[9px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{m.typeOfUseDesc}</span>}
                               {m.erfNumber && <span className="text-[9px] font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">ERF {m.erfNumber}</span>}
                               {m.portion && <span className="text-[9px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">Ptn {m.portion}</span>}
-                              {m.allotment && <span className="text-[9px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{m.allotment}</span>}
+                              {m.allotment && <span className="text-[9px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{m.allotment}{m.town ? ` — ${m.town}` : ''}</span>}
                               {m.suburb && <span className="text-[9px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{m.suburb}</span>}
                               {m.activeServices != null && m.activeServices > 0 && <span className="text-[9px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{m.activeServices} svc{m.activeServices !== 1 ? 's' : ''}</span>}
                             </div>
@@ -2382,7 +2382,7 @@ export default function UnmatchedQueue() {
                                       {m.typeOfUseDesc && <span className="text-[9px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{m.typeOfUseDesc}</span>}
                                       {m.erfNumber && <span className="text-[9px] font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">ERF {m.erfNumber}</span>}
                                       {m.portion && <span className="text-[9px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">Ptn {m.portion}</span>}
-                                      {m.allotment && <span className="text-[9px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{m.allotment}</span>}
+                                      {m.allotment && <span className="text-[9px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{m.allotment}{m.town ? ` — ${m.town}` : ''}</span>}
                                       {m.suburb && <span className="text-[9px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{m.suburb}</span>}
                                       {m.activeServices != null && m.activeServices > 0 && <span className="text-[9px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{m.activeServices} svc{m.activeServices !== 1 ? 's' : ''}</span>}
                                     </div>
@@ -2952,6 +2952,12 @@ export default function UnmatchedQueue() {
                 {quickAllocItem.match.erfNumber && (
                   <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-600 font-mono">ERF {quickAllocItem.match.erfNumber}</Badge>
                 )}
+                {quickAllocItem.match.portion && (
+                  <Badge variant="outline" className="text-[10px] border-slate-200 text-slate-600 font-mono">Ptn {quickAllocItem.match.portion}</Badge>
+                )}
+                {quickAllocItem.match.allotment && (
+                  <Badge variant="outline" className="text-[10px] border-slate-200 text-slate-600 font-mono">{quickAllocItem.match.allotment}{quickAllocItem.match.town ? ` — ${quickAllocItem.match.town}` : ''}</Badge>
+                )}
                 {quickAllocItem.match.matchSources && quickAllocItem.match.matchSources.length > 1 && (
                   <Badge variant="outline" className="text-[10px] border-emerald-200 text-emerald-700">
                     <Check className="w-3 h-3 mr-0.5" /> {quickAllocItem.match.matchSources.length} sources
@@ -2959,8 +2965,8 @@ export default function UnmatchedQueue() {
                 )}
               </div>
               <div className="text-sm font-semibold">{quickAllocItem.match.name}</div>
-              {quickAllocItem.match.address && (
-                <div className="text-xs text-muted-foreground">{quickAllocItem.match.address}</div>
+              {(quickAllocItem.match.address || quickAllocItem.match.suburb) && (
+                <div className="text-xs text-muted-foreground">{[quickAllocItem.match.address, quickAllocItem.match.suburb].filter(Boolean).join(', ')}</div>
               )}
               {quickAllocItem.match.matchDetail && (
                 <div className="text-xs text-muted-foreground">{quickAllocItem.match.matchDetail}</div>
@@ -2971,10 +2977,10 @@ export default function UnmatchedQueue() {
                     Outstanding: <span className="font-mono font-semibold text-slate-700">R {quickAllocItem.match.outstandingAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
                   </div>
                 )}
-                {quickAllocItem.match.suburb && (
-                  <div className="text-xs text-muted-foreground">Suburb: <span className="font-medium text-slate-700">{quickAllocItem.match.suburb}</span></div>
-                )}
               </div>
+              {quickAllocItem.match.sgNumber && (
+                <div className="text-[10px] font-mono text-muted-foreground">SG {quickAllocItem.match.sgNumber}</div>
+              )}
               {quickAllocItem.match.bankStatementPrior && quickAllocItem.match.bankStatementPrior.length > 0 && (
                 <div className="bg-blue-50 rounded-md px-3 py-2 border border-blue-100 mt-1">
                   <div className="text-[10px] font-semibold text-blue-700 flex items-center gap-1 mb-1">
