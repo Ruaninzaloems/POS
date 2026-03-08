@@ -45,6 +45,13 @@ interface SuggestedMatch {
   confidence: number;
   matchReasoning?: string[];
   priorAllocations?: PriorAllocation[];
+  statusDesc?: string;
+  typeOfUseDesc?: string;
+  accountDesc?: string;
+  address?: string;
+  town?: string;
+  activeServices?: number;
+  erfNumber?: string;
 }
 
 const AREA_ABBREVIATIONS: Record<string, string> = {
@@ -341,6 +348,8 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
     const accId = item.account_ID || item.accountID || item.id;
     if (!accId || seenIds.has(accId)) return;
     seenIds.add(accId);
+    const addr = item.deliveryAddress || item.locationAddress || item.address || '';
+    const firstLine = addr ? addr.split(/[\r\n]+/).filter(Boolean)[0] || '' : '';
     suggestions.push({
       accountId: accId,
       accountNo: item.accountNumber || item.accountNo || String(accId),
@@ -351,6 +360,13 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
       matchDetail,
       confidence: Math.min(confidence, 99),
       matchReasoning: reasoning,
+      statusDesc: item.statusDesc,
+      typeOfUseDesc: item.typeOfUseDesc,
+      accountDesc: item.accountDesc,
+      address: firstLine,
+      town: item.town,
+      activeServices: item.activeServices,
+      erfNumber: item.erfNumber,
     });
   };
 
@@ -714,6 +730,20 @@ export default function UnmatchedQueue() {
     return s && s.length > 0 && s[0].confidence >= 70;
   });
 
+  const selectedMatchQuality = useMemo(() => {
+    let high = 0, medium = 0, low = 0, none = 0, unanalyzed = 0;
+    for (const item of selectedItems) {
+      const s = suggestions[item.posItem_ID];
+      if (!s) { unanalyzed++; continue; }
+      if (s.length === 0) { none++; continue; }
+      const conf = s[0].confidence;
+      if (conf >= 80) high++;
+      else if (conf >= 60) medium++;
+      else low++;
+    }
+    return { high, medium, low, none, unanalyzed };
+  }, [selectedItems, suggestions]);
+
   const [autoMatchStats, setAutoMatchStats] = useState({ matched: 0, noMatch: 0 });
 
   const runAutoMatchBatch = async (targets: BankReconPosItem[], showToast: boolean) => {
@@ -764,7 +794,11 @@ export default function UnmatchedQueue() {
   };
 
   const runAutoMatchSelected = () => {
-    const targets = selectedItems.filter(i => !i.billingAllocated);
+    const targets = selectedItems.filter(i => !i.billingAllocated && !suggestions[i.posItem_ID]);
+    if (targets.length === 0) {
+      toast({ title: 'Already Analyzed', description: 'All selected items have already been analyzed.' });
+      return;
+    }
     return runAutoMatchBatch(targets, false);
   };
 
@@ -1089,6 +1123,14 @@ export default function UnmatchedQueue() {
     element.remove();
   };
 
+  const getAmountComparison = (txAmount: number, outstanding?: number): { label: string; color: string; bgColor: string } | null => {
+    if (outstanding == null || outstanding === 0) return null;
+    const ratio = txAmount / outstanding;
+    if (ratio >= 0.95 && ratio <= 1.05) return { label: 'Exact', color: 'text-emerald-700', bgColor: 'bg-emerald-50 border-emerald-200' };
+    if (txAmount < outstanding) return { label: 'Partial', color: 'text-blue-700', bgColor: 'bg-blue-50 border-blue-200' };
+    return { label: 'Overpays', color: 'text-amber-700', bgColor: 'bg-amber-50 border-amber-200' };
+  };
+
   const getConfidenceColor = (confidence: number) => {
     if (confidence >= 80) return 'bg-emerald-100 text-emerald-700 border-emerald-200';
     if (confidence >= 60) return 'bg-[var(--pos-accent-tint)] text-[#6B6B6B] border-[#D6D6D6]';
@@ -1345,20 +1387,40 @@ export default function UnmatchedQueue() {
                         <Badge variant="secondary" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] shrink-0">Unmatched</Badge>
                       )}
                     </div>
-                    {!tx.billingAllocated && bestMatch && (
+                    {!tx.billingAllocated && bestMatch && (() => {
+                      const amtCmp = getAmountComparison(tx.amount, bestMatch.outstandingAmount);
+                      return (
                       <button
-                        className={`flex items-center gap-2 w-full px-2.5 py-1.5 rounded-lg border mb-2 text-left transition-colors ${
+                        className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-xl border mb-2 text-left transition-all hover:shadow-sm ${
                           matchInd === 'high' ? 'bg-emerald-50/60 border-emerald-200' :
                           matchInd === 'medium' ? 'bg-amber-50/60 border-amber-200' :
                           'bg-slate-50/60 border-slate-200'
                         }`}
                         onClick={() => handleAllocateClick(tx.posItem_ID, undefined, bestMatch)}
                       >
-                        <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${matchInd === 'high' ? 'bg-emerald-500' : matchInd === 'medium' ? 'bg-amber-500' : 'bg-slate-400'}`} />
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                          matchInd === 'high' ? 'bg-emerald-100 text-emerald-600' :
+                          matchInd === 'medium' ? 'bg-amber-100 text-amber-600' :
+                          'bg-slate-100 text-slate-500'
+                        }`}>
+                          {getMatchIcon(bestMatch.matchType)}
+                        </div>
                         <div className="flex-1 min-w-0">
-                          <span className="font-mono text-xs text-slate-700">{bestMatch.accountNo}</span>
-                          <span className="text-[10px] text-slate-500 ml-1.5">{bestMatch.name}</span>
-                          <div className="text-[9px] text-slate-400">{getMatchTypeLabel(bestMatch.matchType)} match · {bestMatch.matchDetail}</div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-xs font-medium text-slate-700">{bestMatch.accountNo}</span>
+                            {bestMatch.statusDesc && bestMatch.statusDesc !== 'Active' && (
+                              <Badge variant="outline" className="text-[7px] px-1 py-0 border-red-200 text-red-600 bg-red-50">{bestMatch.statusDesc}</Badge>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500">{bestMatch.name}</div>
+                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                            <span className="text-[9px] text-slate-400">{getMatchTypeLabel(bestMatch.matchType)} match</span>
+                            {bestMatch.typeOfUseDesc && <span className="text-[8px] font-mono text-slate-400 bg-slate-100 px-1 rounded">{bestMatch.typeOfUseDesc}</span>}
+                            {bestMatch.outstandingAmount != null && bestMatch.outstandingAmount !== 0 && (
+                              <span className="text-[8px] font-mono text-slate-500">Owes R {bestMatch.outstandingAmount.toFixed(2)}</span>
+                            )}
+                            {amtCmp && <Badge variant="outline" className={`text-[7px] px-1 py-0 ${amtCmp.bgColor} ${amtCmp.color} border`}>{amtCmp.label}</Badge>}
+                          </div>
                           {bestMatch.priorAllocations && bestMatch.priorAllocations.length > 0 && (() => {
                             const latest = bestMatch.priorAllocations[0];
                             const dateStr = latest.dateCaptured ? new Date(latest.dateCaptured).toLocaleDateString('en-GB') : '—';
@@ -1370,18 +1432,24 @@ export default function UnmatchedQueue() {
                             );
                           })()}
                         </div>
-                        <Badge variant="outline" className={`text-[9px] px-1.5 py-0 shrink-0 ${matchInd === 'high' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>{bestMatch.confidence}%</Badge>
-                        <ArrowRight className="w-3 h-3 text-slate-400 shrink-0" />
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          <Badge variant="outline" className={`text-[9px] px-1.5 py-0 font-bold ${matchInd === 'high' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : matchInd === 'medium' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>{bestMatch.confidence}%</Badge>
+                          <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+                        </div>
                       </button>
-                    )}
+                      );
+                    })()}
                     <div className="flex justify-between items-center">
                       <Badge variant="secondary" className="font-mono text-[10px]">{tx.reference || '-'}</Badge>
                       <div className="flex items-center gap-2">
                         <span className="font-mono font-bold text-sm text-slate-800">R {(tx.amount || 0).toFixed(2)}</span>
                         {!tx.billingAllocated && (
                           <div className="flex gap-1.5">
-                            <Button size="sm" variant="ghost" className="h-11 w-11 p-0 text-amber-500" onClick={(e) => { e.stopPropagation(); toggleSuggestion(tx.posItem_ID, tx.note, tx.reference); }}>
-                              <Sparkles className="w-4 h-4" />
+                            <Button size="sm" variant="ghost" className={`h-11 p-0 gap-1 ${expandedSuggestion === tx.posItem_ID ? 'text-amber-600 bg-amber-50' : 'text-amber-500'}`} onClick={(e) => { e.stopPropagation(); toggleSuggestion(tx.posItem_ID, tx.note, tx.reference); }}>
+                              {loadingSuggestions.has(tx.posItem_ID) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                              {suggestions[tx.posItem_ID] && suggestions[tx.posItem_ID]!.length > 1 && (
+                                <span className="text-[9px] font-medium">{suggestions[tx.posItem_ID]!.length}</span>
+                              )}
                             </Button>
                             <Button size="sm" className="h-11 text-xs bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] px-3" disabled={checkingItemId === tx.posItem_ID} onClick={(e) => handleAllocateClick(tx.posItem_ID, e)} data-testid={`button-allocate-mobile-${tx.posItem_ID}`}>
                               {checkingItemId === tx.posItem_ID ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <>Allocate <ArrowRight className="ml-1 w-3.5 h-3.5" /></>}
@@ -1399,6 +1467,7 @@ export default function UnmatchedQueue() {
                       getConfidenceColor={getConfidenceColor}
                       getMatchIcon={getMatchIcon}
                       onAllocate={(posId, account) => handleAllocateClick(posId, undefined, account)}
+                      txAmount={tx.amount}
                     />
                   )}
                 </div>
@@ -1422,7 +1491,7 @@ export default function UnmatchedQueue() {
                     <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-3 py-2.5 w-14">ID</th>
                     <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-3 py-2.5 w-24">Date</th>
                     <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-3 py-2.5">Description</th>
-                    <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-3 py-2.5 w-44">Match</th>
+                    <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-3 py-2.5 w-52">Match</th>
                     <th className="text-right text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-3 py-2.5 w-28">Amount</th>
                     <th className="text-center text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-3 py-2.5 w-24">Status</th>
                     <th className="text-right text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-3 py-2.5 w-36">Action</th>
@@ -1475,25 +1544,41 @@ export default function UnmatchedQueue() {
                           {tx.reference && <div className="font-mono text-[10px] text-slate-400 mt-0.5">{tx.reference}</div>}
                         </td>
                         <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
-                          {!tx.billingAllocated && bestMatch ? (
+                          {!tx.billingAllocated && bestMatch ? (() => {
+                            const amtCmp = getAmountComparison(tx.amount, bestMatch.outstandingAmount);
+                            return (
                             <button
-                              className={`flex items-center gap-1.5 px-2 py-1 rounded-md border text-left w-full transition-colors hover:border-[var(--pos-accent)] ${
+                              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border text-left w-full transition-all hover:border-[var(--pos-accent)] hover:shadow-sm ${
                                 matchIndicator === 'high' ? 'bg-emerald-50/60 border-emerald-200' :
                                 matchIndicator === 'medium' ? 'bg-amber-50/60 border-amber-200' :
                                 'bg-slate-50/60 border-slate-200'
                               }`}
                               onClick={() => handleAllocateClick(tx.posItem_ID, undefined, bestMatch)}
-                              title={`${bestMatch.matchDetail} — Click to allocate`}
+                              title={bestMatch.matchReasoning?.join('\n') || bestMatch.matchDetail}
                             >
-                              <div className={`w-2 h-2 rounded-full shrink-0 ${
-                                matchIndicator === 'high' ? 'bg-emerald-500' :
-                                matchIndicator === 'medium' ? 'bg-amber-500' :
-                                'bg-slate-400'
-                              }`} />
+                              <div className={`w-5 h-5 rounded flex items-center justify-center shrink-0 ${
+                                matchIndicator === 'high' ? 'bg-emerald-100 text-emerald-600' :
+                                matchIndicator === 'medium' ? 'bg-amber-100 text-amber-600' :
+                                'bg-slate-100 text-slate-500'
+                              }`}>
+                                {getMatchIcon(bestMatch.matchType)}
+                              </div>
                               <div className="flex-1 min-w-0">
-                                <div className="font-mono text-[10px] text-slate-700 truncate">{bestMatch.accountNo}</div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-mono text-[10px] font-medium text-slate-700 truncate">{bestMatch.accountNo}</span>
+                                  {bestMatch.statusDesc && bestMatch.statusDesc !== 'Active' && (
+                                    <Badge variant="outline" className="text-[7px] px-1 py-0 border-red-200 text-red-600 bg-red-50">{bestMatch.statusDesc}</Badge>
+                                  )}
+                                </div>
                                 <div className="text-[9px] text-slate-500 truncate">{bestMatch.name}</div>
-                                <div className="text-[8px] text-slate-400 truncate">{getMatchTypeLabel(bestMatch.matchType)} match · {bestMatch.matchDetail}</div>
+                                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                  <span className="text-[8px] text-slate-400">{getMatchTypeLabel(bestMatch.matchType)}</span>
+                                  {bestMatch.typeOfUseDesc && <span className="text-[7px] font-mono text-slate-400 bg-slate-50 px-1 rounded">{bestMatch.typeOfUseDesc}</span>}
+                                  {bestMatch.outstandingAmount != null && bestMatch.outstandingAmount !== 0 && (
+                                    <span className="text-[8px] font-mono text-slate-500">Owes R {bestMatch.outstandingAmount.toFixed(2)}</span>
+                                  )}
+                                  {amtCmp && <Badge variant="outline" className={`text-[7px] px-1 py-0 ${amtCmp.bgColor} ${amtCmp.color} border`}>{amtCmp.label}</Badge>}
+                                </div>
                                 {bestMatch.priorAllocations && bestMatch.priorAllocations.length > 0 && (() => {
                                   const latest = bestMatch.priorAllocations[0];
                                   const dateStr = latest.dateCaptured ? new Date(latest.dateCaptured).toLocaleDateString('en-GB') : '—';
@@ -1505,14 +1590,18 @@ export default function UnmatchedQueue() {
                                   );
                                 })()}
                               </div>
-                              <Badge variant="outline" className={`text-[8px] px-1 py-0 shrink-0 ${
+                              <Badge variant="outline" className={`text-[8px] px-1 py-0 shrink-0 font-bold ${
                                 matchIndicator === 'high' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
                                 matchIndicator === 'medium' ? 'bg-amber-100 text-amber-700 border-amber-200' :
                                 'bg-slate-100 text-slate-600 border-slate-200'
                               }`}>{bestMatch.confidence}%</Badge>
                             </button>
-                          ) : !tx.billingAllocated && suggestions[tx.posItem_ID] !== undefined ? (
-                            <span className="text-[10px] text-slate-400 italic">No match</span>
+                            );
+                          })() : !tx.billingAllocated && suggestions[tx.posItem_ID] !== undefined ? (
+                            <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-dashed border-slate-200 bg-slate-50/30">
+                              <Search className="w-3 h-3 text-slate-300" />
+                              <span className="text-[10px] text-slate-400">No match found</span>
+                            </div>
                           ) : !tx.billingAllocated ? (
                             <span className="text-[10px] text-slate-300">—</span>
                           ) : null}
@@ -1570,6 +1659,7 @@ export default function UnmatchedQueue() {
                               getConfidenceColor={getConfidenceColor}
                               getMatchIcon={getMatchIcon}
                               onAllocate={(posId, account) => handleAllocateClick(posId, undefined, account)}
+                              txAmount={tx.amount}
                             />
                           </td>
                         </tr>
@@ -1614,10 +1704,10 @@ export default function UnmatchedQueue() {
           </div>
 
           {selectedIds.size > 0 && (
-            <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-3 duration-200">
-              <div className="flex items-center gap-3 bg-[#1a1a2e] text-white rounded-2xl shadow-2xl px-4 sm:px-5 py-3 border border-white/10 backdrop-blur-xl">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-[var(--pos-accent)] flex items-center justify-center">
+            <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-3 duration-200 max-w-[95vw]">
+              <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 bg-[#1a1a2e] text-white rounded-2xl shadow-2xl px-4 sm:px-5 py-3 border border-white/10 backdrop-blur-xl">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-[var(--pos-accent)] flex items-center justify-center shrink-0">
                     <CheckSquare className="w-4 h-4" />
                   </div>
                   <div>
@@ -1625,7 +1715,16 @@ export default function UnmatchedQueue() {
                     <div className="text-[10px] text-white/60 font-mono">R {selectedTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</div>
                   </div>
                 </div>
-                <div className="w-px h-8 bg-white/20" />
+
+                <div className="hidden sm:flex items-center gap-1.5 text-[9px]">
+                  {selectedMatchQuality.high > 0 && <span className="flex items-center gap-1 bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />{selectedMatchQuality.high}</span>}
+                  {selectedMatchQuality.medium > 0 && <span className="flex items-center gap-1 bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-amber-400" />{selectedMatchQuality.medium}</span>}
+                  {selectedMatchQuality.low > 0 && <span className="flex items-center gap-1 bg-red-500/20 text-red-300 px-1.5 py-0.5 rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-red-400" />{selectedMatchQuality.low}</span>}
+                  {selectedMatchQuality.none > 0 && <span className="flex items-center gap-1 bg-white/10 text-white/50 px-1.5 py-0.5 rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-slate-500" />{selectedMatchQuality.none} no match</span>}
+                  {selectedMatchQuality.unanalyzed > 0 && <span className="flex items-center gap-1 bg-white/5 text-white/40 px-1.5 py-0.5 rounded-full">{selectedMatchQuality.unanalyzed} pending</span>}
+                </div>
+
+                <div className="w-px h-8 bg-white/20 hidden sm:block" />
                 <Button
                   size="sm"
                   variant="ghost"
@@ -1635,12 +1734,13 @@ export default function UnmatchedQueue() {
                   data-testid="button-auto-match-selected"
                 >
                   {autoMatchRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5 text-amber-400" />}
-                  Auto-Match
+                  Auto-Match{selectedMatchQuality.unanalyzed > 0 ? ` (${selectedMatchQuality.unanalyzed})` : ''}
                 </Button>
                 {selectedWithMatch.length > 0 && (
                   <Button
                     size="sm"
-                    className="h-9 text-xs bg-emerald-600 hover:bg-emerald-700 gap-1.5 px-3"
+                    className="h-9 text-xs gap-1.5 px-3 font-semibold"
+                    style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
                     onClick={openBulkAllocate}
                     data-testid="button-allocate-matched"
                   >
@@ -1942,20 +2042,32 @@ export default function UnmatchedQueue() {
   );
 }
 
-function SuggestionPanel({ posItemId, suggestions, loading, getConfidenceColor, getMatchIcon, onAllocate }: {
+function SuggestionPanel({ posItemId, suggestions, loading, getConfidenceColor, getMatchIcon, onAllocate, txAmount }: {
   posItemId: number;
   suggestions?: SuggestedMatch[];
   loading: boolean;
   getConfidenceColor: (c: number) => string;
   getMatchIcon: (t: SuggestedMatch['matchType']) => React.ReactNode;
   onAllocate: (posId: number, account?: SuggestedMatch) => void;
+  txAmount?: number;
 }) {
+  const getAmtCmp = (outstanding?: number) => {
+    if (outstanding == null || outstanding === 0 || !txAmount) return null;
+    const ratio = txAmount / outstanding;
+    if (ratio >= 0.95 && ratio <= 1.05) return { label: 'Exact', color: 'text-emerald-700', bgColor: 'bg-emerald-50 border-emerald-200' };
+    if (txAmount < outstanding) return { label: 'Partial', color: 'text-blue-700', bgColor: 'bg-blue-50 border-blue-200' };
+    return { label: 'Overpays', color: 'text-amber-700', bgColor: 'bg-amber-50 border-amber-200' };
+  };
+
   return (
     <div className="bg-gradient-to-r from-amber-50/50 to-orange-50/30 border-t border-amber-100 px-3 sm:px-5 py-3 sm:py-3.5 animate-in fade-in slide-in-from-top-1 duration-200">
       <div className="flex items-center gap-2 mb-2.5">
         <Sparkles className="w-3.5 h-3.5 text-amber-500" />
         <span className="text-xs font-semibold text-amber-800">Smart Suggestions</span>
         <span className="text-[10px] text-amber-600/70 hidden sm:inline">Based on description analysis</span>
+        {suggestions && suggestions.length > 0 && (
+          <Badge variant="outline" className="text-[9px] border-amber-200 text-amber-600 px-1.5 py-0 ml-auto">{suggestions.length} found</Badge>
+        )}
       </div>
       {loading ? (
         <div className="flex items-center gap-2 py-3">
@@ -1968,36 +2080,54 @@ function SuggestionPanel({ posItemId, suggestions, loading, getConfidenceColor, 
           No automatic matches found. Use the Allocate button to search manually.
         </div>
       ) : (
-        <div className="space-y-1.5">
-          {suggestions.map((s, idx) => (
-            <div key={`${s.accountId}-${idx}`} className="bg-white/70 backdrop-blur-sm rounded-lg border border-amber-100/60 hover:border-amber-200 transition-colors group overflow-hidden">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-3 py-2.5">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 font-bold ${getConfidenceColor(s.confidence)}`}>
-                      {s.confidence}%
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-amber-600 shrink-0">
+        <div className="space-y-2">
+          {suggestions.map((s, idx) => {
+            const amtCmp = getAmtCmp(s.outstandingAmount);
+            return (
+            <div key={`${s.accountId}-${idx}`} className={`bg-white/80 backdrop-blur-sm rounded-xl border transition-all hover:shadow-sm overflow-hidden ${idx === 0 ? 'border-amber-200 ring-1 ring-amber-100' : 'border-amber-100/60 hover:border-amber-200'}`}>
+              <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3 px-3 py-2.5">
+                <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                    s.confidence >= 80 ? 'bg-emerald-100 text-emerald-600' :
+                    s.confidence >= 60 ? 'bg-amber-100 text-amber-600' :
+                    'bg-slate-100 text-slate-500'
+                  }`}>
                     {getMatchIcon(s.matchType)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs font-medium text-slate-700">{s.accountNo}</span>
-                      <span className="text-xs text-slate-500 break-words sm:truncate">{s.name}</span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-xs font-semibold text-slate-800">{s.accountNo}</span>
+                      <Badge variant="outline" className={`text-[9px] px-1.5 py-0 font-bold ${getConfidenceColor(s.confidence)}`}>
+                        {s.confidence}%
+                      </Badge>
+                      {s.statusDesc && s.statusDesc !== 'Active' && (
+                        <Badge variant="outline" className="text-[7px] px-1 py-0 border-red-200 text-red-600 bg-red-50">{s.statusDesc}</Badge>
+                      )}
+                      {s.typeOfUseDesc && (
+                        <span className="text-[8px] font-mono text-slate-400 bg-slate-50 px-1 rounded border border-slate-100">{s.typeOfUseDesc}</span>
+                      )}
                     </div>
-                    <div className="text-[10px] text-amber-600/80 break-words sm:truncate">{s.matchDetail}</div>
+                    <div className="text-xs text-slate-600 mt-0.5">{s.name}</div>
+                    {s.address && (
+                      <div className="text-[10px] text-slate-400 mt-0.5 truncate" title={s.address}>
+                        {s.address}{s.town ? `, ${s.town}` : ''}
+                      </div>
+                    )}
+                    <div className="text-[10px] text-amber-600/80 mt-1 break-words sm:truncate">{s.matchDetail}</div>
+                    {(s.outstandingAmount != null && s.outstandingAmount !== 0) && (
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[10px] font-mono text-slate-500">Outstanding: R {s.outstandingAmount.toFixed(2)}</span>
+                        {txAmount != null && <span className="text-[10px] text-slate-400">vs</span>}
+                        {txAmount != null && <span className="text-[10px] font-mono text-slate-500">Deposit: R {txAmount.toFixed(2)}</span>}
+                        {amtCmp && <Badge variant="outline" className={`text-[8px] px-1.5 py-0 ${amtCmp.bgColor} ${amtCmp.color} border`}>{amtCmp.label}</Badge>}
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div className="flex items-center justify-end gap-2 shrink-0">
-                  {s.outstandingAmount != null && s.outstandingAmount !== 0 && (
-                    <span className="text-[10px] font-mono text-slate-500 bg-[#F7F7F7] px-1.5 py-0.5 rounded shrink-0">
-                      R {s.outstandingAmount.toFixed(2)}
-                    </span>
-                  )}
+                <div className="flex items-center justify-end gap-2 shrink-0 sm:mt-0.5">
                   <Button
                     size="sm"
-                    className="h-9 sm:h-7 text-xs sm:text-[10px] bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-white shrink-0 px-3 sm:px-2.5 gap-1"
+                    className="h-9 sm:h-8 text-xs sm:text-[11px] bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-white shrink-0 px-3 sm:px-3 gap-1.5 font-medium"
                     onClick={(e) => { e.stopPropagation(); onAllocate(posItemId, s); }}
                   >
                     Allocate <ArrowRight className="w-3 h-3" />
@@ -2006,7 +2136,7 @@ function SuggestionPanel({ posItemId, suggestions, loading, getConfidenceColor, 
               </div>
               {s.matchReasoning && s.matchReasoning.length > 0 && (
                 <div className="px-3 pb-2 pt-0">
-                  <div className="bg-amber-50/70 rounded-md px-2.5 py-1.5 border border-amber-100/50">
+                  <div className="bg-amber-50/70 rounded-lg px-2.5 py-1.5 border border-amber-100/50">
                     <div className="text-[9px] font-semibold text-amber-700 uppercase tracking-wider mb-0.5">Match Logic</div>
                     <ul className="space-y-0">
                       {s.matchReasoning.map((r, ri) => (
@@ -2021,7 +2151,7 @@ function SuggestionPanel({ posItemId, suggestions, loading, getConfidenceColor, 
               )}
               {s.priorAllocations && s.priorAllocations.length > 0 && (
                 <div className="px-3 pb-2.5 pt-0">
-                  <div className="bg-blue-50/70 rounded-md px-2.5 py-2 border border-blue-100/60">
+                  <div className="bg-blue-50/70 rounded-lg px-2.5 py-2 border border-blue-100/60">
                     <div className="flex items-center gap-1.5 mb-1.5">
                       <HistoryIcon className="w-3 h-3 text-blue-600" />
                       <span className="text-[9px] font-semibold text-blue-700 uppercase tracking-wider">
@@ -2035,7 +2165,7 @@ function SuggestionPanel({ posItemId, suggestions, loading, getConfidenceColor, 
                           ? new Date(pa.dateCaptured).toLocaleDateString('en-GB')
                           : '—';
                         return (
-                          <div key={pi} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 bg-white/60 rounded px-2 py-1.5 border border-blue-100/40" data-testid={`prior-alloc-${pi}`}>
+                          <div key={pi} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 bg-white/60 rounded-lg px-2 py-1.5 border border-blue-100/40" data-testid={`prior-alloc-${pi}`}>
                             <div className="flex items-center gap-2 min-w-0 flex-1">
                               <Calendar className="w-3 h-3 text-blue-400 shrink-0" />
                               <span className="text-[10px] text-slate-600 font-medium shrink-0">{dateStr}</span>
@@ -2064,7 +2194,8 @@ function SuggestionPanel({ posItemId, suggestions, loading, getConfidenceColor, 
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
