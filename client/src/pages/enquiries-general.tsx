@@ -558,23 +558,40 @@ function GeneralEnquiriesContent() {
     setDropdownSearching(true);
     const { field } = detectSearchType(query);
     const token = ++quickSearchTokenRef.current;
+    const num = query.trim();
+    const isNumeric = /^\d{4,}$/.test(num);
     try {
-      let results = await searchAccounts({ [field]: query.trim() } as any).catch((e) => { console.error('Failed to search accounts in quick search:', e); return [] as EnquirySearchResult[]; });
-      if (quickSearchTokenRef.current !== token) return;
-      if (results.length === 0) {
-        results = await autocompleteSearch(query.trim(), field).catch((e) => { console.error('Failed to autocomplete search in quick search:', e); return [] as EnquirySearchResult[]; });
-        if (quickSearchTokenRef.current !== token) return;
-      }
-      if (results.length === 0 && field === 'accountNo' && /^\d{4,}$/.test(query.trim())) {
-        const num = query.trim();
+      const promises: Promise<EnquirySearchResult[]>[] = [
+        searchAccounts({ [field]: num } as any).catch(() => [] as EnquirySearchResult[]),
+        autocompleteSearch(num, field).catch(() => [] as EnquirySearchResult[]),
+      ];
+      if (isNumeric && field === 'accountNo') {
         const padded = num.padStart(12, '0');
-        const [oldAccResults, oldAutoResults, paddedResults] = await Promise.all([
+        promises.push(
           searchAccounts({ oldAccountCode: num } as any).catch(() => [] as EnquirySearchResult[]),
           autocompleteSearch(num, 'oldAccountCode').catch(() => [] as EnquirySearchResult[]),
-          padded !== num ? searchAccounts({ accountNo: padded } as any).catch(() => [] as EnquirySearchResult[]) : Promise.resolve([] as EnquirySearchResult[]),
-        ]);
-        if (quickSearchTokenRef.current !== token) return;
-        results = oldAccResults.length > 0 ? oldAccResults : oldAutoResults.length > 0 ? oldAutoResults : paddedResults;
+        );
+        if (padded !== num) {
+          promises.push(
+            searchAccounts({ accountNo: padded } as any).catch(() => [] as EnquirySearchResult[]),
+          );
+        }
+      }
+      const allResults = await Promise.all(promises);
+      if (quickSearchTokenRef.current !== token) return;
+      let results: EnquirySearchResult[] = [];
+      for (const r of allResults) {
+        if (r.length > 0) { results = r; break; }
+      }
+      if (results.length === 0) {
+        const merged = new Map<number, EnquirySearchResult>();
+        for (const r of allResults) {
+          for (const item of r) {
+            const id = item.account_ID || item.accountID;
+            if (id && !merged.has(id)) merged.set(id, item);
+          }
+        }
+        results = Array.from(merged.values());
       }
       setDropdownResults(results);
       setShowDropdown(true);
@@ -703,37 +720,54 @@ function GeneralEnquiriesContent() {
         const { field } = detectSearchType(quickQuery);
         searchCriteria = { ...searchCriteria, [field]: quickQuery.trim() };
       }
-      let data = await searchAccounts(searchCriteria);
-      if (fullSearchTokenRef.current !== token) return;
-      data = filterResultsByField(data, searchCriteria);
-      if (data.length === 0 && hasQuick) {
+      const promises: Promise<EnquirySearchResult[]>[] = [
+        searchAccounts(searchCriteria).catch(() => [] as EnquirySearchResult[]),
+      ];
+      if (hasQuick) {
         const { field } = detectSearchType(quickQuery);
-        data = await autocompleteSearch(quickQuery.trim(), field).catch((e) => { console.error('Failed to autocomplete search in full search:', e); return [] as EnquirySearchResult[]; });
-        if (fullSearchTokenRef.current !== token) return;
+        promises.push(autocompleteSearch(quickQuery.trim(), field).catch(() => [] as EnquirySearchResult[]));
       }
-      if (data.length === 0 && /^\d{4,}$/.test((hasQuick ? quickQuery : searchCriteria.oldAccountCode || searchCriteria.accountNo || '').trim())) {
-        const searchNum = (hasQuick ? quickQuery : searchCriteria.oldAccountCode || searchCriteria.accountNo || '').trim();
-        const [oldAccResults, oldAutoResults] = await Promise.all([
-          searchAccounts({ oldAccountCode: searchNum } as any).catch(() => [] as EnquirySearchResult[]),
-          autocompleteSearch(searchNum, 'oldAccountCode').catch(() => [] as EnquirySearchResult[]),
-        ]);
-        if (fullSearchTokenRef.current !== token) return;
-        if (oldAccResults.length > 0 || oldAutoResults.length > 0) {
-          data = oldAccResults.length > 0 ? oldAccResults : oldAutoResults;
+      const numericTerm = (hasQuick ? quickQuery : searchCriteria.oldAccountCode || searchCriteria.accountNo || '').trim();
+      const isNumeric = /^\d{4,}$/.test(numericTerm);
+      if (isNumeric) {
+        const padded = numericTerm.padStart(12, '0');
+        promises.push(
+          searchAccounts({ oldAccountCode: numericTerm } as any).catch(() => [] as EnquirySearchResult[]),
+          autocompleteSearch(numericTerm, 'oldAccountCode').catch(() => [] as EnquirySearchResult[]),
+        );
+        if (padded !== numericTerm) {
+          promises.push(searchAccounts({ accountNo: padded } as any).catch(() => [] as EnquirySearchResult[]));
         }
       }
-      if (data.length === 0 && searchCriteria.oldAccountCode && searchCriteria.oldAccountCode.trim()) {
+      if (searchCriteria.oldAccountCode && searchCriteria.oldAccountCode.trim()) {
         const oldCode = searchCriteria.oldAccountCode.trim();
-        const paddedVariants = [
-          oldCode.padStart(12, '0'),
-          oldCode,
-        ];
-        for (const variant of paddedVariants) {
-          if (data.length > 0) break;
-          const acResults = await autocompleteSearch(variant, 'accountNo').catch(() => [] as EnquirySearchResult[]);
-          if (fullSearchTokenRef.current !== token) return;
-          if (acResults.length > 0) data = acResults;
+        promises.push(
+          autocompleteSearch(oldCode, 'oldAccountCode').catch(() => [] as EnquirySearchResult[]),
+          autocompleteSearch(oldCode.padStart(12, '0'), 'accountNo').catch(() => [] as EnquirySearchResult[]),
+          autocompleteSearch(oldCode, 'accountNo').catch(() => [] as EnquirySearchResult[]),
+        );
+      }
+      const allResults = await Promise.all(promises);
+      if (fullSearchTokenRef.current !== token) return;
+      let data: EnquirySearchResult[] = [];
+      for (const r of allResults) {
+        const filtered = filterResultsByField(r, searchCriteria);
+        if (filtered.length > 0) { data = filtered; break; }
+      }
+      if (data.length === 0) {
+        for (const r of allResults) {
+          if (r.length > 0) { data = r; break; }
         }
+      }
+      if (data.length === 0) {
+        const merged = new Map<number, EnquirySearchResult>();
+        for (const r of allResults) {
+          for (const item of r) {
+            const id = item.account_ID || item.accountID;
+            if (id && !merged.has(id)) merged.set(id, item);
+          }
+        }
+        data = Array.from(merged.values());
       }
       setResults(data);
       setMobileFormCollapsed(true); setFieldSearchOpen(false);

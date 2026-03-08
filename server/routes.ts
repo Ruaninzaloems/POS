@@ -2525,9 +2525,15 @@ export async function registerRoutes(
   app.get("/api/platinum/billing-enquiry/autocomplete", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
+      const search = req.query.search || '';
+      const type = req.query.type || 'accountNumber';
+      console.log(`[autocomplete] search="${search}" type="${type}"`);
       const data = await platinumGet(session, "/api/BillingEnquiry/Autocomplete", req.query as Record<string, string>);
+      const count = Array.isArray(data) ? data.length : (data?._error ? 'ERROR' : '?');
+      console.log(`[autocomplete] Results: ${count}`);
       handlePlatinumResult(res, data);
     } catch (e: any) {
+      console.log(`[autocomplete] Error: search="${req.query.search}" type="${req.query.type}" — ${e.message}`);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });

@@ -276,16 +276,26 @@ export async function autocompleteSearch(search: string, searchField: string = '
   if (!validSuggestions.length) return [];
   const top = validSuggestions.slice(0, 10);
   const results = await Promise.allSettled(
-    top.map(s =>
-      fetchWithTimeout('/api/platinum/billing-enquiry/enquiry-results', {
+    top.map(s => {
+      const displayAccountNo = s.displayItem?.match(/^(\d+)/)?.[1];
+      const lookupId = displayAccountNo || String(s.accountId).padStart(12, '0');
+      return fetchWithTimeout('/api/platinum/billing-enquiry/enquiry-results', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accountID: String(s.accountId) }),
-      }).then(normalizeArray)
-    )
+        body: JSON.stringify({ accountID: lookupId }),
+      }).then(normalizeArray);
+    })
   );
   const all: EnquirySearchResult[] = [];
-  results.forEach(r => { if (r.status === 'fulfilled') all.push(...r.value); });
+  const seen = new Set<number>();
+  results.forEach(r => {
+    if (r.status === 'fulfilled') {
+      for (const item of r.value) {
+        const id = item.account_ID || item.accountID;
+        if (id && !seen.has(id)) { seen.add(id); all.push(item); }
+      }
+    }
+  });
   return all;
 }
 
