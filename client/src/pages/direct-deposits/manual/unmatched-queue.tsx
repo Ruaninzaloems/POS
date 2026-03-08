@@ -667,9 +667,49 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
           const latestDate = priorEntries.reduce((best: string, p: any) => (!best || p.date > best) ? p.date : best, '');
           const dateStr = latestDate ? new Date(latestDate).toLocaleDateString('en-GB') : 'unknown';
           const conf = Math.min(95, 80 + (recs.length * 5));
-          const accountNo = String(recs[0].accountNumber || recs[0].accountNo || accId);
+          const rawAccountNo = String(recs[0].accountNumber || recs[0].accountNo || '');
+
+          let enrichedItem: any = null;
+          const tryEnrich = async (accNo: string) => {
+            if (enrichedItem) return;
+            try {
+              const items = await safe(() => billingEnquirySearch({ accountNo: accNo }));
+              if (items && items.length > 0) enrichedItem = items[0];
+            } catch (e) { /* best-effort */ }
+          };
+          const idStr = String(accId);
+          const padded12 = idStr.padStart(12, '0');
+          if (rawAccountNo && rawAccountNo !== '0' && rawAccountNo !== idStr) {
+            await tryEnrich(rawAccountNo);
+          }
+          await tryEnrich(padded12);
+          if (!enrichedItem) await tryEnrich(idStr);
+          if (!enrichedItem) {
+            try {
+              const acResults = await safe(() => billingAutocomplete(idStr, 'accountNumber'));
+              if (acResults && acResults.length > 0) {
+                const bestAc = acResults.find((a: any) => a.accountId === accId) || acResults[0];
+                if (bestAc?.accountId) {
+                  const acPadded = String(bestAc.accountId).padStart(12, '0');
+                  await tryEnrich(acPadded);
+                  const displayNum = bestAc.displayItem?.match(/^(\d+)/)?.[1];
+                  if (!enrichedItem && displayNum) await tryEnrich(displayNum);
+                }
+              }
+            } catch (e) { /* best-effort */ }
+          }
+
+          const accountNo = enrichedItem?.accountNumber || enrichedItem?.accountNo || rawAccountNo || String(accId);
+          const displayName = enrichedItem
+            ? [enrichedItem.name, enrichedItem.lastName, enrichedItem.firstName].filter(Boolean).join(' ').trim() || enrichedItem.companyName || ''
+            : '';
+
+          const baseItem = enrichedItem
+            ? { ...enrichedItem, account_ID: accId, _bankStatementPrior: priorEntries }
+            : { account_ID: accId, accountNumber: accountNo, name: displayName, lastName: '', _bankStatementPrior: priorEntries };
+
           addResult(
-            { account_ID: accId, accountNumber: accountNo, name: '', lastName: '', _bankStatementPrior: priorEntries },
+            baseItem,
             'history',
             `Previously allocated via EFT (${recs.length}x) — account ${accountNo}`,
             conf,
@@ -679,24 +719,9 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
               latestDate ? `Receipt: ${priorEntries[0].receiptNo}` : '',
               `This is the same API used on the View Receipts → Bank Statement tab`,
               `High confidence — same bank note was previously processed`,
+              enrichedItem ? `Account details verified from billing enquiry` : '',
             ].filter(Boolean),
           );
-          if (accountNo && accountNo !== String(accId)) {
-            try {
-              const enrichItems = await safe(() => billingEnquirySearch({ accountNo }));
-              if (enrichItems && enrichItems.length > 0) {
-                const item = enrichItems[0];
-                addResult({ ...item, account_ID: accId, _bankStatementPrior: priorEntries }, 'history',
-                  `Previously allocated via EFT — account ${accountNo}`,
-                  conf,
-                  [
-                    `Bank statement prior allocation to account ${accountNo}`,
-                    `Account details enriched from billing enquiry`,
-                  ]
-                );
-              }
-            } catch (e) { /* enrichment is best-effort */ }
-          }
         }
       })
     );
