@@ -1851,55 +1851,83 @@ export default function UnmatchedQueue() {
                       )}
                     </div>
                     {!tx.billingAllocated && bestMatch && (() => {
-                      const amtCmp = getAmountComparison(tx.amount, bestMatch.outstandingAmount);
-                      return (
-                      <button
-                        className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-xl border mb-2 text-left transition-all hover:shadow-sm ${
-                          matchInd === 'high' ? 'bg-emerald-50/60 border-emerald-200' :
-                          matchInd === 'medium' ? 'bg-amber-50/60 border-amber-200' :
-                          'bg-slate-50/60 border-slate-200'
-                        }`}
-                        onClick={() => handleAllocateClick(tx.posItem_ID, undefined, bestMatch)}
-                      >
-                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                          matchInd === 'high' ? 'bg-emerald-100 text-emerald-600' :
-                          matchInd === 'medium' ? 'bg-amber-100 text-amber-600' :
-                          'bg-slate-100 text-slate-500'
-                        }`}>
-                          {getMatchIcon(bestMatch.matchType)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-mono text-xs font-medium text-slate-700">{bestMatch.accountNo}</span>
-                            {bestMatch.statusDesc && bestMatch.statusDesc !== 'Active' && (
-                              <Badge variant="outline" className="text-[7px] px-1 py-0 border-red-200 text-red-600 bg-red-50">{bestMatch.statusDesc}</Badge>
-                            )}
+                      const allMatches = suggestions[tx.posItem_ID] || [];
+                      const renderMobileCard = (m: SuggestedMatch, isPrimary: boolean) => {
+                        const ind = m.confidence >= 80 ? 'high' : m.confidence >= 60 ? 'medium' : 'low';
+                        const amtCmp = getAmountComparison(tx.amount, m.outstandingAmount);
+                        return (
+                        <button
+                          key={m.accountId}
+                          className={`flex items-start gap-2.5 w-full px-3 py-2.5 rounded-xl border mb-1.5 text-left transition-all hover:shadow-sm ${
+                            ind === 'high' ? 'bg-emerald-50/60 border-emerald-200' :
+                            ind === 'medium' ? 'bg-amber-50/60 border-amber-200' :
+                            'bg-slate-50/60 border-slate-200'
+                          } ${!isPrimary ? 'opacity-80' : ''}`}
+                          onClick={() => handleAllocateClick(tx.posItem_ID, undefined, m)}
+                        >
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                            ind === 'high' ? 'bg-emerald-100 text-emerald-600' :
+                            ind === 'medium' ? 'bg-amber-100 text-amber-600' :
+                            'bg-slate-100 text-slate-500'
+                          }`}>
+                            {getMatchIcon(m.matchType)}
                           </div>
-                          <div className="text-[10px] text-slate-500">{bestMatch.name}</div>
-                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                            <span className="text-[9px] text-slate-400">{getMatchTypeLabel(bestMatch.matchType)} match</span>
-                            {bestMatch.typeOfUseDesc && <span className="text-[8px] font-mono text-slate-400 bg-slate-100 px-1 rounded">{bestMatch.typeOfUseDesc}</span>}
-                            {bestMatch.outstandingAmount != null && bestMatch.outstandingAmount !== 0 && (
-                              <span className="text-[8px] font-mono text-slate-500">Owes R {bestMatch.outstandingAmount.toFixed(2)}</span>
-                            )}
-                            {amtCmp && <Badge variant="outline" className={`text-[7px] px-1 py-0 ${amtCmp.bgColor} ${amtCmp.color} border`}>{amtCmp.label}</Badge>}
-                          </div>
-                          {bestMatch.priorAllocations && bestMatch.priorAllocations.length > 0 && (() => {
-                            const latest = bestMatch.priorAllocations[0];
-                            const dateStr = latest.dateCaptured ? new Date(latest.dateCaptured).toLocaleDateString('en-GB') : '—';
-                            return (
-                              <div className="text-[9px] text-blue-500 flex items-center gap-1 mt-0.5">
-                                <HistoryIcon className="w-2.5 h-2.5" />
-                                Last: {dateStr} · R {latest.allocatedAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-mono text-xs font-semibold text-slate-800">{m.accountNo}</span>
+                              <Badge variant="outline" className={`text-[8px] px-1.5 py-0 font-bold ${ind === 'high' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : ind === 'medium' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>{m.confidence}%</Badge>
+                              {m.statusDesc && m.statusDesc !== 'Active' && (
+                                <Badge variant="outline" className="text-[7px] px-1 py-0 border-red-200 text-red-600 bg-red-50">{m.statusDesc}</Badge>
+                              )}
+                              {amtCmp && <Badge variant="outline" className={`text-[7px] px-1 py-0 ${amtCmp.bgColor} ${amtCmp.color} border`}>{amtCmp.label}</Badge>}
+                            </div>
+                            <div className="text-[11px] text-slate-700 font-medium mt-0.5">{m.name}</div>
+                            {m.address && (
+                              <div className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
+                                <MapPin className="w-2.5 h-2.5 shrink-0" />{m.address}
                               </div>
-                            );
-                          })()}
+                            )}
+                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                              <span className="text-[9px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{getMatchTypeLabel(m.matchType)}</span>
+                              {m.typeOfUseDesc && <span className="text-[9px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{m.typeOfUseDesc}</span>}
+                              {m.erfNumber && <span className="text-[9px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">ERF {m.erfNumber}</span>}
+                              {m.activeServices != null && m.activeServices > 0 && <span className="text-[9px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{m.activeServices} service{m.activeServices !== 1 ? 's' : ''}</span>}
+                            </div>
+                            {m.outstandingAmount != null && m.outstandingAmount !== 0 && (
+                              <div className="text-[10px] font-mono text-slate-600 mt-1">Outstanding: <strong>R {m.outstandingAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</strong></div>
+                            )}
+                            {m.priorAllocations && m.priorAllocations.length > 0 && (() => {
+                              const latest = m.priorAllocations[0];
+                              const dateStr = latest.dateCaptured ? new Date(latest.dateCaptured).toLocaleDateString('en-GB') : '—';
+                              return (
+                                <div className="text-[9px] text-blue-500 flex items-center gap-1 mt-1">
+                                  <HistoryIcon className="w-2.5 h-2.5" />
+                                  Prior: {dateStr} · R {latest.allocatedAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                                </div>
+                              );
+                            })()}
+                          </div>
+                          <span className="text-[8px] text-green-600 font-bold shrink-0 mt-1">Quick Allocate →</span>
+                        </button>
+                        );
+                      };
+                      return (
+                        <div className="mb-1">
+                          {renderMobileCard(bestMatch, true)}
+                          {allMatches.length > 1 && (
+                            <>
+                              <div className="text-[9px] text-slate-400 px-1 mb-1 flex items-center gap-1">
+                                <Users className="w-2.5 h-2.5" /> {allMatches.length - 1} more account{allMatches.length > 2 ? 's' : ''} on this property — select to allocate:
+                              </div>
+                              {allMatches.slice(1, 5).map(m => renderMobileCard(m, false))}
+                              {allMatches.length > 5 && (
+                                <button className="text-[9px] text-[var(--pos-accent)] hover:underline px-1 font-medium mb-1" onClick={() => toggleSuggestion(tx.posItem_ID, tx.note, tx.reference)}>
+                                  View all {allMatches.length} matches →
+                                </button>
+                              )}
+                            </>
+                          )}
                         </div>
-                        <div className="flex flex-col items-end gap-1 shrink-0">
-                          <Badge variant="outline" className={`text-[9px] px-1.5 py-0 font-bold ${matchInd === 'high' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : matchInd === 'medium' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>{bestMatch.confidence}%</Badge>
-                          <span className="text-[8px] text-green-600 font-semibold">Quick Allocate →</span>
-                        </div>
-                      </button>
                       );
                     })()}
                     <div className="flex justify-between items-center">
@@ -1954,7 +1982,7 @@ export default function UnmatchedQueue() {
                     <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-3 py-2.5 w-14">ID</th>
                     <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-3 py-2.5 w-24">Date</th>
                     <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-3 py-2.5">Description</th>
-                    <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-3 py-2.5 w-52">Match</th>
+                    <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-3 py-2.5 min-w-[340px]">Match</th>
                     <th className="text-right text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-3 py-2.5 w-28">Amount</th>
                     <th className="text-center text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-3 py-2.5 w-24">Status</th>
                     <th className="text-right text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-3 py-2.5 w-36">Action</th>
@@ -2008,58 +2036,97 @@ export default function UnmatchedQueue() {
                         </td>
                         <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
                           {!tx.billingAllocated && bestMatch ? (() => {
-                            const amtCmp = getAmountComparison(tx.amount, bestMatch.outstandingAmount);
-                            return (
-                            <button
-                              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border text-left w-full transition-all hover:border-[var(--pos-accent)] hover:shadow-sm ${
-                                matchIndicator === 'high' ? 'bg-emerald-50/60 border-emerald-200' :
-                                matchIndicator === 'medium' ? 'bg-amber-50/60 border-amber-200' :
-                                'bg-slate-50/60 border-slate-200'
-                              }`}
-                              onClick={() => handleAllocateClick(tx.posItem_ID, undefined, bestMatch)}
-                              title={bestMatch.matchReasoning?.join('\n') || bestMatch.matchDetail}
-                            >
-                              <div className={`w-5 h-5 rounded flex items-center justify-center shrink-0 ${
-                                matchIndicator === 'high' ? 'bg-emerald-100 text-emerald-600' :
-                                matchIndicator === 'medium' ? 'bg-amber-100 text-amber-600' :
-                                'bg-slate-100 text-slate-500'
-                              }`}>
-                                {getMatchIcon(bestMatch.matchType)}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="font-mono text-[10px] font-medium text-slate-700 truncate">{bestMatch.accountNo}</span>
-                                  {bestMatch.statusDesc && bestMatch.statusDesc !== 'Active' && (
-                                    <Badge variant="outline" className="text-[7px] px-1 py-0 border-red-200 text-red-600 bg-red-50">{bestMatch.statusDesc}</Badge>
-                                  )}
-                                </div>
-                                <div className="text-[9px] text-slate-500 truncate">{bestMatch.name}</div>
-                                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                                  <span className="text-[8px] text-slate-400">{getMatchTypeLabel(bestMatch.matchType)}</span>
-                                  {bestMatch.typeOfUseDesc && <span className="text-[7px] font-mono text-slate-400 bg-slate-50 px-1 rounded">{bestMatch.typeOfUseDesc}</span>}
-                                  {bestMatch.outstandingAmount != null && bestMatch.outstandingAmount !== 0 && (
-                                    <span className="text-[8px] font-mono text-slate-500">Owes R {bestMatch.outstandingAmount.toFixed(2)}</span>
-                                  )}
-                                  {amtCmp && <Badge variant="outline" className={`text-[7px] px-1 py-0 ${amtCmp.bgColor} ${amtCmp.color} border`}>{amtCmp.label}</Badge>}
-                                </div>
-                                {bestMatch.priorAllocations && bestMatch.priorAllocations.length > 0 && (() => {
-                                  const latest = bestMatch.priorAllocations[0];
-                                  const dateStr = latest.dateCaptured ? new Date(latest.dateCaptured).toLocaleDateString('en-GB') : '—';
-                                  return (
-                                    <div className="text-[8px] text-blue-500 flex items-center gap-1 mt-0.5">
-                                      <HistoryIcon className="w-2.5 h-2.5" />
-                                      Last: {dateStr} · R {latest.allocatedAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                            const allMatches = suggestions[tx.posItem_ID] || [];
+                            const showMultiple = allMatches.length > 1;
+                            const renderMatchCard = (m: SuggestedMatch, isPrimary: boolean) => {
+                              const ind = m.confidence >= 80 ? 'high' : m.confidence >= 60 ? 'medium' : 'low';
+                              const amtCmp = getAmountComparison(tx.amount, m.outstandingAmount);
+                              return (
+                                <button
+                                  key={m.accountId}
+                                  className={`flex items-start gap-2 px-2.5 py-2 rounded-lg border text-left w-full transition-all hover:border-[var(--pos-accent)] hover:shadow-sm ${
+                                    ind === 'high' ? 'bg-emerald-50/60 border-emerald-200' :
+                                    ind === 'medium' ? 'bg-amber-50/60 border-amber-200' :
+                                    'bg-slate-50/60 border-slate-200'
+                                  } ${!isPrimary ? 'opacity-80 hover:opacity-100' : ''}`}
+                                  onClick={() => handleAllocateClick(tx.posItem_ID, undefined, m)}
+                                  title={m.matchReasoning?.join('\n') || m.matchDetail}
+                                >
+                                  <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 mt-0.5 ${
+                                    ind === 'high' ? 'bg-emerald-100 text-emerald-600' :
+                                    ind === 'medium' ? 'bg-amber-100 text-amber-600' :
+                                    'bg-slate-100 text-slate-500'
+                                  }`}>
+                                    {getMatchIcon(m.matchType)}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="font-mono text-[11px] font-semibold text-slate-800">{m.accountNo}</span>
+                                      <Badge variant="outline" className={`text-[8px] px-1.5 py-0 font-bold ${
+                                        ind === 'high' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                                        ind === 'medium' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                                        'bg-slate-100 text-slate-600 border-slate-200'
+                                      }`}>{m.confidence}%</Badge>
+                                      {m.statusDesc && m.statusDesc !== 'Active' && (
+                                        <Badge variant="outline" className="text-[7px] px-1 py-0 border-red-200 text-red-600 bg-red-50">{m.statusDesc}</Badge>
+                                      )}
+                                      {amtCmp && <Badge variant="outline" className={`text-[7px] px-1 py-0 ${amtCmp.bgColor} ${amtCmp.color} border`}>{amtCmp.label}</Badge>}
                                     </div>
-                                  );
-                                })()}
+                                    <div className="text-[11px] text-slate-700 font-medium mt-0.5">{m.name}</div>
+                                    {m.address && (
+                                      <div className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
+                                        <MapPin className="w-2.5 h-2.5 shrink-0" />{m.address}{m.town ? `, ${m.town}` : ''}
+                                      </div>
+                                    )}
+                                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                      <span className="text-[9px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{getMatchTypeLabel(m.matchType)}</span>
+                                      {m.typeOfUseDesc && <span className="text-[9px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{m.typeOfUseDesc}</span>}
+                                      {m.erfNumber && <span className="text-[9px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">ERF {m.erfNumber}</span>}
+                                      {m.activeServices != null && m.activeServices > 0 && <span className="text-[9px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{m.activeServices} service{m.activeServices !== 1 ? 's' : ''}</span>}
+                                    </div>
+                                    {m.outstandingAmount != null && m.outstandingAmount !== 0 && (
+                                      <div className="text-[10px] font-mono text-slate-600 mt-1">
+                                        Outstanding: <strong>R {m.outstandingAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</strong>
+                                      </div>
+                                    )}
+                                    {m.priorAllocations && m.priorAllocations.length > 0 && (() => {
+                                      const latest = m.priorAllocations[0];
+                                      const dateStr = latest.dateCaptured ? new Date(latest.dateCaptured).toLocaleDateString('en-GB') : '—';
+                                      return (
+                                        <div className="text-[9px] text-blue-600 flex items-center gap-1 mt-1">
+                                          <HistoryIcon className="w-2.5 h-2.5" />
+                                          Prior allocation: {dateStr} · R {latest.allocatedAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                                        </div>
+                                      );
+                                    })()}
+                                  </div>
+                                  <div className="flex flex-col items-end gap-1 shrink-0 ml-1">
+                                    <span className="text-[8px] text-green-600 font-bold whitespace-nowrap">Quick Allocate →</span>
+                                  </div>
+                                </button>
+                              );
+                            };
+                            return (
+                              <div className="space-y-1.5">
+                                {renderMatchCard(bestMatch, true)}
+                                {showMultiple && (
+                                  <div className="space-y-1">
+                                    <div className="text-[9px] text-slate-400 px-1 flex items-center gap-1">
+                                      <Users className="w-2.5 h-2.5" />
+                                      {allMatches.length - 1} more account{allMatches.length > 2 ? 's' : ''} on this property — select to allocate:
+                                    </div>
+                                    {allMatches.slice(1, 5).map(m => renderMatchCard(m, false))}
+                                    {allMatches.length > 5 && (
+                                      <button
+                                        className="text-[9px] text-[var(--pos-accent)] hover:underline px-1 font-medium"
+                                        onClick={() => toggleSuggestion(tx.posItem_ID, tx.note, tx.reference)}
+                                      >
+                                        View all {allMatches.length} matches →
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                              <Badge variant="outline" className={`text-[8px] px-1 py-0 shrink-0 font-bold ${
-                                matchIndicator === 'high' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
-                                matchIndicator === 'medium' ? 'bg-amber-100 text-amber-700 border-amber-200' :
-                                'bg-slate-100 text-slate-600 border-slate-200'
-                              }`}>{bestMatch.confidence}%</Badge>
-                              <span className="text-[7px] text-green-600 font-semibold mt-0.5">Quick Allocate →</span>
-                            </button>
                             );
                           })() : !tx.billingAllocated && suggestions[tx.posItem_ID] !== undefined ? (
                             <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-dashed border-slate-200 bg-slate-50/30">
