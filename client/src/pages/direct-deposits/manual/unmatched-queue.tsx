@@ -12,7 +12,8 @@ import { HelpTip } from '@/components/ui/help-tip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { platinumGetBankReconPosItemList, platinumCheckSelectedItemProcessed, platinumSearchAccountsPayment, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, fetchAccounts, fetchActiveFinYear, fetchBulkAllocationList, fetchBulkProgressJobAccountDetails } from '@/lib/external-api';
+import { platinumGetBankReconPosItemList, platinumCheckSelectedItemProcessed, platinumSearchAccountsPayment, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, fetchAccounts, fetchActiveFinYear, fetchBulkAllocationList, fetchBulkProgressJobAccountDetails, submitDDAllocationBatch, pollDDAllocationJob } from '@/lib/external-api';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { usePos } from '@/lib/pos-state';
 import { useToast } from '@/hooks/use-toast';
 
@@ -817,6 +818,141 @@ export default function UnmatchedQueue() {
     }
   };
 
+  interface BulkAllocItem {
+    posItemId: number;
+    reconId: number;
+    note: string;
+    reference: string;
+    amount: number;
+    dateOfTransaction: string;
+    match: SuggestedMatch;
+    status: 'pending' | 'submitting' | 'polling' | 'success' | 'failed';
+    error?: string;
+    jobId?: string;
+  }
+
+  const [bulkAllocOpen, setBulkAllocOpen] = useState(false);
+  const [bulkAllocItems, setBulkAllocItems] = useState<BulkAllocItem[]>([]);
+  const [bulkAllocRunning, setBulkAllocRunning] = useState(false);
+  const [bulkAllocDone, setBulkAllocDone] = useState(0);
+  const bulkAllocAbort = useRef(false);
+
+  const openBulkAllocate = () => {
+    const itemsToAllocate: BulkAllocItem[] = selectedWithMatch.map(tx => {
+      const match = getBestMatch(tx.posItem_ID)!;
+      return {
+        posItemId: tx.posItem_ID,
+        reconId: tx.bankReconID,
+        note: tx.note,
+        reference: tx.reference,
+        amount: tx.amount,
+        dateOfTransaction: tx.dateOfTransaction,
+        match,
+        status: 'pending' as const,
+      };
+    });
+    setBulkAllocItems(itemsToAllocate);
+    setBulkAllocDone(0);
+    setBulkAllocRunning(false);
+    bulkAllocAbort.current = false;
+    setBulkAllocOpen(true);
+  };
+
+  const removeBulkItem = (posItemId: number) => {
+    setBulkAllocItems(prev => prev.filter(i => i.posItemId !== posItemId));
+  };
+
+  const executeBulkAllocate = async () => {
+    if (bulkAllocItems.length === 0) return;
+    setBulkAllocRunning(true);
+    setBulkAllocDone(0);
+    bulkAllocAbort.current = false;
+
+    let finYear: string;
+    try {
+      finYear = await fetchActiveFinYear();
+    } catch (e: any) {
+      toast({ title: 'Financial Year Error', description: `Could not fetch financial year: ${e?.message}`, variant: 'destructive' });
+      setBulkAllocRunning(false);
+      return;
+    }
+
+    const now = new Date();
+    const saFormatter = new Intl.DateTimeFormat('en-ZA', {
+      timeZone: 'Africa/Johannesburg',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+    });
+    const saParts = saFormatter.formatToParts(now);
+    const getPart = (type: string) => saParts.find(p => p.type === type)?.value || '';
+    const receiptDate = `${getPart('year')}-${getPart('month')}-${getPart('day')}T${getPart('hour')}:${getPart('minute')}:${getPart('second')}`;
+
+    let doneCount = 0;
+    for (let i = 0; i < bulkAllocItems.length; i++) {
+      if (bulkAllocAbort.current) break;
+      const item = bulkAllocItems[i];
+
+      const pid = item.posItemId;
+      setBulkAllocItems(prev => prev.map(p => p.posItemId === pid ? { ...p, status: 'submitting' } : p));
+
+      try {
+        const batchPayload = {
+          posItemId: item.posItemId,
+          reconId: item.reconId,
+          financialYear: finYear,
+          transactionDate: item.dateOfTransaction || receiptDate,
+          transactionNote: item.note || item.reference || '',
+          lines: [{
+            accountNo: item.match.accountNo,
+            accountId: item.match.accountId,
+            amount: item.amount,
+            allocationType: 'ACCOUNT',
+            description: item.note || item.reference || '',
+          }],
+        };
+
+        const result = await submitDDAllocationBatch(batchPayload);
+
+        setBulkAllocItems(prev => prev.map(p => p.posItemId === pid ? { ...p, status: 'polling', jobId: result.jobId } : p));
+
+        let pollAttempts = 0;
+        const maxPolls = 30;
+        let jobComplete = false;
+        while (pollAttempts < maxPolls && !jobComplete) {
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          try {
+            const jobStatus = await pollDDAllocationJob(result.jobId);
+            if (jobStatus.status === 'COMPLETED') {
+              setBulkAllocItems(prev => prev.map(p => p.posItemId === pid ? { ...p, status: 'success' } : p));
+              jobComplete = true;
+            } else if (jobStatus.status === 'FAILED' || jobStatus.status === 'PARTIAL_FAILURE') {
+              const errMsg = jobStatus.errors?.join(', ') || 'Allocation failed';
+              setBulkAllocItems(prev => prev.map(p => p.posItemId === pid ? { ...p, status: 'failed', error: errMsg } : p));
+              jobComplete = true;
+            }
+          } catch (pollErr: any) {
+            console.warn(`[BulkAllocate] Poll error for job ${result.jobId}:`, pollErr?.message);
+          }
+          pollAttempts++;
+        }
+        if (!jobComplete) {
+          setBulkAllocItems(prev => prev.map(p => p.posItemId === pid ? { ...p, status: 'failed', error: 'Timeout waiting for allocation to complete' } : p));
+        }
+      } catch (e: any) {
+        setBulkAllocItems(prev => prev.map(p => p.posItemId === pid ? { ...p, status: 'failed', error: e?.message || 'Submission failed' } : p));
+      }
+      doneCount++;
+      setBulkAllocDone(doneCount);
+    }
+
+    setBulkAllocRunning(false);
+    loadData(page);
+  };
+
+  const bulkAllocSuccessCount = bulkAllocItems.filter(i => i.status === 'success').length;
+  const bulkAllocFailCount = bulkAllocItems.filter(i => i.status === 'failed').length;
+  const bulkAllocTotalAmount = bulkAllocItems.reduce((s, i) => s + i.amount, 0);
+
   const toggleSuggestion = async (posItemId: number, note: string, reference: string) => {
     if (expandedSuggestion === posItemId) {
       setExpandedSuggestion(null);
@@ -887,6 +1023,7 @@ export default function UnmatchedQueue() {
   const pageTotalAmount = filtered.reduce((sum, i) => sum + (i.amount || 0), 0);
 
   return (
+    <>
     <PosLayout>
       <div className="flex flex-col flex-1 min-h-0 overflow-auto sm:overflow-hidden">
         <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5">
@@ -1385,15 +1522,11 @@ export default function UnmatchedQueue() {
                   <Button
                     size="sm"
                     className="h-9 text-xs bg-emerald-600 hover:bg-emerald-700 gap-1.5 px-3"
-                    onClick={() => {
-                      const first = selectedWithMatch[0];
-                      const match = getBestMatch(first.posItem_ID);
-                      if (match) handleAllocateClick(first.posItem_ID, undefined, match);
-                    }}
+                    onClick={openBulkAllocate}
                     data-testid="button-allocate-matched"
                   >
                     <ArrowRight className="w-3.5 h-3.5" />
-                    {selectedWithMatch.length === 1 ? 'Allocate Match' : `Allocate Next (1 of ${selectedWithMatch.length})`}
+                    Auto-Allocate {selectedWithMatch.length} Matched
                   </Button>
                 )}
                 <Button
@@ -1411,6 +1544,159 @@ export default function UnmatchedQueue() {
         </div>
       </div>
     </PosLayout>
+
+    <Dialog open={bulkAllocOpen} onOpenChange={(open) => { if (!bulkAllocRunning) setBulkAllocOpen(open); }}>
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col bg-slate-900 border-slate-700 text-white">
+        <DialogHeader>
+          <DialogTitle className="text-lg font-semibold flex items-center gap-2">
+            <Zap className="w-5 h-5 text-emerald-400" />
+            Auto-Allocate {bulkAllocItems.length} Matched Items
+          </DialogTitle>
+          <DialogDescription className="text-slate-400">
+            Each item will be allocated to its matched account for the full transaction amount. Review below and confirm.
+          </DialogDescription>
+        </DialogHeader>
+
+        {bulkAllocRunning && (
+          <div className="px-1">
+            <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5">
+              <span>Progress: {bulkAllocDone} / {bulkAllocItems.length}</span>
+              <span>
+                {bulkAllocSuccessCount > 0 && <span className="text-emerald-400 mr-2">{bulkAllocSuccessCount} succeeded</span>}
+                {bulkAllocFailCount > 0 && <span className="text-red-400">{bulkAllocFailCount} failed</span>}
+              </span>
+            </div>
+            <div className="w-full bg-slate-700 rounded-full h-2 overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-300"
+                style={{
+                  width: `${(bulkAllocDone / bulkAllocItems.length) * 100}%`,
+                  background: 'var(--pos-accent, #10b981)',
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="flex-1 overflow-y-auto min-h-0 space-y-1.5 pr-1" style={{ maxHeight: '50vh' }}>
+          {bulkAllocItems.map((item) => (
+            <div
+              key={item.posItemId}
+              data-testid={`bulk-alloc-row-${item.posItemId}`}
+              className={`rounded-lg border p-3 text-xs transition-colors ${
+                item.status === 'success' ? 'border-emerald-600/50 bg-emerald-950/30' :
+                item.status === 'failed' ? 'border-red-600/50 bg-red-950/30' :
+                item.status === 'submitting' || item.status === 'polling' ? 'border-amber-600/50 bg-amber-950/20' :
+                'border-slate-700 bg-slate-800/60'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-mono text-slate-300 truncate max-w-[200px]" title={item.note}>
+                      {item.note || item.reference || `POS ${item.posItemId}`}
+                    </span>
+                    <Badge variant="outline" className="text-[10px] border-slate-600 text-slate-400 shrink-0">
+                      R {item.amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-slate-400">
+                    <ArrowRight className="w-3 h-3 text-emerald-400" />
+                    <span className="font-mono text-emerald-300">{item.match.accountNo}</span>
+                    <span className="text-slate-500">—</span>
+                    <span className="truncate max-w-[200px]">{item.match.name}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {item.status === 'pending' && !bulkAllocRunning && (
+                    <button
+                      onClick={() => removeBulkItem(item.posItemId)}
+                      className="p-1 rounded hover:bg-red-900/40 text-slate-500 hover:text-red-400 transition-colors"
+                      title="Remove from batch"
+                      data-testid={`bulk-remove-${item.posItemId}`}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  {(item.status === 'submitting' || item.status === 'polling') && (
+                    <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
+                  )}
+                  {item.status === 'success' && (
+                    <CheckSquare className="w-4 h-4 text-emerald-400" />
+                  )}
+                  {item.status === 'failed' && (
+                    <div className="flex items-center gap-1">
+                      <X className="w-4 h-4 text-red-400" />
+                      <span className="text-red-400 text-[10px] max-w-[120px] truncate" title={item.error}>{item.error}</span>
+                    </div>
+                  )}
+                  {item.status === 'pending' && bulkAllocRunning && (
+                    <span className="text-[10px] text-slate-500">Queued</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="border-t border-slate-700 pt-3 space-y-3">
+          <div className="flex justify-between text-xs">
+            <span className="text-slate-400">Total Amount</span>
+            <span className="font-semibold text-white">R {bulkAllocTotalAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+          </div>
+
+          <DialogFooter className="flex gap-2 sm:gap-2">
+            {!bulkAllocRunning && bulkAllocDone === 0 && (
+              <>
+                <Button
+                  variant="ghost"
+                  className="text-slate-400 hover:text-white"
+                  onClick={() => setBulkAllocOpen(false)}
+                  data-testid="bulk-alloc-cancel"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-emerald-600 hover:bg-emerald-700 gap-1.5"
+                  onClick={executeBulkAllocate}
+                  disabled={bulkAllocItems.length === 0}
+                  data-testid="bulk-alloc-confirm"
+                >
+                  <Zap className="w-4 h-4" />
+                  Confirm & Allocate All
+                </Button>
+              </>
+            )}
+            {bulkAllocRunning && (
+              <Button
+                variant="destructive"
+                className="gap-1.5"
+                onClick={() => { bulkAllocAbort.current = true; }}
+                data-testid="bulk-alloc-stop"
+              >
+                <X className="w-4 h-4" />
+                Stop After Current
+              </Button>
+            )}
+            {!bulkAllocRunning && bulkAllocDone > 0 && (
+              <Button
+                className="gap-1.5"
+                style={{ background: 'var(--pos-accent, #10b981)' }}
+                onClick={() => {
+                  setBulkAllocOpen(false);
+                  setSelectedIds(new Set());
+                  loadData(page);
+                }}
+                data-testid="bulk-alloc-done"
+              >
+                Done — {bulkAllocSuccessCount} Allocated
+              </Button>
+            )}
+          </DialogFooter>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
 
@@ -1495,6 +1781,7 @@ function SuggestionPanel({ posItemId, suggestions, loading, getConfidenceColor, 
           ))}
         </div>
       )}
+
     </div>
   );
 }
