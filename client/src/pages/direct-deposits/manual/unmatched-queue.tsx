@@ -309,6 +309,12 @@ function parseDescriptionForClues(note: string, reference: string): ParsedClues 
     }
   }
 
+  for (const num of accountNumbers) {
+    if (num.length >= 7 && num.length <= 10 && !oldAccountCodes.includes(num)) {
+      oldAccountCodes.push(num);
+    }
+  }
+
   const areaAbbrsInText = ['GRG', 'OUD', 'PAC', 'BLA', 'CON', 'THE', 'WIL', 'HOE', 'TOU', 'ROS', 'LAV', 'BOR', 'UNI', 'HER', 'HRL'];
   for (const abbr of areaAbbrsInText) {
     if (text.includes(abbr) && AREA_ABBREVIATIONS[abbr.toLowerCase()]) {
