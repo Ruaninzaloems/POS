@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { DatePicker } from '@/components/ui/date-picker';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { platinumGetBankReconPosItemList, platinumCheckSelectedItemProcessed, platinumSearchAccountsPayment, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, fetchAccounts, fetchActiveFinYear, fetchBulkAllocationList, fetchBulkProgressJobAccountDetails, submitDDAllocationBatch, pollDDAllocationJob } from '@/lib/external-api';
+import { autocomplete as billingAutocomplete } from '@/lib/enquiries-service';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { usePos } from '@/lib/pos-state';
 import { useToast } from '@/hooks/use-toast';
@@ -87,10 +88,17 @@ const KNOWN_AREA_NAMES = new Set([
   'protea park', 'bodorp', 'bo-dorp', 'le vallia',
 ]);
 
+interface ParsedErf {
+  erf: string;
+  portion: string | null;
+  area: string;
+  qualifier: string | null;
+}
+
 interface ParsedClues {
   accountNumbers: string[];
   meterNumbers: string[];
-  erfNumbers: { erf: string; area: string }[];
+  erfNumbers: ParsedErf[];
   oldAccountCodes: string[];
   keywords: string[];
   bankingRef: string | null;
@@ -209,16 +217,33 @@ function parseDescriptionForClues(note: string, reference: string): ParsedClues 
   }
 
   const erfPatterns = [
-    /ERF\s*(?:NUMBER|NR|NO\.?)?\s*:?\s*(\d+(?:\/\d+)?)\s*(?:AREA:?\s*)?(\w+)?/gi,
-    /ERF\s*(\d+(?:\/\d+)?)\s+(\w+)/gi,
-    /ERF(\d+)/gi,
+    /ERF\s*(?:NUMBER|NR|NO\.?)?\s*:?\s*(\d+)\s*\/\s*(\d+)\s+(\w+)(?:\s+(\w+))?/gi,
+    /ERF\s*(?:NUMBER|NR|NO\.?)?\s*:?\s*(\d+)\s*\/\s*(\d+)/gi,
+    /ERF\s*(?:NUMBER|NR|NO\.?)?\s*:?\s*(\d+)\s+(\w+)(?:\s+(\w+))?/gi,
+    /ERF\s*(\d+)/gi,
   ];
   for (const pattern of erfPatterns) {
     let match;
     const re = new RegExp(pattern.source, pattern.flags);
     while ((match = re.exec(text)) !== null) {
-      const erfNum = match[1];
-      let area = (match[2] || '').toLowerCase().trim();
+      let erfNum: string | null = null;
+      let portion: string | null = null;
+      let area = '';
+      let qualifier: string | null = null;
+
+      if (pattern.source.includes('\\/')) {
+        erfNum = match[1];
+        portion = match[2];
+        area = (match[3] || '').toLowerCase().trim();
+        qualifier = (match[4] || '').toLowerCase().trim() || null;
+      } else if (match[2] && /^[A-Za-z]/.test(match[2])) {
+        erfNum = match[1];
+        area = match[2].toLowerCase().trim();
+        qualifier = (match[3] || '').toLowerCase().trim() || null;
+      } else {
+        erfNum = match[1];
+      }
+
       if (area && AREA_ABBREVIATIONS[area]) {
         area = AREA_ABBREVIATIONS[area];
       }
@@ -229,8 +254,11 @@ function parseDescriptionForClues(note: string, reference: string): ParsedClues 
           area = `${area} ${nextWord}`;
         }
       }
-      if (erfNum && !erfNumbers.some(e => e.erf === erfNum)) {
-        erfNumbers.push({ erf: erfNum, area: area || 'george' });
+      if (qualifier === 'ru' || qualifier === 'rural') {
+        qualifier = 'rural';
+      }
+      if (erfNum && !erfNumbers.some(e => e.erf === erfNum && e.portion === portion)) {
+        erfNumbers.push({ erf: erfNum, portion, area: area || 'george', qualifier });
       }
     }
   }
@@ -641,53 +669,61 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
     return fields.some(f => f.includes(normArea));
   };
 
+  const buildErfSearchFormats = (erf: ParsedErf): string[] => {
+    const formats: string[] = [];
+    if (erf.portion) {
+      const portionPadded = erf.portion.padStart(5, '0');
+      formats.push(`${erf.erf}/${portionPadded}`);
+      formats.push(`${erf.erf}/${erf.portion}`);
+    }
+    formats.push(erf.erf);
+    return [...new Set(formats)];
+  };
+
+  const buildSgCodeVariants = (erf: ParsedErf): string[] => {
+    const TOWN_CODES: Record<string, string> = {
+      'george': 'C027', 'oudtshoorn': 'C040', 'uniondale': 'C055',
+      'wilderness': 'C027', 'pacaltsdorp': 'C027', 'blanco': 'C027',
+      'conville': 'C027', 'thembalethu': 'C027', 'herold': 'C027',
+      'hoekwil': 'C027', 'touwsranten': 'C027', 'rosemoor': 'C027',
+      'lawaaikamp': 'C027', 'borchards': 'C027', 'sandkraal': 'C027',
+      'denneoord': 'C027', 'kraaibosch': 'C027', 'fernridge': 'C027',
+      'camphersdrift': 'C027', 'parkdene': 'C027', 'rosedale': 'C027',
+      'bergsig': 'C027', 'kingswood': 'C027', 'glenbarrie': 'C027',
+      'heather park': 'C027', 'heatherpark': 'C027',
+    };
+    const variants: string[] = [];
+    const area = erf.area || 'george';
+    const townCode = TOWN_CODES[area] || 'C027';
+    const erfPadded = erf.erf.padStart(8, '0');
+    const portionPadded = (erf.portion || '0').padStart(5, '0');
+
+    variants.push(`${townCode}/0000/${erfPadded}/${portionPadded}`);
+    if (!erf.portion) {
+      variants.push(`${townCode}/0000/${erfPadded}/00000`);
+    }
+    return variants;
+  };
+
   for (const erf of clues.erfNumbers.slice(0, 2)) {
-    searchPromises.push(
-      safe(() => fetchAccounts({ erfNumber: erf.erf })).then((items: any[]) => {
-        for (const item of items.slice(0, 5)) {
-          const hasAreaMatch = checkAreaMatch(item, erf.area);
-          const conf = hasAreaMatch ? 92 : (erf.area && erf.area !== 'george' ? 72 : 78);
-          addResult(item, 'erf_number',
-            `ERF ${erf.erf}${erf.area && erf.area !== 'george' ? ` in ${erf.area}` : ''}${hasAreaMatch ? ' (area confirmed)' : ''}`,
-            conf,
-            [
-              `Found ERF number "${erf.erf}" in description`,
-              erf.area && erf.area !== 'george' ? `Area "${erf.area}" specified in description` : `No specific area mentioned`,
-              hasAreaMatch ? `Area confirmed — allotment/address matches` : `Area not verified — check manually`,
-              `Searched via billing enquiry with ERF number`,
-            ]
-          );
-        }
-      })
-    );
+    const erfFormats = buildErfSearchFormats(erf);
+    const sgVariants = buildSgCodeVariants(erf);
+    const erfLabel = erf.portion ? `ERF ${erf.erf}/${erf.portion}` : `ERF ${erf.erf}`;
+    const areaLabel = erf.area && erf.area !== 'george' ? ` ${erf.area}` : '';
 
-    if (erf.area && erf.area !== 'george') {
+    for (const fmt of erfFormats) {
       searchPromises.push(
-        safe(() => fetchAccounts({ erfNumber: erf.erf, allotmentArea: erf.area })).then((items: any[]) => {
-          for (const item of items.slice(0, 5)) {
+        safe(() => fetchAccounts({ erfNumber: fmt })).then((items: any[]) => {
+          for (const item of items.slice(0, 8)) {
+            const hasAreaMatch = checkAreaMatch(item, erf.area);
+            const conf = hasAreaMatch ? 93 : (erf.portion ? 85 : 75);
             addResult(item, 'erf_number',
-              `ERF ${erf.erf} in ${erf.area} (area confirmed)`,
-              92,
+              `${erfLabel}${areaLabel}${hasAreaMatch ? ' (area confirmed)' : ''}`,
+              conf,
               [
-                `Found ERF number "${erf.erf}" in description`,
-                `Area "${erf.area}" matched via allotment area filter`,
-                `Searched via billing enquiry with ERF + allotment area`,
-              ]
-            );
-          }
-        })
-      );
-
-      searchPromises.push(
-        safe(() => fetchAccounts({ erfNumber: erf.erf, locationAddress: erf.area })).then((items: any[]) => {
-          for (const item of items.slice(0, 5)) {
-            addResult(item, 'erf_number',
-              `ERF ${erf.erf} — address matches ${erf.area}`,
-              88,
-              [
-                `Found ERF number "${erf.erf}" in description`,
-                `Area "${erf.area}" matched via location address`,
-                `Searched via billing enquiry with ERF + location address`,
+                `Parsed "${erfLabel}" from description`,
+                `Searched billing enquiry with erfNumber="${fmt}"`,
+                hasAreaMatch ? `Area "${erf.area}" confirmed in result` : `Area not verified`,
               ]
             );
           }
@@ -695,23 +731,141 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
       );
     }
 
-    const erfSearches = [`erf ${erf.erf}`];
-    if (erf.area && erf.area !== 'george') erfSearches.push(`erf ${erf.erf} ${erf.area}`);
-    erfSearches.push(erf.erf);
-
-    for (const erfSearch of erfSearches) {
+    if (erf.area && erf.area !== 'george') {
       searchPromises.push(
-        safe(() => platinumSearchAccountsPayment({ name: erfSearch })).then((rawData: any) => {
+        safe(() => fetchAccounts({ erfNumber: erfFormats[0] || erf.erf, allotmentArea: erf.area })).then((items: any[]) => {
+          for (const item of items.slice(0, 8)) {
+            addResult(item, 'erf_number',
+              `${erfLabel} in ${erf.area} (area confirmed)`,
+              94,
+              [
+                `Parsed "${erfLabel}" from description`,
+                `Searched with erfNumber + allotmentArea="${erf.area}"`,
+                `Area filter confirmed match`,
+              ]
+            );
+          }
+        })
+      );
+
+      searchPromises.push(
+        safe(() => fetchAccounts({ erfNumber: erfFormats[0] || erf.erf, locationAddress: erf.area })).then((items: any[]) => {
+          for (const item of items.slice(0, 8)) {
+            addResult(item, 'erf_number',
+              `${erfLabel} — address in ${erf.area}`,
+              90,
+              [
+                `Parsed "${erfLabel}" from description`,
+                `Searched with erfNumber + locationAddress="${erf.area}"`,
+              ]
+            );
+          }
+        })
+      );
+    }
+
+    for (const fmt of erfFormats) {
+      searchPromises.push(
+        safe(() => billingAutocomplete(fmt, 'erfNumber')).then((acResults: any[]) => {
+          const results = Array.isArray(acResults) ? acResults : [];
+          const matchedAccountIds: number[] = [];
+          for (const ac of results.slice(0, 10)) {
+            const display = (ac.displayItem || '').toUpperCase();
+            const areaMatch = erf.area && erf.area !== 'george' && normalizeArea(display).includes(normalizeArea(erf.area));
+            const erfMatch = display.includes(erf.erf);
+            if ((erfMatch || areaMatch) && ac.accountId) {
+              matchedAccountIds.push(ac.accountId);
+            }
+          }
+          if (matchedAccountIds.length > 0) {
+            return Promise.allSettled(
+              matchedAccountIds.slice(0, 8).map(accId =>
+                safe(() => fetchAccounts({ accountNo: String(accId) })).then((items: any[]) => {
+                  for (const item of items) {
+                    const hasAreaMatch = checkAreaMatch(item, erf.area);
+                    addResult(item, 'erf_number',
+                      `${erfLabel}${areaLabel} — ERF autocomplete match${hasAreaMatch ? ' (area confirmed)' : ''}`,
+                      hasAreaMatch ? 94 : 88,
+                      [
+                        `Parsed "${erfLabel}" from description`,
+                        `Found via ERF number autocomplete (BillingEnquiry)`,
+                        `Account ID ${accId} matched`,
+                        hasAreaMatch ? `Area confirmed` : `Verify area manually`,
+                      ]
+                    );
+                  }
+                })
+              )
+            );
+          }
+        })
+      );
+    }
+
+    for (const sg of sgVariants) {
+      searchPromises.push(
+        safe(() => fetchAccounts({ oldAccountCode: sg })).then((items: any[]) => {
+          for (const item of items.slice(0, 8)) {
+            const hasAreaMatch = checkAreaMatch(item, erf.area);
+            addResult(item, 'erf_number',
+              `${erfLabel}${areaLabel} — SG code match${hasAreaMatch ? ' (area confirmed)' : ''}`,
+              hasAreaMatch ? 95 : 90,
+              [
+                `Parsed "${erfLabel}" from description`,
+                `Constructed SG code: "${sg}"`,
+                `Searched via old account code / SG number`,
+                hasAreaMatch ? `Area confirmed` : `Verify area`,
+              ]
+            );
+          }
+        })
+      );
+
+      searchPromises.push(
+        safe(() => billingAutocomplete(sg.substring(0, 20), 'erfNumber')).then((acResults: any[]) => {
+          const results = Array.isArray(acResults) ? acResults : [];
+          const matchedIds: number[] = [];
+          for (const ac of results.slice(0, 10)) {
+            if (ac.accountId) matchedIds.push(ac.accountId);
+          }
+          if (matchedIds.length > 0) {
+            return Promise.allSettled(
+              matchedIds.slice(0, 8).map(accId =>
+                safe(() => fetchAccounts({ accountNo: String(accId) })).then((items: any[]) => {
+                  for (const item of items) {
+                    addResult(item, 'erf_number',
+                      `${erfLabel}${areaLabel} — SG autocomplete match`,
+                      92,
+                      [
+                        `Parsed "${erfLabel}" from description`,
+                        `Constructed SG code: "${sg}"`,
+                        `Found via SG number autocomplete`,
+                      ]
+                    );
+                  }
+                })
+              )
+            );
+          }
+        })
+      );
+    }
+
+    const textSearches = [`erf ${erf.erf}`];
+    if (erf.area && erf.area !== 'george') textSearches.push(`${erf.erf} ${erf.area}`);
+
+    for (const term of textSearches) {
+      searchPromises.push(
+        safe(() => platinumSearchAccountsPayment({ name: term })).then((rawData: any) => {
           const items = unwrap(rawData);
           for (const item of items.slice(0, 5)) {
             const hasAreaMatch = checkAreaMatch(item, erf.area);
             addResult(item, 'erf_number',
-              `Property: ERF ${erf.erf}${erf.area && erf.area !== 'george' ? ` ${erf.area}` : ''}${hasAreaMatch ? ' (area confirmed)' : ''}`,
-              hasAreaMatch ? 85 : 70,
+              `${erfLabel}${areaLabel} — text search${hasAreaMatch ? ' (area confirmed)' : ''}`,
+              hasAreaMatch ? 82 : 68,
               [
-                `ERF "${erf.erf}" extracted from description`,
-                `Searched via payment search: "${erfSearch}"`,
-                hasAreaMatch ? `Area/name match confirmed` : `Area not confirmed in results`,
+                `Searched payment accounts for: "${term}"`,
+                hasAreaMatch ? `Area confirmed` : `Area not confirmed`,
               ]
             );
           }
@@ -724,18 +878,14 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
         const results = unwrap(rawData);
         for (const item of results.slice(0, 5)) {
           const hasAreaMatch = checkAreaMatch(item, erf.area);
-          const erfInResult = (item.erfNumber || item.accountDesc || '').toLowerCase().includes(erf.erf);
-          if (erfInResult || hasAreaMatch) {
-            addResult(item, 'erf_number',
-              `ERF ${erf.erf}${hasAreaMatch ? ` (${erf.area} confirmed)` : ''}`,
-              hasAreaMatch ? 85 : (erfInResult ? 78 : 65),
-              [
-                `ERF "${erf.erf}" extracted from description`,
-                `Searched via DD account autocomplete`,
-                hasAreaMatch ? `Area match confirmed` : `Matched by account/ERF number`,
-              ]
-            );
-          }
+          addResult(item, 'erf_number',
+            `${erfLabel}${areaLabel} — DD autocomplete`,
+            hasAreaMatch ? 80 : 65,
+            [
+              `Searched DD account autocomplete for: "${erf.erf}"`,
+              hasAreaMatch ? `Area confirmed` : `Verify area`,
+            ]
+          );
         }
       })
     );
