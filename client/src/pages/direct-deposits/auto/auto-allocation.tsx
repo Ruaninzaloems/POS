@@ -304,7 +304,7 @@ function AutoAllocationContent() {
   const totalRejectedAmount = useMemo(() => unprocessedBatches.reduce((sum, b) => sum + b.rejectedAmount, 0), [unprocessedBatches]);
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+    <div className="flex flex-col flex-1 min-h-0 overflow-auto sm:overflow-hidden">
       <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-3">
@@ -390,7 +390,7 @@ function AutoAllocationContent() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto bg-[#F2F4F7] p-4 sm:p-6">
+      <div className="sm:flex-1 sm:overflow-auto bg-[#F2F4F7] p-4 sm:p-6">
         {error && (
           <Alert variant="destructive" className="mb-4" data-testid="alert-error">
             <AlertTriangle className="h-4 w-4" />

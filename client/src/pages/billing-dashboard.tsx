@@ -844,7 +844,7 @@ export default function BillingDashboard() {
 
     return (
         <PosLayout>
-            <div className="flex flex-col flex-1 min-h-0 overflow-hidden" data-testid="page-billing-dashboard">
+            <div className="flex flex-col flex-1 min-h-0 overflow-auto sm:overflow-hidden" data-testid="page-billing-dashboard">
                 <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5">
                     <div className="flex items-center gap-3 mb-4">
                         <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
@@ -866,7 +866,7 @@ export default function BillingDashboard() {
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-auto bg-[#F2F4F7] p-4 sm:p-6">
+                <div className="sm:flex-1 sm:overflow-auto bg-[#F2F4F7] p-4 sm:p-6">
                     <div className="space-y-5">
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

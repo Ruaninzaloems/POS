@@ -1351,7 +1351,7 @@ export default function AllocateTransaction() {
 
     return (
       <PosLayout>
-        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+        <div className="flex flex-col flex-1 min-h-0 overflow-auto sm:overflow-hidden">
           <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
@@ -1364,7 +1364,7 @@ export default function AllocateTransaction() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-auto bg-[#F2F4F7] p-4 sm:p-6">
+          <div className="sm:flex-1 sm:overflow-auto bg-[#F2F4F7] p-4 sm:p-6">
             <div className="space-y-4 sm:space-y-6">
 
               <div className="bg-green-50 border border-green-200 rounded-xl p-5 text-center">
@@ -1605,7 +1605,7 @@ export default function AllocateTransaction() {
 
   return (
     <PosLayout>
-      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-col flex-1 min-h-0 overflow-auto sm:overflow-hidden">
         <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5 flex items-center gap-2 sm:gap-4">
              <Link href="/direct-deposits/manual">
                 <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-9 sm:w-9 rounded-full hover:bg-[#F2F4F7]" data-testid="button-back">
@@ -1625,7 +1625,7 @@ export default function AllocateTransaction() {
              </Badge>
         </div>
 
-        <div className="flex-1 overflow-auto bg-[#F2F4F7]">
+        <div className="sm:flex-1 sm:overflow-auto bg-[#F2F4F7]">
           <div className="lg:hidden px-3 py-3 bg-white border-b z-10 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">

@@ -861,7 +861,7 @@ function GeneralEnquiriesContent() {
     };
 
     return (
-      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-col flex-1 min-h-0 overflow-auto sm:overflow-hidden">
         <div className="shrink-0 bg-white border-b border-[#D6D6D6] shadow-sm">
           <div className="px-3 sm:px-6 py-2 sm:py-3">
             <div className="flex items-center gap-2 sm:gap-3">
@@ -927,7 +927,7 @@ function GeneralEnquiriesContent() {
 
         <RiskFlagsBanner accountId={accountId} />
 
-        <div className="flex-1 overflow-auto">
+        <div className="sm:flex-1 sm:overflow-auto">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
             <div className="shrink-0 bg-white border-b border-[#D6D6D6] sticky top-0 z-20 relative">
               <div className="px-3 sm:px-5 py-2 sm:py-3">
@@ -1035,7 +1035,7 @@ function GeneralEnquiriesContent() {
                 </TabsList>
               </div>
             </div>
-            <div className="flex-1 overflow-auto bg-[#F2F4F7]">
+            <div className="sm:flex-1 sm:overflow-auto bg-[#F2F4F7]">
               <TabsContent value="account" className="m-0"><TabErrorBoundary tabName="Account"><AccountInfoTab account={selectedAccount} /></TabErrorBoundary></TabsContent>
               <TabsContent value="name" className="m-0"><TabErrorBoundary tabName="Name"><NameTab accountId={accountId} onNavigateToAccount={(acct) => { setSelectedAccount(acct); setActiveTab('account'); }} /></TabErrorBoundary></TabsContent>
               <TabsContent value="balance" className="m-0"><TabErrorBoundary tabName="Balance"><BalanceDebtTab accountId={accountId} accountNumber={selectedAccount.accountNumber || selectedAccount.oldAccountCode || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabErrorBoundary></TabsContent>
@@ -1073,7 +1073,7 @@ function GeneralEnquiriesContent() {
   }
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 overflow-hidden relative">
+    <div className="flex flex-col flex-1 min-h-0 overflow-auto sm:overflow-hidden relative">
       <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-3 sm:px-6 py-2 sm:py-3">
         <div className="flex items-center gap-3 mb-2">
           <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
@@ -1424,7 +1424,7 @@ function GeneralEnquiriesContent() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto bg-[#F2F4F7]">
+      <div className="sm:flex-1 sm:overflow-auto bg-[#F2F4F7]">
         {searchError && (
           <div className="p-4">
             <ErrorState message={searchError} onRetry={handleFullSearch} />
@@ -1744,7 +1744,7 @@ function GeneralEnquiriesContent() {
 export default function GeneralEnquiries() {
   return (
     <PosLayout>
-      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-col flex-1 min-h-0 overflow-auto sm:overflow-hidden">
         <GeneralEnquiriesContent />
       </div>
     </PosLayout>

@@ -503,7 +503,7 @@ export default function ClientCommunications() {
 
   return (
     <PosLayout>
-      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-col flex-1 min-h-0 overflow-auto sm:overflow-hidden">
         <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -540,7 +540,7 @@ export default function ClientCommunications() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto bg-[#F2F4F7] p-4 sm:p-6">
+        <div className="sm:flex-1 sm:overflow-auto bg-[#F2F4F7] p-4 sm:p-6">
           <div className="space-y-3 sm:space-y-4">
 
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4">
