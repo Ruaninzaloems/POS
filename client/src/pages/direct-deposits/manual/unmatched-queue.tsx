@@ -106,8 +106,14 @@ interface ParsedClues {
   nameSearchTerms: string[];
 }
 
+function decodeHtmlEntities(str: string): string {
+  return str.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+}
+
 function parseDescriptionForClues(note: string, reference: string): ParsedClues {
-  const text = `${note || ''} ${reference || ''}`.toUpperCase();
+  const decodedNote = decodeHtmlEntities(note || '');
+  const decodedRef = decodeHtmlEntities(reference || '');
+  const text = `${decodedNote} ${decodedRef}`.toUpperCase();
   const accountNumbers: string[] = [];
   const meterNumbers: string[] = [];
   const erfNumbers: ParsedErf[] = [];
@@ -311,19 +317,17 @@ function parseDescriptionForClues(note: string, reference: string): ParsedClues 
     'ONTEC', 'FIXES', 'ACC', 'ACCOUNT', 'MTR', 'METER', 'ERF', 'SEQ', 'NO', 'NR', 'THE', 'AND', 'OF',
     'FOR', 'TO', 'IN', 'AT', 'MR', 'MRS', 'MS', 'DR', 'PROF', 'MUNICIPALITY', 'MUNICIPAL', 'GEORGE',
     'INVESTEC', 'CASHFOCUS', 'PROJECTS', 'PROJECT', 'BANK', 'TRANSFER']);
-  const cleanNote = (note || '').trim();
+  const cleanNote = decodedNote.trim();
   if (cleanNote.length >= 3 && !isBankingDesc && accountNumbers.length === 0 && meterNumbers.length === 0 && erfNumbers.length === 0) {
-    const words = cleanNote.split(/[\s,&]+/).map(w => w.replace(/[^A-Za-z'-]/g, '')).filter(w => w.length >= 2);
+    const strippedNote = cleanNote.replace(/\b[A-Z]{0,3}\d{4,}\b/gi, '').replace(/[-–—]/g, ' ').trim();
+    const words = strippedNote.split(/[\s,&]+/).map(w => w.replace(/[^A-Za-z'-]/g, '')).filter(w => w.length >= 2);
     const alphaWords = words.filter(w => /^[A-Za-z'-]+$/.test(w) && !NOISE_WORDS.has(w.toUpperCase()));
-    if (alphaWords.length >= 2 && alphaWords.length <= 6) {
-      const hasNumber = /\d{4,}/.test(cleanNote);
-      if (!hasNumber) {
-        nameSearchTerms.push(alphaWords.join(' '));
-        const surnames = alphaWords.filter(w => w.length >= 4);
-        for (const surname of surnames.slice(0, 2)) {
-          if (!nameSearchTerms.includes(surname)) {
-            nameSearchTerms.push(surname);
-          }
+    if (alphaWords.length >= 2 && alphaWords.length <= 8) {
+      nameSearchTerms.push(alphaWords.join(' '));
+      const longWords = alphaWords.filter(w => w.length >= 4);
+      for (const word of longWords.slice(0, 2)) {
+        if (!nameSearchTerms.includes(word)) {
+          nameSearchTerms.push(word);
         }
       }
     }
@@ -970,6 +974,37 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
                 surnameExact ? `Surname "${surnameFromSearch}" matches exactly` : `Partial name match on: ${matchedParts.join(', ')}`,
                 matchedParts.length >= 2 ? `Multiple name parts matched — higher confidence` : `Single name component matched — verify carefully`,
                 `Account holder: "${itemName}"`,
+              ]
+            );
+          }
+        }
+      })
+    );
+    searchPromises.push(
+      safe(() => billingAutocomplete(nameTerm, 'nameCompany')).then((suggestions: any[]) => {
+        const validSugs = (suggestions || []).filter((s: any) => s.accountId && s.accountId > 0);
+        for (const sug of validSugs.slice(0, 5)) {
+          const display = sug.displayItem || '';
+          const acNoMatch = display.match(/^(\d{6,15})\s+/);
+          const accountNo = acNoMatch ? acNoMatch[1] : '';
+          const displayName = acNoMatch ? display.substring(acNoMatch[0].length).trim() : display;
+          const displayTokens = tokenize(displayName);
+          const searchWords = nameTerm.toUpperCase().split(/[\s,&]+/).filter((w: string) => w.length >= 2);
+          let matchedParts: string[] = [];
+          for (const word of searchWords) {
+            if (tokenMatchesWord(displayTokens, word)) matchedParts.push(word);
+          }
+          if (matchedParts.length > 0 || validSugs.length <= 3) {
+            const conf = Math.min(82, 50 + (matchedParts.length * 12));
+            addResult(
+              { account_ID: sug.accountId, accountNo, name: displayName || display, lastName: '' },
+              'name',
+              `Name/company match: "${nameTerm}" → "${displayName || display}"`,
+              conf,
+              [
+                `Description "${nameTerm}" searched via billing autocomplete (nameCompany)`,
+                `API returned: "${display}"`,
+                matchedParts.length > 0 ? `Matched parts: ${matchedParts.join(', ')}` : `Direct API match — verify account details`,
               ]
             );
           }
