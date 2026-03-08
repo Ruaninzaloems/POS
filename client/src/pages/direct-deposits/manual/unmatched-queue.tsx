@@ -1108,15 +1108,25 @@ async function searchForSuggestions(note: string, reference: string, transaction
     }
   }
 
+  const erfAreaWords = new Set(
+    clues.erfNumbers.map(e => (e.area || '').toLowerCase().trim()).filter(Boolean)
+  );
+  const groupMatchSkipWords = new Set([
+    ...erfAreaWords,
+    ...Array.from(GENERIC_WORDS),
+    'erf', 'erven', 'portion', 'ptn', 'lot', 'stand', 'plot', 'rem',
+  ].map(w => w.toLowerCase()));
+
   searchPromises.push(
     safe(async () => {
       const groups = await loadMiscGroupsCache();
       if (groups.length === 0) return;
       const combinedText = `${note || ''} ${reference || ''}`.toLowerCase();
-      const words = combinedText.split(/[\s,&.\-\/]+/).filter(w => w.length >= 3);
+      const words = combinedText.split(/[\s,&.\-\/]+/).filter(w => w.length >= 3 && !groupMatchSkipWords.has(w));
+      if (words.length === 0) return;
       for (const group of groups) {
         const groupName = group.name.toLowerCase();
-        const groupWords = groupName.split(/[\s,&.\-\/]+/).filter(w => w.length >= 3);
+        const groupWords = groupName.split(/[\s,&.\-\/]+/).filter(w => w.length >= 3 && !groupMatchSkipWords.has(w));
         let matchScore = 0;
         const matchedWords: string[] = [];
         for (const gw of groupWords) {
@@ -1155,10 +1165,11 @@ async function searchForSuggestions(note: string, reference: string, transaction
       const institutions = await loadInstitutionsCache();
       if (institutions.length === 0) return;
       const combinedText = `${note || ''} ${reference || ''}`.toLowerCase();
-      const words = combinedText.split(/[\s,&.\-\/]+/).filter(w => w.length >= 3);
+      const words = combinedText.split(/[\s,&.\-\/]+/).filter(w => w.length >= 3 && !groupMatchSkipWords.has(w));
+      if (words.length === 0) return;
       for (const inst of institutions) {
         const instName = inst.name.toLowerCase();
-        const instWords = instName.split(/[\s,&.\-\/]+/).filter(w => w.length >= 3);
+        const instWords = instName.split(/[\s,&.\-\/]+/).filter(w => w.length >= 3 && !groupMatchSkipWords.has(w));
         let matchScore = 0;
         const matchedWords: string[] = [];
         for (const iw of instWords) {
