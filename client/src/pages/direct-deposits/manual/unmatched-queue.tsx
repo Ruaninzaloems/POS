@@ -670,33 +670,21 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
           const rawAccountNo = String(recs[0].accountNumber || recs[0].accountNo || '');
 
           let enrichedItem: any = null;
-          const tryEnrich = async (accNo: string) => {
-            if (enrichedItem) return;
-            try {
-              const items = await safe(() => billingEnquirySearch({ accountNo: accNo }));
-              if (items && items.length > 0) enrichedItem = items[0];
-            } catch (e) { /* best-effort */ }
-          };
           const idStr = String(accId);
           const padded12 = idStr.padStart(12, '0');
-          if (rawAccountNo && rawAccountNo !== '0' && rawAccountNo !== idStr) {
-            await tryEnrich(rawAccountNo);
+          const enrichCandidates = [padded12];
+          if (rawAccountNo && rawAccountNo !== '0' && rawAccountNo !== idStr && rawAccountNo !== padded12) {
+            enrichCandidates.unshift(rawAccountNo);
           }
-          await tryEnrich(padded12);
-          if (!enrichedItem) await tryEnrich(idStr);
-          if (!enrichedItem) {
-            try {
-              const acResults = await safe(() => billingAutocomplete(idStr, 'accountNumber'));
-              if (acResults && acResults.length > 0) {
-                const bestAc = acResults.find((a: any) => a.accountId === accId) || acResults[0];
-                if (bestAc?.accountId) {
-                  const acPadded = String(bestAc.accountId).padStart(12, '0');
-                  await tryEnrich(acPadded);
-                  const displayNum = bestAc.displayItem?.match(/^(\d+)/)?.[1];
-                  if (!enrichedItem && displayNum) await tryEnrich(displayNum);
-                }
-              }
-            } catch (e) { /* best-effort */ }
+          if (idStr !== padded12) enrichCandidates.push(idStr);
+          const enrichResults = await Promise.allSettled(
+            enrichCandidates.map(accNo => safe(() => billingEnquirySearch({ accountNo: accNo })))
+          );
+          for (const r of enrichResults) {
+            if (r.status === 'fulfilled' && r.value && r.value.length > 0) {
+              enrichedItem = r.value[0];
+              break;
+            }
           }
 
           const accountNo = enrichedItem?.accountNumber || enrichedItem?.accountNo || rawAccountNo || String(accId);
@@ -824,35 +812,24 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
   }
 
   for (const accNum of clues.accountNumbers.slice(0, 2)) {
-    searchPromises.push(
-      safe(() => platinumDDOldAccountAutocomplete(accNum)).then((rawData: any) => {
-        const items = unwrap(rawData);
-        for (const item of items.slice(0, 2)) {
-          addResult(item, 'old_account',
-            `Old account code matches "${accNum}"`,
-            75,
-            [
-              `Number "${accNum}" found in description`,
-              `Matches an old/legacy account code in the system`,
-              `This maps to a current active account`,
-            ]
-          );
-        }
-      })
-    );
-    searchPromises.push(
-      safe(() => platinumSearchAccountsPayment({ oldAccountCode: accNum })).then((rawData: any) => {
-        const items = unwrap(rawData);
-        for (const item of items.slice(0, 2)) {
-          addResult(item, 'old_account', `Old account code matches "${accNum}"`, 75,
-            [
-              `Number "${accNum}" from description matches old account code`,
-              `Searched via payment account search`,
-            ]
-          );
-        }
-      })
-    );
+    if (!clues.oldAccountCodes.includes(accNum)) {
+      searchPromises.push(
+        safe(() => platinumDDOldAccountAutocomplete(accNum)).then((rawData: any) => {
+          const items = unwrap(rawData);
+          for (const item of items.slice(0, 2)) {
+            addResult(item, 'old_account',
+              `Old account code matches "${accNum}"`,
+              75,
+              [
+                `Number "${accNum}" found in description`,
+                `Matches an old/legacy account code in the system`,
+                `This maps to a current active account`,
+              ]
+            );
+          }
+        })
+      );
+    }
   }
 
   const refTrimmed = (reference || '').trim();
@@ -986,39 +963,6 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
       );
     }
 
-    searchPromises.push(
-      safe(() => billingAutocomplete(erf.erf, 'erfNumber')).then(async (acResults: any[]) => {
-        const results = Array.isArray(acResults) ? acResults : [];
-        const matchedAccountIds: number[] = [];
-        for (const ac of results.slice(0, 15)) {
-          const display = (ac.displayItem || '').toUpperCase();
-          if (display.includes(erf.erf) && ac.accountId && !seenIds.has(ac.accountId)) {
-            matchedAccountIds.push(ac.accountId);
-          }
-        }
-        if (matchedAccountIds.length > 0) {
-          await Promise.allSettled(
-            matchedAccountIds.slice(0, 5).map(accId =>
-              safe(() => fetchAccounts({ accountNo: String(accId) })).then((items: any[]) => {
-                for (const item of items) {
-                  const hasAreaMatch = checkAreaMatch(item, erf.area);
-                  addResult(item, 'erf_number',
-                    `${erfLabel}${areaLabel} — autocomplete match${hasAreaMatch ? ' (area confirmed)' : ''}`,
-                    hasAreaMatch ? 94 : 88,
-                    [
-                      `Parsed "${erfLabel}" from description`,
-                      `Found via ERF autocomplete (BillingEnquiry)`,
-                      hasAreaMatch ? `Area confirmed` : `Verify area manually`,
-                    ]
-                  );
-                }
-              })
-            )
-          );
-        }
-      })
-    );
-
     if (sgVariants.length > 0) {
       searchPromises.push(
         safe(() => fetchAccounts({ oldAccountCode: sgVariants[0] })).then((items: any[]) => {
@@ -1038,23 +982,6 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
         })
       );
     }
-
-    searchPromises.push(
-      safe(() => platinumDDAccountAutocomplete(erf.erf)).then((rawData: any) => {
-        const results = unwrap(rawData);
-        for (const item of results.slice(0, 5)) {
-          const hasAreaMatch = checkAreaMatch(item, erf.area);
-          addResult(item, 'erf_number',
-            `${erfLabel}${areaLabel} — DD autocomplete`,
-            hasAreaMatch ? 80 : 65,
-            [
-              `Searched DD account autocomplete for: "${erf.erf}"`,
-              hasAreaMatch ? `Area confirmed` : `Verify area`,
-            ]
-          );
-        }
-      })
-    );
   }
 
   const tokenMatchesWord = (tokens: string[], word: string): boolean => {
@@ -1092,69 +1019,6 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
               [
                 `Description "${nameTerm}" appears to be a person's name`,
                 `Searched consumer accounts by name`,
-                surnameExact ? `Surname "${surnameFromSearch}" matches exactly` : `Partial name match on: ${matchedParts.join(', ')}`,
-                matchedParts.length >= 2 ? `Multiple name parts matched — higher confidence` : `Single name component matched — verify carefully`,
-                `Account holder: "${itemName}"`,
-              ]
-            );
-          }
-        }
-      })
-    );
-    searchPromises.push(
-      safe(() => platinumDDAccountAutocomplete(nameTerm)).then((rawData: any) => {
-        const items = unwrap(rawData);
-        for (const item of items.slice(0, 3)) {
-          const itemName = [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || '';
-          const nameTokens = tokenize(itemName);
-          const searchWords = nameTerm.toUpperCase().split(/[\s,&]+/).filter((w: string) => w.length >= 2);
-          let matchedParts: string[] = [];
-          for (const word of searchWords) {
-            if (tokenMatchesWord(nameTokens, word)) matchedParts.push(word);
-          }
-          if (matchedParts.length > 0) {
-            const conf = Math.min(75, 40 + matchedParts.length * 12);
-            addResult(item, 'name',
-              `Name match: "${nameTerm}"`,
-              conf,
-              [
-                `Description appears to be a consumer name`,
-                `Searched via DD account autocomplete`,
-                `Matched name parts: ${matchedParts.join(', ')}`,
-                `Account holder: "${itemName}"`,
-              ]
-            );
-          }
-        }
-      })
-    );
-    searchPromises.push(
-      safe(() => billingEnquirySearch({ name: nameTerm })).then((items: any[]) => {
-        for (const item of items.slice(0, 5)) {
-          const lastName = item.surname_Company || item.lastName || '';
-          const itemName = item.name || [item.initials, lastName].filter(Boolean).join(' ') || '';
-          const nameTokens = tokenize(itemName);
-          const searchWords = nameTerm.toUpperCase().split(/[\s,&]+/).filter((w: string) => w.length >= 2);
-          let nameMatchScore = 0;
-          let matchedParts: string[] = [];
-          for (const word of searchWords) {
-            if (tokenMatchesWord(nameTokens, word)) {
-              nameMatchScore += word.length >= 4 ? 15 : 8;
-              matchedParts.push(word);
-            }
-          }
-          const surnameFromSearch = searchWords[searchWords.length - 1] || '';
-          const surnameExact = surnameFromSearch.length >= 3 &&
-            lastName.toUpperCase() === surnameFromSearch;
-          if (surnameExact) nameMatchScore += 20;
-          const confidence = Math.min(85, 45 + nameMatchScore);
-          if (matchedParts.length > 0) {
-            addResult({ ...item, account_ID: item.account_ID || item.accountID, lastName }, 'name',
-              `Name match: "${nameTerm}" → ${matchedParts.join(', ')}`,
-              confidence,
-              [
-                `Description "${nameTerm}" appears to be a person's name`,
-                `Searched via billing enquiry (comprehensive name search)`,
                 surnameExact ? `Surname "${surnameFromSearch}" matches exactly` : `Partial name match on: ${matchedParts.join(', ')}`,
                 matchedParts.length >= 2 ? `Multiple name parts matched — higher confidence` : `Single name component matched — verify carefully`,
                 `Account holder: "${itemName}"`,
