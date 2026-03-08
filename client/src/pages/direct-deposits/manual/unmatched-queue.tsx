@@ -12,7 +12,7 @@ import { HelpTip } from '@/components/ui/help-tip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { platinumGetBankReconPosItemList, platinumCheckSelectedItemProcessed, platinumSearchAccountsPayment, fetchActiveFinYear } from '@/lib/external-api';
+import { platinumGetBankReconPosItemList, platinumCheckSelectedItemProcessed, platinumSearchAccountsPayment, platinumDDAccountAutocomplete, fetchAccounts, fetchActiveFinYear } from '@/lib/external-api';
 import { usePos } from '@/lib/pos-state';
 import { useToast } from '@/hooks/use-toast';
 
@@ -39,7 +39,7 @@ interface SuggestedMatch {
   name: string;
   oldAccountCode?: string;
   outstandingAmount?: number;
-  matchType: 'account_number' | 'old_account' | 'erf_number' | 'reference';
+  matchType: 'account_number' | 'old_account' | 'erf_number' | 'reference' | 'meter_number';
   matchDetail: string;
   confidence: number;
 }
@@ -65,12 +65,99 @@ const AREA_ABBREVIATIONS: Record<string, string> = {
   'pmt': 'payment',
 };
 
-function parseDescriptionForClues(note: string, reference: string): { accountNumbers: string[]; erfNumbers: { erf: string; area: string }[]; oldAccountCodes: string[]; keywords: string[] } {
+interface ParsedClues {
+  accountNumbers: string[];
+  meterNumbers: string[];
+  erfNumbers: { erf: string; area: string }[];
+  oldAccountCodes: string[];
+  keywords: string[];
+  bankingRef: string | null;
+  serviceType: string | null;
+}
+
+function parseDescriptionForClues(note: string, reference: string): ParsedClues {
   const text = `${note || ''} ${reference || ''}`.toUpperCase();
   const accountNumbers: string[] = [];
+  const meterNumbers: string[] = [];
   const erfNumbers: { erf: string; area: string }[] = [];
   const oldAccountCodes: string[] = [];
   const keywords: string[] = [];
+  let bankingRef: string | null = null;
+  let serviceType: string | null = null;
+
+  const isBankingDesc = /\b(FNB|ABSA|STD|STANDARD|NEDBANK|CAPITEC|FNBO)\b/.test(text) ||
+                        /\bOB\s*PMT\b/.test(text) || /\bEFT\b/.test(text) ||
+                        /\bINT(?:ERNET)?\s*PMT\b/.test(text);
+
+  if (/\bWTR\b|\bWATER\b/.test(text)) serviceType = 'water';
+  else if (/\bELEC\b|\bELECT\b|\bELECTRIC\b/.test(text)) serviceType = 'electricity';
+  else if (/\bSEW\b|\bSEWER\b/.test(text)) serviceType = 'sewer';
+  else if (/\bREFUSE\b/.test(text)) serviceType = 'refuse';
+  else if (/\bRAT\b|\bRATES\b/.test(text)) serviceType = 'rates';
+
+  if (isBankingDesc) {
+    const mtrMatch = text.match(/MTR\s*(\d{3,})/);
+    if (mtrMatch) {
+      meterNumbers.push(mtrMatch[1]);
+    }
+
+    const trailingNum = text.match(/\b(\d{4,15})\s*$/);
+    if (trailingNum) {
+      const num = trailingNum[1];
+      if (!meterNumbers.includes(num)) {
+        const hasMeterContext = /MTR|METER|WTR|WATER|ELEC/.test(text);
+        if (num.length >= 8) {
+          accountNumbers.push(num);
+        } else if (num.length >= 4 && hasMeterContext) {
+          meterNumbers.push(num);
+          accountNumbers.push(num);
+        } else if (num.length >= 4) {
+          accountNumbers.push(num);
+        }
+      }
+    }
+
+    const isDateLike = (num: string): boolean => {
+      if (num.length === 6) {
+        const y = parseInt(num.substring(0, 4));
+        const m = parseInt(num.substring(4, 6));
+        if (y >= 2000 && y <= 2030 && m >= 1 && m <= 12) return true;
+        const y2 = parseInt(num.substring(0, 2));
+        const m2 = parseInt(num.substring(2, 4));
+        const d2 = parseInt(num.substring(4, 6));
+        if (y2 >= 20 && y2 <= 30 && m2 >= 1 && m2 <= 12 && d2 >= 1 && d2 <= 31) return true;
+      }
+      if (num.length === 8) {
+        const y = parseInt(num.substring(0, 4));
+        const m = parseInt(num.substring(4, 6));
+        const d = parseInt(num.substring(6, 8));
+        if (y >= 2000 && y <= 2030 && m >= 1 && m <= 12 && d >= 1 && d <= 31) return true;
+      }
+      return false;
+    };
+
+    const slashParts = text.split('/');
+    for (const part of slashParts) {
+      const trimmed = part.trim();
+      if (/^[A-Z]+$/i.test(trimmed)) continue;
+      const hasMeterCue = /\b(MTR|METER|M\d)/i.test(trimmed);
+      const hasAccCue = /\b(ACC|ACCOUNT|A\/C|USER)/i.test(trimmed);
+      const numMatch = trimmed.match(/(\d{4,15})/);
+      if (numMatch) {
+        const num = numMatch[1];
+        if (!meterNumbers.includes(num) && !accountNumbers.includes(num) && !isDateLike(num)) {
+          if (hasMeterCue) {
+            meterNumbers.push(num);
+          } else if (hasAccCue || num.length >= 8) {
+            accountNumbers.push(num);
+          }
+        }
+      }
+    }
+
+    const refPart = slashParts.length > 1 ? slashParts.slice(1).join('/') : '';
+    if (refPart.trim()) bankingRef = refPart.trim();
+  }
 
   const accPatterns = [
     /USER\s+(\d{4,})/gi,
@@ -78,7 +165,7 @@ function parseDescriptionForClues(note: string, reference: string): { accountNum
     /(\d{8,})/g,
   ];
 
-  const seenNums = new Set<string>();
+  const seenNums = new Set<string>([...accountNumbers, ...meterNumbers]);
   for (const pattern of accPatterns) {
     let match;
     const re = new RegExp(pattern.source, pattern.flags);
@@ -90,6 +177,23 @@ function parseDescriptionForClues(note: string, reference: string): { accountNum
           seenNums.add(num);
           accountNumbers.push(num);
         }
+      }
+    }
+  }
+
+  const meterPatterns = [
+    /M(?:E?T(?:E?R)?)\s*(?:NO\.?|#|:)?\s*(\d{3,})/gi,
+    /MTR\s*(\d{3,})/gi,
+    /METER\s*(\d{3,})/gi,
+  ];
+  for (const pattern of meterPatterns) {
+    let match;
+    const re = new RegExp(pattern.source, pattern.flags);
+    while ((match = re.exec(text)) !== null) {
+      const num = match[1];
+      if (num && !seenNums.has(num)) {
+        seenNums.add(num);
+        meterNumbers.push(num);
       }
     }
   }
@@ -129,10 +233,13 @@ function parseDescriptionForClues(note: string, reference: string): { accountNum
     }
   }
 
-  for (const [abbr, full] of Object.entries(AREA_ABBREVIATIONS)) {
-    const abbrUpper = abbr.toUpperCase();
-    if (text.includes(abbrUpper) || text.includes(full.toUpperCase())) {
-      if (!keywords.includes(full)) keywords.push(full);
+  const areaAbbrsInText = ['GRG', 'OUD', 'PAC', 'BLA', 'CON', 'THE', 'WIL', 'HOE', 'TOU', 'ROS', 'LAV', 'BOR', 'UNI', 'HER', 'HRL'];
+  for (const abbr of areaAbbrsInText) {
+    if (text.includes(abbr) && AREA_ABBREVIATIONS[abbr.toLowerCase()]) {
+      const full = AREA_ABBREVIATIONS[abbr.toLowerCase()];
+      if (full !== 'water' && full !== 'meter' && full !== 'payment' && !keywords.includes(full)) {
+        keywords.push(full);
+      }
     }
   }
 
@@ -144,7 +251,7 @@ function parseDescriptionForClues(note: string, reference: string): { accountNum
     }
   }
 
-  return { accountNumbers, erfNumbers, oldAccountCodes, keywords };
+  return { accountNumbers, meterNumbers, erfNumbers, oldAccountCodes, keywords, bankingRef, serviceType };
 }
 
 async function searchForSuggestions(note: string, reference: string): Promise<SuggestedMatch[]> {
@@ -152,61 +259,90 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
   const suggestions: SuggestedMatch[] = [];
   const seenIds = new Set<number>();
 
+  const addResult = (item: any, matchType: SuggestedMatch['matchType'], matchDetail: string, confidence: number) => {
+    const accId = item.account_ID || item.accountID || item.id;
+    if (!accId || seenIds.has(accId)) return;
+    seenIds.add(accId);
+    suggestions.push({
+      accountId: accId,
+      accountNo: item.accountNumber || item.accountNo || String(accId),
+      name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || 'Unknown',
+      oldAccountCode: item.oldAccountCode,
+      outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
+      matchType,
+      matchDetail,
+      confidence: Math.min(confidence, 99),
+    });
+  };
+
+  const safe = (fn: () => Promise<any>) => fn().catch((err) => { console.error('[AutoMatch]', err); return []; });
+  const unwrap = (rawData: any) => Array.isArray(rawData) ? rawData : rawData?.value || rawData?.results || [];
+
   const searchPromises: Promise<void>[] = [];
+
+  for (const mtr of clues.meterNumbers.slice(0, 3)) {
+    searchPromises.push(
+      safe(() => platinumDDAccountAutocomplete(mtr)).then((rawData: any) => {
+        const items = unwrap(rawData);
+        for (const item of items.slice(0, 3)) {
+          const meterStr = String(item.meterNumber || item.physicalMeterNumber || '');
+          const exactMeterMatch = meterStr.includes(mtr);
+          addResult(item, 'meter_number',
+            `Meter ${exactMeterMatch ? 'match' : 'ref'}: "${mtr}"${clues.serviceType ? ` (${clues.serviceType})` : ''}`,
+            exactMeterMatch ? 92 : 75
+          );
+        }
+      })
+    );
+    searchPromises.push(
+      safe(() => fetchAccounts({ physicalMeterNumber: mtr })).then((items: any[]) => {
+        for (const item of items.slice(0, 3)) {
+          addResult(item, 'meter_number',
+            `Meter number match: "${mtr}"${clues.serviceType ? ` (${clues.serviceType})` : ''}`,
+            90
+          );
+        }
+      })
+    );
+  }
 
   for (const accNum of clues.accountNumbers.slice(0, 3)) {
     searchPromises.push(
-      platinumSearchAccountsPayment({ accountNo: accNum })
-        .catch((err) => { console.error('[UnmatchedQueue] Failed to search accounts by accountNo:', err); return []; })
-        .then((rawData: any) => {
-          const items = Array.isArray(rawData) ? rawData : rawData?.value || [];
-          for (const item of items.slice(0, 3)) {
-            const accId = item.account_ID || item.accountID || item.id;
-            if (accId && !seenIds.has(accId)) {
-              seenIds.add(accId);
-              const accountNo = item.accountNumber || item.accountNo || String(accId);
-              const nameMatch = accountNo.includes(accNum) || String(accId).includes(accNum);
-              suggestions.push({
-                accountId: accId,
-                accountNo,
-                name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || 'Unknown',
-                oldAccountCode: item.oldAccountCode,
-                outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
-                matchType: 'account_number',
-                matchDetail: `Account number contains "${accNum}"`,
-                confidence: nameMatch ? 85 : 60,
-              });
-            }
-          }
-        })
-        .catch((err) => { console.error('[UnmatchedQueue] Failed to process account number search results:', err); })
+      safe(() => platinumDDAccountAutocomplete(accNum)).then((rawData: any) => {
+        const items = unwrap(rawData);
+        for (const item of items.slice(0, 3)) {
+          const accountNo = item.accountNumber || item.accountNo || String(item.account_ID || '');
+          const exactMatch = accountNo === accNum || accountNo.endsWith(accNum) || accNum.endsWith(accountNo);
+          addResult(item, 'account_number',
+            `Account ${exactMatch ? 'match' : 'ref'}: "${accNum}"`,
+            exactMatch ? 90 : (accountNo.includes(accNum) ? 80 : 65)
+          );
+        }
+      })
+    );
+    searchPromises.push(
+      safe(() => platinumSearchAccountsPayment({ accountNo: accNum })).then((rawData: any) => {
+        const items = unwrap(rawData);
+        for (const item of items.slice(0, 3)) {
+          const accountNo = item.accountNumber || item.accountNo || String(item.account_ID || '');
+          const nameMatch = accountNo.includes(accNum) || String(item.account_ID).includes(accNum);
+          addResult(item, 'account_number',
+            `Account number contains "${accNum}"`,
+            nameMatch ? 88 : 60
+          );
+        }
+      })
     );
   }
 
   for (const accNum of clues.accountNumbers.slice(0, 2)) {
     searchPromises.push(
-      platinumSearchAccountsPayment({ oldAccountCode: accNum })
-        .catch((err) => { console.error('[UnmatchedQueue] Failed to search accounts by oldAccountCode:', err); return []; })
-        .then((rawData: any) => {
-          const items = Array.isArray(rawData) ? rawData : rawData?.value || [];
-          for (const item of items.slice(0, 2)) {
-            const accId = item.account_ID || item.accountID || item.id;
-            if (accId && !seenIds.has(accId)) {
-              seenIds.add(accId);
-              suggestions.push({
-                accountId: accId,
-                accountNo: item.accountNumber || item.accountNo || String(accId),
-                name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || 'Unknown',
-                oldAccountCode: item.oldAccountCode,
-                outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
-                matchType: 'old_account',
-                matchDetail: `Old account code matches "${accNum}"`,
-                confidence: 75,
-              });
-            }
-          }
-        })
-        .catch((err) => { console.error('[UnmatchedQueue] Failed to process old account code search results:', err); })
+      safe(() => platinumSearchAccountsPayment({ oldAccountCode: accNum })).then((rawData: any) => {
+        const items = unwrap(rawData);
+        for (const item of items.slice(0, 2)) {
+          addResult(item, 'old_account', `Old account code matches "${accNum}"`, 75);
+        }
+      })
     );
   }
 
@@ -216,61 +352,32 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
 
     for (const erfSearch of erfSearches) {
       searchPromises.push(
-        platinumSearchAccountsPayment({ name: erfSearch })
-          .catch((err) => { console.error('[UnmatchedQueue] Failed to search accounts by ERF number:', err); return []; })
-          .then((rawData: any) => {
-            const items = Array.isArray(rawData) ? rawData : rawData?.value || [];
-            for (const item of items.slice(0, 3)) {
-              const accId = item.account_ID || item.accountID || item.id;
-              if (accId && !seenIds.has(accId)) {
-                seenIds.add(accId);
-                const hasAreaMatch = erf.area && (
-                  (item.name || '').toLowerCase().includes(erf.area) ||
-                  (item.address || '').toLowerCase().includes(erf.area)
-                );
-                suggestions.push({
-                  accountId: accId,
-                  accountNo: item.accountNumber || item.accountNo || String(accId),
-                  name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || 'Unknown',
-                  oldAccountCode: item.oldAccountCode,
-                  outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
-                  matchType: 'erf_number',
-                  matchDetail: `Property: ERF ${erf.erf}${erf.area ? ` ${erf.area}` : ''}${hasAreaMatch ? ' (area confirmed)' : ''}`,
-                  confidence: hasAreaMatch ? 80 : 70,
-                });
-              }
-            }
-          })
-          .catch((err) => { console.error('[UnmatchedQueue] Failed to process ERF search results:', err); })
+        safe(() => platinumSearchAccountsPayment({ name: erfSearch })).then((rawData: any) => {
+          const items = unwrap(rawData);
+          for (const item of items.slice(0, 3)) {
+            const hasAreaMatch = erf.area && (
+              (item.name || '').toLowerCase().includes(erf.area) ||
+              (item.address || '').toLowerCase().includes(erf.area)
+            );
+            addResult(item, 'erf_number',
+              `Property: ERF ${erf.erf}${erf.area ? ` ${erf.area}` : ''}${hasAreaMatch ? ' (area confirmed)' : ''}`,
+              hasAreaMatch ? 80 : 70
+            );
+          }
+        })
       );
     }
   }
 
-  if (clues.keywords.length > 0 && clues.erfNumbers.length === 0 && clues.accountNumbers.length === 0) {
+  if (clues.keywords.length > 0 && clues.erfNumbers.length === 0 && clues.accountNumbers.length === 0 && clues.meterNumbers.length === 0) {
     for (const keyword of clues.keywords.slice(0, 2)) {
       searchPromises.push(
-        platinumSearchAccountsPayment({ name: keyword })
-          .catch((err) => { console.error('[UnmatchedQueue] Failed to search accounts by keyword:', err); return []; })
-          .then((rawData: any) => {
-            const items = Array.isArray(rawData) ? rawData : rawData?.value || [];
-            for (const item of items.slice(0, 2)) {
-              const accId = item.account_ID || item.accountID || item.id;
-              if (accId && !seenIds.has(accId)) {
-                seenIds.add(accId);
-                suggestions.push({
-                  accountId: accId,
-                  accountNo: item.accountNumber || item.accountNo || String(accId),
-                  name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || 'Unknown',
-                  oldAccountCode: item.oldAccountCode,
-                  outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
-                  matchType: 'reference',
-                  matchDetail: `Area/keyword match: "${keyword}"`,
-                  confidence: 40,
-                });
-              }
-            }
-          })
-          .catch((err) => { console.error('[UnmatchedQueue] Failed to process keyword search results:', err); })
+        safe(() => platinumSearchAccountsPayment({ name: keyword })).then((rawData: any) => {
+          const items = unwrap(rawData);
+          for (const item of items.slice(0, 2)) {
+            addResult(item, 'reference', `Area/keyword match: "${keyword}"`, 40);
+          }
+        })
       );
     }
   }
@@ -386,17 +493,20 @@ export default function UnmatchedQueue() {
     return s && s.length > 0 && s[0].confidence >= 70;
   });
 
-  const runAutoMatchAll = async () => {
-    const targets = unmatchedFiltered.filter(i => !suggestions[i.posItem_ID]);
-    if (targets.length === 0 && unmatchedFiltered.length > 0) {
-      toast({ title: 'Already Matched', description: `All ${unmatchedFiltered.length} items on this page have already been analyzed.` });
+  const [autoMatchStats, setAutoMatchStats] = useState({ matched: 0, noMatch: 0 });
+
+  const runAutoMatchBatch = async (targets: BankReconPosItem[], showToast: boolean) => {
+    if (targets.length === 0) {
+      if (showToast) toast({ title: 'Already Analyzed', description: `All items on this page have already been analyzed.` });
       return;
     }
     setAutoMatchRunning(true);
     autoMatchAbort.current = false;
     setAutoMatchProgress({ done: 0, total: targets.length });
+    const stats = { matched: 0, noMatch: 0 };
 
     const BATCH_SIZE = 3;
+    let doneCount = 0;
     for (let i = 0; i < targets.length; i += BATCH_SIZE) {
       if (autoMatchAbort.current) break;
       const batch = targets.slice(i, i + BATCH_SIZE);
@@ -404,42 +514,37 @@ export default function UnmatchedQueue() {
         try {
           const results = await searchForSuggestions(item.note, item.reference);
           setSuggestions(prev => ({ ...prev, [item.posItem_ID]: results }));
+          if (results.length > 0 && results[0].confidence >= 60) stats.matched++;
+          else stats.noMatch++;
         } catch (err) {
           console.error(`[AutoMatch] Failed for POS item ${item.posItem_ID}:`, err);
           setSuggestions(prev => ({ ...prev, [item.posItem_ID]: [] }));
+          stats.noMatch++;
         }
+        doneCount++;
+        setAutoMatchProgress({ done: doneCount, total: targets.length });
       }));
-      setAutoMatchProgress(prev => ({ ...prev, done: Math.min(i + BATCH_SIZE, targets.length) }));
     }
 
+    setAutoMatchStats(stats);
     setAutoMatchRunning(false);
-    if (!autoMatchAbort.current) {
-      toast({ title: 'Auto-Match Complete', description: `Analyzed ${targets.length} items on this page.` });
+    if (!autoMatchAbort.current && showToast) {
+      const highConf = stats.matched;
+      toast({
+        title: 'Auto-Match Complete',
+        description: `Analyzed ${targets.length} items: ${highConf} matched, ${stats.noMatch} no match found.`,
+      });
     }
   };
 
-  const runAutoMatchSelected = async () => {
-    const targets = selectedItems.filter(i => !i.billingAllocated);
-    if (targets.length === 0) return;
-    setAutoMatchRunning(true);
-    autoMatchAbort.current = false;
-    setAutoMatchProgress({ done: 0, total: targets.length });
+  const runAutoMatchAll = () => {
+    const targets = unmatchedFiltered.filter(i => !suggestions[i.posItem_ID]);
+    return runAutoMatchBatch(targets, true);
+  };
 
-    const BATCH_SIZE = 3;
-    for (let i = 0; i < targets.length; i += BATCH_SIZE) {
-      if (autoMatchAbort.current) break;
-      const batch = targets.slice(i, i + BATCH_SIZE);
-      await Promise.all(batch.map(async (item) => {
-        try {
-          const results = await searchForSuggestions(item.note, item.reference);
-          setSuggestions(prev => ({ ...prev, [item.posItem_ID]: results }));
-        } catch (err) {
-          setSuggestions(prev => ({ ...prev, [item.posItem_ID]: [] }));
-        }
-      }));
-      setAutoMatchProgress(prev => ({ ...prev, done: Math.min(i + BATCH_SIZE, targets.length) }));
-    }
-    setAutoMatchRunning(false);
+  const runAutoMatchSelected = () => {
+    const targets = selectedItems.filter(i => !i.billingAllocated);
+    return runAutoMatchBatch(targets, false);
   };
 
   const getBestMatch = (posItemId: number): SuggestedMatch | null => {
@@ -571,6 +676,7 @@ export default function UnmatchedQueue() {
 
   const getMatchIcon = (matchType: SuggestedMatch['matchType']) => {
     switch (matchType) {
+      case 'meter_number': return <Zap className="w-3 h-3" />;
       case 'account_number': return <Hash className="w-3 h-3" />;
       case 'old_account': return <RotateCcw className="w-3 h-3" />;
       case 'erf_number': return <MapPin className="w-3 h-3" />;
@@ -718,10 +824,33 @@ export default function UnmatchedQueue() {
               </Button>
             )}
             {autoMatchRunning && (
-              <div className="flex items-center gap-2 text-amber-600">
-                <Loader2 className="w-3 h-3 animate-spin" />
-                <span className="text-[11px]">Matching {autoMatchProgress.done}/{autoMatchProgress.total}...</span>
-                <button className="text-[10px] underline text-slate-500 hover:text-slate-700" onClick={() => { autoMatchAbort.current = true; }}>Cancel</button>
+              <div className="flex items-center gap-2.5 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600 flex-shrink-0" />
+                <div className="flex flex-col gap-0.5 min-w-[140px]">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-medium text-amber-800">Analyzing descriptions...</span>
+                    <span className="text-amber-600 font-mono">{autoMatchProgress.done}/{autoMatchProgress.total}</span>
+                  </div>
+                  <div className="h-1.5 bg-amber-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-300"
+                      style={{
+                        width: `${autoMatchProgress.total > 0 ? Math.round((autoMatchProgress.done / autoMatchProgress.total) * 100) : 0}%`,
+                        backgroundColor: 'var(--pos-accent)',
+                      }}
+                    />
+                  </div>
+                  <span className="text-[10px] text-amber-600">
+                    {autoMatchProgress.total > 0 ? `${Math.round((autoMatchProgress.done / autoMatchProgress.total) * 100)}%` : '0%'}
+                    {' · '}Searching meters, accounts & references
+                  </span>
+                </div>
+                <button
+                  className="text-[10px] font-medium text-amber-700 hover:text-amber-900 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded transition-colors flex-shrink-0"
+                  onClick={() => { autoMatchAbort.current = true; }}
+                >
+                  Cancel
+                </button>
               </div>
             )}
             <div className="flex items-center gap-1.5 text-muted-foreground ml-auto">
@@ -795,6 +924,12 @@ export default function UnmatchedQueue() {
                         <div className="flex-1 min-w-0">
                           <span className="font-mono text-xs text-slate-700">{bestMatch.accountNo}</span>
                           <span className="text-[10px] text-slate-500 ml-1.5">{bestMatch.name}</span>
+                          <div className="text-[9px] text-slate-400">
+                            {bestMatch.matchType === 'meter_number' ? 'Meter' :
+                             bestMatch.matchType === 'account_number' ? 'Account' :
+                             bestMatch.matchType === 'old_account' ? 'Old Acc' :
+                             bestMatch.matchType === 'erf_number' ? 'ERF' : 'Ref'} match
+                          </div>
                         </div>
                         <Badge variant="outline" className={`text-[9px] px-1.5 py-0 shrink-0 ${matchInd === 'high' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>{bestMatch.confidence}%</Badge>
                         <ArrowRight className="w-3 h-3 text-slate-400 shrink-0" />
@@ -919,6 +1054,12 @@ export default function UnmatchedQueue() {
                               <div className="flex-1 min-w-0">
                                 <div className="font-mono text-[10px] text-slate-700 truncate">{bestMatch.accountNo}</div>
                                 <div className="text-[9px] text-slate-500 truncate">{bestMatch.name}</div>
+                                <div className="text-[8px] text-slate-400 truncate">
+                                  {bestMatch.matchType === 'meter_number' ? 'Meter' :
+                                   bestMatch.matchType === 'account_number' ? 'Account' :
+                                   bestMatch.matchType === 'old_account' ? 'Old Acc' :
+                                   bestMatch.matchType === 'erf_number' ? 'ERF' : 'Ref'} match
+                                </div>
                               </div>
                               <Badge variant="outline" className={`text-[8px] px-1 py-0 shrink-0 ${
                                 matchIndicator === 'high' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
