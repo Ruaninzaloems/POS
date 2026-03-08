@@ -1089,6 +1089,16 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
       console.log('[AI Parse]', note, ai);
 
       const aiSearches: Promise<void>[] = [];
+      const aiAreas = ensureStrArr(ai.areaKeywords);
+      const aiAreaCheck = (item: any): boolean => {
+        if (aiAreas.length === 0) return false;
+        const normArea = (s: string) => s.toLowerCase().replace(/[\s-]+/g, '');
+        const fields = [
+          item.allotmentArea, item.town, item.name, item.address,
+          item.locationAddress, item.deliveryAddress, item.accountDesc,
+        ].filter(Boolean).map((f: string) => normArea(f));
+        return aiAreas.some(a => fields.some(f => f.includes(normArea(a))));
+      };
 
       for (const accNum of ensureStrArr(ai.accountNumbers).slice(0, 3)) {
         const n = norm(accNum);
@@ -1098,10 +1108,71 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
           safe(() => platinumDDAccountAutocomplete(accNum)).then((rawData: any) => {
             const items = unwrap(rawData);
             for (const item of items.slice(0, 3)) {
+              const accountNo = item.accountNumber || item.accountNo || String(item.account_ID || '');
+              const exactMatch = accountNo === accNum || accountNo.endsWith(accNum) || accNum.endsWith(accountNo);
               addResult(item, 'account_number',
-                `AI: Account "${accNum}"`,
-                85,
-                [`AI identified "${accNum}" as account number`, `Searched DD autocomplete`]
+                `AI: Account ${exactMatch ? 'match' : 'ref'}: "${accNum}"`,
+                exactMatch ? 88 : 70,
+                [`AI identified "${accNum}" as account number`, exactMatch ? `Exact match` : `Partial match (${accountNo})`, `Searched DD autocomplete`]
+              );
+            }
+          })
+        );
+        aiSearches.push(
+          safe(() => platinumSearchAccountsPayment({ accountNo: accNum })).then((rawData: any) => {
+            const items = unwrap(rawData);
+            for (const item of items.slice(0, 3)) {
+              const accountNo = item.accountNumber || item.accountNo || String(item.account_ID || '');
+              const exactMatch = accountNo.includes(accNum) || String(item.account_ID).includes(accNum);
+              addResult(item, 'account_number',
+                `AI: Account "${accNum}" (payment search)`,
+                exactMatch ? 85 : 60,
+                [`AI identified "${accNum}" as account number`, `Searched via billing payment search`]
+              );
+            }
+          })
+        );
+        if (!regexOldNorm.has(n)) {
+          aiSearches.push(
+            safe(() => platinumDDOldAccountAutocomplete(accNum)).then((rawData: any) => {
+              const items = unwrap(rawData);
+              for (const item of items.slice(0, 2)) {
+                addResult(item, 'old_account',
+                  `AI: Account "${accNum}" as old code`,
+                  75,
+                  [`AI identified "${accNum}" as account number`, `Also searched as old account code (dual-path)`]
+                );
+              }
+            })
+          );
+        }
+      }
+
+      for (const mtr of ensureStrArr(ai.meterNumbers).slice(0, 3)) {
+        const regexMtrNorm = new Set(clues.meterNumbers.map(norm));
+        if (regexMtrNorm.has(norm(mtr)) || aiSearchedIds.has(`mtr:${norm(mtr)}`)) continue;
+        aiSearchedIds.add(`mtr:${norm(mtr)}`);
+        aiSearches.push(
+          safe(() => platinumDDAccountAutocomplete(mtr)).then((rawData: any) => {
+            const items = unwrap(rawData);
+            for (const item of items.slice(0, 3)) {
+              const meterStr = String(item.meterNumber || item.physicalMeterNumber || '');
+              const exactMeterMatch = meterStr.includes(mtr);
+              addResult(item, 'meter_number',
+                `AI: Meter ${exactMeterMatch ? 'match' : 'ref'}: "${mtr}"`,
+                exactMeterMatch ? 92 : 75,
+                [`AI identified "${mtr}" as meter number`, exactMeterMatch ? `Exact meter match in Platinum` : `Partial meter reference`, `Searched via DD autocomplete`]
+              );
+            }
+          })
+        );
+        aiSearches.push(
+          safe(() => fetchAccounts({ physicalMeterNumber: mtr })).then((items: any[]) => {
+            for (const item of items.slice(0, 3)) {
+              addResult(item, 'meter_number',
+                `AI: Meter match: "${mtr}"`,
+                90,
+                [`AI identified "${mtr}" as meter number`, `Exact physical meter match in billing system`, `Searched via billing enquiry meter search`]
               );
             }
           })
@@ -1114,22 +1185,49 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
         aiSearchedIds.add(`erf:${n}`);
         aiSearches.push(
           safe(() => fetchAccounts({ erfNumber: erfNum })).then((items: any[]) => {
-            for (const item of items.slice(0, 5)) {
-              addResult(item, 'erf_number', `AI: ERF ${erfNum}`, 85,
-                [`AI identified "${erfNum}" as ERF number`, `Searched billing enquiry`]);
+            for (const item of items.slice(0, 10)) {
+              const hasAreaMatch = aiAreaCheck(item);
+              addResult(item, 'erf_number', `AI: ERF ${erfNum}${hasAreaMatch ? ' (area confirmed)' : ''}`,
+                hasAreaMatch ? 93 : 85,
+                [`AI identified "${erfNum}" as ERF number`, `Searched billing enquiry`, hasAreaMatch ? `Area confirmed from AI context` : `Area not verified`]);
             }
           })
         );
+        if (aiAreas.length > 0) {
+          for (const area of aiAreas.slice(0, 2)) {
+            aiSearches.push(
+              safe(() => fetchAccounts({ erfNumber: erfNum, allotmentArea: area })).then((items: any[]) => {
+                for (const item of items.slice(0, 10)) {
+                  addResult(item, 'erf_number', `AI: ERF ${erfNum} in ${area} (area confirmed)`, 94,
+                    [`AI identified "${erfNum}" as ERF number + "${area}" as area`, `Searched with erfNumber + allotmentArea filter`]);
+                }
+              })
+            );
+          }
+        }
         const erfPadded = erfNum.padStart(8, '0');
         aiSearches.push(
           safe(() => platinumDDOldAccountAutocomplete(erfPadded)).then((rawData: any) => {
             const items = unwrap(rawData);
-            for (const item of items.slice(0, 5)) {
-              addResult(item, 'erf_number', `AI: ERF ${erfNum} (SG code)`, 90,
-                [`AI identified "${erfNum}" as ERF number`, `Searched as padded SG code "${erfPadded}"`]);
+            for (const item of items.slice(0, 10)) {
+              const hasAreaMatch = aiAreaCheck(item);
+              addResult(item, 'erf_number', `AI: ERF ${erfNum} (SG code)${hasAreaMatch ? ' area confirmed' : ''}`,
+                hasAreaMatch ? 95 : 90,
+                [`AI identified "${erfNum}" as ERF number`, `Searched as padded SG code "${erfPadded}"`, `Matches any municipality SG code containing this ERF`]);
             }
           })
         );
+        if (erfNum.length >= 3) {
+          aiSearches.push(
+            safe(() => platinumDDOldAccountAutocomplete(erfNum)).then((rawData: any) => {
+              const items = unwrap(rawData);
+              for (const item of items.slice(0, 3)) {
+                addResult(item, 'erf_number', `AI: ERF ${erfNum} as old code`, 78,
+                  [`AI identified "${erfNum}" as ERF number`, `Also searched as old account code (dual-path)`]);
+              }
+            })
+          );
+        }
       }
 
       for (const oldCode of ensureStrArr(ai.oldAccountCodes).slice(0, 3)) {
@@ -1145,17 +1243,116 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
             }
           })
         );
+        aiSearches.push(
+          safe(() => platinumDDAccountAutocomplete(oldCode)).then((rawData: any) => {
+            const items = unwrap(rawData);
+            for (const item of items.slice(0, 2)) {
+              addResult(item, 'old_account', `AI: Old code "${oldCode}" (DD search)`, 75,
+                [`AI identified "${oldCode}" as old account code`, `Also searched via DD autocomplete`]);
+            }
+          })
+        );
       }
 
-      for (const name of ensureStrArr(ai.names).slice(0, 2)) {
+      const aiTokenize = (str: string): string[] =>
+        str.toUpperCase().split(/[\s,&.]+/).map(t => t.replace(/[^A-Z'-]/g, '')).filter(t => t.length >= 2);
+      const aiTokenMatch = (tokens: string[], word: string): boolean =>
+        tokens.some(t => t === word.toUpperCase());
+
+      for (const name of ensureStrArr(ai.names).slice(0, 3)) {
         if (regexNameNorm.has(name.toLowerCase().trim()) || aiSearchedIds.has(`name:${name.toLowerCase()}`)) continue;
         aiSearchedIds.add(`name:${name.toLowerCase()}`);
         aiSearches.push(
           safe(() => platinumSearchAccountsPayment({ name })).then((rawData: any) => {
             const items = unwrap(rawData);
+            for (const item of items.slice(0, 5)) {
+              const itemName = [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || '';
+              const nameTokens = aiTokenize(itemName);
+              const searchWords = name.toUpperCase().split(/[\s,&]+/).filter((w: string) => w.length >= 2);
+              let score = 0;
+              const matched: string[] = [];
+              for (const word of searchWords) {
+                if (aiTokenMatch(nameTokens, word)) { score += word.length >= 4 ? 15 : 8; matched.push(word); }
+              }
+              const surname = searchWords[searchWords.length - 1] || '';
+              if (surname.length >= 3 && (item.lastName || '').toUpperCase() === surname) score += 20;
+              const conf = Math.min(85, 45 + score);
+              if (matched.length > 0) {
+                addResult(item, 'name', `AI: Name "${name}" → ${matched.join(', ')}`, conf,
+                  [`AI identified "${name}" as person/company name`, `Searched payment accounts`, matched.length >= 2 ? `Multiple name parts matched` : `Single name part matched`, `Account holder: "${itemName}"`]);
+              }
+            }
+          })
+        );
+        aiSearches.push(
+          safe(() => billingEnquirySearch({ name })).then((items: any[]) => {
+            for (const item of items.slice(0, 5)) {
+              const lastName = item.surname_Company || item.lastName || '';
+              const itemName = item.name || [item.initials, lastName].filter(Boolean).join(' ') || '';
+              const nameTokens = aiTokenize(itemName);
+              const searchWords = name.toUpperCase().split(/[\s,&]+/).filter((w: string) => w.length >= 2);
+              let score = 0;
+              const matched: string[] = [];
+              for (const word of searchWords) {
+                if (aiTokenMatch(nameTokens, word)) { score += word.length >= 4 ? 15 : 8; matched.push(word); }
+              }
+              const surname = searchWords[searchWords.length - 1] || '';
+              if (surname.length >= 3 && lastName.toUpperCase() === surname) score += 20;
+              const conf = Math.min(85, 45 + score);
+              if (matched.length > 0) {
+                addResult({ ...item, account_ID: item.account_ID || item.accountID, lastName }, 'name',
+                  `AI: Name "${name}" → ${matched.join(', ')} (billing)`, conf,
+                  [`AI identified "${name}" as name/company`, `Searched via billing enquiry`, matched.length >= 2 ? `Multiple name parts matched` : `Single name part matched`]);
+              }
+            }
+          })
+        );
+        aiSearches.push(
+          safe(() => billingAutocomplete(name, 'nameCompany')).then((suggestions: any[]) => {
+            const validSugs = (suggestions || []).filter((s: any) => s.accountId && s.accountId > 0);
+            for (const sug of validSugs.slice(0, 5)) {
+              const display = sug.displayItem || '';
+              const acNoMatch = display.match(/^(\d{6,15})\s+/);
+              const accountNo = acNoMatch ? acNoMatch[1] : '';
+              const displayName = acNoMatch ? display.substring(acNoMatch[0].length).trim() : display;
+              const displayTokens = aiTokenize(displayName);
+              const searchWords = name.toUpperCase().split(/[\s,&]+/).filter((w: string) => w.length >= 2);
+              const matched: string[] = [];
+              for (const word of searchWords) {
+                if (aiTokenMatch(displayTokens, word)) matched.push(word);
+              }
+              if (matched.length > 0 || validSugs.length <= 3) {
+                const conf = Math.min(82, 50 + (matched.length * 12));
+                addResult(
+                  { account_ID: sug.accountId, accountNo, name: displayName || display, lastName: '' },
+                  'name', `AI: Name "${name}" → "${displayName || display}" (autocomplete)`, conf,
+                  [`AI identified "${name}" as name/company`, `Searched billing autocomplete (nameCompany)`, matched.length > 0 ? `Matched: ${matched.join(', ')}` : `Direct API match`]);
+              }
+            }
+          })
+        );
+        aiSearches.push(
+          safe(() => platinumDDAccountAutocomplete(name)).then((rawData: any) => {
+            const items = unwrap(rawData);
             for (const item of items.slice(0, 3)) {
-              addResult(item, 'name', `AI: Name "${name}"`, 55,
-                [`AI identified "${name}" as person/company name`, `Searched via payment accounts name search`]);
+              const itemName = [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || '';
+              const nameTokens = aiTokenize(itemName);
+              const searchWords = name.toUpperCase().split(/[\s,&]+/).filter((w: string) => w.length >= 2);
+              let score = 0;
+              const matched: string[] = [];
+              for (const word of searchWords) {
+                if (aiTokenMatch(nameTokens, word)) { score += word.length >= 4 ? 15 : 8; matched.push(word); }
+              }
+              const surname = searchWords[searchWords.length - 1] || '';
+              if (surname.length >= 3 && (item.lastName || '').toUpperCase() === surname) score += 20;
+              const conf = Math.min(85, 45 + score);
+              if (matched.length > 0) {
+                addResult(item, 'name', `AI: Name "${name}" → ${matched.join(', ')} (DD autocomplete)`,
+                  conf,
+                  [`AI identified "${name}" as name/company`, `Searched DD autocomplete`, `Matched: ${matched.join(', ')}`,
+                   surname.length >= 3 && (item.lastName || '').toUpperCase() === surname ? `Surname "${surname}" matches exactly` : ''
+                  ].filter(Boolean));
+              }
             }
           })
         );
@@ -1183,6 +1380,21 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
             }
           })
         );
+        if (/^\d{3,7}$/.test(refNum)) {
+          const paddedRef = refNum.padStart(12, '0');
+          aiSearches.push(
+            safe(() => billingEnquirySearch({ accountNo: paddedRef })).then((items: any[]) => {
+              for (const item of items.slice(0, 3)) {
+                const accountNo = item.accountNumber || item.accountNo || String(item.account_ID || '');
+                if (accountNo.endsWith(refNum) || accountNo === paddedRef) {
+                  addResult({ ...item, account_ID: item.account_ID || item.accountID }, 'reference',
+                    `AI: Ref "${refNum}" → account ${accountNo}`, 88,
+                    [`AI identified "${refNum}" as reference`, `Zero-padded to "${paddedRef}" and matched as account number`]);
+                }
+              }
+            })
+          );
+        }
       }
 
       await Promise.all(aiSearches);
