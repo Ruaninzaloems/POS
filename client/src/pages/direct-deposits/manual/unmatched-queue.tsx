@@ -14,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { DatePicker } from '@/components/ui/date-picker';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { platinumGetBankReconPosItemList, platinumCheckSelectedItemProcessed, platinumSearchAccountsPayment, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, fetchAccounts, fetchActiveFinYear, fetchBulkAllocationList, fetchBulkProgressJobAccountDetails, submitDDAllocationBatch, pollDDAllocationJob, searchByBankStatementNote, fetchMiscPaymentGroups } from '@/lib/external-api';
-import { autocomplete as billingAutocomplete, searchAccounts as billingEnquirySearch } from '@/lib/enquiries-service';
+import { autocomplete as billingAutocomplete, searchAccounts as billingEnquirySearch, getAccountBalance } from '@/lib/enquiries-service';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { usePos } from '@/lib/pos-state';
 import { useToast } from '@/hooks/use-toast';
@@ -537,6 +537,10 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
       }
       if (item._bankStatementPrior && !existing.bankStatementPrior) {
         existing.bankStatementPrior = item._bankStatementPrior;
+      }
+      const itemBal = item.outStandingAmt ?? item.outstandingAmount;
+      if (itemBal != null && itemBal !== 0 && (existing.outstandingAmount === 0 || existing.outstandingAmount == null)) {
+        existing.outstandingAmount = itemBal;
       }
       return;
     }
@@ -1459,8 +1463,30 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
 
   await Promise.all(searchPromises);
 
-  suggestions.sort((a, b) => b.confidence - a.confidence);
-  return suggestions.slice(0, 5);
+  const top = suggestions.sort((a, b) => b.confidence - a.confidence).slice(0, 5);
+
+  const extractBal = (obj: any): number => {
+    const v = obj?.totalOutStanding ?? obj?.totalOutstanding ?? obj?.totalBalance ?? obj?.outStandingAmt ?? obj?.outstandingAmount ?? obj?.balance;
+    return v != null ? (parseFloat(v) || 0) : 0;
+  };
+  const needsBalance = top.filter(s => s.matchType !== 'direct_income' && (s.outstandingAmount === 0 || s.outstandingAmount == null));
+  if (needsBalance.length > 0) {
+    await Promise.allSettled(
+      needsBalance.map(s =>
+        getAccountBalance(s.accountId).then((bal: any) => {
+          if (Array.isArray(bal)) {
+            s.outstandingAmount = Math.round(bal.reduce((sum: number, svc: any) => sum + extractBal(svc), 0) * 100) / 100;
+          } else if (bal && typeof bal === 'object') {
+            s.outstandingAmount = extractBal(bal);
+          } else if (typeof bal === 'number') {
+            s.outstandingAmount = bal;
+          }
+        }).catch(() => {})
+      )
+    );
+  }
+
+  return top;
 }
 
 export default function UnmatchedQueue() {
@@ -2513,8 +2539,10 @@ export default function UnmatchedQueue() {
                                 ))}
                               </div>
                             )}
-                            {m.outstandingAmount != null && m.outstandingAmount !== 0 && (
-                              <div className="text-[10px] font-mono text-slate-600 mt-1">Outstanding: <strong>R {m.outstandingAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</strong></div>
+                            {m.matchType !== 'direct_income' && m.outstandingAmount != null && (
+                              <div className={`text-[10px] font-mono mt-1 ${m.outstandingAmount > 0 ? 'text-red-600' : m.outstandingAmount < 0 ? 'text-emerald-600' : 'text-slate-500'}`}>
+                                Balance: <strong>R {m.outstandingAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</strong>
+                              </div>
                             )}
                             {m.bankStatementPrior && m.bankStatementPrior.length > 0 && (
                               <div className="bg-blue-50/80 rounded-md px-2 py-1 mt-1 border border-blue-100">
@@ -2725,9 +2753,9 @@ export default function UnmatchedQueue() {
                                         ))}
                                       </div>
                                     )}
-                                    {m.outstandingAmount != null && m.outstandingAmount !== 0 && (
-                                      <div className="text-[10px] font-mono text-slate-600 mt-1">
-                                        Outstanding: <strong>R {m.outstandingAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</strong>
+                                    {m.matchType !== 'direct_income' && m.outstandingAmount != null && (
+                                      <div className={`text-[10px] font-mono mt-1 ${m.outstandingAmount > 0 ? 'text-red-600' : m.outstandingAmount < 0 ? 'text-emerald-600' : 'text-slate-500'}`}>
+                                        Balance: <strong>R {m.outstandingAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</strong>
                                       </div>
                                     )}
                                     {m.bankStatementPrior && m.bankStatementPrior.length > 0 && (
@@ -3471,8 +3499,8 @@ export default function UnmatchedQueue() {
               )}
               <div className="flex items-center gap-4 flex-wrap">
                 {quickAllocItem.match.outstandingAmount != null && (
-                  <div className="text-xs text-muted-foreground">
-                    Outstanding: <span className="font-mono font-semibold text-slate-700">R {quickAllocItem.match.outstandingAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+                  <div className={`text-xs font-mono ${quickAllocItem.match.outstandingAmount > 0 ? 'text-red-600' : quickAllocItem.match.outstandingAmount < 0 ? 'text-emerald-600' : 'text-slate-500'}`}>
+                    Balance: <span className="font-semibold">R {quickAllocItem.match.outstandingAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
                   </div>
                 )}
               </div>
