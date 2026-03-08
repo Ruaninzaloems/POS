@@ -637,6 +637,49 @@ function GeneralEnquiriesContent() {
     }
   };
 
+  const filterResultsByField = useCallback((data: EnquirySearchResult[], fieldCriteria: EnquirySearchCriteria): EnquirySearchResult[] => {
+    let filtered = data;
+    const norm = (s: string) => s.toLowerCase().replace(/\s+/g, '');
+    if (fieldCriteria.sgNumber && fieldCriteria.sgNumber.trim()) {
+      const term = norm(fieldCriteria.sgNumber);
+      filtered = filtered.filter(r => norm(r.sgNumber || '').includes(term));
+    }
+    if (fieldCriteria.oldAccountCode && fieldCriteria.oldAccountCode.trim()) {
+      const term = norm(fieldCriteria.oldAccountCode);
+      filtered = filtered.filter(r => norm((r as any).oldAccountCode || '').includes(term));
+    }
+    if (fieldCriteria.idNo && fieldCriteria.idNo.trim()) {
+      const term = norm(fieldCriteria.idNo);
+      filtered = filtered.filter(r => norm((r as any).idRegistrationNumber || (r as any).idNo || '').includes(term));
+    }
+    if (fieldCriteria.physicalMeterNumber && fieldCriteria.physicalMeterNumber.trim()) {
+      const term = norm(fieldCriteria.physicalMeterNumber);
+      filtered = filtered.filter(r => {
+        const meter = norm((r as any).physicalMeterNumber || (r as any).meterNumber || '');
+        return meter.includes(term);
+      });
+    }
+    if (fieldCriteria.emailAddress && fieldCriteria.emailAddress.trim()) {
+      const term = norm(fieldCriteria.emailAddress);
+      filtered = filtered.filter(r => {
+        const contact = norm((r as any).contactDetails || (r as any).emailAddress || '');
+        return contact.includes(term);
+      });
+    }
+    if (fieldCriteria.locationAddress && fieldCriteria.locationAddress.trim()) {
+      const term = norm(fieldCriteria.locationAddress);
+      filtered = filtered.filter(r => norm((r as any).locationAddress || (r as any).address || (r as any).deliveryAddress || '').includes(term));
+    }
+    if (fieldCriteria.name && fieldCriteria.name.trim()) {
+      const term = norm(fieldCriteria.name);
+      filtered = filtered.filter(r => {
+        const name = norm((r as any).name || (r as any).surname_Company || (r as any).addName || '');
+        return name.includes(term);
+      });
+    }
+    return filtered;
+  }, []);
+
   const handleFullSearch = useCallback(async () => {
     const hasQuick = quickQuery.trim().length >= 2;
     const hasAdvanced = Object.values(criteria).some(v => v && String(v).trim());
@@ -659,13 +702,7 @@ function GeneralEnquiriesContent() {
       }
       let data = await searchAccounts(searchCriteria);
       if (fullSearchTokenRef.current !== token) return;
-      if (searchCriteria.sgNumber && searchCriteria.sgNumber.trim()) {
-        const sgTerm = searchCriteria.sgNumber.trim().toLowerCase();
-        data = data.filter((r: any) => {
-          const sg = (r.sgNumber || '').toLowerCase();
-          return sg.includes(sgTerm);
-        });
-      }
+      data = filterResultsByField(data, searchCriteria);
       if (data.length === 0 && hasQuick) {
         const { field } = detectSearchType(quickQuery);
         data = await autocompleteSearch(quickQuery.trim(), field).catch((e) => { console.error('Failed to autocomplete search in full search:', e); return [] as EnquirySearchResult[]; });
@@ -744,8 +781,9 @@ function GeneralEnquiriesContent() {
         searchVal = searchVal.replace(/\s*\([^)]*\)\s*$/, '').trim();
       }
       const fieldCriteria: EnquirySearchCriteria = { [key]: searchVal };
-      const data = await searchAccounts(fieldCriteria);
+      let data = await searchAccounts(fieldCriteria);
       if (fullSearchTokenRef.current !== token) return;
+      data = filterResultsByField(data, fieldCriteria);
       setResults(data);
       setSearching(false);
       enrichWithBalances(data, fullSearchTokenRef, token, setResults);
@@ -765,6 +803,7 @@ function GeneralEnquiriesContent() {
     setSearchError(null);
     setHasSearched(true);
     setShowDropdown(false);
+    const requestedIds = new Set(accountIds);
     try {
       const lookups = await Promise.allSettled(
         accountIds.map(id => searchAccounts({ accountNo: String(id) }))
@@ -776,7 +815,7 @@ function GeneralEnquiriesContent() {
         if (r.status === 'fulfilled') {
           for (const acct of r.value) {
             const aid = acct.account_ID || acct.accountID;
-            if (aid && !seen.has(aid)) { seen.add(aid); all.push(acct); }
+            if (aid && !seen.has(aid) && requestedIds.has(aid)) { seen.add(aid); all.push(acct); }
           }
         }
       }
