@@ -3731,41 +3731,11 @@ export async function registerRoutes(
       const serverUserId = session.userData?.user_ID;
       payload.userId = serverUserId;
 
-      const virtualCashierId = (session as any).ddVirtualCashierId;
-      const virtualOfficeId = (session as any).ddVirtualOfficeId;
-
-      if (virtualCashierId) {
-        payload.cashierId = virtualCashierId;
-        payload.cashOfficeId = virtualOfficeId;
-        payload.isVirtual = true;
-        console.log(`[DD Submit] Using virtual cashier — userId=${payload.userId}, cashierId=${payload.cashierId}, cashOfficeId=${payload.cashOfficeId}, isVirtual=true`);
-      } else {
-        const finYear = payload.financialYear || session.userData?.finYear || '2025/2026';
-        try {
-          const vcData = await platinumGet(session, "/api/ReceiptPrepaid/validate-cashier", {
-            userId: String(serverUserId),
-            finYear,
-          });
-          if (vcData && !vcData._error) {
-            const resolvedCashierId = vcData.cashier?.id || vcData.cashier?.user_Id || null;
-            const resolvedOfficeId = vcData.cashOffice?.cashOffice_ID || vcData.cashier?.officeId || null;
-            payload.cashierId = resolvedCashierId;
-            payload.cashOfficeId = resolvedOfficeId;
-            console.log(`[DD Submit] Server-resolved (real cashier) — userId=${payload.userId}, cashierId=${payload.cashierId}, cashOfficeId=${payload.cashOfficeId}`);
-          } else {
-            console.error(`[DD Submit] validate-cashier failed or returned error:`, vcData?._error || 'no data');
-            return res.status(400).json({ success: false, message: "Cannot resolve cashier session. Please ensure you have an active cashier session and try again.", detail: vcData?._error || 'validate-cashier returned no data' });
-          }
-        } catch (vcErr: any) {
-          console.error(`[DD Submit] validate-cashier call failed:`, vcErr.message);
-          return res.status(400).json({ success: false, message: "Cannot resolve cashier session. Please ensure you have an active cashier session and try again.", detail: vcErr.message });
-        }
-      }
-
-      if (!payload.cashierId) {
-        console.error(`[DD Submit] cashierId could not be resolved — aborting submit`);
-        return res.status(400).json({ success: false, message: "Cashier ID could not be resolved from your session. Please check your cashier registration and try again." });
-      }
+      delete payload.cashierId;
+      delete payload.cashOfficeId;
+      delete payload.isVirtual;
+      delete payload.cashFloat;
+      delete payload.note;
 
       const token = await refreshSessionToken(session);
       const apiUrl = getPlatinumApiUrl(session);
@@ -3773,7 +3743,7 @@ export async function registerRoutes(
       const bodyStr = JSON.stringify(payload);
 
       console.log(`[DD Submit] URL: ${url}`);
-      console.log(`[DD Submit] Token (first 20): ${token?.substring(0, 20)}...`);
+      console.log(`[DD Submit] userId=${serverUserId}`);
       console.log(`[DD Submit] Body: ${bodyStr}`);
 
       const controller = new AbortController();
@@ -3825,22 +3795,18 @@ export async function registerRoutes(
       const url = `${apiUrl}/api/billing-direct-deposit-allocation/submit-details-data`;
 
       const kiranPayload = {
+        billType: "1",
+        accountId: 20787,
+        paidAmount: 56,
+        paymentTypeId: 5,
         posItemId: 2876,
         reconId: 1,
         userId: 209,
         financialYear: "2025/2026",
         transactionDate: "2025-11-03T00:00:00",
-        paidAmount: 56,
-        billType: "1",
-        paymentTypeId: 5,
-        accountId: 20787,
-        amount: 56,
-        outstandingAmount: 56,
+        groupId: 1,
+        reference: "MAGTAPE CREDIT USER 9524 SEQ/ABSA BANK Erf nr 226/16",
         description: "Du Plessis Cornelius Adriaan & Susan (Old: 1002521605)",
-        reference: "0",
-        note: "MAGTAPE CREDIT USER 9524 SEQ/ABSA BANK Erf nr 226/16",
-        receiptDate: "2026-03-06T12:47:18",
-        cashFloat: 0
       };
 
       const bodyStr = JSON.stringify(kiranPayload);

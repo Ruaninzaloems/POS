@@ -1121,29 +1121,7 @@ export default function AllocateTransaction() {
               setPostingStatus('');
               return;
           }
-          updateProgress('Creating virtual cashier session...');
-          let virtualSessionCreated = false;
-          try {
-              const vsResult = await createDDVirtualSession(finYear);
-              if (vsResult.success && vsResult.virtualCashierId) {
-                  virtualSessionCreated = true;
-                  console.log(`[Direct Deposit] Virtual cashier session created — cashierId=${vsResult.virtualCashierId}, officeId=${vsResult.officeId}`);
-              } else {
-                  console.error('[Direct Deposit] Failed to create virtual cashier session:', vsResult.message);
-                  toast({ title: 'Virtual Session Error', description: vsResult.message || 'Failed to create virtual cashier session. Cannot proceed.', variant: 'destructive' });
-                  setPosting(false);
-                  setPostingStatus('');
-                  return;
-              }
-          } catch (vsErr: any) {
-              console.error('[Direct Deposit] Exception creating virtual session:', vsErr);
-              toast({ title: 'Virtual Session Error', description: vsErr?.message || 'Failed to create virtual cashier session. Cannot proceed.', variant: 'destructive' });
-              setPosting(false);
-              setPostingStatus('');
-              return;
-          }
-
-          console.log(`[Direct Deposit] Allocating as userId=${allocatingUserId} (logged-in user), virtualSession=${virtualSessionCreated}`);
+          console.log(`[Direct Deposit] Allocating as userId=${allocatingUserId} (logged-in user)`);
 
           const now = new Date();
           const saFormatter = new Intl.DateTimeFormat('en-ZA', {
@@ -1235,6 +1213,8 @@ export default function AllocateTransaction() {
 
               let submitData: any;
 
+              const groupId = transaction.bankReconID || reconId;
+
               if (billType === '4') {
                   const miscPaymentGroupId = line.miscPaymentGroupId || 0;
                   if (miscPaymentGroupId <= 0) {
@@ -1244,26 +1224,24 @@ export default function AllocateTransaction() {
                       continue;
                   }
                   submitData = {
+                      billType,
+                      amount: line.amount,
+                      vatAmount: line.vatAmount ?? 0,
+                      totalAmount: line.amount + (line.vatAmount ?? 0),
+                      paidAmount: line.amount + (line.vatAmount ?? 0),
+                      paymentTypeId: 5,
                       posItemId,
+                      miscPaymentGroupId,
                       reconId,
                       userId: allocatingUserId,
                       financialYear: finYear,
                       transactionDate,
-                      paidAmount: line.amount,
-                      billType,
-                      paymentTypeId: 5,
-                      miscPaymentGroupId,
+                      receiptDate,
+                      groupId,
                       lastName: derivedLastName,
                       initials: derivedInitials,
-                      totalAmount: line.amount,
-                      amount: line.amount,
-                      vatAmount: line.vatAmount ?? 0,
-                      vatableVote: line.vatableVote ?? 0,
-                      vatPercentage: line.vatPercentage ?? 0,
                       description: line.description || transaction.note || '',
                       reference: actualReference,
-                      note: line.note || transaction.note || '',
-                      receiptDate,
                   };
               } else if (billType === '6') {
                   const accountId = line.accountId || 0;
@@ -1281,25 +1259,18 @@ export default function AllocateTransaction() {
                       continue;
                   }
                   submitData = {
+                      billType,
+                      accountId,
+                      clearanceId,
+                      paidAmount: line.amount,
+                      paymentTypeId: 5,
                       posItemId,
                       reconId,
                       userId: allocatingUserId,
                       financialYear: finYear,
                       transactionDate,
-                      paidAmount: line.amount,
-                      billType,
-                      paymentTypeId: 5,
-                      accountId,
-                      clearanceId,
-                      outstandingAmount: line.outstandingAmount ?? line.amount,
-                      totalAmount: line.amount,
-                      amount: line.amount,
-                      vatAmount: line.vatAmount ?? 0,
-                      vatableVote: line.vatableVote ?? 0,
-                      vatPercentage: line.vatPercentage ?? 0,
+                      groupId,
                       reference: actualReference,
-                      note: line.note || transaction.note || '',
-                      receiptDate,
                   };
               } else if (billType === '1') {
                   const accountId = line.accountId || 0;
@@ -1310,22 +1281,18 @@ export default function AllocateTransaction() {
                       continue;
                   }
                   submitData = {
+                      billType,
+                      accountId,
+                      paidAmount: line.amount,
+                      paymentTypeId: 5,
                       posItemId,
                       reconId,
                       userId: allocatingUserId,
                       financialYear: finYear,
                       transactionDate,
-                      paidAmount: line.amount,
-                      billType,
-                      paymentTypeId: 5,
-                      accountId,
-                      amount: line.amount,
-                      outstandingAmount: line.outstandingAmount ?? line.amount,
+                      groupId,
+                      reference: actualReference || "0",
                       description: line.description || transaction.note || '',
-                      reference: "0",
-                      note: line.note || transaction.note || '',
-                      receiptDate,
-                      cashFloat: 0,
                   };
               }
 
@@ -1359,9 +1326,6 @@ export default function AllocateTransaction() {
           }
 
           if (submittedCount === 0 && lineErrors.length > 0) {
-              if (virtualSessionCreated) {
-                  try { await closeDDVirtualSession(); console.log('[Direct Deposit] Virtual session closed after 0 submissions'); } catch (e) { console.warn('[Direct Deposit] Failed to close virtual session:', e); }
-              }
               toast({
                   title: 'Allocation Failed',
                   description: `No lines could be submitted. ${lineErrors[0]}`,
@@ -1412,15 +1376,9 @@ export default function AllocateTransaction() {
               });
           }
 
-          if (virtualSessionCreated) {
-              updateProgress('Closing virtual cashier session...');
-              try { await closeDDVirtualSession(); console.log('[Direct Deposit] Virtual session closed after successful batch'); } catch (e) { console.warn('[Direct Deposit] Failed to close virtual session:', e); }
-          }
-
           setPostComplete(true);
       } catch (e: any) {
           console.error("Failed to submit allocation", e);
-          try { await closeDDVirtualSession(); } catch (_) {}
           toast({
               title: 'Submission Error',
               description: e.message || 'An unexpected error occurred while posting the allocation.',
