@@ -54,6 +54,20 @@ interface SuggestedMatch {
   town?: string;
   activeServices?: number;
   erfNumber?: string;
+  sgNumber?: string;
+  suburb?: string;
+  portion?: string;
+  allotment?: string;
+}
+
+function parseSgNumber(sg: string | undefined | null): { erf?: string; portion?: string; allotment?: string } {
+  if (!sg) return {};
+  const parts = sg.split('/');
+  return {
+    erf: parts.length >= 3 ? parts[2] : undefined,
+    portion: parts.length >= 4 ? parts[3] : undefined,
+    allotment: parts.length >= 2 ? `${parts[0]}/${parts[1]}` : undefined,
+  };
 }
 
 const AREA_ABBREVIATIONS: Record<string, string> = {
@@ -469,11 +483,31 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
         existing.matchType = matchType;
         existing.matchReasoning = reasoning;
       }
+      if (!existing.sgNumber && item.sgNumber) {
+        const sgP = parseSgNumber(item.sgNumber);
+        existing.sgNumber = item.sgNumber;
+        if (!existing.erfNumber && sgP.erf) existing.erfNumber = sgP.erf;
+        if (!existing.portion && sgP.portion) existing.portion = sgP.portion;
+        if (!existing.allotment && sgP.allotment) existing.allotment = sgP.allotment;
+      }
+      if (!existing.suburb && (item.suburb || item.town)) existing.suburb = item.suburb || item.town || '';
+      if (!existing.town && item.town) existing.town = item.town;
+      if (!existing.address && (item.deliveryAddress || item.locationAddress || item.address)) {
+        const a = item.deliveryAddress || item.locationAddress || item.address || '';
+        existing.address = a.split(/[\r\n]+/).filter(Boolean)[0] || '';
+      }
+      if (!existing.erfNumber && item.erfNumber) existing.erfNumber = item.erfNumber;
+      if (!existing.accountNo || existing.accountNo === String(accId)) {
+        const betterNo = item.accountNumber || item.accountNo;
+        if (betterNo && betterNo !== String(accId)) existing.accountNo = betterNo;
+      }
       return;
     }
     seenIds.add(accId);
     const addr = item.deliveryAddress || item.locationAddress || item.address || '';
     const firstLine = addr ? addr.split(/[\r\n]+/).filter(Boolean)[0] || '' : '';
+    const sg = item.sgNumber || '';
+    const sgParsed = parseSgNumber(sg);
     suggestions.push({
       accountId: accId,
       accountNo: item.accountNumber || item.accountNo || String(accId),
@@ -488,9 +522,13 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
       typeOfUseDesc: item.typeOfUseDesc,
       accountDesc: item.accountDesc,
       address: firstLine,
-      town: item.town,
+      town: item.town || item.suburb || '',
       activeServices: item.activeServices,
-      erfNumber: item.erfNumber,
+      erfNumber: item.erfNumber || sgParsed.erf,
+      sgNumber: sg || undefined,
+      suburb: item.suburb || '',
+      portion: sgParsed.portion,
+      allotment: sgParsed.allotment,
     });
   };
 
@@ -1998,9 +2036,15 @@ export default function UnmatchedQueue() {
                             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                               <span className="text-[9px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{getMatchTypeLabel(m.matchType)}</span>
                               {m.typeOfUseDesc && <span className="text-[9px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{m.typeOfUseDesc}</span>}
-                              {m.erfNumber && <span className="text-[9px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">ERF {m.erfNumber}</span>}
-                              {m.activeServices != null && m.activeServices > 0 && <span className="text-[9px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{m.activeServices} service{m.activeServices !== 1 ? 's' : ''}</span>}
+                              {m.erfNumber && <span className="text-[9px] font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">ERF {m.erfNumber}</span>}
+                              {m.portion && <span className="text-[9px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">Ptn {m.portion}</span>}
+                              {m.allotment && <span className="text-[9px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{m.allotment}</span>}
+                              {m.suburb && <span className="text-[9px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{m.suburb}</span>}
+                              {m.activeServices != null && m.activeServices > 0 && <span className="text-[9px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{m.activeServices} svc{m.activeServices !== 1 ? 's' : ''}</span>}
                             </div>
+                            {m.sgNumber && (
+                              <div className="text-[9px] font-mono text-slate-400 mt-0.5">SG {m.sgNumber}</div>
+                            )}
                             {m.outstandingAmount != null && m.outstandingAmount !== 0 && (
                               <div className="text-[10px] font-mono text-slate-600 mt-1">Outstanding: <strong>R {m.outstandingAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</strong></div>
                             )}
@@ -2165,12 +2209,18 @@ export default function UnmatchedQueue() {
                                         <MapPin className="w-2.5 h-2.5 shrink-0" />{m.address}{m.town ? `, ${m.town}` : ''}
                                       </div>
                                     )}
-                                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                                       <span className="text-[9px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{getMatchTypeLabel(m.matchType)}</span>
                                       {m.typeOfUseDesc && <span className="text-[9px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{m.typeOfUseDesc}</span>}
-                                      {m.erfNumber && <span className="text-[9px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">ERF {m.erfNumber}</span>}
-                                      {m.activeServices != null && m.activeServices > 0 && <span className="text-[9px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{m.activeServices} service{m.activeServices !== 1 ? 's' : ''}</span>}
+                                      {m.erfNumber && <span className="text-[9px] font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">ERF {m.erfNumber}</span>}
+                                      {m.portion && <span className="text-[9px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">Ptn {m.portion}</span>}
+                                      {m.allotment && <span className="text-[9px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{m.allotment}</span>}
+                                      {m.suburb && <span className="text-[9px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{m.suburb}</span>}
+                                      {m.activeServices != null && m.activeServices > 0 && <span className="text-[9px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{m.activeServices} svc{m.activeServices !== 1 ? 's' : ''}</span>}
                                     </div>
+                                    {m.sgNumber && (
+                                      <div className="text-[9px] font-mono text-slate-400 mt-0.5">SG {m.sgNumber}</div>
+                                    )}
                                     {m.outstandingAmount != null && m.outstandingAmount !== 0 && (
                                       <div className="text-[10px] font-mono text-slate-600 mt-1">
                                         Outstanding: <strong>R {m.outstandingAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</strong>
