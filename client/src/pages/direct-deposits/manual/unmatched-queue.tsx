@@ -96,62 +96,48 @@ function parseDescriptionForClues(note: string, reference: string): ParsedClues 
   else if (/\bREFUSE\b/.test(text)) serviceType = 'refuse';
   else if (/\bRAT\b|\bRATES\b/.test(text)) serviceType = 'rates';
 
+  const isDateLike = (num: string): boolean => {
+    if (num.length === 6) {
+      const y = parseInt(num.substring(0, 4));
+      const m = parseInt(num.substring(4, 6));
+      if (y >= 2000 && y <= 2030 && m >= 1 && m <= 12) return true;
+      const y2 = parseInt(num.substring(0, 2));
+      const m2 = parseInt(num.substring(2, 4));
+      const d2 = parseInt(num.substring(4, 6));
+      if (y2 >= 20 && y2 <= 30 && m2 >= 1 && m2 <= 12 && d2 >= 1 && d2 <= 31) return true;
+    }
+    if (num.length === 8) {
+      const y = parseInt(num.substring(0, 4));
+      const m = parseInt(num.substring(4, 6));
+      const d = parseInt(num.substring(6, 8));
+      if (y >= 2000 && y <= 2030 && m >= 1 && m <= 12 && d >= 1 && d <= 31) return true;
+    }
+    return false;
+  };
+
   if (isBankingDesc) {
     const mtrMatch = text.match(/MTR\s*(\d{3,})/);
     if (mtrMatch) {
-      meterNumbers.push(mtrMatch[1]);
+      accountNumbers.push(mtrMatch[1]);
     }
 
-    const trailingNum = text.match(/\b(\d{4,15})\s*$/);
+    const trailingNum = text.match(/\b(\d{3,15})\s*$/);
     if (trailingNum) {
       const num = trailingNum[1];
-      if (!meterNumbers.includes(num)) {
-        const hasMeterContext = /MTR|METER|WTR|WATER|ELEC/.test(text);
-        if (num.length >= 8) {
-          accountNumbers.push(num);
-        } else if (num.length >= 4 && hasMeterContext) {
-          meterNumbers.push(num);
-          accountNumbers.push(num);
-        } else if (num.length >= 4) {
-          accountNumbers.push(num);
-        }
+      if (!accountNumbers.includes(num) && !isDateLike(num)) {
+        accountNumbers.push(num);
       }
     }
-
-    const isDateLike = (num: string): boolean => {
-      if (num.length === 6) {
-        const y = parseInt(num.substring(0, 4));
-        const m = parseInt(num.substring(4, 6));
-        if (y >= 2000 && y <= 2030 && m >= 1 && m <= 12) return true;
-        const y2 = parseInt(num.substring(0, 2));
-        const m2 = parseInt(num.substring(2, 4));
-        const d2 = parseInt(num.substring(4, 6));
-        if (y2 >= 20 && y2 <= 30 && m2 >= 1 && m2 <= 12 && d2 >= 1 && d2 <= 31) return true;
-      }
-      if (num.length === 8) {
-        const y = parseInt(num.substring(0, 4));
-        const m = parseInt(num.substring(4, 6));
-        const d = parseInt(num.substring(6, 8));
-        if (y >= 2000 && y <= 2030 && m >= 1 && m <= 12 && d >= 1 && d <= 31) return true;
-      }
-      return false;
-    };
 
     const slashParts = text.split('/');
     for (const part of slashParts) {
       const trimmed = part.trim();
       if (/^[A-Z]+$/i.test(trimmed)) continue;
-      const hasMeterCue = /\b(MTR|METER|M\d)/i.test(trimmed);
-      const hasAccCue = /\b(ACC|ACCOUNT|A\/C|USER)/i.test(trimmed);
       const numMatch = trimmed.match(/(\d{4,15})/);
       if (numMatch) {
         const num = numMatch[1];
-        if (!meterNumbers.includes(num) && !accountNumbers.includes(num) && !isDateLike(num)) {
-          if (hasMeterCue) {
-            meterNumbers.push(num);
-          } else if (hasAccCue || num.length >= 8) {
-            accountNumbers.push(num);
-          }
+        if (!accountNumbers.includes(num) && !isDateLike(num) && num.length >= 4) {
+          accountNumbers.push(num);
         }
       }
     }
@@ -182,19 +168,20 @@ function parseDescriptionForClues(note: string, reference: string): ParsedClues 
     }
   }
 
-  const meterPatterns = [
-    /M(?:E?T(?:E?R)?)\s*(?:NO\.?|#|:)?\s*(\d{3,})/gi,
-    /MTR\s*(\d{3,})/gi,
-    /METER\s*(\d{3,})/gi,
-  ];
-  for (const pattern of meterPatterns) {
-    let match;
-    const re = new RegExp(pattern.source, pattern.flags);
-    while ((match = re.exec(text)) !== null) {
-      const num = match[1];
-      if (num && !seenNums.has(num)) {
-        seenNums.add(num);
-        meterNumbers.push(num);
+  if (!isBankingDesc) {
+    const meterPatterns = [
+      /M(?:E?T(?:E?R)?)\s*(?:NO\.?|#|:)\s*(\d{3,})/gi,
+      /METER\s+(?:NUMBER|NO\.?|#)?\s*:?\s*(\d{3,})/gi,
+    ];
+    for (const pattern of meterPatterns) {
+      let match;
+      const re = new RegExp(pattern.source, pattern.flags);
+      while ((match = re.exec(text)) !== null) {
+        const num = match[1];
+        if (num && !seenNums.has(num)) {
+          seenNums.add(num);
+          meterNumbers.push(num);
+        }
       }
     }
   }
