@@ -40,7 +40,7 @@ interface SuggestedMatch {
   name: string;
   oldAccountCode?: string;
   outstandingAmount?: number;
-  matchType: 'account_number' | 'old_account' | 'erf_number' | 'reference' | 'meter_number' | 'history';
+  matchType: 'account_number' | 'old_account' | 'erf_number' | 'reference' | 'meter_number' | 'history' | 'name';
   matchDetail: string;
   confidence: number;
   matchReasoning?: string[];
@@ -83,6 +83,7 @@ interface ParsedClues {
   keywords: string[];
   bankingRef: string | null;
   serviceType: string | null;
+  nameSearchTerms: string[];
 }
 
 function parseDescriptionForClues(note: string, reference: string): ParsedClues {
@@ -248,7 +249,59 @@ function parseDescriptionForClues(note: string, reference: string): ParsedClues 
     }
   }
 
-  return { accountNumbers, meterNumbers, erfNumbers, oldAccountCodes, keywords, bankingRef, serviceType };
+  const nameSearchTerms: string[] = [];
+  const NOISE_WORDS = new Set(['FNB', 'OB', 'PMT', 'ABSA', 'STD', 'STANDARD', 'NEDBANK', 'CAPITEC', 'EFT', 'INT', 'CREDIT',
+    'DEBIT', 'REF', 'INV', 'USER', 'MAGTAPE', 'GENERAL', 'DOM', 'INTERNET', 'PAYMENT', 'DEPOSIT',
+    'ONTEC', 'FIXES', 'ACC', 'ACCOUNT', 'MTR', 'METER', 'ERF', 'SEQ', 'NO', 'NR', 'THE', 'AND', 'OF',
+    'FOR', 'TO', 'IN', 'AT', 'MR', 'MRS', 'MS', 'DR', 'PROF', 'MUNICIPALITY', 'MUNICIPAL', 'GEORGE',
+    'INVESTEC', 'CASHFOCUS', 'PROJECTS', 'PROJECT', 'BANK', 'TRANSFER']);
+  const cleanNote = (note || '').trim();
+  if (cleanNote.length >= 3 && !isBankingDesc && accountNumbers.length === 0 && meterNumbers.length === 0 && erfNumbers.length === 0) {
+    const words = cleanNote.split(/[\s,&]+/).map(w => w.replace(/[^A-Za-z'-]/g, '')).filter(w => w.length >= 2);
+    const alphaWords = words.filter(w => /^[A-Za-z'-]+$/.test(w) && !NOISE_WORDS.has(w.toUpperCase()));
+    if (alphaWords.length >= 2 && alphaWords.length <= 6) {
+      const hasNumber = /\d{4,}/.test(cleanNote);
+      if (!hasNumber) {
+        nameSearchTerms.push(alphaWords.join(' '));
+        const surnames = alphaWords.filter(w => w.length >= 4);
+        for (const surname of surnames.slice(0, 2)) {
+          if (!nameSearchTerms.includes(surname)) {
+            nameSearchTerms.push(surname);
+          }
+        }
+      }
+    }
+  }
+
+  if (isBankingDesc && cleanNote.length >= 5) {
+    const stripped = cleanNote.replace(/\b(FNB|ABSA|STD|STANDARD|NEDBANK|CAPITEC|FNBO|OB|PMT|EFT|INT|INTERNET|PAYMENT|DOM|MAGTAPE|CREDIT|DEBIT|REF)\b/gi, '')
+      .replace(/\d{4,}/g, '').replace(/[\/\\]/g, ' ').trim();
+    const nameWords = stripped.split(/[\s,&]+/).map(w => w.replace(/[^A-Za-z'-]/g, '')).filter(w => w.length >= 3 && !NOISE_WORDS.has(w.toUpperCase()));
+    if (nameWords.length >= 2 && nameWords.length <= 5) {
+      const fullName = nameWords.join(' ');
+      if (!nameSearchTerms.includes(fullName)) nameSearchTerms.push(fullName);
+      const longestWord = nameWords.reduce((a, b) => a.length >= b.length ? a : b);
+      if (longestWord.length >= 4 && !nameSearchTerms.includes(longestWord)) nameSearchTerms.push(longestWord);
+    }
+  }
+
+  if (cleanNote.length >= 3 && accountNumbers.length === 0 && meterNumbers.length === 0 && erfNumbers.length === 0) {
+    const ampersandMatch = cleanNote.match(/^([A-Za-z\s]+)\s*&\s*([A-Za-z\s]+?)(?:\s+(\d+))?$/);
+    if (ampersandMatch) {
+      const part1Words = ampersandMatch[1].trim().split(/\s+/).filter((w: string) => w.length >= 2 && !NOISE_WORDS.has(w.toUpperCase()));
+      const part2Words = ampersandMatch[2].trim().split(/\s+/).filter((w: string) => w.length >= 2 && !NOISE_WORDS.has(w.toUpperCase()));
+      if (part1Words.length >= 1 && part2Words.length >= 1) {
+        const lastName1 = part1Words[part1Words.length - 1];
+        const lastName2 = part2Words[part2Words.length - 1];
+        if (!nameSearchTerms.includes(lastName2)) nameSearchTerms.push(lastName2);
+        if (lastName1 !== lastName2 && !nameSearchTerms.includes(lastName1)) nameSearchTerms.push(lastName1);
+        const fullPhrase = cleanNote.replace(/\s*\d+\s*$/, '').trim();
+        if (!nameSearchTerms.includes(fullPhrase)) nameSearchTerms.unshift(fullPhrase);
+      }
+    }
+  }
+
+  return { accountNumbers, meterNumbers, erfNumbers, oldAccountCodes, keywords, bankingRef, serviceType, nameSearchTerms };
 }
 
 interface PriorAllocation {
@@ -598,6 +651,79 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
         })
       );
     }
+  }
+
+  const tokenMatchesWord = (tokens: string[], word: string): boolean => {
+    const w = word.toUpperCase();
+    return tokens.some(t => t === w);
+  };
+  const tokenize = (str: string): string[] =>
+    str.toUpperCase().split(/[\s,&.]+/).map(t => t.replace(/[^A-Z'-]/g, '')).filter(t => t.length >= 2);
+
+  for (const nameTerm of clues.nameSearchTerms.slice(0, 3)) {
+    searchPromises.push(
+      safe(() => platinumSearchAccountsPayment({ name: nameTerm })).then((rawData: any) => {
+        const items = unwrap(rawData);
+        for (const item of items.slice(0, 5)) {
+          const itemName = [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || '';
+          const nameTokens = tokenize(itemName);
+          const searchWords = nameTerm.toUpperCase().split(/[\s,&]+/).filter((w: string) => w.length >= 2);
+          let nameMatchScore = 0;
+          let matchedParts: string[] = [];
+          for (const word of searchWords) {
+            if (tokenMatchesWord(nameTokens, word)) {
+              nameMatchScore += word.length >= 4 ? 15 : 8;
+              matchedParts.push(word);
+            }
+          }
+          const surnameFromSearch = searchWords[searchWords.length - 1] || '';
+          const surnameExact = surnameFromSearch.length >= 3 &&
+            (item.lastName || '').toUpperCase() === surnameFromSearch;
+          if (surnameExact) nameMatchScore += 20;
+          const confidence = Math.min(85, 45 + nameMatchScore);
+          if (matchedParts.length > 0) {
+            addResult(item, 'name',
+              `Name match: "${nameTerm}" → ${matchedParts.join(', ')}`,
+              confidence,
+              [
+                `Description "${nameTerm}" appears to be a person's name`,
+                `Searched consumer accounts by name`,
+                surnameExact ? `Surname "${surnameFromSearch}" matches exactly` : `Partial name match on: ${matchedParts.join(', ')}`,
+                matchedParts.length >= 2 ? `Multiple name parts matched — higher confidence` : `Single name component matched — verify carefully`,
+                `Account holder: "${itemName}"`,
+              ]
+            );
+          }
+        }
+      })
+    );
+    searchPromises.push(
+      safe(() => platinumDDAccountAutocomplete(nameTerm)).then((rawData: any) => {
+        const items = unwrap(rawData);
+        for (const item of items.slice(0, 3)) {
+          const itemName = [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || '';
+          const nameTokens = tokenize(itemName);
+          const searchWords = nameTerm.toUpperCase().split(/[\s,&]+/).filter((w: string) => w.length >= 2);
+          let matchedParts: string[] = [];
+          for (const word of searchWords) {
+            if (tokenMatchesWord(nameTokens, word)) matchedParts.push(word);
+          }
+          if (matchedParts.length > 0) {
+            const conf = Math.min(75, 40 + matchedParts.length * 12);
+            addResult(item, 'name',
+              `Name match: "${nameTerm}"`,
+              conf,
+              [
+                `Description appears to be a consumer name`,
+                `Searched via DD account autocomplete`,
+                `Matched name parts: ${matchedParts.join(', ')}`,
+                `Account holder: "${itemName}"`,
+              ]
+            );
+          }
+        }
+      })
+    );
   }
 
   if (clues.keywords.length > 0 && clues.erfNumbers.length === 0 && clues.accountNumbers.length === 0 && clues.meterNumbers.length === 0) {
@@ -1145,6 +1271,7 @@ export default function UnmatchedQueue() {
       case 'erf_number': return <MapPin className="w-3 h-3" />;
       case 'history': return <Calendar className="w-3 h-3" />;
       case 'reference': return <Building2 className="w-3 h-3" />;
+      case 'name': return <Users className="w-3 h-3" />;
     }
   };
 
@@ -1156,6 +1283,7 @@ export default function UnmatchedQueue() {
       case 'erf_number': return 'ERF';
       case 'history': return 'History';
       case 'reference': return 'Ref';
+      case 'name': return 'Name';
     }
   };
 
