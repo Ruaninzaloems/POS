@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { DatePicker } from '@/components/ui/date-picker';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { platinumGetBankReconPosItemList, platinumCheckSelectedItemProcessed, platinumSearchAccountsPayment, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, fetchAccounts, fetchActiveFinYear, fetchBulkAllocationList, fetchBulkProgressJobAccountDetails, submitDDAllocationBatch, pollDDAllocationJob } from '@/lib/external-api';
-import { autocomplete as billingAutocomplete } from '@/lib/enquiries-service';
+import { autocomplete as billingAutocomplete, searchAccounts as billingEnquirySearch } from '@/lib/enquiries-service';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { usePos } from '@/lib/pos-state';
 import { useToast } from '@/hooks/use-toast';
@@ -667,6 +667,49 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
     );
   }
 
+  const refTrimmed = (reference || '').trim();
+  if (/^\d{3,7}$/.test(refTrimmed) && !clues.accountNumbers.some(a => a === refTrimmed || a.endsWith(refTrimmed))) {
+    const paddedRef = refTrimmed.padStart(12, '0');
+    searchPromises.push(
+      safe(() => billingEnquirySearch({ accountNo: paddedRef })).then((items: any[]) => {
+        for (const item of items.slice(0, 3)) {
+          const accountNo = item.accountNumber || item.accountNo || String(item.account_ID || '');
+          const isMatch = accountNo.endsWith(refTrimmed) || accountNo === paddedRef;
+          if (isMatch) {
+            addResult({ ...item, account_ID: item.account_ID || item.accountID }, 'account_number',
+              `Reference "${refTrimmed}" → account ${accountNo}`,
+              92,
+              [
+                `Reference field contains "${refTrimmed}"`,
+                `Zero-padded to "${paddedRef}" and searched as account number`,
+                `Direct account number match found`,
+                `High confidence — reference is a short account number`,
+              ]
+            );
+          }
+        }
+      })
+    );
+    searchPromises.push(
+      safe(() => platinumDDAccountAutocomplete(refTrimmed)).then((rawData: any) => {
+        const items = unwrap(rawData);
+        for (const item of items.slice(0, 3)) {
+          const accountNo = item.accountNumber || item.accountNo || String(item.account_ID || '');
+          if (accountNo.endsWith(refTrimmed)) {
+            addResult(item, 'account_number',
+              `Reference "${refTrimmed}" → account ${accountNo}`,
+              90,
+              [
+                `Reference field "${refTrimmed}" matched as account number via autocomplete`,
+                `Account: ${accountNo}`,
+              ]
+            );
+          }
+        }
+      })
+    );
+  }
+
   const normalizeArea = (s: string) => s.toLowerCase().replace(/[\s-]+/g, '');
   const checkAreaMatch = (item: any, area: string): boolean => {
     if (!area || area === 'george') return false;
@@ -890,6 +933,42 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
                 `Description appears to be a consumer name`,
                 `Searched via DD account autocomplete`,
                 `Matched name parts: ${matchedParts.join(', ')}`,
+                `Account holder: "${itemName}"`,
+              ]
+            );
+          }
+        }
+      })
+    );
+    searchPromises.push(
+      safe(() => billingEnquirySearch({ name: nameTerm })).then((items: any[]) => {
+        for (const item of items.slice(0, 5)) {
+          const lastName = item.surname_Company || item.lastName || '';
+          const itemName = item.name || [item.initials, lastName].filter(Boolean).join(' ') || '';
+          const nameTokens = tokenize(itemName);
+          const searchWords = nameTerm.toUpperCase().split(/[\s,&]+/).filter((w: string) => w.length >= 2);
+          let nameMatchScore = 0;
+          let matchedParts: string[] = [];
+          for (const word of searchWords) {
+            if (tokenMatchesWord(nameTokens, word)) {
+              nameMatchScore += word.length >= 4 ? 15 : 8;
+              matchedParts.push(word);
+            }
+          }
+          const surnameFromSearch = searchWords[searchWords.length - 1] || '';
+          const surnameExact = surnameFromSearch.length >= 3 &&
+            lastName.toUpperCase() === surnameFromSearch;
+          if (surnameExact) nameMatchScore += 20;
+          const confidence = Math.min(85, 45 + nameMatchScore);
+          if (matchedParts.length > 0) {
+            addResult({ ...item, account_ID: item.account_ID || item.accountID, lastName }, 'name',
+              `Name match: "${nameTerm}" → ${matchedParts.join(', ')}`,
+              confidence,
+              [
+                `Description "${nameTerm}" appears to be a person's name`,
+                `Searched via billing enquiry (comprehensive name search)`,
+                surnameExact ? `Surname "${surnameFromSearch}" matches exactly` : `Partial name match on: ${matchedParts.join(', ')}`,
+                matchedParts.length >= 2 ? `Multiple name parts matched — higher confidence` : `Single name component matched — verify carefully`,
                 `Account holder: "${itemName}"`,
               ]
             );
