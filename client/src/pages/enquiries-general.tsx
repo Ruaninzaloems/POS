@@ -357,15 +357,17 @@ function FieldAutocompleteInput({ fieldKey, placeholder, value, onChange, onSele
       />
       {loading && <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[var(--pos-accent)] animate-spin" />}
       {open && suggestions.length > 0 && (
-        <div className="absolute left-0 right-0 top-full mt-0.5 bg-white border border-[#D6D6D6] rounded-lg shadow-lg z-50 max-h-[200px] overflow-y-auto overscroll-contain">
+        <div className="absolute left-0 top-full mt-0.5 bg-white border border-[#D6D6D6] rounded-lg shadow-xl z-50 max-h-[280px] overflow-y-auto overscroll-contain min-w-[280px] sm:min-w-[320px]">
+          <div className="sticky top-0 bg-slate-50 border-b border-[#D6D6D6] px-2.5 py-1 text-[10px] text-slate-500 font-medium">{suggestions.length} suggestion{suggestions.length !== 1 ? 's' : ''}</div>
           {suggestions.map((s, i) => (
             <button
               key={`${s.accountId}-${i}`}
               onClick={() => handleSelect(s)}
-              className="w-full text-left px-2.5 py-2.5 sm:py-1.5 text-xs text-slate-700 hover:bg-[var(--pos-accent-tint)] active:bg-[var(--pos-accent-tint-strong)] transition-colors border-b border-[#E5E5E5] last:border-0 min-h-[44px] sm:min-h-0 flex items-center"
+              className="w-full text-left px-2.5 py-2 sm:py-1.5 text-xs text-[#2E2E2E] hover:bg-[var(--pos-accent-tint)] active:bg-[var(--pos-accent-tint-strong)] transition-colors border-b border-[#E5E5E5] last:border-0 min-h-[44px] sm:min-h-0 flex flex-col gap-0.5"
               data-testid={`suggestion-${fieldKey}-${i}`}
             >
-              {s.displayItem}
+              <span className="font-mono text-[11px] break-all leading-snug">{s.displayItem}</span>
+              {s.accountId > 0 && <span className="text-[10px] text-slate-400">Account ID: {s.accountId}</span>}
             </button>
           ))}
         </div>
