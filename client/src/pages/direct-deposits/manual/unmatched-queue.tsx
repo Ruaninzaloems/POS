@@ -283,7 +283,7 @@ function parseDescriptionForClues(note: string, reference: string): ParsedClues 
         qualifier = 'rural';
       }
       if (erfNum && !erfNumbers.some(e => e.erf === erfNum && e.portion === portion)) {
-        erfNumbers.push({ erf: erfNum, portion, area: area || 'george', qualifier });
+        erfNumbers.push({ erf: erfNum, portion, area: area || '', qualifier });
       }
     }
   }
@@ -887,7 +887,7 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
 
   const normalizeArea = (s: string) => s.toLowerCase().replace(/[\s-]+/g, '');
   const checkAreaMatch = (item: any, area: string): boolean => {
-    if (!area || area === 'george') return false;
+    if (!area) return false;
     const normArea = normalizeArea(area);
     const fields = [
       item.allotmentArea, item.town, item.name, item.address,
@@ -920,7 +920,7 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
   for (const erf of clues.erfNumbers.slice(0, 2)) {
     const sgSearchTerms = buildSgSearchTerms(erf);
     const erfLabel = erf.portion ? `ERF ${erf.erf}/${erf.portion}` : `ERF ${erf.erf}`;
-    const areaLabel = erf.area && erf.area !== 'george' ? ` ${erf.area}` : '';
+    const areaLabel = erf.area ? ` ${erf.area}` : '';
 
     searchPromises.push(
       safe(() => fetchAccounts({ erfNumber: erf.erf })).then((items: any[]) => {
@@ -940,7 +940,7 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
       })
     );
 
-    if (erf.area && erf.area !== 'george') {
+    if (erf.area) {
       searchPromises.push(
         safe(() => fetchAccounts({ erfNumber: erf.erf, allotmentArea: erf.area })).then((items: any[]) => {
           for (const item of items.slice(0, 10)) {
