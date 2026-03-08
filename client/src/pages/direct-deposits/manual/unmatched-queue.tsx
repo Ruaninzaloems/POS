@@ -60,7 +60,7 @@ interface SuggestedMatch {
   portion?: string;
   allotment?: string;
   matchSources?: string[];
-  bankStatementPrior?: { receiptNo: string; paidAmount: number; date: string; status: string }[];
+  bankStatementPrior?: { receiptNo: string; paidAmount: number; date: string; status: string; description?: string; cashierName?: string; dateCaptured?: string }[];
   miscPaymentGroupId?: number;
   miscPaymentGroupName?: string;
   institutionId?: number;
@@ -680,6 +680,9 @@ async function searchForSuggestions(note: string, reference: string, transaction
             paidAmount: r.paidAmount || r.bankAmount || 0,
             date: r.billingAllocationDate || r.dateCaptured || r.bankStatementDate || '',
             status: r.allocationStatus || 'Allocated',
+            description: r.bankStatementNote || r.cashbookDescription || r.note || '',
+            cashierName: r.cashierName || r.userName || r.capturedBy || r.allocatedBy || '',
+            dateCaptured: r.dateCaptured || r.billingAllocationDate || '',
           }));
           const totalPaid = priorEntries.reduce((s: number, p: any) => s + p.paidAmount, 0);
           const latestDate = priorEntries.reduce((best: string, p: any) => (!best || p.date > best) ? p.date : best, '');
@@ -2789,8 +2792,9 @@ export default function UnmatchedQueue() {
                                 </div>
                                 {m.bankStatementPrior.slice(0, 2).map((bp, i) => (
                                   <div key={i} className="text-[8px] text-blue-600 mt-0.5">
-                                    {bp.receiptNo} · R {bp.paidAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
-                                    {bp.date && ` · ${new Date(bp.date).toLocaleDateString('en-GB')}`}
+                                    <div>{bp.receiptNo} · R {bp.paidAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}{bp.date && ` · ${new Date(bp.date).toLocaleDateString('en-GB')}`}</div>
+                                    {bp.description && <div className="text-[7px] text-blue-400">Desc: {bp.description}</div>}
+                                    {bp.cashierName && <div className="text-[7px] text-blue-400">By: {bp.cashierName}</div>}
                                   </div>
                                 ))}
                               </div>
@@ -3025,10 +3029,19 @@ export default function UnmatchedQueue() {
                                           <HistoryIcon className="w-2.5 h-2.5" /> Previously Allocated (EFT Receipt)
                                         </div>
                                         {m.bankStatementPrior.slice(0, 3).map((bp, i) => (
-                                          <div key={i} className="text-[9px] text-blue-600 mt-0.5 flex items-center gap-2">
-                                            <span className="font-mono">{bp.receiptNo}</span>
-                                            <span>R {bp.paidAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
-                                            {bp.date && <span className="text-blue-400">{new Date(bp.date).toLocaleDateString('en-GB')}</span>}
+                                          <div key={i} className="text-[9px] text-blue-600 mt-0.5">
+                                            <div className="flex items-center gap-2">
+                                              <span className="font-mono">{bp.receiptNo}</span>
+                                              <span>R {bp.paidAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+                                              {bp.date && <span className="text-blue-400">{new Date(bp.date).toLocaleDateString('en-GB')}</span>}
+                                            </div>
+                                            {bp.description && <div className="text-[8px] text-blue-400 mt-0.5">Desc: {bp.description}</div>}
+                                            {(bp.cashierName || bp.dateCaptured) && (
+                                              <div className="text-[8px] text-blue-400">
+                                                {bp.cashierName && <>By: <strong className="text-blue-500">{bp.cashierName}</strong></>}
+                                                {bp.dateCaptured && <> on {new Date(bp.dateCaptured).toLocaleDateString('en-GB')}</>}
+                                              </div>
+                                            )}
                                           </div>
                                         ))}
                                       </div>
@@ -3771,15 +3784,24 @@ export default function UnmatchedQueue() {
                 <div className="text-[10px] font-mono text-muted-foreground">SG {quickAllocItem.match.sgNumber}</div>
               )}
               {quickAllocItem.match.bankStatementPrior && quickAllocItem.match.bankStatementPrior.length > 0 && (
-                <div className="bg-blue-50 rounded-md px-3 py-2 border border-blue-100 mt-1">
-                  <div className="text-[10px] font-semibold text-blue-700 flex items-center gap-1 mb-1">
+                <div className="bg-blue-50 rounded-md px-3 py-2 border border-blue-100 mt-1 space-y-1.5">
+                  <div className="text-[10px] font-semibold text-blue-700 flex items-center gap-1">
                     <HistoryIcon className="w-3 h-3" /> Previously Allocated (EFT Receipt)
                   </div>
                   {quickAllocItem.match.bankStatementPrior.slice(0, 3).map((bp: any, i: number) => (
-                    <div key={i} className="text-xs text-blue-600 flex items-center gap-3">
-                      <span className="font-mono">{bp.receiptNo}</span>
-                      <span className="font-mono font-medium">R {bp.paidAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
-                      {bp.date && <span className="text-blue-400">{new Date(bp.date).toLocaleDateString('en-GB')}</span>}
+                    <div key={i} className="text-xs text-blue-600 space-y-0.5">
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono">{bp.receiptNo}</span>
+                        <span className="font-mono font-medium">R {bp.paidAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+                        {bp.date && <span className="text-blue-400">{new Date(bp.date).toLocaleDateString('en-GB')}</span>}
+                      </div>
+                      {bp.description && (
+                        <div className="text-[10px] text-blue-500 pl-1">Description: {bp.description}</div>
+                      )}
+                      <div className="text-[10px] text-blue-400 pl-1 flex items-center gap-2">
+                        {bp.cashierName && <span>Allocated by: <strong className="text-blue-600">{bp.cashierName}</strong></span>}
+                        {bp.dateCaptured && <span>on {new Date(bp.dateCaptured).toLocaleDateString('en-GB')}</span>}
+                      </div>
                     </div>
                   ))}
                 </div>
