@@ -1985,20 +1985,19 @@ export default function UnmatchedQueue() {
                     <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-3 py-2.5 min-w-[340px]">Match</th>
                     <th className="text-right text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-3 py-2.5 w-28">Amount</th>
                     <th className="text-center text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-3 py-2.5 w-24">Status</th>
-                    <th className="text-right text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-3 py-2.5 w-36">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E5E5E5]">
                   {loading ? (
                     <tr>
-                      <td colSpan={8} className="py-16 text-center">
+                      <td colSpan={7} className="py-16 text-center">
                         <Loader2 className="w-6 h-6 animate-spin mx-auto text-[var(--pos-accent)] mb-2" />
                         <span className="text-xs text-muted-foreground">Loading deposits...</span>
                       </td>
                     </tr>
                   ) : filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-16 text-center" data-testid="text-empty-state">
+                      <td colSpan={7} className="py-16 text-center" data-testid="text-empty-state">
                         <div className="w-14 h-14 rounded-2xl bg-[#F2F4F7] flex items-center justify-center mx-auto mb-3">
                           <Banknote className="w-6 h-6 text-slate-400" />
                         </div>
@@ -2013,10 +2012,9 @@ export default function UnmatchedQueue() {
                     <React.Fragment key={tx.posItem_ID}>
                       <tr
                         data-testid={`row-positem-${tx.posItem_ID}`}
-                        className={`transition-colors ${!tx.billingAllocated ? 'cursor-pointer hover:bg-[#F7F7F7]' : ''} ${expandedSuggestion === tx.posItem_ID ? 'bg-amber-50/30' : ''} ${isSelected ? 'bg-blue-50/40' : ''}`}
-                        onClick={() => { if (!tx.billingAllocated && checkingItemId === null) { const bestM = suggestions[tx.posItem_ID]?.[0]; handleAllocateClick(tx.posItem_ID, undefined, bestM); } }}
+                        className={`transition-colors hover:bg-[#F7F7F7] ${expandedSuggestion === tx.posItem_ID ? 'bg-amber-50/30' : ''} ${isSelected ? 'bg-blue-50/40' : ''}`}
                       >
-                        <td className="px-2 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                        <td className="px-2 py-2.5 text-center">
                           {!tx.billingAllocated && (
                             <Checkbox
                               checked={isSelected}
@@ -2034,7 +2032,7 @@ export default function UnmatchedQueue() {
                           <div className="text-xs text-slate-700 truncate max-w-[350px]" title={tx.note}>{tx.note || '-'}</div>
                           {tx.reference && <div className="font-mono text-[10px] text-slate-400 mt-0.5">{tx.reference}</div>}
                         </td>
-                        <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                        <td className="px-3 py-2.5">
                           {!tx.billingAllocated && bestMatch ? (() => {
                             const allMatches = suggestions[tx.posItem_ID] || [];
                             const showMultiple = allMatches.length > 1;
@@ -2129,12 +2127,45 @@ export default function UnmatchedQueue() {
                               </div>
                             );
                           })() : !tx.billingAllocated && suggestions[tx.posItem_ID] !== undefined ? (
-                            <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-dashed border-slate-200 bg-slate-50/30">
-                              <Search className="w-3 h-3 text-slate-300" />
-                              <span className="text-[10px] text-slate-400">No match found</span>
+                            <div className="flex items-center gap-2 py-1">
+                              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed border-slate-200 bg-slate-50/30 flex-1">
+                                <Search className="w-3 h-3 text-slate-300" />
+                                <span className="text-[10px] text-slate-400">No match found</span>
+                              </div>
+                              <Button
+                                size="sm"
+                                className="h-8 bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-xs gap-1 px-3 shrink-0"
+                                disabled={checkingItemId === tx.posItem_ID}
+                                onClick={(e) => { e.stopPropagation(); handleAllocateClick(tx.posItem_ID, e); }}
+                                data-testid={`button-allocate-${tx.posItem_ID}`}
+                              >
+                                {checkingItemId === tx.posItem_ID ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                                Allocate <ArrowRight className="w-3 h-3" />
+                              </Button>
                             </div>
                           ) : !tx.billingAllocated ? (
-                            <span className="text-[10px] text-slate-300">—</span>
+                            <div className="flex items-center gap-2 py-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className={`h-8 text-xs gap-1.5 px-3 ${loadingSuggestions.has(tx.posItem_ID) ? 'text-amber-600 border-amber-300' : 'text-slate-500 hover:text-amber-600 hover:border-amber-300'}`}
+                                onClick={(e) => { e.stopPropagation(); toggleSuggestion(tx.posItem_ID, tx.note, tx.reference); }}
+                                data-testid={`button-suggest-${tx.posItem_ID}`}
+                              >
+                                {loadingSuggestions.has(tx.posItem_ID) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                                Find Match
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="h-8 bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-xs gap-1 px-3 shrink-0"
+                                disabled={checkingItemId === tx.posItem_ID}
+                                onClick={(e) => { e.stopPropagation(); handleAllocateClick(tx.posItem_ID, e); }}
+                                data-testid={`button-allocate-${tx.posItem_ID}`}
+                              >
+                                {checkingItemId === tx.posItem_ID ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                                Allocate <ArrowRight className="w-3 h-3" />
+                              </Button>
+                            </div>
                           ) : null}
                         </td>
                         <td className="px-3 py-2.5 text-right">
@@ -2147,42 +2178,10 @@ export default function UnmatchedQueue() {
                             <Badge variant="secondary" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px]">Unmatched</Badge>
                           )}
                         </td>
-                        <td className="px-3 py-2.5 text-right">
-                          {!tx.billingAllocated && (
-                            <div className="flex items-center justify-end gap-1">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className={`h-8 w-8 p-0 ${expandedSuggestion === tx.posItem_ID ? 'text-amber-600 bg-amber-50' : 'text-slate-400 hover:text-amber-600'}`}
-                                title="Smart suggestions"
-                                onClick={(e) => { e.stopPropagation(); toggleSuggestion(tx.posItem_ID, tx.note, tx.reference); }}
-                                data-testid={`button-suggest-${tx.posItem_ID}`}
-                              >
-                                {loadingSuggestions.has(tx.posItem_ID) ? (
-                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                ) : (
-                                  <Sparkles className="w-3.5 h-3.5" />
-                                )}
-                              </Button>
-                              <Button
-                                size="sm"
-                                className="h-8 bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-xs gap-1 px-3"
-                                disabled={checkingItemId === tx.posItem_ID}
-                                onClick={(e) => { const bestM = suggestions[tx.posItem_ID]?.[0]; handleAllocateClick(tx.posItem_ID, e, bestM); }}
-                                data-testid={`button-allocate-${tx.posItem_ID}`}
-                              >
-                                {checkingItemId === tx.posItem_ID ? (
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                ) : null}
-                                Allocate <ArrowRight className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          )}
-                        </td>
                       </tr>
                       {expandedSuggestion === tx.posItem_ID && (
                         <tr>
-                          <td colSpan={8} className="p-0">
+                          <td colSpan={7} className="p-0">
                             <SuggestionPanel
                               posItemId={tx.posItem_ID}
                               suggestions={suggestions[tx.posItem_ID]}
