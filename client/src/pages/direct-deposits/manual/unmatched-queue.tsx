@@ -860,9 +860,11 @@ export default function UnmatchedQueue() {
     amount: number;
     dateOfTransaction: string;
     match: SuggestedMatch;
+    alternativeMatches: SuggestedMatch[];
     status: 'pending' | 'submitting' | 'polling' | 'success' | 'failed';
     error?: string;
     jobId?: string;
+    amended?: boolean;
   }
 
   const [bulkAllocOpen, setBulkAllocOpen] = useState(false);
@@ -870,10 +872,15 @@ export default function UnmatchedQueue() {
   const [bulkAllocRunning, setBulkAllocRunning] = useState(false);
   const [bulkAllocDone, setBulkAllocDone] = useState(0);
   const bulkAllocAbort = useRef(false);
+  const [bulkExpandedItem, setBulkExpandedItem] = useState<number | null>(null);
+  const [bulkSearching, setBulkSearching] = useState<number | null>(null);
+  const [bulkSearchTerm, setBulkSearchTerm] = useState('');
+  const [bulkSearchResults, setBulkSearchResults] = useState<SuggestedMatch[]>([]);
 
   const openBulkAllocate = () => {
     const itemsToAllocate: BulkAllocItem[] = selectedWithMatch.map(tx => {
       const match = getBestMatch(tx.posItem_ID)!;
+      const allSuggestions = suggestions[tx.posItem_ID] || [];
       return {
         posItemId: tx.posItem_ID,
         reconId: tx.bankReconID,
@@ -882,6 +889,7 @@ export default function UnmatchedQueue() {
         amount: tx.amount,
         dateOfTransaction: tx.dateOfTransaction,
         match,
+        alternativeMatches: allSuggestions.filter(s => s.accountId !== match.accountId),
         status: 'pending' as const,
       };
     });
@@ -889,18 +897,70 @@ export default function UnmatchedQueue() {
     setBulkAllocDone(0);
     setBulkAllocRunning(false);
     bulkAllocAbort.current = false;
+    setBulkExpandedItem(null);
+    setBulkSearching(null);
+    setBulkSearchTerm('');
+    setBulkSearchResults([]);
     setBulkAllocOpen(true);
   };
 
   const removeBulkItem = (posItemId: number) => {
     setBulkAllocItems(prev => prev.filter(i => i.posItemId !== posItemId));
+    if (bulkExpandedItem === posItemId) setBulkExpandedItem(null);
   };
+
+  const changeBulkItemMatch = (posItemId: number, newMatch: SuggestedMatch) => {
+    setBulkAllocItems(prev => prev.map(p => {
+      if (p.posItemId !== posItemId) return p;
+      return { ...p, match: newMatch, amended: true, alternativeMatches: [p.match, ...p.alternativeMatches.filter(a => a.accountId !== newMatch.accountId)] };
+    }));
+    setBulkSearching(null);
+    setBulkSearchTerm('');
+    setBulkSearchResults([]);
+  };
+
+  const startBulkAccountSearch = async (posItemId: number) => {
+    setBulkSearching(posItemId);
+    setBulkSearchTerm('');
+    setBulkSearchResults([]);
+    setBulkExpandedItem(posItemId);
+  };
+
+  const bulkSearchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bulkSearchRequestId = useRef(0);
+
+  const doBulkAccountSearch = useCallback((term: string) => {
+    setBulkSearchTerm(term);
+    if (bulkSearchDebounce.current) clearTimeout(bulkSearchDebounce.current);
+    if (term.length < 3) { setBulkSearchResults([]); return; }
+    bulkSearchDebounce.current = setTimeout(async () => {
+      const reqId = ++bulkSearchRequestId.current;
+      try {
+        const results = await platinumDDAccountAutocomplete(term);
+        if (bulkSearchRequestId.current !== reqId) return;
+        const items = Array.isArray(results) ? results : (results as any)?.value || [];
+        setBulkSearchResults(items.slice(0, 8).map((item: any) => ({
+          accountId: item.account_ID || item.accountID || item.id,
+          accountNo: item.accountNumber || item.accountNo || String(item.account_ID),
+          name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || '',
+          matchType: 'reference' as const,
+          matchDetail: 'Manual search',
+          confidence: 100,
+          outstandingAmount: item.outstandingAmount || item.balance,
+        })));
+      } catch {
+        if (bulkSearchRequestId.current === reqId) setBulkSearchResults([]);
+      }
+    }, 350);
+  }, []);
 
   const executeBulkAllocate = async () => {
     if (bulkAllocItems.length === 0) return;
     setBulkAllocRunning(true);
     setBulkAllocDone(0);
     bulkAllocAbort.current = false;
+    setBulkExpandedItem(null);
+    setBulkSearching(null);
 
     let finYear: string;
     try {
@@ -985,7 +1045,12 @@ export default function UnmatchedQueue() {
 
   const bulkAllocSuccessCount = bulkAllocItems.filter(i => i.status === 'success').length;
   const bulkAllocFailCount = bulkAllocItems.filter(i => i.status === 'failed').length;
+  const bulkAllocPendingCount = bulkAllocItems.filter(i => i.status === 'pending').length;
   const bulkAllocTotalAmount = bulkAllocItems.reduce((s, i) => s + i.amount, 0);
+  const bulkHighConfCount = bulkAllocItems.filter(i => i.match.confidence >= 80).length;
+  const bulkMedConfCount = bulkAllocItems.filter(i => i.match.confidence >= 60 && i.match.confidence < 80).length;
+  const bulkLowConfCount = bulkAllocItems.filter(i => i.match.confidence < 60).length;
+  const bulkAmendedCount = bulkAllocItems.filter(i => i.amended).length;
 
   const toggleSuggestion = async (posItemId: number, note: string, reference: string) => {
     if (expandedSuggestion === posItemId) {
@@ -1600,153 +1665,276 @@ export default function UnmatchedQueue() {
     </PosLayout>
 
     <Dialog open={bulkAllocOpen} onOpenChange={(open) => { if (!bulkAllocRunning) setBulkAllocOpen(open); }}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col bg-slate-900 border-slate-700 text-white">
-        <DialogHeader>
-          <DialogTitle className="text-lg font-semibold flex items-center gap-2">
-            <Zap className="w-5 h-5 text-emerald-400" />
-            Auto-Allocate {bulkAllocItems.length} Matched Items
-          </DialogTitle>
-          <DialogDescription className="text-slate-400">
-            Each item will be allocated to its matched account for the full transaction amount. Review below and confirm.
-          </DialogDescription>
-        </DialogHeader>
-
-        {bulkAllocRunning && (
-          <div className="px-1">
-            <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5">
-              <span>Progress: {bulkAllocDone} / {bulkAllocItems.length}</span>
-              <span>
-                {bulkAllocSuccessCount > 0 && <span className="text-emerald-400 mr-2">{bulkAllocSuccessCount} succeeded</span>}
-                {bulkAllocFailCount > 0 && <span className="text-red-400">{bulkAllocFailCount} failed</span>}
-              </span>
+      <DialogContent className="max-w-4xl w-[95vw] max-h-[92vh] flex flex-col p-0 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-slate-700/50 text-white overflow-hidden" style={{ borderRadius: '16px' }}>
+        <div className="shrink-0 px-5 sm:px-7 pt-5 sm:pt-6 pb-4 border-b border-slate-700/40" style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(59,130,246,0.06) 100%)' }}>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <DialogTitle className="text-lg sm:text-xl font-bold flex items-center gap-2.5 mb-1">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--pos-accent, #10b981)' }}>
+                  <Zap className="w-4.5 h-4.5 text-white" />
+                </div>
+                Batch Allocation Review
+              </DialogTitle>
+              <DialogDescription className="text-slate-400 text-sm">
+                Review all {bulkAllocItems.length} items below. Change accounts or remove items before processing.
+              </DialogDescription>
             </div>
-            <div className="w-full bg-slate-700 rounded-full h-2 overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-300"
-                style={{
-                  width: `${(bulkAllocDone / bulkAllocItems.length) * 100}%`,
-                  background: 'var(--pos-accent, #10b981)',
-                }}
-              />
-            </div>
+            {!bulkAllocRunning && bulkAllocDone === 0 && (
+              <button onClick={() => setBulkAllocOpen(false)} className="p-1.5 rounded-lg hover:bg-white/10 text-slate-500 hover:text-white transition-colors shrink-0 mt-0.5">
+                <X className="w-5 h-5" />
+              </button>
+            )}
           </div>
-        )}
 
-        <div className="flex-1 overflow-y-auto min-h-0 space-y-1.5 pr-1" style={{ maxHeight: '50vh' }}>
-          {bulkAllocItems.map((item) => (
-            <div
-              key={item.posItemId}
-              data-testid={`bulk-alloc-row-${item.posItemId}`}
-              className={`rounded-lg border p-3 text-xs transition-colors ${
-                item.status === 'success' ? 'border-emerald-600/50 bg-emerald-950/30' :
-                item.status === 'failed' ? 'border-red-600/50 bg-red-950/30' :
-                item.status === 'submitting' || item.status === 'polling' ? 'border-amber-600/50 bg-amber-950/20' :
-                'border-slate-700 bg-slate-800/60'
-              }`}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-mono text-slate-300 truncate max-w-[200px]" title={item.note}>
-                      {item.note || item.reference || `POS ${item.posItemId}`}
-                    </span>
-                    <Badge variant="outline" className="text-[10px] border-slate-600 text-slate-400 shrink-0">
-                      R {item.amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-slate-400">
-                    <ArrowRight className="w-3 h-3 text-emerald-400" />
-                    <span className="font-mono text-emerald-300">{item.match.accountNo}</span>
-                    <span className="text-slate-500">—</span>
-                    <span className="truncate max-w-[200px]">{item.match.name}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {item.status === 'pending' && !bulkAllocRunning && (
-                    <button
-                      onClick={() => removeBulkItem(item.posItemId)}
-                      className="p-1 rounded hover:bg-red-900/40 text-slate-500 hover:text-red-400 transition-colors"
-                      title="Remove from batch"
-                      data-testid={`bulk-remove-${item.posItemId}`}
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                  {(item.status === 'submitting' || item.status === 'polling') && (
-                    <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
-                  )}
-                  {item.status === 'success' && (
-                    <CheckSquare className="w-4 h-4 text-emerald-400" />
-                  )}
-                  {item.status === 'failed' && (
-                    <div className="flex items-center gap-1">
-                      <X className="w-4 h-4 text-red-400" />
-                      <span className="text-red-400 text-[10px] max-w-[120px] truncate" title={item.error}>{item.error}</span>
-                    </div>
-                  )}
-                  {item.status === 'pending' && bulkAllocRunning && (
-                    <span className="text-[10px] text-slate-500">Queued</span>
-                  )}
-                </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mt-4">
+            <div className="bg-slate-800/60 backdrop-blur rounded-xl px-3 py-2.5 border border-slate-700/40">
+              <div className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Items</div>
+              <div className="text-lg font-bold text-white" data-testid="bulk-summary-count">{bulkAllocItems.length}</div>
+            </div>
+            <div className="bg-slate-800/60 backdrop-blur rounded-xl px-3 py-2.5 border border-slate-700/40">
+              <div className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Total Amount</div>
+              <div className="text-lg font-bold text-white" data-testid="bulk-summary-amount">R {bulkAllocTotalAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</div>
+            </div>
+            <div className="bg-slate-800/60 backdrop-blur rounded-xl px-3 py-2.5 border border-slate-700/40">
+              <div className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Confidence</div>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                {bulkHighConfCount > 0 && <Badge className="text-[9px] px-1.5 py-0 bg-emerald-500/20 text-emerald-400 border-emerald-500/30">{bulkHighConfCount} high</Badge>}
+                {bulkMedConfCount > 0 && <Badge className="text-[9px] px-1.5 py-0 bg-amber-500/20 text-amber-400 border-amber-500/30">{bulkMedConfCount} med</Badge>}
+                {bulkLowConfCount > 0 && <Badge className="text-[9px] px-1.5 py-0 bg-red-500/20 text-red-400 border-red-500/30">{bulkLowConfCount} low</Badge>}
               </div>
             </div>
-          ))}
-        </div>
-
-        <div className="border-t border-slate-700 pt-3 space-y-3">
-          <div className="flex justify-between text-xs">
-            <span className="text-slate-400">Total Amount</span>
-            <span className="font-semibold text-white">R {bulkAllocTotalAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+            <div className="bg-slate-800/60 backdrop-blur rounded-xl px-3 py-2.5 border border-slate-700/40">
+              <div className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Status</div>
+              <div className="text-sm font-semibold mt-0.5">
+                {bulkAllocRunning ? (
+                  <span className="text-amber-400 flex items-center gap-1.5"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Processing {bulkAllocDone}/{bulkAllocItems.length}</span>
+                ) : bulkAllocDone > 0 ? (
+                  <span className="flex items-center gap-1.5">
+                    {bulkAllocSuccessCount > 0 && <span className="text-emerald-400">{bulkAllocSuccessCount} done</span>}
+                    {bulkAllocFailCount > 0 && <span className="text-red-400">{bulkAllocFailCount} failed</span>}
+                  </span>
+                ) : bulkAmendedCount > 0 ? (
+                  <span className="text-blue-400">{bulkAmendedCount} amended</span>
+                ) : (
+                  <span className="text-slate-400">Ready to process</span>
+                )}
+              </div>
+            </div>
           </div>
 
-          <DialogFooter className="flex gap-2 sm:gap-2">
-            {!bulkAllocRunning && bulkAllocDone === 0 && (
-              <>
-                <Button
-                  variant="ghost"
-                  className="text-slate-400 hover:text-white"
-                  onClick={() => setBulkAllocOpen(false)}
-                  data-testid="bulk-alloc-cancel"
-                >
-                  Cancel
+          {bulkAllocRunning && (
+            <div className="mt-3">
+              <div className="w-full bg-slate-700/50 rounded-full h-2 overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-500 ease-out" style={{ width: `${bulkAllocItems.length > 0 ? (bulkAllocDone / bulkAllocItems.length) * 100 : 0}%`, background: 'linear-gradient(90deg, var(--pos-accent, #10b981), #3b82f6)' }} />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 overflow-y-auto min-h-0 px-3 sm:px-5 py-3 space-y-2">
+          {bulkAllocItems.map((item, idx) => {
+            const isExpanded = bulkExpandedItem === item.posItemId;
+            const isSearching = bulkSearching === item.posItemId;
+            const confColor = item.match.confidence >= 80 ? 'emerald' : item.match.confidence >= 60 ? 'amber' : 'red';
+            const statusBorder = item.status === 'success' ? 'border-emerald-500/40' : item.status === 'failed' ? 'border-red-500/40' : item.status === 'submitting' || item.status === 'polling' ? 'border-amber-500/40' : item.amended ? 'border-blue-500/40' : 'border-slate-700/50';
+            const statusBg = item.status === 'success' ? 'bg-emerald-500/5' : item.status === 'failed' ? 'bg-red-500/5' : item.status === 'submitting' || item.status === 'polling' ? 'bg-amber-500/5' : 'bg-slate-800/40';
+
+            return (
+              <div key={item.posItemId} data-testid={`bulk-alloc-row-${item.posItemId}`} className={`rounded-xl border transition-all duration-200 ${statusBorder} ${statusBg} overflow-hidden`}>
+                <div role="button" tabIndex={0} aria-expanded={isExpanded} className="w-full text-left px-3.5 sm:px-4 py-3 cursor-pointer hover:bg-white/[0.02] transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/50 rounded-t-xl" onClick={() => { if (!bulkAllocRunning) setBulkExpandedItem(isExpanded ? null : item.posItemId); }} onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !bulkAllocRunning) { e.preventDefault(); setBulkExpandedItem(isExpanded ? null : item.posItemId); } }} data-testid={`bulk-expand-${item.posItemId}`}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold" style={{ background: item.status === 'success' ? '#10b981' : item.status === 'failed' ? '#ef4444' : item.status === 'submitting' || item.status === 'polling' ? '#f59e0b' : 'rgba(255,255,255,0.06)', color: item.status === 'pending' ? '#94a3b8' : '#fff' }}>
+                      {item.status === 'submitting' || item.status === 'polling' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : item.status === 'success' ? <CheckSquare className="w-3.5 h-3.5" /> : item.status === 'failed' ? <X className="w-3.5 h-3.5" /> : idx + 1}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-medium text-slate-200 truncate max-w-[180px] sm:max-w-[280px]" title={item.note || item.reference}>
+                          {item.note || item.reference || `POS Item ${item.posItemId}`}
+                        </span>
+                        <span className="text-sm font-bold text-white shrink-0">R {item.amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <ArrowRight className="w-3 h-3 text-emerald-400 shrink-0" />
+                        <span className={`font-mono text-xs ${item.amended ? 'text-blue-300' : 'text-emerald-300'}`}>{item.match.accountNo}</span>
+                        <span className="text-[10px] text-slate-500 hidden sm:inline">—</span>
+                        <span className="text-[10px] text-slate-400 truncate max-w-[140px] sm:max-w-[220px] hidden sm:inline">{item.match.name}</span>
+                        <Badge className={`text-[8px] px-1.5 py-0 shrink-0 border bg-${confColor}-500/15 text-${confColor}-400 border-${confColor}-500/30`} style={{ backgroundColor: confColor === 'emerald' ? 'rgba(16,185,129,0.15)' : confColor === 'amber' ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)', color: confColor === 'emerald' ? '#34d399' : confColor === 'amber' ? '#fbbf24' : '#f87171', borderColor: confColor === 'emerald' ? 'rgba(16,185,129,0.3)' : confColor === 'amber' ? 'rgba(245,158,11,0.3)' : 'rgba(239,68,68,0.3)' }}>{item.match.confidence}%</Badge>
+                        {item.amended && <Badge className="text-[8px] px-1.5 py-0 bg-blue-500/15 text-blue-400 border-blue-500/30">Amended</Badge>}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      {item.status === 'pending' && !bulkAllocRunning && (
+                        <button onClick={(e) => { e.stopPropagation(); removeBulkItem(item.posItemId); }} className="p-1.5 rounded-lg hover:bg-red-500/10 text-slate-600 hover:text-red-400 transition-colors" title="Remove" data-testid={`bulk-remove-${item.posItemId}`}>
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      {item.status === 'failed' && <span className="text-[10px] text-red-400 max-w-[100px] truncate hidden sm:inline" title={item.error}>{item.error}</span>}
+                      {!bulkAllocRunning && item.status === 'pending' && (
+                        <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {isExpanded && !bulkAllocRunning && item.status === 'pending' && (
+                  <div className="border-t border-slate-700/30 px-3.5 sm:px-4 py-3 space-y-3 animate-in slide-in-from-top-1 fade-in duration-200" style={{ background: 'rgba(0,0,0,0.15)' }}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <div className="text-[9px] text-slate-500 uppercase tracking-wider font-medium mb-1.5">Transaction Details</div>
+                        <div className="bg-slate-800/50 rounded-lg p-2.5 space-y-1.5 text-xs border border-slate-700/30">
+                          <div className="flex justify-between"><span className="text-slate-500">Description</span><span className="text-slate-300 text-right max-w-[200px] truncate" title={item.note}>{item.note || '—'}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500">Reference</span><span className="font-mono text-slate-300">{item.reference || '—'}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500">Date</span><span className="text-slate-300">{item.dateOfTransaction ? new Date(item.dateOfTransaction).toLocaleDateString('en-GB') : '—'}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500">Amount</span><span className="font-bold text-white">R {item.amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500">POS Item</span><span className="font-mono text-slate-400">{item.posItemId}</span></div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="text-[9px] text-slate-500 uppercase tracking-wider font-medium mb-1.5">Target Account</div>
+                        <div className={`rounded-lg p-2.5 space-y-1.5 text-xs border ${item.amended ? 'bg-blue-500/5 border-blue-500/20' : 'bg-emerald-500/5 border-emerald-500/20'}`}>
+                          <div className="flex justify-between"><span className="text-slate-500">Account No</span><span className={`font-mono font-bold ${item.amended ? 'text-blue-300' : 'text-emerald-300'}`}>{item.match.accountNo}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500">Name</span><span className="text-slate-300 text-right max-w-[160px] truncate">{item.match.name || '—'}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500">Match Type</span><span className="text-slate-300">{getMatchTypeLabel(item.match.matchType)}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500">Confidence</span><Badge className="text-[9px] px-1.5 py-0" style={{ backgroundColor: confColor === 'emerald' ? 'rgba(16,185,129,0.15)' : confColor === 'amber' ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)', color: confColor === 'emerald' ? '#34d399' : confColor === 'amber' ? '#fbbf24' : '#f87171', borderColor: confColor === 'emerald' ? 'rgba(16,185,129,0.3)' : confColor === 'amber' ? 'rgba(245,158,11,0.3)' : 'rgba(239,68,68,0.3)' }}>{item.match.confidence}%</Badge></div>
+                          {item.match.outstandingAmount != null && <div className="flex justify-between"><span className="text-slate-500">Outstanding</span><span className="font-mono text-slate-300">R {item.match.outstandingAmount.toFixed(2)}</span></div>}
+                        </div>
+                      </div>
+                    </div>
+
+                    {item.match.priorAllocations && item.match.priorAllocations.length > 0 && (
+                      <div>
+                        <div className="text-[9px] text-slate-500 uppercase tracking-wider font-medium mb-1.5 flex items-center gap-1.5">
+                          <HistoryIcon className="w-3 h-3 text-blue-400" /> Recent Allocations to this Account
+                        </div>
+                        <div className="space-y-1">
+                          {item.match.priorAllocations.slice(0, 3).map((pa, pi) => (
+                            <div key={pi} className="flex items-center gap-3 bg-blue-500/5 rounded-lg px-2.5 py-1.5 border border-blue-500/15 text-xs">
+                              <Calendar className="w-3 h-3 text-blue-400 shrink-0" />
+                              <span className="text-slate-400 shrink-0">{pa.dateCaptured ? new Date(pa.dateCaptured).toLocaleDateString('en-GB') : '—'}</span>
+                              <span className="text-slate-500 truncate flex-1" title={pa.paymentReference}>{pa.paymentReference || 'No reference'}</span>
+                              <span className="font-mono font-semibold text-blue-300 shrink-0">R {pa.allocatedAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {item.match.matchReasoning && item.match.matchReasoning.length > 0 && (
+                      <div className="bg-slate-800/30 rounded-lg px-2.5 py-2 border border-slate-700/30">
+                        <div className="text-[9px] text-slate-500 uppercase tracking-wider font-medium mb-1">Match Logic</div>
+                        <div className="space-y-0.5">
+                          {item.match.matchReasoning.map((r, ri) => (
+                            <div key={ri} className="text-[10px] text-slate-400 flex items-start gap-1.5">
+                              <span className="text-slate-600 mt-0.5 shrink-0">&#8226;</span><span>{r}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="border-t border-slate-700/30 pt-3">
+                      <div className="text-[9px] text-slate-500 uppercase tracking-wider font-medium mb-2">Change Account</div>
+                      <div className="flex flex-col gap-2">
+                        {!isSearching && item.alternativeMatches.length > 0 && (
+                          <div className="space-y-1">
+                            <div className="text-[10px] text-slate-500 mb-1">Alternative suggestions:</div>
+                            {item.alternativeMatches.slice(0, 3).map((alt, ai) => (
+                              <button key={ai} className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg border border-slate-700/40 hover:border-blue-500/40 hover:bg-blue-500/5 transition-all text-left text-xs group" onClick={() => changeBulkItemMatch(item.posItemId, alt)} data-testid={`bulk-alt-${item.posItemId}-${ai}`}>
+                                <div className="w-5 h-5 rounded flex items-center justify-center bg-slate-700/50 text-slate-400 group-hover:bg-blue-500/20 group-hover:text-blue-400 transition-colors shrink-0">
+                                  {getMatchIcon(alt.matchType)}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <span className="font-mono text-slate-300">{alt.accountNo}</span>
+                                  <span className="text-slate-500 ml-1.5">{alt.name}</span>
+                                </div>
+                                <Badge className="text-[8px] px-1.5 py-0 shrink-0" style={{ backgroundColor: alt.confidence >= 80 ? 'rgba(16,185,129,0.15)' : alt.confidence >= 60 ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)', color: alt.confidence >= 80 ? '#34d399' : alt.confidence >= 60 ? '#fbbf24' : '#f87171' }}>{alt.confidence}%</Badge>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {isSearching ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <div className="relative flex-1">
+                                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                                <Input
+                                  autoFocus
+                                  placeholder="Type account number or name..."
+                                  className="h-9 text-xs pl-8 bg-slate-800/80 border-slate-600 text-white placeholder:text-slate-500"
+                                  value={bulkSearchTerm}
+                                  onChange={(e) => { doBulkAccountSearch(e.target.value); }}
+                                  data-testid={`bulk-search-input-${item.posItemId}`}
+                                />
+                              </div>
+                              <Button size="sm" variant="ghost" className="h-9 text-slate-400 hover:text-white px-2" onClick={() => { setBulkSearching(null); setBulkSearchTerm(''); setBulkSearchResults([]); }}>
+                                Cancel
+                              </Button>
+                            </div>
+                            {bulkSearchResults.length > 0 && (
+                              <div className="space-y-1 max-h-[160px] overflow-y-auto">
+                                {bulkSearchResults.map((sr, si) => (
+                                  <button key={si} className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg border border-slate-700/40 hover:border-emerald-500/40 hover:bg-emerald-500/5 transition-all text-left text-xs" onClick={() => changeBulkItemMatch(item.posItemId, sr)} data-testid={`bulk-search-result-${item.posItemId}-${si}`}>
+                                    <Hash className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                                    <span className="font-mono text-emerald-300">{sr.accountNo}</span>
+                                    <span className="text-slate-400 flex-1 truncate">{sr.name}</span>
+                                    {sr.outstandingAmount != null && <span className="text-[10px] font-mono text-slate-500 shrink-0">R {sr.outstandingAmount.toFixed(2)}</span>}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            {bulkSearchTerm.length >= 3 && bulkSearchResults.length === 0 && (
+                              <div className="text-[10px] text-slate-500 text-center py-2">No accounts found</div>
+                            )}
+                          </div>
+                        ) : (
+                          <Button size="sm" variant="outline" className="h-8 text-xs border-slate-600 text-slate-400 hover:text-white hover:border-blue-500/40 hover:bg-blue-500/5 gap-1.5 w-full sm:w-auto" onClick={() => startBulkAccountSearch(item.posItemId)} data-testid={`bulk-change-account-${item.posItemId}`}>
+                            <Search className="w-3 h-3" /> Search Different Account
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="shrink-0 border-t border-slate-700/40 px-5 sm:px-7 py-4" style={{ background: 'rgba(0,0,0,0.2)' }}>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="text-xs text-slate-500 hidden sm:block">
+              {bulkAllocItems.length} item{bulkAllocItems.length !== 1 ? 's' : ''} · R {bulkAllocTotalAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })} total
+              {bulkAmendedCount > 0 && <span className="text-blue-400 ml-2">· {bulkAmendedCount} amended</span>}
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              {!bulkAllocRunning && bulkAllocDone === 0 && (
+                <>
+                  <Button variant="ghost" className="text-slate-400 hover:text-white flex-1 sm:flex-none" onClick={() => setBulkAllocOpen(false)} data-testid="bulk-alloc-cancel">
+                    Cancel
+                  </Button>
+                  <Button className="gap-2 flex-1 sm:flex-none h-10 px-6 font-semibold text-sm" style={{ background: 'linear-gradient(135deg, var(--pos-accent, #10b981), #3b82f6)', boxShadow: '0 4px 14px rgba(16,185,129,0.25)' }} onClick={executeBulkAllocate} disabled={bulkAllocItems.length === 0} data-testid="bulk-alloc-confirm">
+                    <Zap className="w-4 h-4" />
+                    Process {bulkAllocItems.length} Allocation{bulkAllocItems.length !== 1 ? 's' : ''}
+                  </Button>
+                </>
+              )}
+              {bulkAllocRunning && (
+                <Button variant="destructive" className="gap-1.5 flex-1 sm:flex-none" onClick={() => { bulkAllocAbort.current = true; }} data-testid="bulk-alloc-stop">
+                  <X className="w-4 h-4" /> Stop After Current
                 </Button>
-                <Button
-                  className="bg-emerald-600 hover:bg-emerald-700 gap-1.5"
-                  onClick={executeBulkAllocate}
-                  disabled={bulkAllocItems.length === 0}
-                  data-testid="bulk-alloc-confirm"
-                >
-                  <Zap className="w-4 h-4" />
-                  Confirm & Allocate All
+              )}
+              {!bulkAllocRunning && bulkAllocDone > 0 && (
+                <Button className="gap-2 flex-1 sm:flex-none h-10 px-6 font-semibold text-sm" style={{ background: bulkAllocFailCount > 0 ? 'linear-gradient(135deg, #f59e0b, #ef4444)' : 'linear-gradient(135deg, var(--pos-accent, #10b981), #3b82f6)', boxShadow: '0 4px 14px rgba(16,185,129,0.25)' }} onClick={() => { setBulkAllocOpen(false); setSelectedIds(new Set()); loadData(page); }} data-testid="bulk-alloc-done">
+                  <CheckSquare className="w-4 h-4" />
+                  {bulkAllocFailCount > 0 ? `Done — ${bulkAllocSuccessCount} Allocated, ${bulkAllocFailCount} Failed` : `Done — ${bulkAllocSuccessCount} Allocated`}
                 </Button>
-              </>
-            )}
-            {bulkAllocRunning && (
-              <Button
-                variant="destructive"
-                className="gap-1.5"
-                onClick={() => { bulkAllocAbort.current = true; }}
-                data-testid="bulk-alloc-stop"
-              >
-                <X className="w-4 h-4" />
-                Stop After Current
-              </Button>
-            )}
-            {!bulkAllocRunning && bulkAllocDone > 0 && (
-              <Button
-                className="gap-1.5"
-                style={{ background: 'var(--pos-accent, #10b981)' }}
-                onClick={() => {
-                  setBulkAllocOpen(false);
-                  setSelectedIds(new Set());
-                  loadData(page);
-                }}
-                data-testid="bulk-alloc-done"
-              >
-                Done — {bulkAllocSuccessCount} Allocated
-              </Button>
-            )}
-          </DialogFooter>
+              )}
+            </div>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
