@@ -92,6 +92,17 @@ const GENERIC_WORDS = new Set([
   'municipal', 'seq', 'inv', 'user',
 ]);
 
+const NON_AREA_DESCRIPTORS = new Set([
+  'building', 'plan', 'plans', 'rezoning', 'subdivision', 'consolidation',
+  'lease', 'rental', 'tender', 'deposit', 'fee', 'fees', 'fine', 'fines',
+  'penalty', 'licence', 'license', 'permit', 'certificate', 'valuation',
+  'rates', 'assessment', 'clearance', 'housing', 'land', 'sale', 'purchase',
+  'rent', 'application', 'approval', 'connection', 'reconnection',
+  'disconnection', 'advertising', 'sign', 'encroachment', 'wayleave',
+  'cemetery', 'burial', 'cremation', 'pool', 'hall', 'venue',
+  'inspection', 'compliance', 'occupancy', 'business', 'trading',
+]);
+
 interface ParsedErf {
   erf: string;
   portion: string | null;
@@ -256,7 +267,7 @@ function parseDescriptionForClues(note: string, reference: string): ParsedClues 
 
       if (erfNum && erfNum.length > 8) continue;
 
-      if (area && GENERIC_WORDS.has(area)) {
+      if (area && (GENERIC_WORDS.has(area) || NON_AREA_DESCRIPTORS.has(area))) {
         area = '';
       }
       if (area && area.length <= 2) {
