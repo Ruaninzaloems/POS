@@ -42,10 +42,20 @@ interface DDSearchResult {
 import { validateAllocationAmount, calculateAllocationTotals } from '@/lib/allocation-logic';
 import { HelpTip } from '@/components/ui/help-tip';
 
-export default function AllocateTransaction() {
+interface AllocateTransactionProps {
+  dialogMode?: boolean;
+  dialogPosItemId?: number;
+  onDialogClose?: () => void;
+  onDialogComplete?: () => void;
+  preselectedAccountData?: { accountNo: string; name: string; accountId: number; amount?: number };
+}
+
+export default function AllocateTransaction({ dialogMode, dialogPosItemId, onDialogClose, onDialogComplete, preselectedAccountData }: AllocateTransactionProps = {}) {
   const [, params] = useRoute('/direct-deposits/manual/allocate/:id');
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  
+  const effectivePosItemId = dialogMode && dialogPosItemId ? dialogPosItemId : (params?.id ? parseInt(params.id, 10) : NaN);
   
   const [transaction, setTransaction] = useState<BankReconPosItem | null>(null);
   const [loadingTx, setLoadingTx] = useState(false);
@@ -668,43 +678,52 @@ export default function AllocateTransaction() {
   };
 
   useEffect(() => {
-    if (params?.id) {
-        const posItemId = parseInt(params.id, 10);
-        if (isNaN(posItemId)) return;
+    const posItemId = effectivePosItemId;
+    if (!posItemId || isNaN(posItemId)) return;
         
-        setLoadingTx(true);
-        setLoadError(null);
-        platinumGetPosItemDetails(posItemId)
-          .then((result: any) => {
-            if (result && result.posItem_ID) {
-              setTransaction(result as BankReconPosItem);
-            } else {
-              setLoadError(`POS item #${posItemId} not found.`);
-            }
-          })
-          .catch((e: any) => {
-            console.error("Failed to load POS item", e);
-            setLoadError(e.message || "Failed to load POS item details from Platinum API.");
-          })
-          .finally(() => setLoadingTx(false));
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const preAccountId = urlParams.get('accountId');
-        const preAccountNo = urlParams.get('accountNo');
-        const preName = urlParams.get('name');
-        const preAmount = urlParams.get('amount');
-        if (preAccountId && preAccountNo) {
-          setSelectedAccount({
-            accountNo: preAccountNo,
-            name: preName || 'Unknown',
-            description: preName || preAccountNo,
-            accountId: parseInt(preAccountId, 10),
-            allocationType: 'ACCOUNT',
-          });
-          setNewLineAmount(preAmount && parseFloat(preAmount) > 0 ? parseFloat(preAmount).toFixed(2) : "0.00");
+    setLoadingTx(true);
+    setLoadError(null);
+    platinumGetPosItemDetails(posItemId)
+      .then((result: any) => {
+        if (result && result.posItem_ID) {
+          setTransaction(result as BankReconPosItem);
+        } else {
+          setLoadError(`POS item #${posItemId} not found.`);
         }
+      })
+      .catch((e: any) => {
+        console.error("Failed to load POS item", e);
+        setLoadError(e.message || "Failed to load POS item details from Platinum API.");
+      })
+      .finally(() => setLoadingTx(false));
+
+    if (dialogMode && preselectedAccountData) {
+      setSelectedAccount({
+        accountNo: preselectedAccountData.accountNo,
+        name: preselectedAccountData.name || 'Unknown',
+        description: preselectedAccountData.name || preselectedAccountData.accountNo,
+        accountId: preselectedAccountData.accountId,
+        allocationType: 'ACCOUNT',
+      });
+      setNewLineAmount(preselectedAccountData.amount && preselectedAccountData.amount > 0 ? preselectedAccountData.amount.toFixed(2) : "0.00");
+    } else if (!dialogMode) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const preAccountId = urlParams.get('accountId');
+      const preAccountNo = urlParams.get('accountNo');
+      const preName = urlParams.get('name');
+      const preAmount = urlParams.get('amount');
+      if (preAccountId && preAccountNo) {
+        setSelectedAccount({
+          accountNo: preAccountNo,
+          name: preName || 'Unknown',
+          description: preName || preAccountNo,
+          accountId: parseInt(preAccountId, 10),
+          allocationType: 'ACCOUNT',
+        });
+        setNewLineAmount(preAmount && parseFloat(preAmount) > 0 ? parseFloat(preAmount).toFixed(2) : "0.00");
+      }
     }
-  }, [params?.id]);
+  }, [effectivePosItemId]);
 
   const { allocatedTotal, remaining, isFullyAllocated } = transaction 
     ? calculateAllocationTotals(lines, transaction.amount)
@@ -1483,27 +1502,37 @@ export default function AllocateTransaction() {
     }
   };
 
+  const Wrapper = dialogMode ? React.Fragment : PosLayout;
+
   if (loadingTx) return (
-    <PosLayout>
-      <div className="flex-1 flex items-center justify-center">
+    <Wrapper>
+      <div className="flex-1 flex items-center justify-center py-20">
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
       </div>
-    </PosLayout>
+    </Wrapper>
   );
   
   if (!transaction) return (
-    <PosLayout>
+    <Wrapper>
       <div className="p-8 text-center text-muted-foreground">
         {loadError ? (
           <div className="space-y-2">
             <p className="text-red-600">{loadError}</p>
-            <Link href="/direct-deposits/manual"><Button variant="link">Back to queue</Button></Link>
+            {dialogMode ? (
+              <Button variant="link" onClick={onDialogClose}>Close</Button>
+            ) : (
+              <Link href="/direct-deposits/manual"><Button variant="link">Back to queue</Button></Link>
+            )}
           </div>
         ) : (
-          <div>POS item not found. <Link href="/direct-deposits/manual"><Button variant="link">Back to queue</Button></Link></div>
+          <div>POS item not found. {dialogMode ? (
+            <Button variant="link" onClick={onDialogClose}>Close</Button>
+          ) : (
+            <Link href="/direct-deposits/manual"><Button variant="link">Back to queue</Button></Link>
+          )}</div>
         )}
       </div>
-    </PosLayout>
+    </Wrapper>
   );
 
   if (postComplete && transaction) {
@@ -1512,8 +1541,8 @@ export default function AllocateTransaction() {
     const linesWithReceipts = completedLines.filter(l => l.receiptId && l.receiptId > 0);
 
     return (
-      <PosLayout>
-        <div className="flex flex-col flex-1 min-h-0 overflow-auto sm:overflow-hidden">
+      <Wrapper>
+        <div className={`flex flex-col flex-1 min-h-0 overflow-auto ${dialogMode ? '' : 'sm:overflow-hidden'}`}>
           <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
@@ -1698,11 +1727,11 @@ export default function AllocateTransaction() {
 
               <div className="flex justify-center pt-2">
                 <Button
-                  onClick={() => setLocation('/direct-deposits/manual')}
+                  onClick={() => { if (dialogMode && onDialogComplete) { onDialogComplete(); } else { setLocation('/direct-deposits/manual'); } }}
                   className="gap-2 bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-white px-6"
                   data-testid="button-back-to-queue"
                 >
-                  <ArrowLeft className="h-4 w-4" /> Back to Queue
+                  <ArrowLeft className="h-4 w-4" /> {dialogMode ? 'Close & Refresh' : 'Back to Queue'}
                 </Button>
               </div>
             </div>
@@ -1848,7 +1877,7 @@ export default function AllocateTransaction() {
           onClose={() => setEnquiryAccountId(null)}
           accountId={enquiryAccountId || ''}
         />
-      </PosLayout>
+      </Wrapper>
     );
   }
 
@@ -1865,14 +1894,20 @@ export default function AllocateTransaction() {
   ] as const;
 
   return (
-    <PosLayout>
-      <div className="flex flex-col flex-1 min-h-0 overflow-auto sm:overflow-hidden">
+    <Wrapper>
+      <div className={`flex flex-col flex-1 min-h-0 overflow-auto ${dialogMode ? '' : 'sm:overflow-hidden'}`}>
         <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5 flex items-center gap-2 sm:gap-4">
-             <Link href="/direct-deposits/manual">
-                <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-9 sm:w-9 rounded-full hover:bg-[#F2F4F7]" data-testid="button-back">
-                    <ArrowLeft className="w-4 h-4" />
-                </Button>
-             </Link>
+             {dialogMode ? (
+               <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-9 sm:w-9 rounded-full hover:bg-[#F2F4F7]" onClick={onDialogClose} data-testid="button-back">
+                 <ArrowLeft className="w-4 h-4" />
+               </Button>
+             ) : (
+               <Link href="/direct-deposits/manual">
+                  <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-9 sm:w-9 rounded-full hover:bg-[#F2F4F7]" data-testid="button-back">
+                      <ArrowLeft className="w-4 h-4" />
+                  </Button>
+               </Link>
+             )}
              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
                  <Banknote className="w-5 h-5 text-white" />
              </div>
@@ -2935,6 +2970,6 @@ export default function AllocateTransaction() {
           onClose={() => setEnquiryAccountId(null)}
           accountId={enquiryAccountId || ''}
       />
-    </PosLayout>
+    </Wrapper>
   );
 }

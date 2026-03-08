@@ -16,6 +16,7 @@ import { platinumGetBankReconPosItemList, platinumCheckSelectedItemProcessed, pl
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { usePos } from '@/lib/pos-state';
 import { useToast } from '@/hooks/use-toast';
+import AllocateTransaction from './allocate-transaction';
 
 interface BankReconPosItem {
   posItem_ID: number;
@@ -779,6 +780,9 @@ export default function UnmatchedQueue() {
   const [autoMatchRunning, setAutoMatchRunning] = useState(false);
   const [autoMatchProgress, setAutoMatchProgress] = useState({ done: 0, total: 0 });
   const autoMatchAbort = useRef(false);
+  
+  const [allocateDialogPosItemId, setAllocateDialogPosItemId] = useState<number | null>(null);
+  const [allocateDialogKey, setAllocateDialogKey] = useState(0);
 
   useEffect(() => {
     setSelectedIds(new Set());
@@ -995,10 +999,12 @@ export default function UnmatchedQueue() {
         });
         return;
       }
-      setLocation(`/direct-deposits/manual/allocate/${posItemId}`);
+      setAllocateDialogKey(k => k + 1);
+      setAllocateDialogPosItemId(posItemId);
     } catch (e: any) {
       console.error("Failed to check item processed status", e);
-      setLocation(`/direct-deposits/manual/allocate/${posItemId}`);
+      setAllocateDialogKey(k => k + 1);
+      setAllocateDialogPosItemId(posItemId);
     } finally {
       setCheckingItemId(null);
     }
@@ -2271,6 +2277,21 @@ export default function UnmatchedQueue() {
             </div>
           </div>
         </div>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog open={allocateDialogPosItemId !== null} onOpenChange={(open) => { if (!open) { setAllocateDialogPosItemId(null); loadData(page); } }}>
+      <DialogContent hideCloseButton className="max-w-[100vw] sm:max-w-6xl w-[98vw] h-[100dvh] sm:h-[92vh] sm:max-h-[92vh] overflow-hidden flex flex-col p-0 rounded-none sm:rounded-xl border-0 sm:border bg-white">
+        <div className="sr-only"><DialogTitle>Allocate Transaction</DialogTitle><DialogDescription>Allocate direct deposit to accounts</DialogDescription></div>
+        {allocateDialogPosItemId && (
+          <AllocateTransaction
+            key={allocateDialogKey}
+            dialogMode
+            dialogPosItemId={allocateDialogPosItemId}
+            onDialogClose={() => { setAllocateDialogPosItemId(null); loadData(page); }}
+            onDialogComplete={() => { setAllocateDialogPosItemId(null); loadData(page); }}
+          />
+        )}
       </DialogContent>
     </Dialog>
     </>
