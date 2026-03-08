@@ -266,6 +266,8 @@ function parseDescriptionForClues(note: string, reference: string): ParsedClues 
         erfNum = match[1];
       }
 
+      if (erfNum && erfNum.length > 8) continue;
+
       if (area && AREA_ABBREVIATIONS[area]) {
         area = AREA_ABBREVIATIONS[area];
       }
@@ -282,6 +284,24 @@ function parseDescriptionForClues(note: string, reference: string): ParsedClues 
       if (erfNum && !erfNumbers.some(e => e.erf === erfNum && e.portion === portion)) {
         erfNumbers.push({ erf: erfNum, portion, area: area || 'george', qualifier });
       }
+    }
+  }
+
+  const AREA_CODE_KEYS = Object.keys(AREA_ABBREVIATIONS).map(k => k.toUpperCase());
+  const areaAccountPattern = new RegExp(`\\b(${AREA_CODE_KEYS.join('|')})\\s+(\\d{7,12})\\b`, 'gi');
+  let areaAccMatch;
+  while ((areaAccMatch = areaAccountPattern.exec(text)) !== null) {
+    const areaCode = areaAccMatch[1].toLowerCase();
+    const accNum = areaAccMatch[2];
+    const resolvedArea = AREA_ABBREVIATIONS[areaCode] || areaCode;
+    if (!accountNumbers.includes(accNum)) {
+      accountNumbers.push(accNum);
+    }
+    if (accNum.length >= 7 && accNum.length <= 10 && !oldAccountCodes.includes(accNum)) {
+      oldAccountCodes.push(accNum);
+    }
+    if (resolvedArea && !keywords.includes(resolvedArea)) {
+      keywords.push(resolvedArea);
     }
   }
 
