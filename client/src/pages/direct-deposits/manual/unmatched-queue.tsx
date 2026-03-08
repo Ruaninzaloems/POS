@@ -1154,6 +1154,7 @@ export default function UnmatchedQueue() {
   const [autoMatchRunning, setAutoMatchRunning] = useState(false);
   const [autoMatchProgress, setAutoMatchProgress] = useState({ done: 0, total: 0 });
   const autoMatchAbort = useRef(false);
+  const selectionToolbarRef = useRef<HTMLDivElement>(null);
   const [autoMatchQueued, setAutoMatchQueued] = useState<Set<number>>(new Set());
   const [autoMatchOrder, setAutoMatchOrder] = useState<Map<number, number>>(new Map());
   const autoMatchTotalRef = useRef(0);
@@ -2421,9 +2422,13 @@ export default function UnmatchedQueue() {
                               >
                                 {loadingSuggestions.has(tx.posItem_ID) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : autoMatchQueued.has(tx.posItem_ID) ? <Clock className="w-3.5 h-3.5 text-slate-400" /> : <Sparkles className="w-3.5 h-3.5" />}
                                 {loadingSuggestions.has(tx.posItem_ID)
-                                  ? `${autoMatchOrder.get(tx.posItem_ID) || ''}/${autoMatchTotalRef.current || autoMatchProgress.total} Searching...`
+                                  ? autoMatchRunning && autoMatchOrder.has(tx.posItem_ID)
+                                    ? `${autoMatchOrder.get(tx.posItem_ID)}/${autoMatchTotalRef.current} Searching...`
+                                    : 'Searching...'
                                   : autoMatchQueued.has(tx.posItem_ID)
-                                    ? `#${autoMatchOrder.get(tx.posItem_ID) || ''}/${autoMatchTotalRef.current || autoMatchProgress.total} Queued`
+                                    ? autoMatchRunning && autoMatchOrder.has(tx.posItem_ID)
+                                      ? `#${autoMatchOrder.get(tx.posItem_ID)}/${autoMatchTotalRef.current} Queued`
+                                      : 'Queued'
                                     : 'Find Match'}
                               </Button>
                               <Button
@@ -2580,7 +2585,7 @@ export default function UnmatchedQueue() {
           </div>
 
           {selectedIds.size > 0 && (
-            <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-3 duration-200 max-w-[95vw]">
+            <div ref={selectionToolbarRef} className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-3 duration-200 max-w-[95vw]">
               <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 bg-[#1a1a2e] text-white rounded-2xl shadow-2xl px-4 sm:px-5 py-3 border border-white/10 backdrop-blur-xl">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-[var(--pos-accent)] flex items-center justify-center shrink-0">
@@ -2652,7 +2657,10 @@ export default function UnmatchedQueue() {
     </PosLayout>
 
     {autoMatchRunning && ReactDOM.createPortal(
-      <div className={`fixed left-1/2 -translate-x-1/2 z-[9999] w-[calc(100%-2rem)] max-w-xl transition-all duration-300 ${selectedIds.size > 0 ? 'bottom-20' : 'bottom-4'}`} data-testid="auto-match-progress-bar">
+      <div
+        className="fixed left-1/2 -translate-x-1/2 z-[9999] w-[calc(100%-2rem)] max-w-xl transition-all duration-300"
+        style={{ bottom: selectedIds.size > 0 && selectionToolbarRef.current ? `${selectionToolbarRef.current.offsetHeight + 24}px` : '16px' }}
+        data-testid="auto-match-progress-bar">
         <div className="bg-white border-2 border-amber-300 rounded-2xl px-4 py-3" style={{ boxShadow: '0 8px 32px rgba(217,119,6,0.25), 0 0 0 1px rgba(217,119,6,0.1)' }}>
           <div className="flex items-center gap-3">
             <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
