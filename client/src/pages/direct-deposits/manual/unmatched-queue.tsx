@@ -1159,7 +1159,22 @@ export default function UnmatchedQueue() {
   const [autoMatchOrder, setAutoMatchOrder] = useState<Map<number, number>>(new Map());
   const autoMatchTotalRef = useRef(0);
   const [autoMatchEta, setAutoMatchEta] = useState<number | null>(null);
-  
+
+  const cancelAutoMatch = useCallback(() => {
+    if (autoMatchRunning) {
+      autoMatchAbort.current = true;
+    }
+    setAutoMatchRunning(false);
+    setAutoMatchProgress({ done: 0, total: 0 });
+    setAutoMatchQueued(new Set());
+    setAutoMatchOrder(new Map());
+    setAutoMatchEta(null);
+    autoMatchTotalRef.current = 0;
+    setLoadingSuggestions(new Set());
+    setSuggestions({});
+    setSelectedIds(new Set());
+  }, [autoMatchRunning]);
+
   const [allocateDialogPosItemId, setAllocateDialogPosItemId] = useState<number | null>(null);
   const [allocateDialogKey, setAllocateDialogKey] = useState(0);
 
@@ -1242,12 +1257,18 @@ export default function UnmatchedQueue() {
     loadData(page);
   }, [page, pageSize, loadData]);
 
+  const changePage = useCallback((newPage: number | ((prev: number) => number)) => {
+    cancelAutoMatch();
+    setPage(newPage);
+  }, [cancelAutoMatch]);
+
   const handlePageSizeChange = useCallback((newSize: number) => {
     const firstItemIndex = (page - 1) * pageSize;
     const newPage = Math.max(1, Math.floor(firstItemIndex / newSize) + 1);
+    cancelAutoMatch();
     setPageSize(newSize);
     setPage(newPage);
-  }, [page, pageSize]);
+  }, [page, pageSize, cancelAutoMatch]);
 
   useEffect(() => {
     if (searchTerm.trim().length >= 2 && !allItemsCacheRef.current) {
@@ -2487,10 +2508,10 @@ export default function UnmatchedQueue() {
                   </div>
                   {totalPages > 1 && (
                     <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page <= 1 || loading} onClick={() => setPage(1)} data-testid="button-first-page" title="First page">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page <= 1 || loading} onClick={() => changePage(1)} data-testid="button-first-page" title="First page">
                         <ChevronsLeft className="w-3.5 h-3.5" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page <= 1 || loading} onClick={() => setPage(p => p - 1)} data-testid="button-prev-page" title="Previous page">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page <= 1 || loading} onClick={() => changePage(p => p - 1)} data-testid="button-prev-page" title="Previous page">
                         <ChevronLeft className="w-3.5 h-3.5" />
                       </Button>
                       {getPageNumbers(page, totalPages).map((p, idx) =>
@@ -2503,7 +2524,7 @@ export default function UnmatchedQueue() {
                               ? 'bg-[var(--pos-accent)] text-white shadow-sm'
                               : 'text-slate-600 hover:bg-slate-100'
                             }`}
-                            onClick={() => setPage(p)}
+                            onClick={() => changePage(p)}
                             disabled={loading}
                             data-testid={`button-page-${p}`}
                           >
@@ -2511,10 +2532,10 @@ export default function UnmatchedQueue() {
                           </button>
                         )
                       )}
-                      <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page >= totalPages || loading} onClick={() => setPage(p => p + 1)} data-testid="button-next-page" title="Next page">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page >= totalPages || loading} onClick={() => changePage(p => p + 1)} data-testid="button-next-page" title="Next page">
                         <ChevronRight className="w-3.5 h-3.5" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page >= totalPages || loading} onClick={() => setPage(totalPages)} data-testid="button-last-page" title="Last page">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page >= totalPages || loading} onClick={() => changePage(totalPages)} data-testid="button-last-page" title="Last page">
                         <ChevronsRight className="w-3.5 h-3.5" />
                       </Button>
                     </div>
@@ -2549,10 +2570,10 @@ export default function UnmatchedQueue() {
                 </div>
                 {totalPages > 1 && (
                   <div className="flex items-center justify-center gap-1">
-                    <Button variant="ghost" size="icon" className="h-9 w-9" disabled={page <= 1 || loading} onClick={() => setPage(1)}>
+                    <Button variant="ghost" size="icon" className="h-9 w-9" disabled={page <= 1 || loading} onClick={() => changePage(1)}>
                       <ChevronsLeft className="w-4 h-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-9 w-9" disabled={page <= 1 || loading} onClick={() => setPage(p => p - 1)}>
+                    <Button variant="ghost" size="icon" className="h-9 w-9" disabled={page <= 1 || loading} onClick={() => changePage(p => p - 1)}>
                       <ChevronLeft className="w-4 h-4" />
                     </Button>
                     {getPageNumbers(page, totalPages).map((p, idx) =>
@@ -2565,17 +2586,17 @@ export default function UnmatchedQueue() {
                             ? 'bg-[var(--pos-accent)] text-white shadow-sm'
                             : 'text-slate-600 hover:bg-slate-100'
                           }`}
-                          onClick={() => setPage(p)}
+                          onClick={() => changePage(p)}
                           disabled={loading}
                         >
                           {p}
                         </button>
                       )
                     )}
-                    <Button variant="ghost" size="icon" className="h-9 w-9" disabled={page >= totalPages || loading} onClick={() => setPage(p => p + 1)}>
+                    <Button variant="ghost" size="icon" className="h-9 w-9" disabled={page >= totalPages || loading} onClick={() => changePage(p => p + 1)}>
                       <ChevronRight className="w-4 h-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-9 w-9" disabled={page >= totalPages || loading} onClick={() => setPage(totalPages)}>
+                    <Button variant="ghost" size="icon" className="h-9 w-9" disabled={page >= totalPages || loading} onClick={() => changePage(totalPages)}>
                       <ChevronsRight className="w-4 h-4" />
                     </Button>
                   </div>
