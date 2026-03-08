@@ -2789,7 +2789,10 @@ export default function UnmatchedQueue() {
                               );
                             })()}
                           </div>
-                          <span className={`text-[8px] font-bold shrink-0 mt-1 ${isClr ? 'text-cyan-600' : isInst ? 'text-teal-600' : isDI ? 'text-violet-600' : 'text-green-600'}`}>{isSpecial ? 'Allocate →' : 'Quick Allocate →'}</span>
+                          <div className={`shrink-0 mt-1.5 self-end px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-wide uppercase flex items-center gap-1.5 transition-all shadow-sm ${isClr ? 'bg-cyan-600 text-white shadow-cyan-200' : isInst ? 'bg-teal-600 text-white shadow-teal-200' : isDI ? 'bg-violet-600 text-white shadow-violet-200' : 'bg-emerald-600 text-white shadow-emerald-200'}`}>
+                            {isSpecial ? 'Allocate' : 'Quick Allocate'}
+                            <ArrowRight className="w-3 h-3" />
+                          </div>
                         </button>
                         );
                       };
@@ -3025,8 +3028,11 @@ export default function UnmatchedQueue() {
                                       );
                                     })()}
                                   </div>
-                                  <div className="flex flex-col items-end gap-1 shrink-0 ml-1">
-                                    <span className={`text-[8px] font-bold whitespace-nowrap ${isClr ? 'text-cyan-600' : isInst ? 'text-teal-600' : isDI ? 'text-violet-600' : 'text-green-600'}`}>{isSpecial ? 'Allocate →' : 'Quick Allocate →'}</span>
+                                  <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
+                                    <div className={`px-3.5 py-1.5 rounded-lg text-[10px] font-bold tracking-wide uppercase flex items-center gap-1.5 transition-all shadow-sm whitespace-nowrap ${isClr ? 'bg-cyan-600 text-white shadow-cyan-200 hover:bg-cyan-700' : isInst ? 'bg-teal-600 text-white shadow-teal-200 hover:bg-teal-700' : isDI ? 'bg-violet-600 text-white shadow-violet-200 hover:bg-violet-700' : 'bg-emerald-600 text-white shadow-emerald-200 hover:bg-emerald-700'}`}>
+                                      {isSpecial ? 'Allocate' : 'Quick Allocate'}
+                                      <ArrowRight className="w-3 h-3" />
+                                    </div>
                                   </div>
                                 </button>
                               );
