@@ -1066,6 +1066,129 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
     }
   }
 
+  const ensureStrArr = (v: any): string[] =>
+    Array.isArray(v) ? v.filter((x: any) => typeof x === 'string' && x.trim()) : [];
+  const norm = (s: string) => s.trim().toLowerCase().replace(/[\s\-\/]+/g, '');
+  const normNum = (s: string) => s.replace(/^0+/, '') || '0';
+  const regexAccNorm = new Set(clues.accountNumbers.map(norm));
+  const regexErfNorm = new Set(clues.erfNumbers.map((e: any) => normNum(typeof e === 'string' ? e : e.erf)));
+  const regexOldNorm = new Set(clues.oldAccountCodes.map(norm));
+  const regexNameNorm = new Set((clues.nameSearchTerms || []).map((n: string) => n.toLowerCase().trim()));
+  const aiSearchedIds = new Set<string>();
+
+  searchPromises.push(
+    safe(async () => {
+      const aiResp = await fetch('/api/ai/parse-description', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ description: note, reference }),
+      });
+      if (!aiResp.ok) return;
+      const ai = await aiResp.json();
+      console.log('[AI Parse]', note, ai);
+
+      const aiSearches: Promise<void>[] = [];
+
+      for (const accNum of ensureStrArr(ai.accountNumbers).slice(0, 3)) {
+        const n = norm(accNum);
+        if (regexAccNorm.has(n) || aiSearchedIds.has(`acc:${n}`)) continue;
+        aiSearchedIds.add(`acc:${n}`);
+        aiSearches.push(
+          safe(() => platinumDDAccountAutocomplete(accNum)).then((rawData: any) => {
+            const items = unwrap(rawData);
+            for (const item of items.slice(0, 3)) {
+              addResult(item, 'account_number',
+                `AI: Account "${accNum}"`,
+                85,
+                [`AI identified "${accNum}" as account number`, `Searched DD autocomplete`]
+              );
+            }
+          })
+        );
+      }
+
+      for (const erfNum of ensureStrArr(ai.erfNumbers).slice(0, 3)) {
+        const n = normNum(erfNum);
+        if (regexErfNorm.has(n) || aiSearchedIds.has(`erf:${n}`)) continue;
+        aiSearchedIds.add(`erf:${n}`);
+        aiSearches.push(
+          safe(() => fetchAccounts({ erfNumber: erfNum })).then((items: any[]) => {
+            for (const item of items.slice(0, 5)) {
+              addResult(item, 'erf_number', `AI: ERF ${erfNum}`, 85,
+                [`AI identified "${erfNum}" as ERF number`, `Searched billing enquiry`]);
+            }
+          })
+        );
+        const erfPadded = erfNum.padStart(8, '0');
+        aiSearches.push(
+          safe(() => platinumDDOldAccountAutocomplete(erfPadded)).then((rawData: any) => {
+            const items = unwrap(rawData);
+            for (const item of items.slice(0, 5)) {
+              addResult(item, 'erf_number', `AI: ERF ${erfNum} (SG code)`, 90,
+                [`AI identified "${erfNum}" as ERF number`, `Searched as padded SG code "${erfPadded}"`]);
+            }
+          })
+        );
+      }
+
+      for (const oldCode of ensureStrArr(ai.oldAccountCodes).slice(0, 3)) {
+        const n = norm(oldCode);
+        if (regexOldNorm.has(n) || aiSearchedIds.has(`old:${n}`)) continue;
+        aiSearchedIds.add(`old:${n}`);
+        aiSearches.push(
+          safe(() => platinumDDOldAccountAutocomplete(oldCode)).then((rawData: any) => {
+            const items = unwrap(rawData);
+            for (const item of items.slice(0, 3)) {
+              addResult(item, 'old_account', `AI: Old code "${oldCode}"`, 80,
+                [`AI identified "${oldCode}" as old account code`, `Searched DD old account autocomplete`]);
+            }
+          })
+        );
+      }
+
+      for (const name of ensureStrArr(ai.names).slice(0, 2)) {
+        if (regexNameNorm.has(name.toLowerCase().trim()) || aiSearchedIds.has(`name:${name.toLowerCase()}`)) continue;
+        aiSearchedIds.add(`name:${name.toLowerCase()}`);
+        aiSearches.push(
+          safe(() => platinumSearchAccountsPayment({ name })).then((rawData: any) => {
+            const items = unwrap(rawData);
+            for (const item of items.slice(0, 3)) {
+              addResult(item, 'name', `AI: Name "${name}"`, 55,
+                [`AI identified "${name}" as person/company name`, `Searched via payment accounts name search`]);
+            }
+          })
+        );
+      }
+
+      for (const refNum of ensureStrArr(ai.referenceNumbers).slice(0, 3)) {
+        const n = norm(refNum);
+        if (regexAccNorm.has(n) || regexOldNorm.has(n) || aiSearchedIds.has(`ref:${n}`)) continue;
+        aiSearchedIds.add(`ref:${n}`);
+        aiSearches.push(
+          safe(() => platinumDDAccountAutocomplete(refNum)).then((rawData: any) => {
+            const items = unwrap(rawData);
+            for (const item of items.slice(0, 3)) {
+              addResult(item, 'reference', `AI: Ref "${refNum}"`, 70,
+                [`AI identified "${refNum}" as reference number`, `Searched DD autocomplete`]);
+            }
+          })
+        );
+        aiSearches.push(
+          safe(() => platinumDDOldAccountAutocomplete(refNum)).then((rawData: any) => {
+            const items = unwrap(rawData);
+            for (const item of items.slice(0, 3)) {
+              addResult(item, 'reference', `AI: Ref "${refNum}" (old code)`, 70,
+                [`AI identified "${refNum}" as reference number`, `Searched old account autocomplete`]);
+            }
+          })
+        );
+      }
+
+      await Promise.all(aiSearches);
+    })
+  );
+
   await Promise.all(searchPromises);
 
   suggestions.sort((a, b) => b.confidence - a.confidence);

@@ -4,6 +4,7 @@ import { platinumGet, platinumPost, platinumPut, platinumDelete, loginWithCreden
 import { execSync } from "child_process";
 import { writeFileSync, unlinkSync, existsSync } from "fs";
 import type { Request } from "express";
+import OpenAI from "openai";
 
 function getSession(req: Request): UserSession {
   if (!req.session.platinumAuth) {
@@ -6648,6 +6649,132 @@ export async function registerRoutes(
     }
   });
 
+
+  const aiOpenai = new OpenAI({
+    apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+    baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+  });
+
+  app.post("/api/ai/parse-description", async (req, res) => {
+    const session = requireAuth(req, res);
+    if (!session) return;
+
+    try {
+      const { description, reference } = req.body;
+      if (!description) {
+        return res.status(400).json({ message: "description required" });
+      }
+
+      const prompt = `You are a municipal banking description parser for a South African municipality. Analyze this bank statement description and extract ALL possible identifiers that could be used to find the account.
+
+Bank statement description: "${description}"
+${reference ? `Reference: "${reference}"` : ''}
+
+Extract the following identifiers if present. Be thorough - look for ALL possible matches:
+
+1. **Account Numbers**: Municipal account numbers (typically 10-15 digits, may have leading zeros). Look for patterns like "000000001234" or numbers after ACC/ACCOUNT/AC.
+2. **ERF Numbers**: Property ERF/stand numbers (typically 3-8 digits). Look for patterns like "ERF 14783", "ERF NO 5043", "STAND 1234".
+3. **Old Account Codes / SG Codes**: Legacy property codes in format like "C027/0002/00014783/00000" or partial codes. Numbers that could be part of SG codes.
+4. **Meter Numbers**: Electricity/water meter numbers. Look for "MTR", "METER", or standalone long numbers.
+5. **Person/Company Names**: Any names of people or companies/businesses in the description. Names may appear as "SURNAME FIRSTNAME", "J SMITH", "SMITH & JONES", etc. Strip banking noise words (FNB, ABSA, PMT, OB, EFT, CREDIT, DEBIT, REF, INTERNET, DOM, MAGTAPE, DEPOSIT, TRANSFER, STANDARD, NEDBANK, CAPITEC, INVESTEC, CASHFOCUS, ONTEC).
+6. **Location/Area Keywords**: Any town, suburb, or area names mentioned.
+7. **Reference Numbers**: Any reference numbers that could help identify the account.
+
+Respond ONLY with valid JSON in this exact format:
+{
+  "accountNumbers": ["string array of account numbers found"],
+  "erfNumbers": ["string array of ERF/stand numbers found"],
+  "oldAccountCodes": ["string array of old account codes or SG code parts found"],
+  "meterNumbers": ["string array of meter numbers found"],
+  "names": ["string array of person or company names found"],
+  "areaKeywords": ["string array of location/area keywords found"],
+  "referenceNumbers": ["string array of reference numbers found"],
+  "reasoning": "brief explanation of what you found and why"
+}
+
+If no identifiers of a type are found, use an empty array. Be aggressive in finding identifiers - err on the side of including possible matches rather than missing them.`;
+
+      const completion = await aiOpenai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.1,
+        max_tokens: 500,
+        response_format: { type: "json_object" },
+      });
+
+      const content = completion.choices[0]?.message?.content || "{}";
+      const parsed = JSON.parse(content);
+      res.json(parsed);
+    } catch (e: any) {
+      console.error("[AI Parse] Error:", e.message);
+      res.status(500).json({ message: "AI parsing failed", detail: e.message });
+    }
+  });
+
+  app.post("/api/ai/parse-descriptions-batch", async (req, res) => {
+    const session = requireAuth(req, res);
+    if (!session) return;
+
+    try {
+      const { items } = req.body;
+      if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ message: "items array required" });
+      }
+
+      const batchItems = items.slice(0, 10);
+
+      const descriptionsText = batchItems.map((item: any, i: number) =>
+        `[${i}] "${item.description}"${item.reference ? ` (ref: "${item.reference}")` : ''}`
+      ).join('\n');
+
+      const prompt = `You are a municipal banking description parser for a South African municipality. Analyze these bank statement descriptions and extract ALL possible identifiers from EACH one.
+
+${descriptionsText}
+
+For each description, extract:
+- accountNumbers: Municipal account numbers (10-15 digits with leading zeros)
+- erfNumbers: Property ERF/stand numbers (3-8 digits, from "ERF", "STAND", etc.)
+- oldAccountCodes: Legacy SG codes or parts (e.g., "C027/0002/00014783/00000" or partial numbers that could be SG code segments)
+- meterNumbers: Electricity/water meter numbers
+- names: Person or company names (strip banking words: FNB, ABSA, PMT, OB, EFT, CREDIT, DEBIT, REF, INTERNET, DOM, MAGTAPE, DEPOSIT, TRANSFER, NEDBANK, CAPITEC, INVESTEC, CASHFOCUS, ONTEC)
+- areaKeywords: Town/suburb/area names
+- referenceNumbers: Reference numbers
+
+Respond ONLY with valid JSON:
+{
+  "results": [
+    {
+      "index": 0,
+      "accountNumbers": [],
+      "erfNumbers": [],
+      "oldAccountCodes": [],
+      "meterNumbers": [],
+      "names": [],
+      "areaKeywords": [],
+      "referenceNumbers": [],
+      "reasoning": "brief note"
+    }
+  ]
+}
+
+Be thorough - find ALL possible identifiers. Err on the side of including possible matches.`;
+
+      const completion = await aiOpenai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.1,
+        max_tokens: 2000,
+        response_format: { type: "json_object" },
+      });
+
+      const content = completion.choices[0]?.message?.content || '{"results":[]}';
+      const parsed = JSON.parse(content);
+      res.json(parsed);
+    } catch (e: any) {
+      console.error("[AI Parse Batch] Error:", e.message);
+      res.status(500).json({ message: "AI batch parsing failed", detail: e.message });
+    }
+  });
 
   return httpServer;
 }
