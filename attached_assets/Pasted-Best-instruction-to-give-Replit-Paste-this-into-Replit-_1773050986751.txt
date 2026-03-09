@@ -1,0 +1,135 @@
+Best instruction to give Replit
+
+Paste this into Replit:
+
+Build this project as an API-first process engine where Replit owns all business rules, qualification logic, process flow, approvals, file generation, lapse-day calculations, attorney allocation, and audit logging.
+
+Do not use a Replit database.
+Do not use mock data.
+Do not create fallback logic outside the API contract.
+Platinum is the system of record and all reads/writes must happen through APIs only.
+
+Architecture rules:
+
+Replit frontend and backend must be modular.
+
+Business logic must live in service modules, not in UI components.
+
+Every process step must be auditable.
+
+Every run must be reproducible from saved parameters and snapshots.
+
+All long-running processes must run as backend jobs, not in the browser.
+
+All statuses must be persisted back through APIs.
+
+All generated files must be tracked with metadata and downloadable later.
+
+Trial, final, handover, and termination must be separate process stages with separate approvals.
+
+Implement in phases:
+
+Phase 1:
+Create reference-data services, configuration screens, status handling, and run framework.
+Add support for yearly Section 129 configuration, enabled config per financial year, templates, admin fee setup, notices-per-file, and attorney rotation percentages.
+
+Phase 2:
+Build the Section 129 qualification engine and review workflow.
+Support Account, Bulk, and Rotation options.
+Apply qualification and exclusion rules exactly:
+
+exclude handed-over accounts with AccountTypeID = 5
+
+ignore RPP balances
+
+exclude accounts with active valid clearances
+
+support repeated notice generation if an account qualifies again in a later run
+
+Phase 3:
+Build Trial Review and Trial Run.
+Store account snapshots, qualifying amounts, reason codes, output files, and downloadable reports.
+Support email, SMS, and print batch generation.
+
+Phase 4:
+Build Authorisation and Final Run.
+Final run must use the approved trial parameters and locked account snapshot.
+Support configurable admin fee raising and enquiry/status updates.
+
+Phase 5:
+Build 14-workday lapse tracking using weekends and public holidays.
+When lapse date is reached, mark the record ready for handover and expose it for dashboard queues.
+
+Phase 6:
+Build Handover.
+Create handover records, attorney allocation, handed-over account linkage, transfer journal integration, and handover history.
+
+Phase 7:
+Build Handover Termination.
+Require comment and approval.
+Reverse journals, move balance back to the master account, mark handover account inactive, and update enquiry/history records.
+
+Phase 8:
+Build General Enquiries and reports.
+Expose Section 129 history, handover history, transaction composition, downloadable notices, downloadable file batches, approval history, and audit logs.
+
+Required new Platinum tables:
+
+Billing_Section129_Config
+
+Billing_Section129_ConfigFee
+
+Billing_Section129_ConfigAttorney
+
+Billing_Section129_Run
+
+Billing_Section129_RunAccount
+
+Billing_Section129_RunAccountTransaction
+
+Billing_Section129_File
+
+Billing_Section129_Approval
+
+Billing_Section129_AuditLog
+
+Cons_Handovers
+
+Cons_Handovers_Transactions
+
+Use Cons_Handovers and Cons_Handovers_Transactions according to the formal specification.
+Build APIs for all reads and writes against these tables.
+
+Core implementation rules:
+
+no frontend-calculated statuses without API persistence
+
+no deleting historical runs
+
+no modifying final-run source parameters after approval
+
+save account-level snapshots for every run
+
+save file metadata for every generated output
+
+save all approval decisions
+
+save all audit events
+
+Deliverables required from Replit:
+
+technical design
+
+table DDL proposal
+
+API contract list
+
+backend module structure
+
+frontend screen structure
+
+phased delivery plan
+
+test cases per phase
+
+go-live checklist
