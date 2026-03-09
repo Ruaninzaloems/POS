@@ -1679,10 +1679,8 @@ export async function registerRoutes(
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
           Accept: "application/pdf,application/octet-stream,*/*",
         },
-        body: JSON.stringify({}),
       });
 
       if (!pdfRes.ok) {

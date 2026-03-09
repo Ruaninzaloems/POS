@@ -155,23 +155,22 @@ export function ReceiptModal() {
     try {
       let finalBlob: Blob | null = null;
 
-      if (isMiscReceipt) {
-        for (const rid of receiptIds) {
-          console.log(`[ReceiptModal] Using print-miscellaneous-receipt for receipt id=${rid}`);
-          try {
-            const miscRes = await platinumPrintMiscReceiptRaw(rid);
-            if (miscRes.ok) {
-              const b = await miscRes.blob();
-              if (b.size >= 100) { finalBlob = b; break; }
-              else console.warn(`[ReceiptModal] print-miscellaneous-receipt returned tiny PDF (${b.size} bytes) for id=${rid}`);
-            } else {
-              let detail = '';
-              try { const errJson = await miscRes.json(); detail = errJson.detail || errJson.message || ''; } catch { detail = `HTTP ${miscRes.status}`; }
-              console.warn(`[ReceiptModal] print-miscellaneous-receipt failed for id=${rid}: ${detail}`);
-            }
-          } catch (e: any) {
-            console.warn(`[ReceiptModal] print-miscellaneous-receipt error for id=${rid}: ${e.message}`);
+      if (isMiscReceipt && receiptIds.length === 1) {
+        const rid = receiptIds[0];
+        console.log(`[ReceiptModal] Using print-miscellaneous-receipt for single misc receipt id=${rid}`);
+        try {
+          const miscRes = await platinumPrintMiscReceiptRaw(rid);
+          if (miscRes.ok) {
+            const b = await miscRes.blob();
+            if (b.size >= 100) finalBlob = b;
+            else console.warn(`[ReceiptModal] print-miscellaneous-receipt returned tiny PDF (${b.size} bytes) for id=${rid}`);
+          } else {
+            let detail = '';
+            try { const errJson = await miscRes.json(); detail = errJson.detail || errJson.message || ''; } catch { detail = `HTTP ${miscRes.status}`; }
+            console.warn(`[ReceiptModal] print-miscellaneous-receipt failed for id=${rid}: ${detail}, falling back to print-receipt`);
           }
+        } catch (e: any) {
+          console.warn(`[ReceiptModal] print-miscellaneous-receipt error for id=${rid}: ${e.message}, falling back to print-receipt`);
         }
       }
 

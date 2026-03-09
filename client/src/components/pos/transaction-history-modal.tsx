@@ -102,16 +102,14 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
 
       let blob: Blob | null = null;
 
-      if (isMiscReceipt && receiptIds.length > 0) {
-        for (const rid of receiptIds) {
-          try {
-            const miscRes = await platinumPrintMiscReceiptRaw(rid);
-            if (miscRes.ok) {
-              const b = await miscRes.blob();
-              if (b.size >= 100) { blob = b; break; }
-            }
-          } catch {}
-        }
+      if (isMiscReceipt && receiptIds.length === 1) {
+        try {
+          const miscRes = await platinumPrintMiscReceiptRaw(receiptIds[0]);
+          if (miscRes.ok) {
+            const b = await miscRes.blob();
+            if (b.size >= 100) blob = b;
+          }
+        } catch {}
       }
 
       if (!blob) {
