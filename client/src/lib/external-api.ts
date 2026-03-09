@@ -2824,6 +2824,21 @@ export interface Section129Config {
     excludeDepositBalances: boolean;
 }
 
+export interface Section129ConfigEntry {
+    id?: number;
+    finYear: string;
+    section129Template: string;
+    smsTemplate: string;
+    additionalBillingType?: string;
+    totalFees?: number;
+    noticesPerFile: number;
+    lapseDays: number;
+    activateRotation: boolean;
+    enabled: boolean;
+    costItems?: { nr: number; additionalBillingTypeId: string; additionalBillingTypeName: string; amount: number }[];
+    attorneyRotation?: { nr: number; attorneyId: number; attorneyName: string; percentDebtorCount: number; percentHandoverAmount: number }[];
+}
+
 export interface Section129Run {
     runId: number;
     status: string;
@@ -2894,6 +2909,66 @@ export async function fetchSection129Config(): Promise<Section129Config> {
         throw new Error(`Failed to fetch Section 129 config (status ${res.status})`);
     }
     return res.json();
+}
+
+export async function fetchSection129ConfigList(finYear: string): Promise<Section129ConfigEntry[]> {
+    const res = await apiFetch(`/api/platinum/billing-debt/section129-config-list?finYear=${encodeURIComponent(finYear)}`);
+    if (!res.ok) {
+        throw new Error(`Failed to fetch Section 129 config list (status ${res.status})`);
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+}
+
+export async function saveSection129Config(params: {
+    id?: number;
+    enabled: boolean;
+    finYear: string;
+    section129Template: string;
+    smsTemplate: string;
+    lapseDays: number;
+    noticesPerFile: number;
+    costItems: { nr: number; additionalBillingTypeId: string; additionalBillingTypeName: string; amount: number }[];
+    activateRotation: boolean;
+    attorneyRotation: { nr: number; attorneyId: number; attorneyName: string; percentDebtorCount: number; percentHandoverAmount: number }[];
+}): Promise<{ success: boolean; message: string }> {
+    const res = await apiFetch('/api/platinum/billing-debt/section129-config-save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+    });
+    if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(text || `Failed to save Section 129 config (status ${res.status})`);
+    }
+    return res.json();
+}
+
+export async function fetchSection129Templates(): Promise<{ id: string; name: string }[]> {
+    const res = await apiFetch('/api/platinum/billing-debt/section129-templates');
+    if (!res.ok) {
+        throw new Error(`Failed to fetch Section 129 templates (status ${res.status})`);
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+}
+
+export async function fetchSection129SmsTemplates(): Promise<{ id: string; name: string }[]> {
+    const res = await apiFetch('/api/platinum/billing-debt/section129-sms-templates');
+    if (!res.ok) {
+        throw new Error(`Failed to fetch SMS templates (status ${res.status})`);
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+}
+
+export async function fetchAdditionalBillingTypes(): Promise<{ id: string; name: string }[]> {
+    const res = await apiFetch('/api/platinum/billing-debt/additional-billing-types');
+    if (!res.ok) {
+        throw new Error(`Failed to fetch additional billing types (status ${res.status})`);
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
 }
 
 export async function fetchSection129Runs(): Promise<Section129Run[]> {
@@ -3070,17 +3145,49 @@ export async function fetchTowns(): Promise<{ id: string; name: string }[]> {
     return Array.isArray(data) ? data : [];
 }
 
+export async function fetchSection129Report(params?: {
+    finYear?: string;
+    finMonth?: string;
+    billingCycle?: string;
+    accountNo?: string;
+    ageing?: string;
+    amountGreaterThan?: number;
+}): Promise<any[]> {
+    const searchParams = new URLSearchParams();
+    if (params?.finYear) searchParams.append('finYear', params.finYear);
+    if (params?.finMonth) searchParams.append('finMonth', params.finMonth);
+    if (params?.billingCycle) searchParams.append('billingCycle', params.billingCycle);
+    if (params?.accountNo) searchParams.append('accountNo', params.accountNo);
+    if (params?.ageing) searchParams.append('ageing', params.ageing);
+    if (params?.amountGreaterThan !== undefined) searchParams.append('amountGreaterThan', String(params.amountGreaterThan));
+    const qs = searchParams.toString();
+    const res = await apiFetch(`/api/platinum/billing-debt/section129-report${qs ? '?' + qs : ''}`);
+    if (!res.ok) {
+        throw new Error(`Failed to fetch Section 129 report (status ${res.status})`);
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+}
+
 export async function fetchHandoverReport(params?: {
     attorneyId?: number;
     dateFrom?: string;
     dateTo?: string;
     status?: string;
+    finYear?: string;
+    finMonth?: string;
+    billingCycle?: string;
+    accountNo?: string;
 }): Promise<any> {
     const searchParams = new URLSearchParams();
     if (params?.attorneyId) searchParams.append('attorneyId', String(params.attorneyId));
     if (params?.dateFrom) searchParams.append('dateFrom', params.dateFrom);
     if (params?.dateTo) searchParams.append('dateTo', params.dateTo);
     if (params?.status) searchParams.append('status', params.status);
+    if (params?.finYear) searchParams.append('finYear', params.finYear);
+    if (params?.finMonth) searchParams.append('finMonth', params.finMonth);
+    if (params?.billingCycle) searchParams.append('billingCycle', params.billingCycle);
+    if (params?.accountNo) searchParams.append('accountNo', params.accountNo);
     const qs = searchParams.toString();
     const res = await apiFetch(`/api/platinum/billing-debt/handover-report${qs ? '?' + qs : ''}`);
     if (!res.ok) {

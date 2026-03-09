@@ -32,6 +32,9 @@ import Section129TrialReview from "@/pages/debt/section129-trial-review";
 import Section129Authorization from "@/pages/debt/section129-authorization";
 import HandoverManagement from "@/pages/debt/handover-management";
 import HandoverTermination from "@/pages/debt/handover-termination";
+import Section129Config from "@/pages/debt/section129-config";
+import Section129Report from "@/pages/debt/section129-report";
+import HandoverReport from "@/pages/debt/handover-report";
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   constructor(props: { children: ReactNode }) {
@@ -109,6 +112,9 @@ function Router() {
       <Route path="/debt/section129/authorize" component={Section129Authorization} />
       <Route path="/debt/handover" component={HandoverManagement} />
       <Route path="/debt/handover/terminate" component={HandoverTermination} />
+      <Route path="/debt/section129/config" component={Section129Config} />
+      <Route path="/debt/section129-report" component={Section129Report} />
+      <Route path="/debt/handover-report" component={HandoverReport} />
 
       <Route component={NotFound} />
     </Switch>

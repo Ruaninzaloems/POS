@@ -24,6 +24,9 @@ import {
   FileWarning,
   Briefcase,
   XCircle,
+  Settings2,
+  FileText,
+  ClipboardList,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HelpTip } from '@/components/ui/help-tip';
@@ -49,8 +52,11 @@ const posChildren: MenuItem[] = [
 const debtChildren: MenuItem[] = [
   { label: 'Section 129 Notices', href: '/debt/section129', icon: FileWarning, description: 'Section 129 Letter of Demand notice workflow', helpTip: 'Run trial reviews, trial runs, and final Section 129 notice processes for debt recovery' },
   { label: 'Section 129 Authorization', href: '/debt/section129/authorize', icon: ShieldCheck, description: 'Authorize Section 129 trial runs', helpTip: 'Review and approve Section 129 trial runs before final notice distribution' },
+  { label: 'Section 129 Configuration', href: '/debt/section129/config', icon: Settings2, description: 'Configure Section 129 notice parameters', helpTip: 'Set up templates, lapse days, costs, and attorney rotation for Section 129 notices per financial year' },
   { label: 'Handover Management', href: '/debt/handover', icon: Briefcase, description: 'Manage account handovers to attorneys', helpTip: 'Hand over delinquent accounts to attorneys for debt collection — single account, bulk, or rotation modes' },
   { label: 'Handover Termination', href: '/debt/handover/terminate', icon: XCircle, description: 'Terminate active handovers', helpTip: 'Terminate handed-over accounts when debt is settled, written off, or settled via arrangement' },
+  { label: 'Section 129 Report', href: '/debt/section129-report', icon: FileText, description: 'Section 129 Notices Report', helpTip: 'Generate reports on Section 129 notices by financial year, billing cycle, ageing, and amount' },
+  { label: 'Handover Report', href: '/debt/handover-report', icon: ClipboardList, description: 'Handover Report', helpTip: 'Generate reports on account handovers by financial year, billing cycle, attorney, and account' },
 ];
 
 const menuEntries: MenuEntry[] = [

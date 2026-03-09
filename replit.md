@@ -43,6 +43,16 @@ Cash payments are rounded up to the nearest 10c (South African standard), with U
 #### Debt Management Module
 A full debt recovery workflow under the "Debt" sidebar group covers Section 129 Letter of Demand processes and account handover management. This includes Section 129 Notice generation (Trial Review, Authorization, Final Run), Handover Management (Account, Bulk, Rotation modes), and Handover Termination. All debt operations proxy through dedicated Platinum API endpoints.
 
+**Section 129 Configuration** (`/debt/section129/config`): Admin page for configuring Section 129 notice parameters per financial year. Supports templates (letter + SMS), lapse days (14-99 workdays), notices per file, additional billing cost grid, and attorney rotation with percentage allocation (debtor count or handover amount, must sum to 100%). Landing page with search grid + detail page for add/view.
+
+**Debt Reports**: Two report pages under the Debt sidebar group:
+- Section 129 Notices Report (`/debt/section129-report`): Filter by FY, month, billing cycle, account, ageing (30-180+ days), amount threshold
+- Handover Report (`/debt/handover-report`): Filter by FY, month, billing cycle, attorney, account
+
+**API Gap Analysis**: Comprehensive mapping of all spec operations to Platinum API endpoints completed. 24 operations fully covered, 11 need new Platinum endpoints (config save/update, templates, file management, S129 report), 10 need backend processing rules, 4 need database schema changes. Gap analysis documented in `.local/session_plan.md`.
+
+**Debt Proxy Routes** (server/routes.ts under `/api/platinum/billing-debt/*`): section129-config, section129-config-list, section129-config-save, section129-templates, section129-sms-templates, additional-billing-types, section129-runs, section129-trial-run, section129-trial-review-submit, section129-authorize, section129-final-run, section129-run-accounts, section129-report, handover-list, handover-submit, handover-terminate, handover-report, attorney-list, billing-cycles, towns.
+
 ## External Dependencies
 
 ### Multi-Site Support
