@@ -898,8 +898,33 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           };
           break;
 
+        case 'txn-detailed':
+          const txnDetailResult = await firstValueFrom(
+            this.api.get<any>(`/api/platinum/billing-enquiry/transaction-history/${accountId}`)
+          );
+          data = { transactions: this.normalizeArray(txnDetailResult) };
+          break;
+
+        case 'txn-summary':
+          const txnSummaryResult = await firstValueFrom(
+            this.api.get<any>(`/api/platinum/billing-enquiry/service-type-balance/${accountId}`)
+          );
+          data = { summary: this.normalizeArray(txnSummaryResult) };
+          break;
+
+        case 'billed-vs-paid':
+          const [billedVsPaid, billedBalance2] = await Promise.allSettled([
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/billed-vs-paid-amounts`, { accountId: String(accountId) })),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-balance/${accountId}`)),
+          ]);
+          data = {
+            billedVsPaid: billedVsPaid.status === 'fulfilled' ? this.normalizeArray(billedVsPaid.value) : [],
+            balance: billedBalance2.status === 'fulfilled' ? (Array.isArray(billedBalance2.value) ? billedBalance2.value : billedBalance2.value ? [billedBalance2.value] : []) : [],
+          };
+          break;
+
         default:
-          data = { message: 'Tab data loading...' };
+          data = { message: 'Tab not implemented' };
       }
 
       this.tabData.set(data);
