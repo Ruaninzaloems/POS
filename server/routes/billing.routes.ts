@@ -28,7 +28,7 @@ export function registerBillingRoutes(app: Express, httpServer: Server): void {
       console.log(`[submit-consumer-payment] userId=${userId}, paymentType=${rm.paymentType}`);
       console.log(`[submit-consumer-payment] account: account_ID=${acct.account_ID}, accountNumber=${acct.accountNumber}, name=${acct.name}, outStandingAmt=${acct.outStandingAmt}, billId=${acct.billId}, cutOffID=${acct.cutOffID}, cutOffAmount=${acct.cutOffAmount}, debtAmount=${acct.debtAmount}, debtArrangementId=${acct.debtArrangementId}, sundryDebtorsId=${acct.sundryDebtorsId}, billingCycleId=${acct.billingCycleId}`);
       console.log(`[submit-consumer-payment] requestModel: finYear=${rm.finYear}, receiptDate=${rm.receiptDate}, totalAmount=${rm.totalAmount}, tenderAmount=${rm.tenderAmount}, changeAmount=${rm.changeAmount}, paymentType=${rm.paymentType}, paymentOption=${rm.paymentOption}, outStandingAmount=${rm.outStandingAmount}, cutOffID=${rm.cutOffID}, cutOffAmount=${rm.cutOffAmount}, debtAmount=${rm.debtAmount}, debtArrangementId=${rm.debtArrangementId}, sundryDebtorsId=${rm.sundryDebtorsId}, cardNumber=${rm.cardNumber ? '***' + rm.cardNumber.slice(-4) : '(empty)'}, apiTransactionID=${rm.apiTransactionID}, isReconciled=${rm.isReconciled}, isCancelled=${rm.isCancelled}`);
-      console.log(`[submit-consumer-payment] full payload:`, JSON.stringify(body, null, 2));
+      console.log(`[submit-consumer-payment] account_ID=${body.account?.account_ID}, accountNumber=${body.account?.accountNumber}`);
       const dedupKey = getPaymentDeduplicationKey(userId, body);
       const dedupCheck = checkPaymentDedup(dedupKey);
       if (dedupCheck.isDuplicate) {
@@ -65,7 +65,7 @@ export function registerBillingRoutes(app: Express, httpServer: Server): void {
         res.status(400).json({ isSuccess: false, message: `${invalidAccounts.length} account(s) have invalid Account IDs (0 or missing): ${invalidAccounts.map((a: any) => a.name || a.accountNumber || 'unknown').join(', ')}. Remove them from the cart and retry.` });
         return;
       }
-      console.log(`[submit-multiple-payment] full payload:`, JSON.stringify(body, null, 2).substring(0, 3000));
+      console.log(`[submit-multiple-payment] ${body.accounts?.length || 0} account(s), totalAmount=${rm.totalAmount}`);
       const dedupKey = getPaymentDeduplicationKey(userId, body);
       const dedupCheck = checkPaymentDedup(dedupKey);
       if (dedupCheck.isDuplicate) {
@@ -119,6 +119,37 @@ export function registerBillingRoutes(app: Express, httpServer: Server): void {
       const data = await platinumPost(session, "/api/billing-payment/search-accounts", req.body, undefined, { timeout: 55000 });
       handlePlatinumResult(res, data);
     } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/billing-payment/search-account-groups", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const { searchTerm } = req.body;
+      if (!searchTerm) {
+        return res.status(400).json({ message: "searchTerm is required" });
+      }
+      console.log(`[search-account-groups] Searching for institution/group: "${searchTerm}"`);
+      const data = await platinumPost(session, "/api/billing-direct-deposit-allocation/load-details-payment-grouping-institution-data", { searchTerm }, undefined, { timeout: 55000 });
+      console.log(`[search-account-groups] Response:`, JSON.stringify(data).substring(0, 1000));
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      console.error(`[search-account-groups] Error:`, e.message);
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/billing-payment/get-group-accounts", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const { groupId, institutionName } = req.body;
+      console.log(`[get-group-accounts] Loading accounts for group/institution: groupId=${groupId}, name="${institutionName}"`);
+      const data = await platinumPost(session, "/api/billing-direct-deposit-allocation/load-details-payment-grouping", { groupId, institutionName }, undefined, { timeout: 55000 });
+      console.log(`[get-group-accounts] Response:`, JSON.stringify(data).substring(0, 1000));
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      console.error(`[get-group-accounts] Error:`, e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
@@ -329,6 +360,28 @@ export function registerBillingRoutes(app: Express, httpServer: Server): void {
       return res.send(mergedBuffer);
     } catch (e: any) {
       console.error("[print-receipt] Error:", e.message);
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/billing-payment/send-receipt", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const { receiptNo, method, email, phone, userId } = req.body;
+      if (!receiptNo) {
+        return res.status(400).json({ message: "receiptNo is required" });
+      }
+      console.log(`[send-receipt] Sending receipt ${receiptNo} via ${method}`);
+      const data = await platinumPost(session, "/api/billing-payment/send-receipt", {
+        receiptNo,
+        deliveryMethod: method,
+        emailAddress: email || '',
+        phoneNumber: phone || '',
+        userId,
+      }, undefined, { timeout: 30000 });
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      console.error(`[send-receipt] Error:`, e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });

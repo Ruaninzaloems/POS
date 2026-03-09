@@ -1,56 +1,23 @@
-import { Component, signal, computed, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, signal, computed, OnInit, OnDestroy, inject, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
 import { ToastService } from '../../core/services/toast.service';
 import { AuthService } from '../../core/services/auth.service';
+import { PosBasketService } from '../../services/pos-basket.service';
 import { firstValueFrom } from 'rxjs';
-
-interface TransactionItem {
-  id: string;
-  accountId: number;
-  accountNumber: string;
-  name: string;
-  address: string;
-  amountDue: number;
-  amountToPay: number;
-  billId: number;
-  cutOffID: number;
-  cutOffAmount: number;
-  debtAmount: number;
-  debtArrangementId: number;
-  sundryDebtorsId: number;
-  billingCycleId: number;
-  originalData: any;
-}
-
-interface SearchResult {
-  account_ID: number;
-  accountID: number;
-  accountNo: string;
-  accountNumber: string;
-  name: string;
-  consumerName: string;
-  outstandingAmount: number;
-  outStandingAmt: number;
-  balance: number;
-  totalDue: number;
-  status: string;
-  accountStatus: string;
-  address: string;
-  physicalAddress: string;
-  meterNo: string;
-  accountType: string;
-  billId: number;
-  cutOffID: number;
-  cutOffAmount: number;
-  debtAmount: number;
-  debtArrangementId: number;
-  sundryDebtorsId: number;
-  billingCycleId: number;
-  [key: string]: any;
-}
+import {
+  BasketItem,
+  BasketItemType,
+  SearchMode,
+  TenderType,
+  ReceiptDeliveryMethod,
+  ReceiptResult,
+  UnifiedSearchResult,
+  TYPE_LABELS,
+  PROCESSING_ORDER,
+} from '../../models/pos-basket.models';
 
 interface BankItem {
   bankID: number;
@@ -73,26 +40,7 @@ interface ScoaItem {
   vatPercentage: number;
 }
 
-interface ClearanceData {
-  clearanceId: string;
-  status: string;
-  ownerName: string;
-  propertyDesc: string;
-  accounts: ClearanceAccount[];
-  totalDue: number;
-}
-
-interface ClearanceAccount {
-  accountId: number;
-  accountNumber: string;
-  name: string;
-  amount: number;
-  paymentAmount: number;
-  serviceType: string;
-}
-
 type PaymentMode = 'account' | 'clearance' | 'prepaid' | 'misc';
-type TenderType = 'cash' | 'card' | 'cheque' | 'eft';
 
 @Component({
   selector: 'app-pos',
@@ -106,17 +54,22 @@ export class PosComponent implements OnInit, OnDestroy {
   private toast = inject(ToastService);
   private auth = inject(AuthService);
   private router = inject(Router);
+  basket = inject(PosBasketService);
 
   user = this.auth.user;
+  searchMode = signal<SearchMode>('unified');
   activeMode = signal<PaymentMode>('account');
 
-  searchQuery = signal('');
-  searchLoading = signal(false);
-  searchResults = signal<SearchResult[]>([]);
-  searchActive = signal(false);
-  accountDetailLoading = signal(false);
+  unifiedSearchQuery = signal('');
+  unifiedSearchLoading = signal(false);
+  unifiedSearchResults = signal<UnifiedSearchResult[]>([]);
+  unifiedSearchActive = signal(false);
 
-  transactionItems = signal<TransactionItem[]>([]);
+  tabSearchQuery = signal('');
+  tabSearchLoading = signal(false);
+  tabSearchResults = signal<any[]>([]);
+  tabSearchActive = signal(false);
+  accountDetailLoading = signal(false);
 
   showPaymentPanel = signal(false);
   activeTender = signal<TenderType>('cash');
@@ -136,9 +89,13 @@ export class PosComponent implements OnInit, OnDestroy {
   banks = signal<BankItem[]>([]);
   banksLoading = signal(false);
 
-  receiptData = signal<any>(null);
+  receiptResults = signal<ReceiptResult[]>([]);
   showReceipt = signal(false);
   printingReceipt = signal(false);
+  receiptDeliveryMethod = signal<ReceiptDeliveryMethod>('print');
+  receiptEmail = signal('');
+  receiptPhone = signal('');
+  sendingReceipt = signal(false);
 
   showCancelDialog = signal(false);
   cancelReceiptNo = signal('');
@@ -152,7 +109,6 @@ export class PosComponent implements OnInit, OnDestroy {
 
   clearanceSearchId = signal('');
   clearanceSearching = signal(false);
-  clearanceData = signal<ClearanceData | null>(null);
   clearanceError = signal('');
 
   prepaidMeterNo = signal('');
@@ -161,7 +117,6 @@ export class PosComponent implements OnInit, OnDestroy {
   prepaidBreakdown = signal<any>(null);
   prepaidError = signal('');
   prepaidProcessing = signal(false);
-  prepaidToken = signal<any>(null);
   prepaidServiceTypes = signal<any[]>([]);
   prepaidSelectedService = signal('');
 
@@ -175,7 +130,6 @@ export class PosComponent implements OnInit, OnDestroy {
   miscDescription = signal('');
   miscLastName = signal('');
   miscInitials = signal('');
-  miscProcessing = signal(false);
 
   paymentOptions = signal<any[]>([]);
   paymentTypes = signal<any[]>([]);
@@ -187,19 +141,42 @@ export class PosComponent implements OnInit, OnDestroy {
   sessionReturnReason = signal('');
   receiptRange = signal<any>(null);
 
-  totalDue = computed(() => this.transactionItems().reduce((sum, item) => sum + item.amountDue, 0));
-  totalToPay = computed(() => this.transactionItems().reduce((sum, item) => sum + item.amountToPay, 0));
-  hasItems = computed(() => this.transactionItems().length > 0);
+  accountGroupSearching = signal(false);
+  accountGroupResults = signal<any[]>([]);
+  expandedGroupId = signal<string | null>(null);
+  groupAccountsLoading = signal(false);
 
   totalTendered = computed(() => {
     return this.cashAmount() + this.cardAmount() + this.chequeAmount() + this.eftAmount();
   });
 
-  changeAmount = computed(() => Math.max(0, this.totalTendered() - this.totalToPay()));
+  cashRoundedAmount = computed(() => {
+    const cash = this.cashAmount();
+    if (cash <= 0) return 0;
+    return this.basket.roundToNearest10c(cash);
+  });
+
+  cashRoundingDiff = computed(() => {
+    const cash = this.cashAmount();
+    if (cash <= 0) return 0;
+    return Math.round((this.cashRoundedAmount() - cash) * 100) / 100;
+  });
+
+  effectiveTotalTendered = computed(() => {
+    const cash = this.cashAmount() > 0 ? this.cashRoundedAmount() : 0;
+    return cash + this.cardAmount() + this.chequeAmount() + this.eftAmount();
+  });
+
+  changeAmount = computed(() => Math.max(0, this.effectiveTotalTendered() - this.basket.totalToPay()));
 
   shortfall = computed(() => {
-    const diff = this.totalToPay() - this.totalTendered();
+    const diff = this.basket.totalToPay() - this.effectiveTotalTendered();
     return diff > 0.005 ? diff : 0;
+  });
+
+  isSplitTender = computed(() => {
+    const methods = [this.cashAmount() > 0, this.cardAmount() > 0, this.chequeAmount() > 0, this.eftAmount() > 0];
+    return methods.filter(Boolean).length > 1;
   });
 
   canDoAccountPayments = computed(() => {
@@ -274,7 +251,10 @@ export class PosComponent implements OnInit, OnDestroy {
     });
   });
 
-  denominations = [200, 100, 50, 20, 10, 5, 2, 1, 0.50, 0.20, 0.10, 0.05];
+  denominations = [200, 100, 50, 20, 10, 5, 2, 1, 0.50, 0.20, 0.10];
+
+  typeLabels = TYPE_LABELS;
+  processingOrder = PROCESSING_ORDER;
 
   private cashierCheckDone = false;
 
@@ -284,6 +264,12 @@ export class PosComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {}
+
+  toggleSearchMode(): void {
+    this.searchMode.update(m => m === 'tabs' ? 'unified' : 'tabs');
+    this.clearUnifiedSearch();
+    this.clearTabSearch();
+  }
 
   async loadCashierInfo(): Promise<void> {
     this.sessionLoading.set(true);
@@ -329,15 +315,11 @@ export class PosComponent implements OnInit, OnDestroy {
       }
 
       if (cashierData && !cashierData._error && isActive) {
-        this.cashierInfo.set({
-          ...cashierData,
-          finYear: resolvedFinYear,
-        });
+        this.cashierInfo.set({ ...cashierData, finYear: resolvedFinYear });
         this.sessionActive.set(true);
         this.sessionStatus.set('active');
         this.cashierCheckDone = true;
         this.loadPaymentConfig();
-
         if (validateData?.receiptRange) {
           this.receiptRange.set(validateData.receiptRange);
         }
@@ -410,71 +392,136 @@ export class PosComponent implements OnInit, OnDestroy {
     }
   }
 
-  async search(): Promise<void> {
+  async unifiedSearch(): Promise<void> {
     if (!this.sessionActive()) {
       this.toast.error('No active cashier session. Please complete cashier setup first.');
       return;
     }
-    const query = this.searchQuery().trim();
+    const query = this.unifiedSearchQuery().trim();
     if (!query || query.length < 2) return;
-    this.searchLoading.set(true);
-    this.searchActive.set(true);
+
+    this.unifiedSearchLoading.set(true);
+    this.unifiedSearchActive.set(true);
+    this.unifiedSearchResults.set([]);
+
     try {
-      const data: any = await firstValueFrom(
-        this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: query })
-      );
-      const results = Array.isArray(data) ? data : data?.accounts || data?.results || data?.data || [];
-      this.searchResults.set(results);
-    } catch {
-      this.searchResults.set([]);
+      const results: UnifiedSearchResult[] = [];
+
+      const [accountData, groupData, miscData] = await Promise.allSettled([
+        firstValueFrom(this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: query })),
+        firstValueFrom(this.api.post('/api/platinum/billing-payment/search-account-groups', { searchTerm: query })),
+        firstValueFrom(this.api.get<any>('/api/platinum/billing-payment-miscellaneous/get-groups')),
+      ]);
+
+      if (accountData.status === 'fulfilled') {
+        const accts = Array.isArray(accountData.value) ? accountData.value : (accountData.value as any)?.accounts || (accountData.value as any)?.results || (accountData.value as any)?.data || [];
+        for (const a of accts) {
+          const meterNo = a.meterNo || a.prepaidMeterNo || a.meter_No || '';
+          results.push({
+            resultType: 'account',
+            id: a.account_ID || a.accountID || a.accountId || 0,
+            label: a.name || a.accountName || a.consumerName || a.surname_Company || '',
+            description: `${a.accountNo || a.accountNumber || ''} — ${a.address || a.physicalAddress || ''}`,
+            balance: Number(a.outstandingAmount || a.outStandingAmt || a.balance || a.totalDue || 0),
+            status: a.status || a.accountStatus || 'Active',
+            rawData: { ...a, hasPrepaidMeter: !!meterNo, prepaidMeterNo: meterNo },
+          });
+        }
+      }
+
+      if (groupData.status === 'fulfilled') {
+        const groups = Array.isArray(groupData.value) ? groupData.value : (groupData.value as any)?.groups || (groupData.value as any)?.data || (groupData.value as any)?.institutions || [];
+        for (const g of groups) {
+          results.push({
+            resultType: 'group',
+            id: g.groupId || g.group_ID || g.institutionId || g.id || 0,
+            label: g.groupName || g.institutionName || g.name || g.description || '',
+            description: `Account Group — ${g.accountCount || g.accounts?.length || '?'} accounts`,
+            balance: 0,
+            status: 'Group',
+            rawData: g,
+            groupAccounts: g.accounts || [],
+          });
+        }
+      }
+
+      if (miscData.status === 'fulfilled') {
+        const groups = Array.isArray(miscData.value) ? miscData.value : [];
+        const queryLower = query.toLowerCase();
+        for (const g of groups) {
+          const name = g.groupName || g.group_name || g.description || '';
+          if (name.toLowerCase().includes(queryLower)) {
+            results.push({
+              resultType: 'misc',
+              id: g.groupId || g.group_ID || g.miscellaneousPaymentGroup || g.id || 0,
+              label: name,
+              description: 'Miscellaneous Payment Group',
+              balance: 0,
+              status: 'Misc',
+              rawData: g,
+            });
+          }
+        }
+      }
+
+      const isMeterSearch = /^\d{6,}$/.test(query);
+      if (isMeterSearch) {
+        results.push({
+          resultType: 'prepaid',
+          id: query,
+          label: `Prepaid Meter: ${query}`,
+          description: 'Prepaid electricity/water recharge',
+          balance: 0,
+          status: 'Prepaid',
+          rawData: { meterNumber: query },
+        });
+      }
+
+      this.unifiedSearchResults.set(results);
+      if (results.length === 0) {
+        this.toast.show('No results found for your search.', 'info');
+      }
+    } catch (e: any) {
       this.toast.error('Search failed. Please try again.');
     } finally {
-      this.searchLoading.set(false);
+      this.unifiedSearchLoading.set(false);
     }
   }
 
-  onSearchKeydown(event: KeyboardEvent): void {
-    if (event.key === 'Enter') this.search();
-    if (event.key === 'Escape') this.clearSearch();
+  onUnifiedSearchKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter') this.unifiedSearch();
+    if (event.key === 'Escape') this.clearUnifiedSearch();
   }
 
-  clearSearch(): void {
-    this.searchQuery.set('');
-    this.searchResults.set([]);
-    this.searchActive.set(false);
+  clearUnifiedSearch(): void {
+    this.unifiedSearchQuery.set('');
+    this.unifiedSearchResults.set([]);
+    this.unifiedSearchActive.set(false);
+    this.expandedGroupId.set(null);
   }
 
-  getAccountNo(r: any): string {
-    return r?.accountNo || r?.accountNumber || r?.account_no || '';
+  async addUnifiedResult(result: UnifiedSearchResult): Promise<void> {
+    if (result.resultType === 'account') {
+      await this.addAccountToBasket(result.rawData);
+    } else if (result.resultType === 'group') {
+      await this.loadGroupAccounts(result);
+    } else if (result.resultType === 'misc') {
+      await this.addMiscToBasket(result.rawData);
+    } else if (result.resultType === 'prepaid') {
+      this.addPrepaidPlaceholder(result.rawData.meterNumber);
+    }
   }
 
-  getAccountName(r: any): string {
-    return r?.name || r?.accountName || r?.consumerName || r?.surname_Company || '';
-  }
+  async addAccountToBasket(acctData: any): Promise<void> {
+    const accountId = acctData.account_ID || acctData.accountID || acctData.accountId || 0;
+    const accountNo = acctData.accountNo || acctData.accountNumber || acctData.account_no || '';
 
-  getAccountBalance(r: any): number {
-    return Number(r?.outstandingAmount || r?.outStandingAmt || r?.balance || r?.totalDue || 0);
-  }
-
-  getAccountAddress(r: any): string {
-    return r?.address || r?.physicalAddress || r?.deliveryAddress || r?.locationAddress || '';
-  }
-
-  getAccountStatus(r: any): string {
-    return r?.status || r?.accountStatus || r?.statusDesc || 'Active';
-  }
-
-  getAccountId(r: any): number {
-    return r?.account_ID || r?.accountID || r?.accountId || 0;
-  }
-
-  async selectAccount(result: any): Promise<void> {
-    const accountId = this.getAccountId(result);
-    const accountNo = this.getAccountNo(result);
-    const existing = this.transactionItems().find(i => i.accountId === accountId || i.accountNumber === accountNo);
+    const existing = this.basket.items().find(i =>
+      i.type === 'account' && i.accountData &&
+      (i.accountData.accountId === accountId || i.accountData.accountNumber === accountNo)
+    );
     if (existing) {
-      this.toast.error('This account is already in the transaction.');
-      this.clearSearch();
+      this.toast.error('This account is already in the basket.');
       return;
     }
 
@@ -484,76 +531,264 @@ export class PosComponent implements OnInit, OnDestroy {
       detailData = await firstValueFrom(
         this.api.get<any>('/api/platinum/receipt-prepaid/cons-account-details', { accountId: String(accountId || accountNo) })
       );
-    } catch (e: any) {
+    } catch {
       this.toast.show('Could not load full account details, using search data.', 'info');
     }
     this.accountDetailLoading.set(false);
 
-    const merged = { ...result, ...(detailData && !detailData._error ? detailData : {}) };
-    const balance = this.getAccountBalance(merged);
+    const merged = { ...acctData, ...(detailData && !detailData._error ? detailData : {}) };
+    const balance = Number(merged.outstandingAmount || merged.outStandingAmt || merged.balance || merged.totalDue || 0);
+    const name = merged.name || merged.accountName || merged.consumerName || merged.surname_Company || '';
+    const address = merged.address || merged.physicalAddress || merged.deliveryAddress || '';
+    const meterNo = merged.meterNo || merged.prepaidMeterNo || merged.meter_No || '';
 
-    const item: TransactionItem = {
+    const item: BasketItem = {
       id: crypto.randomUUID(),
-      accountId: accountId,
-      accountNumber: accountNo,
-      name: this.getAccountName(merged),
-      address: this.getAccountAddress(merged),
+      type: 'account',
+      label: name,
+      description: `${accountNo} — ${address}`,
       amountDue: balance,
       amountToPay: 0,
-      billId: merged.billId || merged.bill_ID || 0,
-      cutOffID: merged.cutOffID || merged.cutoff_ID || 0,
-      cutOffAmount: merged.cutOffAmount || 0,
-      debtAmount: merged.debtAmount || 0,
-      debtArrangementId: merged.debtArrangementId || merged.debtArrangement_ID || 0,
-      sundryDebtorsId: merged.sundryDebtorsId || merged.sundryDebtors_ID || 0,
-      billingCycleId: merged.billingCycleId || merged.billingCycle_ID || 0,
-      originalData: merged,
+      accountData: {
+        accountId,
+        accountNumber: accountNo,
+        name,
+        address,
+        billId: merged.billId || merged.bill_ID || 0,
+        cutOffID: merged.cutOffID || merged.cutoff_ID || 0,
+        cutOffAmount: merged.cutOffAmount || 0,
+        debtAmount: merged.debtAmount || 0,
+        debtArrangementId: merged.debtArrangementId || merged.debtArrangement_ID || 0,
+        sundryDebtorsId: merged.sundryDebtorsId || merged.sundryDebtors_ID || 0,
+        billingCycleId: merged.billingCycleId || merged.billingCycle_ID || 0,
+        hasPrepaidMeter: !!meterNo,
+        prepaidMeterNo: meterNo,
+        originalData: merged,
+      },
     };
-    this.transactionItems.update(items => [...items, item]);
-    this.clearSearch();
-    this.toast.success(`Added ${item.name} (${item.accountNumber})`);
+
+    this.basket.addItem(item);
+    this.toast.success(`Added ${name} (${accountNo})`);
   }
 
-  updateItemAmount(id: string, amount: number): void {
-    this.transactionItems.update(items =>
-      items.map(item => item.id === id ? { ...item, amountToPay: Math.max(0, amount || 0) } : item)
+  async loadGroupAccounts(result: UnifiedSearchResult): Promise<void> {
+    const groupId = result.id;
+    if (this.expandedGroupId() === String(groupId)) {
+      this.expandedGroupId.set(null);
+      return;
+    }
+
+    this.expandedGroupId.set(String(groupId));
+    this.groupAccountsLoading.set(true);
+    try {
+      const data: any = await firstValueFrom(
+        this.api.post('/api/platinum/billing-payment/get-group-accounts', {
+          groupId,
+          institutionName: result.label,
+        })
+      );
+      const accounts = Array.isArray(data) ? data : data?.accounts || data?.data || data?.results || [];
+      const updatedResults = this.unifiedSearchResults().map(r => {
+        if (String(r.id) === String(groupId)) {
+          return { ...r, groupAccounts: accounts };
+        }
+        return r;
+      });
+      this.unifiedSearchResults.set(updatedResults);
+    } catch {
+      this.toast.error('Failed to load group accounts.');
+    } finally {
+      this.groupAccountsLoading.set(false);
+    }
+  }
+
+  addAllGroupAccounts(groupAccounts: any[]): void {
+    let addedCount = 0;
+    for (const acct of groupAccounts) {
+      const accountId = acct.account_ID || acct.accountID || acct.accountId || 0;
+      const accountNo = acct.accountNo || acct.accountNumber || '';
+      const existing = this.basket.items().find(i =>
+        i.type === 'account' && i.accountData &&
+        (i.accountData.accountId === accountId || i.accountData.accountNumber === accountNo)
+      );
+      if (existing) continue;
+
+      const name = acct.name || acct.accountName || acct.consumerName || '';
+      const address = acct.address || acct.physicalAddress || '';
+      const balance = Number(acct.outstandingAmount || acct.outStandingAmt || acct.balance || 0);
+      const meterNo = acct.meterNo || acct.prepaidMeterNo || '';
+
+      this.basket.addItem({
+        id: crypto.randomUUID(),
+        type: 'account',
+        label: name,
+        description: `${accountNo} — ${address}`,
+        amountDue: balance,
+        amountToPay: 0,
+        accountData: {
+          accountId,
+          accountNumber: accountNo,
+          name,
+          address,
+          billId: acct.billId || acct.bill_ID || 0,
+          cutOffID: acct.cutOffID || acct.cutoff_ID || 0,
+          cutOffAmount: acct.cutOffAmount || 0,
+          debtAmount: acct.debtAmount || 0,
+          debtArrangementId: acct.debtArrangementId || 0,
+          sundryDebtorsId: acct.sundryDebtorsId || 0,
+          billingCycleId: acct.billingCycleId || 0,
+          hasPrepaidMeter: !!meterNo,
+          prepaidMeterNo: meterNo,
+          originalData: acct,
+        },
+      });
+      addedCount++;
+    }
+    this.toast.success(`Added ${addedCount} account(s) to basket.`);
+  }
+
+  async addMiscToBasket(groupData: any): Promise<void> {
+    const groupId = groupData.groupId || groupData.group_ID || groupData.miscellaneousPaymentGroup || groupData.id || 0;
+    const groupName = groupData.groupName || groupData.group_name || groupData.description || '';
+
+    let scoaItems: ScoaItem[] = [];
+    try {
+      const data: any = await firstValueFrom(
+        this.api.get<any>('/api/platinum/billing-payment-miscellaneous/get-scoa-items', { groupId: String(groupId) })
+      );
+      const arr = Array.isArray(data) ? data : [];
+      scoaItems = arr.map((s: any) => ({
+        scoaItemId: s.scoaItemId || s.scoa_item_ID || s.scoaItem || s.id || 0,
+        scoaItemName: s.scoaItemName || s.description || s.name || '',
+        description: s.description || s.scoaItemName || '',
+        amount: s.amount || 0,
+        isVatable: s.isVatable || false,
+        vatPercentage: s.vatPercentage || 0,
+      }));
+    } catch {
+      this.toast.error('Failed to load SCOA items for this group.');
+      return;
+    }
+
+    const scoaItem = scoaItems[0];
+    if (!scoaItem) {
+      this.toast.error('No SCOA items found for this group.');
+      return;
+    }
+
+    const item: BasketItem = {
+      id: crypto.randomUUID(),
+      type: 'misc',
+      label: `${groupName} — ${scoaItem.scoaItemName}`,
+      description: 'Miscellaneous payment',
+      amountDue: scoaItem.amount || 0,
+      amountToPay: scoaItem.amount || 0,
+      miscData: {
+        groupId,
+        groupName,
+        scoaItemId: scoaItem.scoaItemId,
+        scoaItemName: scoaItem.scoaItemName,
+        lastName: '',
+        initials: '',
+        description: scoaItem.scoaItemName,
+        isVatable: scoaItem.isVatable,
+        vatPercentage: scoaItem.vatPercentage,
+        vatAmount: 0,
+      },
+    };
+
+    this.basket.addItem(item);
+    this.toast.success(`Added misc: ${groupName}`);
+  }
+
+  addPrepaidPlaceholder(meterNumber: string): void {
+    const existing = this.basket.items().find(i =>
+      i.type === 'prepaid' && i.prepaidData?.meterNumber === meterNumber
+    );
+    if (existing) {
+      this.toast.error('This meter is already in the basket.');
+      return;
+    }
+
+    const item: BasketItem = {
+      id: crypto.randomUUID(),
+      type: 'prepaid',
+      label: `Prepaid: ${meterNumber}`,
+      description: 'Enter amount and get breakdown',
+      amountDue: 0,
+      amountToPay: 0,
+      prepaidData: {
+        meterNumber,
+        serviceType: '',
+        breakdown: null,
+        tokenResult: null,
+      },
+    };
+
+    this.basket.addItem(item);
+    this.toast.success(`Added prepaid meter: ${meterNumber}`);
+  }
+
+  addPrepaidFromAccount(item: BasketItem): void {
+    if (!item.accountData?.hasPrepaidMeter || !item.accountData?.prepaidMeterNo) return;
+    this.addPrepaidPlaceholder(item.accountData.prepaidMeterNo);
+  }
+
+  async tabSearch(): Promise<void> {
+    if (!this.sessionActive()) {
+      this.toast.error('No active cashier session. Please complete cashier setup first.');
+      return;
+    }
+    const query = this.tabSearchQuery().trim();
+    if (!query || query.length < 2) return;
+    this.tabSearchLoading.set(true);
+    this.tabSearchActive.set(true);
+    try {
+      const data: any = await firstValueFrom(
+        this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: query })
+      );
+      const results = Array.isArray(data) ? data : data?.accounts || data?.results || data?.data || [];
+      this.tabSearchResults.set(results);
+    } catch {
+      this.tabSearchResults.set([]);
+      this.toast.error('Search failed. Please try again.');
+    } finally {
+      this.tabSearchLoading.set(false);
+    }
+  }
+
+  onTabSearchKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter') this.tabSearch();
+    if (event.key === 'Escape') this.clearTabSearch();
+  }
+
+  clearTabSearch(): void {
+    this.tabSearchQuery.set('');
+    this.tabSearchResults.set([]);
+    this.tabSearchActive.set(false);
+  }
+
+  async selectTabAccount(result: any): Promise<void> {
+    await this.addAccountToBasket(result);
+    this.clearTabSearch();
+  }
+
+  updateMiscItemField(id: string, field: string, value: any): void {
+    this.basket.items.update(items =>
+      items.map(item => {
+        if (item.id !== id || !item.miscData) return item;
+        return { ...item, miscData: { ...item.miscData, [field]: value } };
+      })
     );
   }
 
-  removeItem(id: string): void {
-    this.transactionItems.update(items => items.filter(item => item.id !== id));
-  }
-
-  payFullAmount(id: string): void {
-    this.transactionItems.update(items =>
-      items.map(item => item.id === id ? { ...item, amountToPay: item.amountDue } : item)
+  updatePrepaidItemField(id: string, field: string, value: any): void {
+    this.basket.items.update(items =>
+      items.map(item => {
+        if (item.id !== id || !item.prepaidData) return item;
+        return { ...item, prepaidData: { ...item.prepaidData, [field]: value } };
+      })
     );
-  }
-
-  payAllFull(): void {
-    this.transactionItems.update(items =>
-      items.map(item => ({ ...item, amountToPay: item.amountDue }))
-    );
-  }
-
-  clearTransaction(): void {
-    this.transactionItems.set([]);
-    this.resetTenderFields();
-    this.showPaymentPanel.set(false);
-  }
-
-  resetTenderFields(): void {
-    this.cashAmount.set(0);
-    this.cardAmount.set(0);
-    this.cardNumber.set('');
-    this.cardExpiry.set('');
-    this.cardReference.set('');
-    this.chequeAmount.set(0);
-    this.chequeNumber.set('');
-    this.chequeBankId.set(0);
-    this.chequeName.set('');
-    this.eftAmount.set(0);
-    this.eftReference.set('');
   }
 
   openPaymentPanel(): void {
@@ -561,22 +796,23 @@ export class PosComponent implements OnInit, OnDestroy {
       this.toast.error('No active cashier session. Please complete cashier setup first.');
       return;
     }
-    if (!this.hasItems() || this.totalToPay() <= 0) {
+    if (!this.basket.hasItems() || this.basket.totalToPay() <= 0) {
       this.toast.error('Add items and enter amounts first.');
       return;
     }
     this.resetTenderFields();
+    const total = this.basket.totalToPay();
     if (this.canTenderCash()) {
-      this.cashAmount.set(this.totalToPay());
+      this.cashAmount.set(total);
       this.activeTender.set('cash');
     } else if (this.canTenderCard()) {
-      this.cardAmount.set(this.totalToPay());
+      this.cardAmount.set(total);
       this.activeTender.set('card');
     } else if (this.canTenderCheque()) {
-      this.chequeAmount.set(this.totalToPay());
+      this.chequeAmount.set(total);
       this.activeTender.set('cheque');
     } else if (this.canTenderEft()) {
-      this.eftAmount.set(this.totalToPay());
+      this.eftAmount.set(total);
       this.activeTender.set('eft');
     }
     this.showPaymentPanel.set(true);
@@ -601,8 +837,23 @@ export class PosComponent implements OnInit, OnDestroy {
   }
 
   setCashExact(): void {
-    const remaining = this.totalToPay() - this.cardAmount() - this.chequeAmount() - this.eftAmount();
-    this.cashAmount.set(Math.max(0, Math.round(remaining * 100) / 100));
+    const remaining = this.basket.totalToPay() - this.cardAmount() - this.chequeAmount() - this.eftAmount();
+    const rounded = this.basket.roundToNearest10c(Math.max(0, remaining));
+    this.cashAmount.set(rounded);
+  }
+
+  resetTenderFields(): void {
+    this.cashAmount.set(0);
+    this.cardAmount.set(0);
+    this.cardNumber.set('');
+    this.cardExpiry.set('');
+    this.cardReference.set('');
+    this.chequeAmount.set(0);
+    this.chequeNumber.set('');
+    this.chequeBankId.set(0);
+    this.chequeName.set('');
+    this.eftAmount.set(0);
+    this.eftReference.set('');
   }
 
   formatCardNumber(value: string): void {
@@ -620,37 +871,31 @@ export class PosComponent implements OnInit, OnDestroy {
     }
   }
 
-  getPaymentTypeId(): number {
+  getPaymentTypeId(tenderType?: TenderType): number {
     const types = this.paymentTypes();
-    if (this.cardAmount() > 0) {
-      const cardType = types.find((t: any) => (t.paymentTypeName || t.name || '').toLowerCase().includes('card'));
-      return cardType?.paymentTypeId || cardType?.payment_type_ID || 3;
+    const tt = tenderType || this.activeTender();
+    if (tt === 'card' || this.cardAmount() > 0) {
+      const cardType = types.find((t: any) => (t.posPaymentTypeDesc || t.name || '').toLowerCase().includes('card'));
+      return cardType?.posPaymentType_ID || cardType?.paymentTypeId || 3;
     }
-    if (this.chequeAmount() > 0) {
-      const chequeType = types.find((t: any) => (t.paymentTypeName || t.name || '').toLowerCase().includes('cheque'));
-      return chequeType?.paymentTypeId || chequeType?.payment_type_ID || 2;
+    if (tt === 'cheque' || this.chequeAmount() > 0) {
+      const chequeType = types.find((t: any) => (t.posPaymentTypeDesc || t.name || '').toLowerCase().includes('cheque'));
+      return chequeType?.posPaymentType_ID || chequeType?.paymentTypeId || 2;
     }
-    if (this.eftAmount() > 0) {
-      const eftType = types.find((t: any) => (t.paymentTypeName || t.name || '').toLowerCase().includes('eft'));
-      return eftType?.paymentTypeId || eftType?.payment_type_ID || 5;
+    if (tt === 'eft' || this.eftAmount() > 0) {
+      const eftType = types.find((t: any) => (t.posPaymentTypeDesc || t.name || '').toLowerCase().includes('eft'));
+      return eftType?.posPaymentType_ID || eftType?.paymentTypeId || 5;
     }
-    const cashType = types.find((t: any) => (t.paymentTypeName || t.name || '').toLowerCase().includes('cash'));
-    return cashType?.paymentTypeId || cashType?.payment_type_ID || 1;
+    const cashType = types.find((t: any) => (t.posPaymentTypeDesc || t.name || '').toLowerCase().includes('cash'));
+    return cashType?.posPaymentType_ID || cashType?.paymentTypeId || 1;
   }
 
   getPaymentOptionId(): number {
     const options = this.paymentOptions();
     if (options.length > 0) {
-      return options[0]?.paymentOptionId || options[0]?.payment_option_ID || options[0]?.id || 1;
+      return options[0]?.posPaymentOption_ID || options[0]?.paymentOptionId || options[0]?.id || 1;
     }
     return 1;
-  }
-
-  getPaymentTypeName(): string {
-    const id = this.getPaymentTypeId();
-    const types = this.paymentTypes();
-    const found = types.find((t: any) => (t.paymentTypeId || t.payment_type_ID) === id);
-    return found?.paymentTypeName || found?.name || (id === 3 ? 'CreditCard' : id === 2 ? 'Cheque' : id === 5 ? 'EFT' : 'Cash');
   }
 
   async processPayment(): Promise<void> {
@@ -662,7 +907,6 @@ export class PosComponent implements OnInit, OnDestroy {
       this.toast.error('Total tendered is less than the amount due.');
       return;
     }
-
     if (this.cardAmount() > 0 && !this.cardNumber().replace(/\s/g, '')) {
       this.toast.error('Please enter the card number for card payments.');
       return;
@@ -672,120 +916,472 @@ export class PosComponent implements OnInit, OnDestroy {
       return;
     }
 
+    if (this.cashAmount() > 0) {
+      const { roundedCash, adjustment } = this.basket.applyCashRounding(this.cashAmount());
+      if (Math.abs(adjustment) > 0.001) {
+        this.cashAmount.set(roundedCash);
+        this.basket.adjustFirstItemForRounding(this.basket.totalToPay() + adjustment);
+      }
+    }
+
     this.processingPayment.set(true);
     const userId = this.user()?.user_ID;
     const ci = this.cashierInfo();
     const finYear = ci?.finYear || '';
     const now = new Date();
     const receiptDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T00:00:00`;
-    const items = this.transactionItems();
-    const paymentType = this.getPaymentTypeId();
     const cardNum = this.cardNumber().replace(/\s/g, '');
+    const allResults: ReceiptResult[] = [];
 
     try {
-      let result: any;
-      if (items.length === 1) {
-        const item = items[0];
-        const payload = {
-          account: {
-            account_ID: item.accountId,
-            accountNumber: item.accountNumber,
-            name: item.name,
-            outStandingAmt: item.amountDue,
-            billId: item.billId,
-            cutOffID: item.cutOffID,
-            cutOffAmount: item.cutOffAmount,
-            debtAmount: item.debtAmount,
-            debtArrangementId: item.debtArrangementId,
-            sundryDebtorsId: item.sundryDebtorsId,
-            billingCycleId: item.billingCycleId,
-          },
-          requestModel: {
-            finYear,
-            receiptDate,
-            totalAmount: item.amountToPay,
-            tenderAmount: this.totalTendered(),
-            changeAmount: this.changeAmount(),
-            paymentType,
-            paymentOption: this.getPaymentOptionId(),
-            outStandingAmount: item.amountDue,
-            cutOffID: item.cutOffID,
-            cutOffAmount: item.cutOffAmount,
-            debtAmount: item.debtAmount,
-            debtArrangementId: item.debtArrangementId,
-            sundryDebtorsId: item.sundryDebtorsId,
-            cardNumber: cardNum,
-            apiTransactionID: 0,
-            isReconciled: 0,
-            isCancelled: 0,
-          },
-        };
-        result = await firstValueFrom(
-          this.api.post(`/api/platinum/billing-payment/submit-consumer-payment/${userId}`, payload)
-        );
-      } else {
-        const payload = {
-          accounts: items.map(item => ({
-            accountID: item.accountId,
-            account_ID: item.accountId,
-            accountNumber: item.accountNumber,
-            name: item.name,
-            outstandingAmount: item.amountDue,
-            outStandingAmt: item.amountDue,
-            paymentAmount: item.amountToPay,
-            billId: item.billId,
-            cutOffID: item.cutOffID,
-            cutOffAmount: item.cutOffAmount,
-            debtAmount: item.debtAmount,
-            debtArrangementId: item.debtArrangementId,
-            sundryDebtorsId: item.sundryDebtorsId,
-            billingCycleId: item.billingCycleId,
-          })),
-          requestModel: {
-            finYear,
-            receiptDate,
-            totalAmount: this.totalToPay(),
-            tenderAmount: this.totalTendered(),
-            changeAmount: this.changeAmount(),
-            paymentType,
-            paymentOption: this.getPaymentOptionId(),
-            outStandingAmount: this.totalDue(),
-            cardNumber: cardNum,
-            apiTransactionID: 0,
-            isReconciled: 0,
-            isCancelled: 0,
-          },
-        };
-        result = await firstValueFrom(
-          this.api.post(`/api/platinum/billing-payment/submit-multiple-payment/${userId}`, payload)
-        );
+      const ordered = this.basket.orderedItems();
+      const accountItems = ordered.filter(i => i.type === 'account');
+      const clearanceItems = ordered.filter(i => i.type === 'clearance');
+      const prepaidItems = ordered.filter(i => i.type === 'prepaid');
+      const miscItems = ordered.filter(i => i.type === 'misc');
+
+      const isSplit = this.isSplitTender();
+      const cashPaymentTypeId = this.getPaymentTypeId('cash');
+      const cardPaymentTypeId = this.getPaymentTypeId('card');
+
+      if (accountItems.length > 0) {
+        const accountItemsWithPay = accountItems.filter(i => i.amountToPay > 0);
+        if (accountItemsWithPay.length > 0) {
+          if (isSplit && this.cashAmount() > 0 && this.cardAmount() > 0) {
+            const allocation = this.basket.allocateSplitTender(this.cashRoundedAmount(), this.cardAmount());
+            const cashAcctItems = allocation.cashItems.filter(i => i.type === 'account');
+            const cardAcctItems = allocation.cardItems.filter(i => i.type === 'account');
+
+            if (cashAcctItems.length > 0) {
+              const cashResult = await this.submitAccountPayment(cashAcctItems, userId!, finYear, receiptDate, cashPaymentTypeId, '', allocation.cashTotal);
+              allResults.push({ receiptNumber: this.getReceiptNo(cashResult), tenderType: 'cash', amount: allocation.cashTotal, items: cashAcctItems, rawResponse: cashResult });
+            }
+            if (cardAcctItems.length > 0) {
+              const cardResult = await this.submitAccountPayment(cardAcctItems, userId!, finYear, receiptDate, cardPaymentTypeId, cardNum, allocation.cardTotal);
+              allResults.push({ receiptNumber: this.getReceiptNo(cardResult), tenderType: 'card', amount: allocation.cardTotal, items: cardAcctItems, rawResponse: cardResult });
+            }
+          } else {
+            const paymentTypeId = this.getPaymentTypeId();
+            const result = await this.submitAccountPayment(accountItemsWithPay, userId!, finYear, receiptDate, paymentTypeId, cardNum, this.basket.totalToPay());
+            allResults.push({ receiptNumber: this.getReceiptNo(result), tenderType: this.activeTender(), amount: accountItemsWithPay.reduce((s, i) => s + i.amountToPay, 0), items: accountItemsWithPay, rawResponse: result });
+          }
+        }
       }
 
-      this.receiptData.set(result);
+      for (const clearItem of clearanceItems) {
+        if (clearItem.amountToPay <= 0 || !clearItem.clearanceData) continue;
+        const result = await this.submitClearancePaymentItem(clearItem, userId!, ci, finYear, cardNum);
+        allResults.push({ receiptNumber: this.getReceiptNo(result), tenderType: this.activeTender(), amount: clearItem.amountToPay, items: [clearItem], rawResponse: result });
+      }
+
+      for (const prepItem of prepaidItems) {
+        if (prepItem.amountToPay <= 0 || !prepItem.prepaidData) continue;
+        const result = await this.submitPrepaidPaymentItem(prepItem);
+        allResults.push({ receiptNumber: this.getReceiptNo(result), tenderType: this.activeTender(), amount: prepItem.amountToPay, items: [prepItem], rawResponse: result });
+      }
+
+      for (const miscItem of miscItems) {
+        if (miscItem.amountToPay <= 0 || !miscItem.miscData) continue;
+        const result = await this.submitMiscPaymentItem(miscItem, userId!, ci, finYear, cardNum);
+        allResults.push({ receiptNumber: this.getReceiptNo(result), tenderType: this.activeTender(), amount: miscItem.amountToPay, items: [miscItem], rawResponse: result });
+      }
+
+      this.receiptResults.set(allResults);
       this.showReceipt.set(true);
       this.showPaymentPanel.set(false);
-      this.toast.success('Payment processed successfully!');
-      this.transactionItems.set([]);
+      this.toast.success(`${allResults.length} receipt(s) processed successfully!`);
+      this.basket.clearAll();
       this.resetTenderFields();
     } catch (e: any) {
-      this.toast.error(e?.error?.message || 'Payment processing failed.');
+      this.toast.error(e?.error?.message || e?.message || 'Payment processing failed.');
     } finally {
       this.processingPayment.set(false);
     }
   }
 
-  async printReceipt(): Promise<void> {
-    const rd = this.receiptData();
-    if (!rd) return;
-    this.printingReceipt.set(true);
+  private async submitAccountPayment(items: BasketItem[], userId: number, finYear: string, receiptDate: string, paymentTypeId: number, cardNum: string, totalAmount: number): Promise<any> {
+    if (items.length === 1) {
+      const item = items[0];
+      const ad = item.accountData!;
+      const payload = {
+        account: {
+          account_ID: ad.accountId,
+          accountNumber: ad.accountNumber,
+          name: ad.name,
+          outStandingAmt: item.amountDue,
+          billId: ad.billId,
+          cutOffID: ad.cutOffID,
+          cutOffAmount: ad.cutOffAmount,
+          debtAmount: ad.debtAmount,
+          debtArrangementId: ad.debtArrangementId,
+          sundryDebtorsId: ad.sundryDebtorsId,
+          billingCycleId: ad.billingCycleId,
+        },
+        requestModel: {
+          finYear,
+          receiptDate,
+          totalAmount: item.amountToPay,
+          tenderAmount: totalAmount,
+          changeAmount: Math.max(0, totalAmount - item.amountToPay),
+          paymentType: paymentTypeId,
+          paymentOption: this.getPaymentOptionId(),
+          outStandingAmount: item.amountDue,
+          cutOffID: ad.cutOffID,
+          cutOffAmount: ad.cutOffAmount,
+          debtAmount: ad.debtAmount,
+          debtArrangementId: ad.debtArrangementId,
+          sundryDebtorsId: ad.sundryDebtorsId,
+          cardNumber: cardNum,
+          apiTransactionID: 0,
+          isReconciled: 0,
+          isCancelled: 0,
+        },
+      };
+      return await firstValueFrom(
+        this.api.post(`/api/platinum/billing-payment/submit-consumer-payment/${userId}`, payload)
+      );
+    } else {
+      const payload = {
+        accounts: items.map(item => ({
+          accountID: item.accountData!.accountId,
+          account_ID: item.accountData!.accountId,
+          accountNumber: item.accountData!.accountNumber,
+          name: item.accountData!.name,
+          outstandingAmount: item.amountDue,
+          outStandingAmt: item.amountDue,
+          paymentAmount: item.amountToPay,
+          billId: item.accountData!.billId,
+          cutOffID: item.accountData!.cutOffID,
+          cutOffAmount: item.accountData!.cutOffAmount,
+          debtAmount: item.accountData!.debtAmount,
+          debtArrangementId: item.accountData!.debtArrangementId,
+          sundryDebtorsId: item.accountData!.sundryDebtorsId,
+          billingCycleId: item.accountData!.billingCycleId,
+        })),
+        requestModel: {
+          finYear,
+          receiptDate,
+          totalAmount: items.reduce((s, i) => s + i.amountToPay, 0),
+          tenderAmount: totalAmount,
+          changeAmount: this.changeAmount(),
+          paymentType: paymentTypeId,
+          paymentOption: this.getPaymentOptionId(),
+          outStandingAmount: items.reduce((s, i) => s + i.amountDue, 0),
+          cardNumber: cardNum,
+          apiTransactionID: 0,
+          isReconciled: 0,
+          isCancelled: 0,
+        },
+      };
+      return await firstValueFrom(
+        this.api.post(`/api/platinum/billing-payment/submit-multiple-payment/${userId}`, payload)
+      );
+    }
+  }
+
+  private async submitClearancePaymentItem(item: BasketItem, userId: number, ci: any, finYear: string, cardNum: string): Promise<any> {
+    const cd = item.clearanceData!;
+    return await firstValueFrom(
+      this.api.post('/api/platinum/billing-payment-clearance/submit-payment', {
+        clearanceId: cd.clearanceId,
+        clearance_ID: cd.clearanceId,
+        userId,
+        cashierId: ci?.id || ci?.cashier_ID || userId,
+        cashOfficeId: ci?.cashOffice_ID,
+        paidAmount: item.amountToPay,
+        totalAmount: item.amountToPay,
+        paymentTypeId: this.getPaymentTypeId(),
+        cardNumber: cardNum,
+        chequeNo: this.chequeNumber(),
+        bankBranchCode: this.banks().find(b => b.bankID === this.chequeBankId())?.branchCode || '',
+        finYear,
+      })
+    );
+  }
+
+  private async submitPrepaidPaymentItem(item: BasketItem): Promise<any> {
+    const pd = item.prepaidData!;
+    return await firstValueFrom(
+      this.api.post('/api/platinum/receipt-prepaid/utilipay-token-request', {
+        meterNumber: pd.meterNumber,
+        amount: item.amountToPay,
+        serviceType: pd.serviceType,
+        ...(pd.breakdown || {}),
+      })
+    );
+  }
+
+  private async submitMiscPaymentItem(item: BasketItem, userId: number, ci: any, finYear: string, cardNum: string): Promise<any> {
+    const md = item.miscData!;
+    const vatAmount = md.isVatable ? Math.round(item.amountToPay * md.vatPercentage / (100 + md.vatPercentage) * 100) / 100 : 0;
+    return await firstValueFrom(
+      this.api.post('/api/platinum/billing-payment-miscellaneous/submit', {
+        userId,
+        cashierId: ci?.id || ci?.cashier_ID || userId,
+        cashOfficeId: ci?.cashOffice_ID,
+        finYear,
+        miscellaneousPaymentGroup: md.groupId,
+        scoaItem: md.scoaItemId,
+        description: md.description || md.scoaItemName,
+        lastName: md.lastName,
+        initials: md.initials,
+        totalAmount: item.amountToPay,
+        amount: item.amountToPay - vatAmount,
+        vatAmount,
+        vatPercentage: md.vatPercentage,
+        isVatable: md.isVatable,
+        tenderAmount: item.amountToPay,
+        changeAmount: 0,
+        paymentType: this.getPaymentTypeId(),
+        receiptDate: new Date().toISOString(),
+        cardNo: cardNum,
+        expiryDate: this.cardExpiry(),
+        chequeNo: this.chequeNumber(),
+        bankBranch: this.banks().find(b => b.bankID === this.chequeBankId())?.bankName || '',
+        bankBranchCode: this.banks().find(b => b.bankID === this.chequeBankId())?.branchCode || '',
+        accHolderName: this.chequeName(),
+      })
+    );
+  }
+
+  async searchClearance(): Promise<void> {
+    if (!this.sessionActive()) {
+      this.toast.error('No active cashier session.');
+      return;
+    }
+    const id = this.clearanceSearchId().trim();
+    if (!id) return;
+    this.clearanceSearching.set(true);
+    this.clearanceError.set('');
     try {
-      const receiptNo = rd.receiptNumber || rd.receipt_no || rd.receiptNo || '';
-      const userId = this.user()?.user_ID;
+      const paddedId = id.padStart(12, '0');
+      const [dataResult, accountsResult] = await Promise.all([
+        firstValueFrom(this.api.post<any>('/api/platinum/billing-payment-clearance/get-clearance-data', { clearanceId: paddedId })),
+        firstValueFrom(this.api.post<any>('/api/platinum/billing-payment-clearance/get-accounts-for-clearance', { clearanceId: paddedId, userId: this.user()?.user_ID })),
+      ]);
+      const dataItems = dataResult?.items || (Array.isArray(dataResult) ? dataResult : []);
+      const accounts = accountsResult?.items || (Array.isArray(accountsResult) ? accountsResult : []);
+      if (dataItems.length === 0 && accounts.length === 0) {
+        this.clearanceError.set('No clearance certificate found.');
+        return;
+      }
+      const info = dataItems[0] || {};
+      const clearanceAccounts = accounts.map((a: any) => ({
+        accountId: a.accountID || a.account_ID || 0,
+        accountNumber: a.accountNumber || a.account_no || '',
+        name: a.name || '',
+        amount: Number(a.amount || a.outstandingAmount || 0),
+        paymentAmount: Number(a.paymentAmount || a.amount || 0),
+        serviceType: a.serviceType || a.description || '',
+      }));
+      const totalDue = clearanceAccounts.reduce((s: number, a: any) => s + a.paymentAmount, 0);
+
+      const clearItem: BasketItem = {
+        id: crypto.randomUUID(),
+        type: 'clearance',
+        label: `Clearance: ${paddedId}`,
+        description: `${info.name || info.ownerName || ''} — ${info.propertyDesc || info.address || ''}`,
+        amountDue: totalDue,
+        amountToPay: totalDue,
+        clearanceData: {
+          clearanceId: paddedId,
+          status: info.status || info.statusDesc || 'Pending',
+          ownerName: info.name || info.ownerName || '',
+          propertyDesc: info.propertyDesc || info.address || '',
+          accounts: clearanceAccounts,
+        },
+      };
+      this.basket.addItem(clearItem);
+      this.toast.success(`Clearance ${paddedId} added to basket.`);
+      this.clearanceSearchId.set('');
+    } catch (e: any) {
+      this.clearanceError.set(e?.error?.message || 'Clearance search failed.');
+    } finally {
+      this.clearanceSearching.set(false);
+    }
+  }
+
+  async searchPrepaid(): Promise<void> {
+    if (!this.sessionActive()) {
+      this.toast.error('No active cashier session.');
+      return;
+    }
+    const meter = this.prepaidMeterNo().trim();
+    if (!meter) return;
+    this.prepaidSearching.set(true);
+    this.prepaidError.set('');
+    this.prepaidBreakdown.set(null);
+    try {
+      if (!this.prepaidAmount() || this.prepaidAmount() <= 0) {
+        this.prepaidError.set('Please enter a valid amount.');
+        this.prepaidSearching.set(false);
+        return;
+      }
       const result: any = await firstValueFrom(
-        this.api.post('/api/platinum/billing-payment/print-receipt', {
-          receiptNo, userId, isPOS: true,
+        this.api.post('/api/platinum/receipt-prepaid/utilipay-breakdown-request', {
+          meterNumber: meter,
+          amount: this.prepaidAmount(),
+          serviceType: this.prepaidSelectedService() || 'Electricity',
         })
       );
+      if (result && !result._error) {
+        this.prepaidBreakdown.set(result);
+
+        const prepItem: BasketItem = {
+          id: crypto.randomUUID(),
+          type: 'prepaid',
+          label: `Prepaid: ${meter}`,
+          description: `${result.units || result.kwhUnits || '?'} units`,
+          amountDue: Number(result.totalAmount || result.amount || this.prepaidAmount()),
+          amountToPay: Number(result.totalAmount || result.amount || this.prepaidAmount()),
+          prepaidData: {
+            meterNumber: meter,
+            serviceType: this.prepaidSelectedService() || 'Electricity',
+            breakdown: result,
+            tokenResult: null,
+          },
+        };
+        this.basket.addItem(prepItem);
+        this.toast.success(`Prepaid ${meter} added to basket.`);
+        this.prepaidMeterNo.set('');
+        this.prepaidAmount.set(0);
+      } else {
+        this.prepaidError.set(result?.message || 'Could not get prepaid breakdown.');
+      }
+    } catch (e: any) {
+      this.prepaidError.set(e?.error?.message || 'Prepaid search failed.');
+    } finally {
+      this.prepaidSearching.set(false);
+    }
+  }
+
+  async loadPrepaidServiceTypes(): Promise<void> {
+    try {
+      const data: any = await firstValueFrom(
+        this.api.get<any>('/api/platinum/receipt-prepaid/service-type-wise-prepaid-list')
+      );
+      this.prepaidServiceTypes.set(Array.isArray(data) ? data : []);
+    } catch {
+      this.toast.error('Failed to load prepaid service types.');
+    }
+  }
+
+  async loadMiscGroups(): Promise<void> {
+    this.miscGroupsLoading.set(true);
+    try {
+      const data: any = await firstValueFrom(
+        this.api.get<any>('/api/platinum/billing-payment-miscellaneous/get-groups')
+      );
+      const arr = Array.isArray(data) ? data : [];
+      this.miscGroups.set(arr.map((g: any) => ({
+        groupId: g.groupId || g.group_ID || g.miscellaneousPaymentGroup || g.id || 0,
+        groupName: g.groupName || g.group_name || g.description || '',
+        description: g.description || g.groupName || '',
+      })));
+    } catch {
+      this.toast.error('Failed to load miscellaneous payment groups.');
+    } finally {
+      this.miscGroupsLoading.set(false);
+    }
+  }
+
+  async onMiscGroupChange(groupId: number): Promise<void> {
+    this.miscSelectedGroupId.set(groupId);
+    this.miscScoaItems.set([]);
+    this.miscSelectedScoaId.set(0);
+    if (!groupId) return;
+    this.miscScoaLoading.set(true);
+    try {
+      const data: any = await firstValueFrom(
+        this.api.get<any>('/api/platinum/billing-payment-miscellaneous/get-scoa-items', { groupId: String(groupId) })
+      );
+      const arr = Array.isArray(data) ? data : [];
+      const mapped = arr.map((s: any) => ({
+        scoaItemId: s.scoaItemId || s.scoa_item_ID || s.scoaItem || s.id || 0,
+        scoaItemName: s.scoaItemName || s.description || s.name || '',
+        description: s.description || s.scoaItemName || '',
+        amount: s.amount || 0,
+        isVatable: s.isVatable || false,
+        vatPercentage: s.vatPercentage || 0,
+      }));
+      this.miscScoaItems.set(mapped);
+      if (mapped.length > 0) {
+        this.miscSelectedScoaId.set(mapped[0].scoaItemId);
+      }
+    } catch {
+      this.toast.error('Failed to load SCOA items.');
+    } finally {
+      this.miscScoaLoading.set(false);
+    }
+  }
+
+  addMiscFromTab(): void {
+    if (!this.miscSelectedGroupId() || !this.miscSelectedScoaId() || this.miscAmount() <= 0) {
+      this.toast.error('Select a group, item, and enter an amount.');
+      return;
+    }
+    const group = this.miscGroups().find(g => g.groupId === this.miscSelectedGroupId());
+    const scoaItem = this.miscScoaItems().find(s => s.scoaItemId === this.miscSelectedScoaId());
+    if (!group || !scoaItem) return;
+
+    const vatPct = scoaItem.vatPercentage || 0;
+    const amount = this.miscAmount();
+    const vatAmount = scoaItem.isVatable ? Math.round(amount * vatPct / (100 + vatPct) * 100) / 100 : 0;
+
+    const item: BasketItem = {
+      id: crypto.randomUUID(),
+      type: 'misc',
+      label: `${group.groupName} — ${scoaItem.scoaItemName}`,
+      description: this.miscDescription() || scoaItem.scoaItemName,
+      amountDue: amount,
+      amountToPay: amount,
+      miscData: {
+        groupId: group.groupId,
+        groupName: group.groupName,
+        scoaItemId: scoaItem.scoaItemId,
+        scoaItemName: scoaItem.scoaItemName,
+        lastName: this.miscLastName(),
+        initials: this.miscInitials(),
+        description: this.miscDescription() || scoaItem.scoaItemName,
+        isVatable: scoaItem.isVatable,
+        vatPercentage: vatPct,
+        vatAmount,
+      },
+    };
+    this.basket.addItem(item);
+    this.toast.success(`Added misc: ${group.groupName}`);
+    this.miscAmount.set(0);
+    this.miscDescription.set('');
+    this.miscLastName.set('');
+    this.miscInitials.set('');
+  }
+
+  async printReceipt(): Promise<void> {
+    const results = this.receiptResults();
+    if (!results.length) return;
+    this.printingReceipt.set(true);
+    try {
+      const receiptIds = results.map(r => {
+        const raw = r.rawResponse;
+        return raw?.receiptSerialNo || raw?.receipt_serial_no || raw?.receiptId || raw?.receipt_ID || 0;
+      }).filter((id: number) => id > 0);
+
+      const receiptNos = results.map(r => r.receiptNumber).filter(n => n && n !== 'N/A');
+
+      if (receiptIds.length === 0 && receiptNos.length === 0) {
+        this.toast.error('No valid receipt IDs to print.');
+        this.printingReceipt.set(false);
+        return;
+      }
+
+      const result: any = await firstValueFrom(
+        this.api.post('/api/platinum/billing-payment/print-receipt', {
+          ids: receiptIds.length > 0 ? receiptIds : [0],
+          receiptNos,
+          isReprint: false,
+        })
+      );
+
       if (result instanceof Blob) {
         const url = URL.createObjectURL(result);
         window.open(url, '_blank');
@@ -796,24 +1392,59 @@ export class PosComponent implements OnInit, OnDestroy {
         const blob = new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' });
         const url = URL.createObjectURL(blob);
         window.open(url, '_blank');
-      } else {
-        this.toast.success('Receipt sent to printer.');
       }
+      this.toast.success('Receipt(s) sent to printer.');
     } catch {
-      this.toast.error('Failed to print receipt.');
+      this.toast.error('Failed to print receipt(s).');
     } finally {
       this.printingReceipt.set(false);
     }
   }
 
+  async sendReceiptVia(method: ReceiptDeliveryMethod): Promise<void> {
+    this.receiptDeliveryMethod.set(method);
+    if (method === 'print') {
+      await this.printReceipt();
+      return;
+    }
+    if ((method === 'email' && !this.receiptEmail()) ||
+        ((method === 'whatsapp' || method === 'sms') && !this.receiptPhone())) {
+      this.toast.error(method === 'email' ? 'Enter an email address.' : 'Enter a phone number.');
+      return;
+    }
+
+    this.sendingReceipt.set(true);
+    try {
+      const results = this.receiptResults();
+      for (const r of results) {
+        await firstValueFrom(
+          this.api.post('/api/platinum/billing-payment/send-receipt', {
+            receiptNo: r.receiptNumber,
+            method,
+            email: this.receiptEmail(),
+            phone: this.receiptPhone(),
+            userId: this.user()?.user_ID,
+          })
+        );
+      }
+      this.toast.success(`Receipt(s) sent via ${method}.`);
+    } catch {
+      this.toast.error(`Failed to send receipt via ${method}.`);
+    } finally {
+      this.sendingReceipt.set(false);
+    }
+  }
+
   closeReceipt(): void {
     this.showReceipt.set(false);
-    this.receiptData.set(null);
+    this.receiptResults.set([]);
+    this.receiptEmail.set('');
+    this.receiptPhone.set('');
   }
 
   openCancelDialog(): void {
     if (!this.sessionActive()) {
-      this.toast.error('No active cashier session. Please complete cashier setup first.');
+      this.toast.error('No active cashier session.');
       return;
     }
     this.cancelReceiptNo.set('');
@@ -827,7 +1458,7 @@ export class PosComponent implements OnInit, OnDestroy {
 
   async submitCancelRequest(): Promise<void> {
     if (!this.sessionActive()) {
-      this.toast.error('No active cashier session. Cannot cancel receipts.');
+      this.toast.error('No active cashier session.');
       return;
     }
     if (!this.cancelReceiptNo()) {
@@ -854,7 +1485,7 @@ export class PosComponent implements OnInit, OnDestroy {
 
   openDropBoxDialog(): void {
     if (!this.sessionActive()) {
-      this.toast.error('No active cashier session. Please complete cashier setup first.');
+      this.toast.error('No active cashier session.');
       return;
     }
     this.dropBoxAmount.set(0);
@@ -868,7 +1499,7 @@ export class PosComponent implements OnInit, OnDestroy {
 
   async submitDropBox(): Promise<void> {
     if (!this.sessionActive()) {
-      this.toast.error('No active cashier session. Cannot submit drop box.');
+      this.toast.error('No active cashier session.');
       return;
     }
     if (this.dropBoxAmount() <= 0) {
@@ -895,276 +1526,6 @@ export class PosComponent implements OnInit, OnDestroy {
     }
   }
 
-  async searchClearance(): Promise<void> {
-    if (!this.sessionActive()) {
-      this.toast.error('No active cashier session. Please complete cashier setup first.');
-      return;
-    }
-    const id = this.clearanceSearchId().trim();
-    if (!id) return;
-    this.clearanceSearching.set(true);
-    this.clearanceError.set('');
-    this.clearanceData.set(null);
-    try {
-      const paddedId = id.padStart(12, '0');
-      const [dataResult, accountsResult] = await Promise.all([
-        firstValueFrom(this.api.post<any>('/api/platinum/billing-payment-clearance/get-clearance-data', { clearanceId: paddedId })),
-        firstValueFrom(this.api.post<any>('/api/platinum/billing-payment-clearance/get-accounts-for-clearance', { clearanceId: paddedId, userId: this.user()?.user_ID })),
-      ]);
-      const dataItems = dataResult?.items || (Array.isArray(dataResult) ? dataResult : []);
-      const accounts = accountsResult?.items || (Array.isArray(accountsResult) ? accountsResult : []);
-      if (dataItems.length === 0 && accounts.length === 0) {
-        this.clearanceError.set('No clearance certificate found with this ID.');
-        return;
-      }
-      const info = dataItems[0] || {};
-      this.clearanceData.set({
-        clearanceId: paddedId,
-        status: info.status || info.statusDesc || 'Pending',
-        ownerName: info.name || info.ownerName || '',
-        propertyDesc: info.propertyDesc || info.address || '',
-        accounts: accounts.map((a: any) => ({
-          accountId: a.accountID || a.account_ID || 0,
-          accountNumber: a.accountNumber || a.account_no || '',
-          name: a.name || '',
-          amount: Number(a.amount || a.outstandingAmount || 0),
-          paymentAmount: Number(a.paymentAmount || a.amount || 0),
-          serviceType: a.serviceType || a.description || '',
-        })),
-        totalDue: accounts.reduce((s: number, a: any) => s + Number(a.paymentAmount || a.amount || 0), 0),
-      });
-    } catch (e: any) {
-      this.clearanceError.set(e?.error?.message || 'Clearance search failed.');
-    } finally {
-      this.clearanceSearching.set(false);
-    }
-  }
-
-  async submitClearancePayment(): Promise<void> {
-    if (!this.sessionActive()) {
-      this.toast.error('No active cashier session. Cannot process payments.');
-      return;
-    }
-    const cd = this.clearanceData();
-    if (!cd) return;
-    this.processingPayment.set(true);
-    try {
-      const userId = this.user()?.user_ID;
-      const ci = this.cashierInfo();
-      const result: any = await firstValueFrom(
-        this.api.post('/api/platinum/billing-payment-clearance/submit-payment', {
-          clearanceId: cd.clearanceId,
-          clearance_ID: cd.clearanceId,
-          userId,
-          cashierId: ci?.id || ci?.cashier_ID || userId,
-          cashOfficeId: ci?.cashOffice_ID,
-          paidAmount: cd.totalDue,
-          totalAmount: cd.totalDue,
-          paymentTypeId: this.getPaymentTypeId(),
-          cardNumber: this.cardNumber().replace(/\s/g, ''),
-          chequeNo: this.chequeNumber(),
-          bankBranchCode: this.banks().find(b => b.bankID === this.chequeBankId())?.branchCode || '',
-          finYear: ci?.finYear || '',
-        })
-      );
-      this.receiptData.set(result);
-      this.showReceipt.set(true);
-      this.clearanceData.set(null);
-      this.clearanceSearchId.set('');
-      this.toast.success('Clearance payment processed successfully!');
-    } catch (e: any) {
-      this.toast.error(e?.error?.message || 'Clearance payment failed.');
-    } finally {
-      this.processingPayment.set(false);
-    }
-  }
-
-  async loadPrepaidServiceTypes(): Promise<void> {
-    try {
-      const data: any = await firstValueFrom(
-        this.api.get<any>('/api/platinum/receipt-prepaid/service-type-wise-prepaid-list')
-      );
-      this.prepaidServiceTypes.set(Array.isArray(data) ? data : []);
-    } catch (e: any) {
-      this.toast.error('Failed to load prepaid service types.');
-    }
-  }
-
-  async searchPrepaid(): Promise<void> {
-    if (!this.sessionActive()) {
-      this.toast.error('No active cashier session. Please complete cashier setup first.');
-      return;
-    }
-    const meter = this.prepaidMeterNo().trim();
-    if (!meter) return;
-    this.prepaidSearching.set(true);
-    this.prepaidError.set('');
-    this.prepaidBreakdown.set(null);
-    this.prepaidToken.set(null);
-    try {
-      if (!this.prepaidAmount() || this.prepaidAmount() <= 0) {
-        this.prepaidError.set('Please enter a valid prepaid amount.');
-        this.prepaidSearching.set(false);
-        return;
-      }
-      if (!this.prepaidSelectedService()) {
-        this.prepaidError.set('Please select a service type first.');
-        this.prepaidSearching.set(false);
-        return;
-      }
-      const result: any = await firstValueFrom(
-        this.api.post('/api/platinum/receipt-prepaid/utilipay-breakdown-request', {
-          meterNumber: meter,
-          amount: this.prepaidAmount(),
-          serviceType: this.prepaidSelectedService(),
-        })
-      );
-      if (result && !result._error) {
-        this.prepaidBreakdown.set(result);
-      } else {
-        this.prepaidError.set(result?.message || 'Could not get prepaid breakdown.');
-      }
-    } catch (e: any) {
-      this.prepaidError.set(e?.error?.message || 'Prepaid search failed.');
-    } finally {
-      this.prepaidSearching.set(false);
-    }
-  }
-
-  async purchasePrepaidToken(): Promise<void> {
-    if (!this.sessionActive()) {
-      this.toast.error('No active cashier session. Cannot purchase tokens.');
-      return;
-    }
-    const bd = this.prepaidBreakdown();
-    if (!bd) return;
-    this.prepaidProcessing.set(true);
-    try {
-      const result: any = await firstValueFrom(
-        this.api.post('/api/platinum/receipt-prepaid/utilipay-token-request', {
-          meterNumber: this.prepaidMeterNo(),
-          amount: this.prepaidAmount(),
-          serviceType: this.prepaidSelectedService(),
-          ...bd,
-        })
-      );
-      if (result && !result._error) {
-        this.prepaidToken.set(result);
-        this.toast.success('Prepaid token purchased successfully!');
-      } else {
-        this.toast.error(result?.message || 'Token purchase failed.');
-      }
-    } catch (e: any) {
-      this.toast.error(e?.error?.message || 'Token purchase failed.');
-    } finally {
-      this.prepaidProcessing.set(false);
-    }
-  }
-
-  async loadMiscGroups(): Promise<void> {
-    this.miscGroupsLoading.set(true);
-    try {
-      const data: any = await firstValueFrom(
-        this.api.get<any>('/api/platinum/billing-payment-miscellaneous/get-groups')
-      );
-      const arr = Array.isArray(data) ? data : [];
-      this.miscGroups.set(arr.map((g: any) => ({
-        groupId: g.groupId || g.group_ID || g.miscellaneousPaymentGroup || g.id || 0,
-        groupName: g.groupName || g.group_name || g.description || '',
-        description: g.description || g.groupName || '',
-      })));
-    } catch (e: any) {
-      this.toast.error('Failed to load miscellaneous payment groups.');
-    } finally {
-      this.miscGroupsLoading.set(false);
-    }
-  }
-
-  async onMiscGroupChange(groupId: number): Promise<void> {
-    this.miscSelectedGroupId.set(groupId);
-    this.miscScoaItems.set([]);
-    this.miscSelectedScoaId.set(0);
-    if (!groupId) return;
-    this.miscScoaLoading.set(true);
-    try {
-      const data: any = await firstValueFrom(
-        this.api.get<any>('/api/platinum/billing-payment-miscellaneous/get-scoa-items', { groupId: String(groupId) })
-      );
-      const arr = Array.isArray(data) ? data : [];
-      this.miscScoaItems.set(arr.map((s: any) => ({
-        scoaItemId: s.scoaItemId || s.scoa_item_ID || s.scoaItem || s.id || 0,
-        scoaItemName: s.scoaItemName || s.description || s.name || '',
-        description: s.description || s.scoaItemName || '',
-        amount: s.amount || 0,
-        isVatable: s.isVatable || false,
-        vatPercentage: s.vatPercentage || 0,
-      })));
-    } catch (e: any) {
-      this.toast.error('Failed to load SCOA items for this group.');
-    } finally {
-      this.miscScoaLoading.set(false);
-    }
-  }
-
-  async submitMiscPayment(): Promise<void> {
-    if (!this.sessionActive()) {
-      this.toast.error('No active cashier session. Cannot process payments.');
-      return;
-    }
-    if (!this.miscSelectedGroupId() || !this.miscSelectedScoaId() || this.miscAmount() <= 0) {
-      this.toast.error('Select a group, item, and enter an amount.');
-      return;
-    }
-    this.miscProcessing.set(true);
-    const userId = this.user()?.user_ID;
-    const ci = this.cashierInfo();
-    const scoaItem = this.miscScoaItems().find(s => s.scoaItemId === this.miscSelectedScoaId());
-    const vatPct = scoaItem?.vatPercentage || 0;
-    const isVatable = scoaItem?.isVatable || false;
-    const amount = this.miscAmount();
-    const vatAmount = isVatable ? Math.round(amount * vatPct / (100 + vatPct) * 100) / 100 : 0;
-
-    try {
-      const result: any = await firstValueFrom(
-        this.api.post('/api/platinum/billing-payment-miscellaneous/submit', {
-          userId,
-          cashierId: ci?.id || ci?.cashier_ID || userId,
-          cashOfficeId: ci?.cashOffice_ID,
-          finYear: ci?.finYear || '',
-          miscellaneousPaymentGroup: this.miscSelectedGroupId(),
-          scoaItem: this.miscSelectedScoaId(),
-          description: this.miscDescription() || scoaItem?.scoaItemName || '',
-          lastName: this.miscLastName(),
-          initials: this.miscInitials(),
-          totalAmount: amount,
-          amount: amount - vatAmount,
-          vatAmount,
-          vatPercentage: vatPct,
-          isVatable,
-          tenderAmount: amount,
-          changeAmount: 0,
-          paymentType: this.getPaymentTypeId(),
-          receiptDate: new Date().toISOString(),
-          cardNo: this.cardNumber().replace(/\s/g, ''),
-          expiryDate: this.cardExpiry(),
-          chequeNo: this.chequeNumber(),
-          bankBranch: this.banks().find(b => b.bankID === this.chequeBankId())?.bankName || '',
-          bankBranchCode: this.banks().find(b => b.bankID === this.chequeBankId())?.branchCode || '',
-          accHolderName: this.chequeName(),
-        })
-      );
-      this.receiptData.set(result);
-      this.showReceipt.set(true);
-      this.toast.success('Miscellaneous payment processed!');
-      this.miscAmount.set(0);
-      this.miscDescription.set('');
-    } catch (e: any) {
-      this.toast.error(e?.error?.message || 'Miscellaneous payment failed.');
-    } finally {
-      this.miscProcessing.set(false);
-    }
-  }
-
   navigateToCashierSetup(): void {
     this.router.navigate(['/cashier-setup']);
   }
@@ -1178,10 +1539,58 @@ export class PosComponent implements OnInit, OnDestroy {
   }
 
   formatCurrency(amount: number): string {
+    if (isNaN(amount)) return '0.00';
     return amount.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
   getReceiptNo(data: any): string {
     return data?.receiptNumber || data?.receipt_no || data?.receiptNo || data?.ReceiptNo || 'N/A';
+  }
+
+  getAccountNo(r: any): string {
+    return r?.accountNo || r?.accountNumber || r?.account_no || '';
+  }
+
+  getAccountName(r: any): string {
+    return r?.name || r?.accountName || r?.consumerName || r?.surname_Company || '';
+  }
+
+  getAccountBalance(r: any): number {
+    return Number(r?.outstandingAmount || r?.outStandingAmt || r?.balance || r?.totalDue || 0);
+  }
+
+  getAccountAddress(r: any): string {
+    return r?.address || r?.physicalAddress || r?.deliveryAddress || '';
+  }
+
+  getAccountStatus(r: any): string {
+    return r?.status || r?.accountStatus || r?.statusDesc || 'Active';
+  }
+
+  getAccountId(r: any): number {
+    return r?.account_ID || r?.accountID || r?.accountId || 0;
+  }
+
+  getTypeColor(type: BasketItemType): string {
+    const colors: Record<BasketItemType, string> = {
+      account: '#2563eb',
+      clearance: '#16a34a',
+      prepaid: '#d97706',
+      misc: '#7c3aed',
+    };
+    return colors[type];
+  }
+
+  getTypeOrder(type: BasketItemType): number {
+    return PROCESSING_ORDER[type];
+  }
+
+  getTypeSubtotal(type: string): number {
+    const items = this.basket.itemsByType()[type as BasketItemType] || [];
+    return items.reduce((sum: number, item: BasketItem) => sum + item.amountToPay, 0);
+  }
+
+  absVal(n: number): number {
+    return Math.abs(n);
   }
 }
