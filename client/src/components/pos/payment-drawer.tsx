@@ -476,7 +476,6 @@ export function PaymentDrawer() {
         <Button 
           className="w-full bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] hover:from-[var(--pos-accent-dark)] hover:to-[var(--pos-accent-dark)] shadow-lg shadow-[0_1px_3px_rgba(0,0,0,0.15)] h-12 lg:h-14 text-base lg:text-lg font-bold rounded-xl disabled:from-slate-300 disabled:to-slate-400 disabled:shadow-none active:scale-[0.98] transition-all touch-manipulation" 
           size="lg"
-          tabIndex={90}
           disabled={!isCompleteEnabled}
           onClick={completeTransaction}
           data-testid="button-complete-transaction"
@@ -1163,7 +1162,6 @@ function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, a
               className={`h-9 font-mono text-sm ${payment.cardReference && payment.cardReference.trim().length < 4 ? 'border-red-400 ring-1 ring-red-200' : ''}`}
               data-testid="input-card-reference"
               inputMode="numeric"
-              tabIndex={70}
             />
           </div>
           <div>
@@ -1182,7 +1180,6 @@ function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, a
               data-testid="input-card-expiry"
               maxLength={5}
               inputMode="numeric"
-              tabIndex={80}
             />
           </div>
         </div>
@@ -1403,10 +1400,10 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
                         <input
                           type="text"
                           inputMode="decimal"
-                          tabIndex={50}
                           className="w-full bg-transparent text-2xl font-mono font-bold focus:outline-none placeholder:text-slate-300"
                           value={activeInput === 'cash' ? inputBuffer : (payment.cashAmount > 0 ? payment.cashAmount.toFixed(2).replace(/\.00$/, '') : "")}
                           placeholder="0.00"
+                          data-testid="input-cash-amount"
                           onChange={(e) => {
                             if (activeInput !== 'cash') setActiveInput('cash');
                             const val = e.target.value;
@@ -1435,10 +1432,10 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
                         <input
                           type="text"
                           inputMode="decimal"
-                          tabIndex={60}
                           className="w-full bg-transparent text-2xl font-mono font-bold focus:outline-none placeholder:text-slate-300"
                           value={activeInput === 'card' ? inputBuffer : (payment.cardAmount > 0 ? payment.cardAmount.toFixed(2).replace(/\.00$/, '') : "")}
                           placeholder="0.00"
+                          data-testid="input-card-amount"
                           onChange={(e) => {
                             if (activeInput !== 'card') setActiveInput('card');
                             const val = e.target.value;
@@ -1572,7 +1569,6 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
                         className={`h-10 font-mono text-sm ${payment.cardReference && payment.cardReference.trim().length < 4 ? 'border-red-400 ring-1 ring-red-200' : ''}`}
                         data-testid="input-card-reference"
                         inputMode="numeric"
-                        tabIndex={70}
                       />
                     </div>
                     <div>
@@ -1591,7 +1587,6 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
                         data-testid="input-card-expiry-desktop"
                         maxLength={5}
                         inputMode="numeric"
-                        tabIndex={80}
                       />
                     </div>
                   </div>
