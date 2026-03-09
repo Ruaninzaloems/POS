@@ -25,14 +25,7 @@ import {
   authorizeSection129Run,
   type Section129Run,
 } from '@/lib/external-api';
-
-type ReviewDecision = 'Approve' | 'Decline' | '';
-
-interface AuthorizationRow {
-  run: Section129Run;
-  review: ReviewDecision;
-  notes: string;
-}
+import type { ReviewDecision, AuthorizationRow } from '@/models/debt.models';
 
 export default function Section129Authorization() {
   const { toast } = useToast();

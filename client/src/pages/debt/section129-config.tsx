@@ -30,34 +30,16 @@ import {
   type Section129ConfigEntry,
   type Attorney,
 } from '@/lib/external-api';
-
-interface CostItem {
-  nr: number;
-  additionalBillingTypeId: string;
-  additionalBillingTypeName: string;
-  amount: number;
-}
-
-interface AttorneyRotationItem {
-  nr: number;
-  attorneyId: number;
-  attorneyName: string;
-  percentDebtorCount: number;
-  percentHandoverAmount: number;
-}
-
-type ViewMode = 'landing' | 'detail';
+import { getFinancialYear } from '@/services/format.service';
+import { SECTION129_DEFAULTS } from '@/services/debt-config';
+import type { CostItem, AttorneyRotationItem, ConfigViewMode } from '@/models/debt.models';
 
 export default function Section129Config() {
   const { toast } = useToast();
-  const [viewMode, setViewMode] = useState<ViewMode>('landing');
+  const [viewMode, setViewMode] = useState<ConfigViewMode>('landing');
   const [isNewEntry, setIsNewEntry] = useState(false);
 
-  const currentFY = (() => {
-    const now = new Date();
-    const year = now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear();
-    return `${year - 1}/${year}`;
-  })();
+  const currentFY = getFinancialYear();
 
   const [finYear, setFinYear] = useState(currentFY);
   const [configEntries, setConfigEntries] = useState<Section129ConfigEntry[]>([]);
@@ -66,12 +48,12 @@ export default function Section129Config() {
 
   const [enabled, setEnabled] = useState(true);
   const [selectedFinYear, setSelectedFinYear] = useState(currentFY);
-  const [section129Template, setSection129Template] = useState('Section 129 Standard');
-  const [smsTemplate, setSmsTemplate] = useState('SMS Notification');
-  const [lapseDays, setLapseDays] = useState(14);
-  const [noticesPerFile, setNoticesPerFile] = useState(500);
+  const [section129Template, setSection129Template] = useState(SECTION129_DEFAULTS.section129Template);
+  const [smsTemplate, setSmsTemplate] = useState(SECTION129_DEFAULTS.smsTemplate);
+  const [lapseDays, setLapseDays] = useState(SECTION129_DEFAULTS.lapseDays);
+  const [noticesPerFile, setNoticesPerFile] = useState(SECTION129_DEFAULTS.noticesPerFile);
   const [costItems, setCostItems] = useState<CostItem[]>([]);
-  const [activateRotation, setActivateRotation] = useState(true);
+  const [activateRotation, setActivateRotation] = useState(SECTION129_DEFAULTS.activateRotation);
   const [attorneyRotation, setAttorneyRotation] = useState<AttorneyRotationItem[]>([]);
 
   const [addBillTypeId, setAddBillTypeId] = useState('');
@@ -142,12 +124,12 @@ export default function Section129Config() {
     setSelectedEntry(null);
     setEnabled(true);
     setSelectedFinYear(currentFY);
-    setSection129Template('Section 129 Standard');
-    setSmsTemplate('SMS Notification');
-    setLapseDays(14);
-    setNoticesPerFile(500);
+    setSection129Template(SECTION129_DEFAULTS.section129Template);
+    setSmsTemplate(SECTION129_DEFAULTS.smsTemplate);
+    setLapseDays(SECTION129_DEFAULTS.lapseDays);
+    setNoticesPerFile(SECTION129_DEFAULTS.noticesPerFile);
     setCostItems([]);
-    setActivateRotation(true);
+    setActivateRotation(SECTION129_DEFAULTS.activateRotation);
     setAttorneyRotation([]);
     setAddBillTypeId('');
     setAddBillAmount('');
@@ -162,10 +144,10 @@ export default function Section129Config() {
     setSelectedEntry(entry);
     setEnabled(entry.enabled);
     setSelectedFinYear(entry.finYear);
-    setSection129Template(entry.section129Template || 'Section 129 Standard');
-    setSmsTemplate(entry.smsTemplate || 'SMS Notification');
-    setLapseDays(entry.lapseDays ?? 14);
-    setNoticesPerFile(entry.noticesPerFile ?? 500);
+    setSection129Template(entry.section129Template || SECTION129_DEFAULTS.section129Template);
+    setSmsTemplate(entry.smsTemplate || SECTION129_DEFAULTS.smsTemplate);
+    setLapseDays(entry.lapseDays ?? SECTION129_DEFAULTS.lapseDays);
+    setNoticesPerFile(entry.noticesPerFile ?? SECTION129_DEFAULTS.noticesPerFile);
     setCostItems(entry.costItems || []);
     setActivateRotation(entry.activateRotation ?? false);
     setAttorneyRotation(entry.attorneyRotation || []);

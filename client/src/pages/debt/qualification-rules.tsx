@@ -29,41 +29,11 @@ import {
   deleteQualificationRule,
   runQualificationRule,
 } from '@/lib/external-api';
+import type { Condition, QualificationRunResult } from '@/models/debt.models';
+import { QUALIFICATION_FIELD_OPTIONS, QUALIFICATION_OPERATOR_OPTIONS } from '@/services/debt-config';
 
-interface Condition {
-  field: string;
-  operator: string;
-  value: string;
-  logicOperator: 'AND' | 'OR';
-}
-
-const FIELD_OPTIONS = [
-  { value: 'waterArrears', label: 'Water Arrears (R)' },
-  { value: 'electricityArrears', label: 'Electricity Arrears (R)' },
-  { value: 'ratesArrears', label: 'Rates Arrears (R)' },
-  { value: 'refuseArrears', label: 'Refuse Arrears (R)' },
-  { value: 'sewerageArrears', label: 'Sewerage Arrears (R)' },
-  { value: 'totalArrears', label: 'Total Arrears (R)' },
-  { value: 'arrearDays', label: 'Arrear Age (days)' },
-  { value: 'lastPaymentDays', label: 'Days Since Last Payment' },
-  { value: 'propertyValue', label: 'Property Value (R)' },
-  { value: 'overallScore', label: 'Risk Score (0-100)' },
-  { value: 'indigentStatus', label: 'Indigent Status' },
-  { value: 'previousLegalActions', label: 'Previous Legal Actions' },
-  { value: 'debtSize', label: 'Debt Size (R)' },
-  { value: 'paymentHistory', label: 'Payment History Score' },
-  { value: 'locationRisk', label: 'Location Risk Score' },
-];
-
-const OPERATOR_OPTIONS = [
-  { value: '>', label: '>' },
-  { value: '<', label: '<' },
-  { value: '>=', label: '>=' },
-  { value: '<=', label: '<=' },
-  { value: '=', label: '=' },
-  { value: '!=', label: '!=' },
-  { value: 'contains', label: 'contains' },
-];
+const FIELD_OPTIONS = QUALIFICATION_FIELD_OPTIONS;
+const OPERATOR_OPTIONS = QUALIFICATION_OPERATOR_OPTIONS;
 
 function FieldLabel({ field }: { field: string }) {
   const opt = FIELD_OPTIONS.find(f => f.value === field);
@@ -86,7 +56,7 @@ export default function QualificationRules() {
   const [saving, setSaving] = useState(false);
 
   const [runningRuleId, setRunningRuleId] = useState<number | null>(null);
-  const [runResults, setRunResults] = useState<any>(null);
+  const [runResults, setRunResults] = useState<QualificationRunResult | null>(null);
 
   const [testAccounts, setTestAccounts] = useState('');
 

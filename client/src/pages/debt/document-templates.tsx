@@ -38,54 +38,11 @@ import {
   uploadTemplateFile,
   downloadTemplateFile,
 } from '@/lib/external-api';
+import type { DocumentTemplate, TemplateVersion } from '@/models/debt.models';
+import { formatDate, formatFileSize } from '@/services/format.service';
+import { TEMPLATE_CATEGORIES } from '@/services/debt-config';
 
-interface Template {
-  id: number | string;
-  templateCode: string;
-  name: string;
-  category: string;
-  description?: string;
-  currentVersion: string;
-  isActive: boolean;
-  fileType?: string;
-  lastModifiedBy?: string;
-  lastModifiedAt?: string;
-  createdAt?: string;
-}
-
-interface TemplateVersion {
-  id: number | string;
-  templateId: number | string;
-  version: string;
-  changeNotes?: string;
-  fileSize?: number;
-  uploadedBy?: string;
-  uploadedAt?: string;
-  isActive?: boolean;
-}
-
-const CATEGORIES = [
-  { value: 'SECTION_129', label: 'Section 129 Notices' },
-  { value: 'HANDOVER', label: 'Handover Documents' },
-  { value: 'AOD', label: 'Acknowledgement of Debt' },
-  { value: 'FINAL_DEMAND', label: 'Final Demand' },
-  { value: 'SUMMONS', label: 'Summons' },
-  { value: 'ARRANGEMENT', label: 'Payment Arrangement' },
-  { value: 'CLEARANCE', label: 'Clearance Certificate' },
-  { value: 'GENERAL', label: 'General' },
-];
-
-function formatDate(d: string | null | undefined): string {
-  if (!d) return '—';
-  try { return new Date(d).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' }); } catch { return d; }
-}
-
-function formatFileSize(bytes: number | null | undefined): string {
-  if (!bytes) return '—';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1048576).toFixed(1)} MB`;
-}
+type Template = DocumentTemplate;
 
 export default function DocumentTemplates() {
   const { toast } = useToast();
@@ -277,7 +234,7 @@ export default function DocumentTemplates() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">All Categories</SelectItem>
-                    {CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                    {TEMPLATE_CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
                 <Button size="sm" variant="outline" className="border-[#D6D6D6]" onClick={loadTemplates} disabled={loading} data-testid="button-refresh">
@@ -313,7 +270,7 @@ export default function DocumentTemplates() {
                         <TableCell>
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
                             <Tag className="h-3 w-3" />
-                            {CATEGORIES.find(c => c.value === t.category)?.label || t.category}
+                            {TEMPLATE_CATEGORIES.find(c => c.value === t.category)?.label || t.category}
                           </span>
                         </TableCell>
                         <TableCell className="text-center">
@@ -376,7 +333,7 @@ export default function DocumentTemplates() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                    {TEMPLATE_CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -417,7 +374,7 @@ export default function DocumentTemplates() {
                 <Select value={formCategory} onValueChange={setFormCategory}>
                   <SelectTrigger className="bg-[#F7F7F7] border-[#D6D6D6]" data-testid="select-edit-category"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                    {TEMPLATE_CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

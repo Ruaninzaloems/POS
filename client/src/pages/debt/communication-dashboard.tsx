@@ -35,24 +35,26 @@ import {
   dispatchCommunication,
   fetchAccounts,
 } from '@/lib/external-api';
+import { CHANNEL_CONFIG as SHARED_CHANNEL_CONFIG, COMM_STATUS_CONFIG } from '@/services/debt-config';
+import type { CommTabMode, CommunicationStats, CommunicationLogEntry } from '@/models/debt.models';
 
-type TabMode = 'dashboard' | 'log' | 'scheduled' | 'send';
+type TabMode = CommTabMode;
 
-const CHANNEL_CONFIG: Record<string, { icon: any; label: string; color: string; bg: string }> = {
-  sms: { icon: Phone, label: 'SMS', color: 'text-green-700', bg: 'bg-green-50' },
-  email: { icon: Mail, label: 'Email', color: 'text-blue-700', bg: 'bg-blue-50' },
-  whatsapp: { icon: MessageSquare, label: 'WhatsApp', color: 'text-emerald-700', bg: 'bg-emerald-50' },
-  letter: { icon: FileText, label: 'Letter', color: 'text-amber-700', bg: 'bg-amber-50' },
+const CHANNEL_ICONS: Record<string, any> = {
+  sms: Phone,
+  email: Mail,
+  whatsapp: MessageSquare,
+  letter: FileText,
 };
 
-const STATUS_CONFIG: Record<string, { color: string; bg: string }> = {
-  SENT: { color: 'text-emerald-700', bg: 'bg-emerald-50' },
-  DELIVERED: { color: 'text-emerald-700', bg: 'bg-emerald-50' },
-  FAILED: { color: 'text-red-700', bg: 'bg-red-50' },
-  PENDING: { color: 'text-amber-700', bg: 'bg-amber-50' },
-  COMPLETED: { color: 'text-emerald-700', bg: 'bg-emerald-50' },
-  SKIPPED: { color: 'text-slate-600', bg: 'bg-slate-100' },
-};
+const CHANNEL_CONFIG: Record<string, { icon: any; label: string; color: string; bg: string }> = Object.fromEntries(
+  Object.entries(SHARED_CHANNEL_CONFIG).map(([key, cfg]) => [
+    key,
+    { ...cfg, icon: CHANNEL_ICONS[key] || Phone },
+  ])
+);
+
+const STATUS_CONFIG = COMM_STATUS_CONFIG;
 
 function ChannelBadge({ channel }: { channel: string }) {
   const cfg = CHANNEL_CONFIG[channel] || CHANNEL_CONFIG.sms;
@@ -70,7 +72,7 @@ export default function CommunicationDashboard() {
   const [, setLocation] = useLocation();
   const [tab, setTab] = useState<TabMode>('dashboard');
 
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<CommunicationStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
 
   const [logs, setLogs] = useState<any[]>([]);

@@ -24,6 +24,7 @@ import {
   fetchSmsLogReport,
   fetchAccounts,
 } from '@/lib/external-api';
+import { getFinancialYearList } from '@/services/format.service';
 
 export default function SmsLogReport() {
   const { toast } = useToast();
@@ -117,14 +118,7 @@ export default function SmsLogReport() {
     setLocation('/');
   };
 
-  const finYears = (() => {
-    const now = new Date();
-    const currentFY = now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear();
-    return Array.from({ length: 5 }, (_, i) => {
-      const end = currentFY - i;
-      return `${end - 1}/${end}`;
-    });
-  })();
+  const finYears = getFinancialYearList(5);
 
   const months = [
     { value: '7', label: 'July' }, { value: '8', label: 'August' }, { value: '9', label: 'September' },

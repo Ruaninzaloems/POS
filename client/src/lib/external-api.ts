@@ -2811,97 +2811,7 @@ export async function retryBulkAllocationJob(jobId: number, userId: number): Pro
 
 // === DEBT MANAGEMENT — Section 129 & Handover ===
 
-export interface Section129Config {
-    demandLetterTemplate: string;
-    smsTemplate: string;
-    adminFees: number;
-    lapseDays: number;
-    noticeType: string;
-    interestRate: number;
-    minimumAmount: number;
-    includeIndigents: boolean;
-    includePensioners: boolean;
-    excludeDepositBalances: boolean;
-}
-
-export interface Section129ConfigEntry {
-    id?: number;
-    finYear: string;
-    section129Template: string;
-    smsTemplate: string;
-    additionalBillingType?: string;
-    totalFees?: number;
-    noticesPerFile: number;
-    lapseDays: number;
-    activateRotation: boolean;
-    enabled: boolean;
-    costItems?: { nr: number; additionalBillingTypeId: string; additionalBillingTypeName: string; amount: number }[];
-    attorneyRotation?: { nr: number; attorneyId: number; attorneyName: string; percentDebtorCount: number; percentHandoverAmount: number }[];
-}
-
-export interface Section129Run {
-    runId: number;
-    status: string;
-    distributionType: string;
-    actionedBy: string;
-    dateCreated: string;
-    authorizedBy: string;
-    billingCycle: string;
-    runParameters: string;
-    handoverOption: string;
-    runType: string;
-    totalAccounts: number;
-    totalAmount: number;
-}
-
-export interface Section129RunAccount {
-    accountId: number;
-    accountNo: string;
-    address: string;
-    indigentStatus: string;
-    rebateStatus: string;
-    sgNumber: string;
-    outstandingDays: number;
-    qualifyingAmount: number;
-    noticeFees: number;
-    selected: boolean;
-}
-
-export interface HandoverRecord {
-    handoverId: number;
-    accountNo: string;
-    accountName: string;
-    attorney: string;
-    attorneyId: number;
-    handoverDate: string;
-    status: string;
-    handedOverAmount: number;
-    outstandingDays: number;
-    billingCycle: string;
-    handoverOption: string;
-}
-
-export interface Attorney {
-    attorneyId: number;
-    attorneyName: string;
-    firmName: string;
-    contactNumber: string;
-    email: string;
-    allocationPercentage: number;
-    isActive: boolean;
-}
-
-export interface HandoverTermination {
-    terminationId: number;
-    handoverId: number;
-    accountNo: string;
-    attorney: string;
-    reason: string;
-    notes: string;
-    status: string;
-    terminationDate: string;
-    approvedBy: string;
-}
+export type { Section129Config, Section129ConfigEntry, Section129Run, Section129RunAccount, Section129RunFile, HandoverRecord, Attorney, HandoverTermination } from '@/models/debt.models';
 
 export async function fetchSection129Config(): Promise<Section129Config> {
     const res = await apiFetch('/api/platinum/billing-debt/section129-config');
@@ -3195,14 +3105,6 @@ export async function fetchSection129Report(params?: {
     }
     const data = await res.json();
     return Array.isArray(data) ? data : [];
-}
-
-export interface Section129RunFile {
-    fileId: number;
-    fileName: string;
-    fileType: string;
-    fileSize: number;
-    dateCreated: string;
 }
 
 export async function fetchSection129RunFiles(runId: number): Promise<Section129RunFile[]> {

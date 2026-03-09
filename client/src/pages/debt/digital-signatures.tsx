@@ -36,42 +36,28 @@ import {
   createSignatureRequest,
   fetchSignatureAuditLog,
 } from '@/lib/external-api';
+import { formatDate, formatCurrency } from '@/services/format.service';
+import { DOC_TYPES, SIGNATURE_STATUS_LABELS } from '@/services/debt-config';
+import type { SignatureRequest } from '@/models/debt.models';
 
-const DOC_TYPES = [
-  { value: 'AOD', label: 'Acknowledgement of Debt' },
-  { value: 'PAYMENT_ARRANGEMENT', label: 'Payment Arrangement' },
-  { value: 'SETTLEMENT_AGREEMENT', label: 'Settlement Agreement' },
-  { value: 'CONSENT_ORDER', label: 'Consent to Judgment / Order' },
-  { value: 'GENERAL', label: 'General Document' },
-];
-
-const STATUS_STYLES: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
-  PENDING: { label: 'Pending', className: 'bg-amber-100 text-amber-700 border-amber-200', icon: <Clock className="h-3.5 w-3.5" /> },
-  SENT: { label: 'Sent', className: 'bg-blue-100 text-blue-700 border-blue-200', icon: <Mail className="h-3.5 w-3.5" /> },
-  VIEWED: { label: 'Viewed', className: 'bg-indigo-100 text-indigo-700 border-indigo-200', icon: <Eye className="h-3.5 w-3.5" /> },
-  SIGNED: { label: 'Signed', className: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
-  DECLINED: { label: 'Declined', className: 'bg-red-100 text-red-700 border-red-200', icon: <XCircle className="h-3.5 w-3.5" /> },
-  EXPIRED: { label: 'Expired', className: 'bg-gray-100 text-gray-500 border-gray-200', icon: <AlertTriangle className="h-3.5 w-3.5" /> },
-  CANCELLED: { label: 'Cancelled', className: 'bg-gray-100 text-gray-500 border-gray-200', icon: <XCircle className="h-3.5 w-3.5" /> },
+const STATUS_ICONS: Record<string, React.ReactNode> = {
+  PENDING: <Clock className="h-3.5 w-3.5" />,
+  SENT: <Mail className="h-3.5 w-3.5" />,
+  VIEWED: <Eye className="h-3.5 w-3.5" />,
+  SIGNED: <CheckCircle2 className="h-3.5 w-3.5" />,
+  DECLINED: <XCircle className="h-3.5 w-3.5" />,
+  EXPIRED: <AlertTriangle className="h-3.5 w-3.5" />,
+  CANCELLED: <XCircle className="h-3.5 w-3.5" />,
 };
 
 function StatusBadge({ status }: { status: string }) {
-  const s = STATUS_STYLES[status] || STATUS_STYLES.PENDING;
+  const cfg = SIGNATURE_STATUS_LABELS[status] || SIGNATURE_STATUS_LABELS.PENDING;
+  const icon = STATUS_ICONS[status] || <Clock className="h-3.5 w-3.5" />;
   return (
-    <span data-testid={`badge-status-${status}`} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold border ${s.className}`}>
-      {s.icon} {s.label}
+    <span data-testid={`badge-status-${status}`} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold border ${cfg.className}`}>
+      {icon} {cfg.label}
     </span>
   );
-}
-
-function formatDate(d: string | null | undefined): string {
-  if (!d) return '—';
-  try { return new Date(d).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' }); } catch { return d; }
-}
-
-function formatCurrency(value: number | null | undefined): string {
-  if (value == null) return '—';
-  return `R ${value.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export default function DigitalSignatures() {
@@ -89,7 +75,7 @@ export default function DigitalSignatures() {
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
-  const [detailRequest, setDetailRequest] = useState<any>(null);
+  const [detailRequest, setDetailRequest] = useState<SignatureRequest | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -307,7 +293,7 @@ export default function DigitalSignatures() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="ALL">All Statuses</SelectItem>
-                          {Object.entries(STATUS_STYLES).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
+                          {Object.entries(SIGNATURE_STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
                         </SelectContent>
                       </Select>
                       <Button size="sm" variant="outline" className="border-[#D6D6D6]" onClick={loadRequests} disabled={loading} data-testid="button-refresh">

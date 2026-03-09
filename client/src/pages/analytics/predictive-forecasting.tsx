@@ -23,15 +23,9 @@ import {
   Signal,
 } from 'lucide-react';
 import { fetchPredictiveForecasting } from '@/lib/external-api';
-
-const IMPACT_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  HIGH: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
-  MEDIUM: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
-  LOW: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
-  POSITIVE: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
-  NEUTRAL: { bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' },
-  NEGATIVE: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
-};
+import { IMPACT_COLORS } from '@/services/debt-config';
+import type { ForecastData } from '@/models/analytics.models';
+import { getConfidenceLabel } from '@/services/validation.service';
 
 function ImpactBadge({ impact }: { impact: string }) {
   const c = IMPACT_COLORS[impact] || IMPACT_COLORS.NEUTRAL;
@@ -45,7 +39,7 @@ function ImpactBadge({ impact }: { impact: string }) {
 function ConfidenceGauge({ score }: { score: number }) {
   const color = score >= 70 ? 'text-emerald-600' : score >= 40 ? 'text-amber-600' : 'text-red-600';
   const barColor = score >= 70 ? 'bg-emerald-500' : score >= 40 ? 'bg-amber-500' : 'bg-red-500';
-  const label = score >= 70 ? 'High Confidence' : score >= 40 ? 'Moderate Confidence' : 'Low Confidence';
+  const label = getConfidenceLabel(score);
   return (
     <div data-testid="confidence-gauge" className="flex flex-col items-center">
       <div className="relative w-28 h-28">
@@ -82,7 +76,7 @@ export default function PredictiveForecasting() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<ForecastData | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);

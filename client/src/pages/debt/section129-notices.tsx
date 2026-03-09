@@ -54,10 +54,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-
-type RunType = 'trial-review' | 'trial-run';
-type HandoverOption = 'account' | 'bulk' | 'rotation';
-type DistributionType = 'email' | 'sms' | 'whatsapp' | 'print' | 'all';
+import type { RunType, HandoverOption, DistributionType } from '@/models/debt.models';
+import { formatFileSize, getFinancialYearList } from '@/services/format.service';
+import { getStatusColor } from '@/services/validation.service';
 
 export default function Section129Notices() {
   const { toast } = useToast();
@@ -264,13 +263,6 @@ export default function Section129Notices() {
     }
   };
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-  };
 
   const handleRowClick = (run: Section129Run) => {
     if (run.status === 'Trial Run Review' || run.status === 'Trial Review') {
@@ -278,23 +270,8 @@ export default function Section129Notices() {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    const s = status.toLowerCase();
-    if (s.includes('final')) return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-    if (s.includes('authorized') || s.includes('approved')) return 'bg-blue-50 text-blue-700 border-blue-200';
-    if (s.includes('trial run')) return 'bg-amber-50 text-amber-700 border-amber-200';
-    if (s.includes('trial review') || s.includes('review')) return 'bg-purple-50 text-purple-700 border-purple-200';
-    return 'bg-slate-100 text-slate-600 border-slate-200';
-  };
 
-  const finYears = (() => {
-    const now = new Date();
-    const currentFY = now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear();
-    return Array.from({ length: 5 }, (_, i) => {
-      const end = currentFY - i;
-      return `${end - 1}/${end}`;
-    });
-  })();
+  const finYears = getFinancialYearList(5);
 
   const months = [
     { value: '1', label: 'January' }, { value: '2', label: 'February' }, { value: '3', label: 'March' },

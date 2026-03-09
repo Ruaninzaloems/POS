@@ -58,6 +58,17 @@ Two sub-features:
 #### Debt Process Engine (Platinum API Proxy)
 Configurable workflow engine for debt recovery processes proxying to Platinum API (`/api/BillingDebt/process-workflows`, `/api/BillingDebt/process-workflows/:id/stages`, `/api/BillingDebt/process-workflows/:id/stages/reorder`). Process Engine page (`/debt/process-engine`) with two views: workflow list and stage detail. Each workflow contains ordered stages (e.g., Stage 1: Reminder SMS → Stage 2: Arrear SMS → Stage 3: 14 Day Notice → Stage 4: Section 129 → Stage 5: Handover → Stage 6: Summons → Stage 7: Judgment → Stage 8: Warrant). Each stage has: entry rules (condition builder with AND/OR logic across 12 field types), document templates (linked by channel — SMS/Email/Letter/WhatsApp), automated/manual actions (12 action types including Send SMS, Generate Notice, Handover to Attorney, Apply Restriction, Issue Summons), and configurable timers (wait days, business days only, auto-escalate on expiry). Stages can be reordered via drag. Write operations require `requireLegalAdmin`.
 
+### Angular-Ready Architecture (Shared Services Layer)
+All business logic, validation, formatting, constants, and type definitions are extracted into framework-neutral plain TypeScript files for direct reuse in Angular standalone feature modules:
+- **`client/src/models/debt.models.ts`** — All debt feature interfaces (ProcessWorkflow, WorkflowStage, StageRule, StageAction, DocumentTemplate, SignatureRequest, BatchJob, Condition, Section129Config, Section129ConfigEntry, Section129Run, Section129RunAccount, Section129RunFile, HandoverRecord, Attorney, HandoverTermination, QualificationRunResult, RiskScore, CommunicationStats, CommunicationTimeline, ProcessMonitoringOverview, etc.)
+- **`client/src/models/legal.models.ts`** — Legal interfaces (LegalRuleVersion, RuleFormData, ComplianceLogEntry, EvidenceBundle)
+- **`client/src/models/analytics.models.ts`** — Analytics interfaces (DebtOverview, AgingAnalysis, GeoItem, ForecastScenario, etc.)
+- **`client/src/services/format.service.ts`** — Framework-neutral formatters (formatDate, formatCurrency, formatCurrencyCompact, formatFileSize, formatDuration, formatTimestamp, getFinancialYear, getFinancialYearList)
+- **`client/src/services/validation.service.ts`** — Framework-neutral validators (validateRequired, validatePercentageSum, validateEmail, isCourtReady, getRiskCategory, getStatusColor, sortByField)
+- **`client/src/services/debt-config.ts`** — All shared constants (RULE_FIELDS, RULE_OPERATORS, WORKFLOW_ACTION_TYPES, CHANNEL_OPTIONS, TEMPLATE_CATEGORIES, DOC_TYPES, LEGAL_CATEGORIES, QUALIFICATION_FIELD_OPTIONS, RISK_COLORS, status label maps, PAGE_SIZE, SECTION129_DEFAULTS)
+
+All React page components are presentational only — they import types, constants, and utilities from these shared files. No inline type definitions, no inline formatting functions, no inline constant arrays in page files.
+
 ## External Dependencies
 
 ### External APIs

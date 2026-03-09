@@ -29,49 +29,8 @@ import {
   updateLegalRule,
   deleteLegalRule,
 } from '@/lib/external-api';
-interface LegalRuleVersion {
-  id: number;
-  ruleCode: string;
-  title: string;
-  category: string;
-  description: string;
-  legislativeRef: string;
-  isActive: boolean;
-  version: number;
-  effectiveFrom: string;
-  effectiveTo?: string | null;
-  conditions?: any;
-  metadata?: any;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-const CATEGORIES = [
-  { value: 'NCA', label: 'National Credit Act' },
-  { value: 'MSA', label: 'Municipal Systems Act' },
-  { value: 'MPRA', label: 'Municipal Property Rates Act' },
-  { value: 'POPIA', label: 'POPIA' },
-  { value: 'CPA', label: 'Consumer Protection Act' },
-];
-
-const CATEGORY_LABELS: Record<string, string> = {
-  NCA: 'National Credit Act',
-  MSA: 'Municipal Systems Act',
-  MPRA: 'Municipal Property Rates Act',
-  POPIA: 'POPIA',
-  CPA: 'Consumer Protection Act',
-};
-
-type RuleFormData = {
-  ruleCode: string;
-  title: string;
-  legislationRef: string;
-  description: string;
-  category: string;
-  effectiveFrom: string;
-  effectiveTo: string;
-  isActive: boolean;
-};
+import type { LegalRuleVersion, RuleFormData } from '@/models/legal.models';
+import { LEGAL_CATEGORIES as CATEGORIES, LEGAL_CATEGORY_LABELS as CATEGORY_LABELS } from '@/services/debt-config';
 
 const emptyForm: RuleFormData = {
   ruleCode: '',
@@ -126,7 +85,7 @@ export default function LegalRulesPage() {
     return (
       r.ruleCode.toLowerCase().includes(q) ||
       r.title.toLowerCase().includes(q) ||
-      r.legislationRef.toLowerCase().includes(q) ||
+      r.legislativeRef.toLowerCase().includes(q) ||
       r.category.toLowerCase().includes(q)
     );
   });
@@ -145,7 +104,7 @@ export default function LegalRulesPage() {
     setForm({
       ruleCode: rule.ruleCode,
       title: rule.title,
-      legislationRef: rule.legislationRef,
+      legislationRef: rule.legislativeRef,
       description: rule.description || '',
       category: rule.category,
       effectiveFrom: rule.effectiveFrom ? new Date(rule.effectiveFrom).toISOString().split('T')[0] : '',
@@ -298,7 +257,7 @@ export default function LegalRulesPage() {
                               {rule.title}
                             </TableCell>
                             <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
-                              {rule.legislationRef}
+                              {rule.legislativeRef}
                             </TableCell>
                             <TableCell className="text-xs">
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-50 text-purple-700 border border-purple-200">

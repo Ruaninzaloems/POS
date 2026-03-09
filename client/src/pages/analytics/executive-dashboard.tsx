@@ -27,18 +27,9 @@ import {
   fetchAttorneyPerformance,
   fetchRiskDistribution,
 } from '@/lib/external-api';
-
-const RISK_COLORS: Record<string, { bg: string; text: string; border: string; bar: string }> = {
-  LOW: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', bar: 'bg-emerald-500' },
-  MEDIUM: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', bar: 'bg-amber-500' },
-  HIGH: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', bar: 'bg-red-500' },
-};
-
-function formatCurrency(value: number): string {
-  if (value >= 1_000_000) return `R ${(value / 1_000_000).toFixed(2)}M`;
-  if (value >= 1_000) return `R ${(value / 1_000).toFixed(1)}K`;
-  return `R ${value.toFixed(2)}`;
-}
+import { RISK_COLORS } from '@/services/debt-config';
+import { formatCurrencyCompact as formatCurrency } from '@/services/format.service';
+import type { DebtOverview, AgingAnalysis, RecoveryStats, LegalPipelineStage, AttorneyPerformance, RiskDistributionItem } from '@/models/analytics.models';
 
 function RiskBadge({ category }: { category: string }) {
   const c = RISK_COLORS[category as keyof typeof RISK_COLORS] || RISK_COLORS.MEDIUM;
@@ -54,12 +45,12 @@ export default function ExecutiveDashboard() {
   const [, setLocation] = useLocation();
   const [loading, setLoading] = useState(true);
 
-  const [overview, setOverview] = useState<any>(null);
-  const [aging, setAging] = useState<any>(null);
-  const [recovery, setRecovery] = useState<any>(null);
-  const [pipeline, setPipeline] = useState<any>(null);
-  const [attorneys, setAttorneys] = useState<any>(null);
-  const [risk, setRisk] = useState<any>(null);
+  const [overview, setOverview] = useState<DebtOverview | null>(null);
+  const [aging, setAging] = useState<AgingAnalysis | null>(null);
+  const [recovery, setRecovery] = useState<RecoveryStats | null>(null);
+  const [pipeline, setPipeline] = useState<LegalPipelineStage[] | null>(null);
+  const [attorneys, setAttorneys] = useState<AttorneyPerformance[] | null>(null);
+  const [risk, setRisk] = useState<RiskDistributionItem[] | null>(null);
 
   const loadAll = useCallback(async () => {
     setLoading(true);

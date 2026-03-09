@@ -30,58 +30,44 @@ import {
   triggerBatchJob,
   cancelBatchJob,
 } from '@/lib/external-api';
+import { formatDateShort, formatDuration } from '@/services/format.service';
+import { BATCH_JOB_TYPE_LABELS, BATCH_STATUS_LABELS } from '@/services/debt-config';
 
-const JOB_TYPE_LABELS: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  TRIAL_RUN: { label: 'Trial Run', icon: <ListChecks className="h-4 w-4" />, color: 'text-blue-600 bg-blue-50 border-blue-200' },
-  FINAL_RUN: { label: 'Final Run', icon: <Zap className="h-4 w-4" />, color: 'text-purple-600 bg-purple-50 border-purple-200' },
-  LAPSE_CHECK: { label: 'Lapse Check', icon: <Clock className="h-4 w-4" />, color: 'text-amber-600 bg-amber-50 border-amber-200' },
-  NOTIFICATION: { label: 'Notification', icon: <AlertTriangle className="h-4 w-4" />, color: 'text-teal-600 bg-teal-50 border-teal-200' },
-  ATTORNEY_ALLOCATION: { label: 'Attorney Allocation', icon: <Users className="h-4 w-4" />, color: 'text-indigo-600 bg-indigo-50 border-indigo-200' },
+const JOB_TYPE_ICONS: Record<string, React.ReactNode> = {
+  TRIAL_RUN: <ListChecks className="h-4 w-4" />,
+  FINAL_RUN: <Zap className="h-4 w-4" />,
+  LAPSE_CHECK: <Clock className="h-4 w-4" />,
+  NOTIFICATION: <AlertTriangle className="h-4 w-4" />,
+  ATTORNEY_ALLOCATION: <Users className="h-4 w-4" />,
 };
 
-const STATUS_STYLES: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
-  PENDING: { label: 'Pending', className: 'bg-gray-100 text-gray-700 border-gray-200', icon: <Clock className="h-3.5 w-3.5" /> },
-  RUNNING: { label: 'Running', className: 'bg-blue-100 text-blue-700 border-blue-200', icon: <Loader2 className="h-3.5 w-3.5 animate-spin" /> },
-  COMPLETED: { label: 'Completed', className: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
-  FAILED: { label: 'Failed', className: 'bg-red-100 text-red-700 border-red-200', icon: <XCircle className="h-3.5 w-3.5" /> },
-  CANCELLED: { label: 'Cancelled', className: 'bg-orange-100 text-orange-700 border-orange-200', icon: <Pause className="h-3.5 w-3.5" /> },
-  SCHEDULED: { label: 'Scheduled', className: 'bg-indigo-100 text-indigo-700 border-indigo-200', icon: <Calendar className="h-3.5 w-3.5" /> },
+const STATUS_ICONS: Record<string, React.ReactNode> = {
+  PENDING: <Clock className="h-3.5 w-3.5" />,
+  RUNNING: <Loader2 className="h-3.5 w-3.5 animate-spin" />,
+  COMPLETED: <CheckCircle2 className="h-3.5 w-3.5" />,
+  FAILED: <XCircle className="h-3.5 w-3.5" />,
+  CANCELLED: <Pause className="h-3.5 w-3.5" />,
+  SCHEDULED: <Calendar className="h-3.5 w-3.5" />,
 };
 
 function StatusBadge({ status }: { status: string }) {
-  const s = STATUS_STYLES[status] || STATUS_STYLES.PENDING;
+  const cfg = BATCH_STATUS_LABELS[status] || BATCH_STATUS_LABELS.PENDING;
+  const icon = STATUS_ICONS[status] || STATUS_ICONS.PENDING;
   return (
-    <span data-testid={`badge-status-${status}`} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold border ${s.className}`}>
-      {s.icon} {s.label}
+    <span data-testid={`badge-status-${status}`} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold border ${cfg.className}`}>
+      {icon} {cfg.label}
     </span>
   );
 }
 
 function JobTypeBadge({ type }: { type: string }) {
-  const j = JOB_TYPE_LABELS[type] || { label: type, icon: <Cog className="h-4 w-4" />, color: 'text-gray-600 bg-gray-50 border-gray-200' };
+  const cfg = BATCH_JOB_TYPE_LABELS[type] || { label: type, color: 'text-gray-600 bg-gray-50 border-gray-200' };
+  const icon = JOB_TYPE_ICONS[type] || <Cog className="h-4 w-4" />;
   return (
-    <span data-testid={`badge-type-${type}`} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold border ${j.color}`}>
-      {j.icon} {j.label}
+    <span data-testid={`badge-type-${type}`} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold border ${cfg.color}`}>
+      {icon} {cfg.label}
     </span>
   );
-}
-
-function formatDate(d: string | null | undefined): string {
-  if (!d) return '—';
-  try {
-    return new Date(d).toLocaleString('en-ZA', { dateStyle: 'short', timeStyle: 'short' });
-  } catch { return d; }
-}
-
-function formatDuration(startDate: string | null | undefined, endDate: string | null | undefined): string {
-  if (!startDate) return '—';
-  const start = new Date(startDate).getTime();
-  const end = endDate ? new Date(endDate).getTime() : Date.now();
-  const diff = Math.max(0, end - start);
-  const mins = Math.floor(diff / 60000);
-  const secs = Math.floor((diff % 60000) / 1000);
-  if (mins > 0) return `${mins}m ${secs}s`;
-  return `${secs}s`;
 }
 
 export default function BatchProcessing() {
@@ -117,7 +103,7 @@ export default function BatchProcessing() {
     setTriggeringType(jobType);
     try {
       await triggerBatchJob(jobType);
-      toast({ title: 'Job Triggered', description: `${JOB_TYPE_LABELS[jobType]?.label || jobType} has been queued.` });
+      toast({ title: 'Job Triggered', description: `${BATCH_JOB_TYPE_LABELS[jobType]?.label || jobType} has been queued.` });
       await loadData();
     } catch (e: any) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' });
@@ -232,7 +218,7 @@ export default function BatchProcessing() {
                 </h2>
               </div>
               <div className="flex flex-wrap gap-2">
-                {Object.entries(JOB_TYPE_LABELS).map(([type, cfg]) => (
+                {Object.entries(BATCH_JOB_TYPE_LABELS).map(([type, cfg]) => (
                   <Button
                     key={type}
                     size="sm"
@@ -242,7 +228,7 @@ export default function BatchProcessing() {
                     onClick={() => handleTrigger(type)}
                     data-testid={`button-trigger-${type}`}
                   >
-                    {triggeringType === type ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : cfg.icon}
+                    {triggeringType === type ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : (JOB_TYPE_ICONS[type] || <Cog className="h-4 w-4" />)}
                     <span className="ml-1">{cfg.label}</span>
                   </Button>
                 ))}
@@ -276,8 +262,8 @@ export default function BatchProcessing() {
                       <TableRow key={s.id || i} className="border-[#D6D6D6] hover:bg-[var(--pos-accent-hover-row)]" data-testid={`row-schedule-${i}`}>
                         <TableCell><JobTypeBadge type={s.jobType} /></TableCell>
                         <TableCell className="text-sm text-gray-700">{s.cronExpression || s.schedule || '—'}</TableCell>
-                        <TableCell className="text-sm text-gray-700">{formatDate(s.nextRunAt)}</TableCell>
-                        <TableCell className="text-sm text-gray-700">{formatDate(s.lastRunAt)}</TableCell>
+                        <TableCell className="text-sm text-gray-700">{formatDateShort(s.nextRunAt)}</TableCell>
+                        <TableCell className="text-sm text-gray-700">{formatDateShort(s.lastRunAt)}</TableCell>
                         <TableCell><StatusBadge status={s.status || (s.enabled ? 'SCHEDULED' : 'CANCELLED')} /></TableCell>
                       </TableRow>
                     ))}
@@ -301,7 +287,7 @@ export default function BatchProcessing() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="ALL">All Types</SelectItem>
-                      {Object.entries(JOB_TYPE_LABELS).map(([k, v]) => (
+                      {Object.entries(BATCH_JOB_TYPE_LABELS).map(([k, v]) => (
                         <SelectItem key={k} value={k}>{v.label}</SelectItem>
                       ))}
                     </SelectContent>
@@ -312,7 +298,7 @@ export default function BatchProcessing() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="ALL">All Statuses</SelectItem>
-                      {Object.entries(STATUS_STYLES).map(([k, v]) => (
+                      {Object.entries(BATCH_STATUS_LABELS).map(([k, v]) => (
                         <SelectItem key={k} value={k}>{v.label}</SelectItem>
                       ))}
                     </SelectContent>
@@ -356,7 +342,7 @@ export default function BatchProcessing() {
                         <TableRow key={job.id || idx} className="border-[#D6D6D6] hover:bg-[var(--pos-accent-hover-row)]" data-testid={`row-job-${idx}`}>
                           <TableCell><JobTypeBadge type={job.jobType} /></TableCell>
                           <TableCell><StatusBadge status={job.status} /></TableCell>
-                          <TableCell className="text-sm text-gray-700">{formatDate(job.startedAt)}</TableCell>
+                          <TableCell className="text-sm text-gray-700">{formatDateShort(job.startedAt)}</TableCell>
                           <TableCell className="text-sm text-gray-700">{formatDuration(job.startedAt, job.completedAt)}</TableCell>
                           <TableCell className="text-sm text-gray-700 text-right font-medium">{job.totalProcessed ?? '—'}</TableCell>
                           <TableCell className="text-sm text-emerald-600 text-right font-medium">{job.totalSucceeded ?? '—'}</TableCell>

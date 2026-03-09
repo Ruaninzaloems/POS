@@ -34,14 +34,8 @@ import {
   updateScoringWeights,
   fetchAccounts,
 } from '@/lib/external-api';
-
-type TabMode = 'score' | 'dashboard' | 'weights';
-
-const RISK_COLORS = {
-  LOW: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', bar: 'bg-emerald-500' },
-  MEDIUM: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', bar: 'bg-amber-500' },
-  HIGH: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', bar: 'bg-red-500' },
-};
+import type { TabMode, RiskScore } from '@/models/debt.models';
+import { RISK_COLORS } from '@/services/debt-config';
 
 function RiskBadge({ category }: { category: string }) {
   const c = RISK_COLORS[category as keyof typeof RISK_COLORS] || RISK_COLORS.MEDIUM;
@@ -79,7 +73,7 @@ export default function RiskScoring() {
   const [accountNo, setAccountNo] = useState('');
   const [bulkInput, setBulkInput] = useState('');
   const [scoring, setScoring] = useState(false);
-  const [scoreResult, setScoreResult] = useState<any>(null);
+  const [scoreResult, setScoreResult] = useState<RiskScore | null>(null);
   const [factors, setFactors] = useState<any[]>([]);
 
   const [accountSuggestions, setAccountSuggestions] = useState<{ accountNo: string; name: string }[]>([]);

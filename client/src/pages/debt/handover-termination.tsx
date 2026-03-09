@@ -32,15 +32,7 @@ import {
   type HandoverRecord,
   type Attorney,
 } from '@/lib/external-api';
-
-const TERMINATION_REASONS = [
-  { value: 'paid_in_full', label: 'Paid in Full' },
-  { value: 'write_off', label: 'Write-off' },
-  { value: 'settlement', label: 'Settlement' },
-  { value: 'other', label: 'Other' },
-];
-
-const PAGE_SIZE = 50;
+import { TERMINATION_REASONS, PAGE_SIZE } from '@/services/debt-config';
 
 export default function HandoverTermination() {
   const { toast } = useToast();

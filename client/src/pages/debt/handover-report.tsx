@@ -25,8 +25,8 @@ import {
   fetchBillingCycles,
   type Attorney,
 } from '@/lib/external-api';
-
-const PAGE_SIZE = 50;
+import { PAGE_SIZE } from '@/services/debt-config';
+import { getFinancialYearList } from '@/services/format.service';
 
 export default function HandoverReport() {
   const { toast } = useToast();
@@ -71,14 +71,7 @@ export default function HandoverReport() {
     loadRefData();
   }, []);
 
-  const finYears = (() => {
-    const now = new Date();
-    const currentFY = now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear();
-    return Array.from({ length: 5 }, (_, i) => {
-      const end = currentFY - i;
-      return `${end - 1}/${end}`;
-    });
-  })();
+  const finYears = getFinancialYearList(5);
 
   const billingMonths = [
     { value: '7', label: 'July' },

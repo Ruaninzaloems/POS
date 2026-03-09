@@ -24,46 +24,10 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { fetchComplianceLogs } from '@/lib/external-api';
-
-const ACTION_TYPES = [
-  { value: '__all__', label: 'All' },
-  { value: 'NOTICE_ISSUED', label: 'Notice Issued' },
-  { value: 'HANDOVER_SUBMITTED', label: 'Handover Submitted' },
-  { value: 'AUTHORIZATION', label: 'Authorization' },
-  { value: 'FINAL_RUN', label: 'Final Run' },
-  { value: 'TERMINATION', label: 'Termination' },
-  { value: 'CONFIG_CHANGE', label: 'Config Change' },
-];
-
-function isCourtReady(row: any): boolean {
-  return !!(
-    row.actionType &&
-    row.entityType &&
-    row.entityId &&
-    row.userId &&
-    row.userName &&
-    row.ipAddress &&
-    row.apiCallId &&
-    row.timestamp &&
-    row.legislationRef
-  );
-}
-
-function formatTimestamp(ts: string | null | undefined): string {
-  if (!ts) return '—';
-  try {
-    return new Date(ts).toLocaleString('en-ZA', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
-  } catch {
-    return ts;
-  }
-}
+import type { ComplianceLogEntry } from '@/models/legal.models';
+import { AUDIT_ACTION_TYPES as ACTION_TYPES } from '@/services/debt-config';
+import { isCourtReady } from '@/services/validation.service';
+import { formatTimestamp } from '@/services/format.service';
 
 export default function ComplianceAuditTrail() {
   const { toast } = useToast();

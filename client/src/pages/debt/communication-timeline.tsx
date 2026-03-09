@@ -37,22 +37,24 @@ import {
   enrollInTimeline,
   fetchAccounts,
 } from '@/lib/external-api';
+import { CHANNEL_CONFIG as SHARED_CHANNEL_CONFIG } from '@/services/debt-config';
+import type { CommunicationStep, CommunicationTimeline as CommunicationTimelineType } from '@/models/debt.models';
 
-const CHANNEL_CONFIG: Record<string, { icon: any; label: string; color: string; bg: string }> = {
-  sms: { icon: Phone, label: 'SMS', color: 'text-green-700', bg: 'bg-green-50' },
-  email: { icon: Mail, label: 'Email', color: 'text-blue-700', bg: 'bg-blue-50' },
-  whatsapp: { icon: MessageSquare, label: 'WhatsApp', color: 'text-emerald-700', bg: 'bg-emerald-50' },
-  letter: { icon: FileText, label: 'Printed Letter', color: 'text-amber-700', bg: 'bg-amber-50' },
+type Step = CommunicationStep;
+
+const CHANNEL_ICONS: Record<string, any> = {
+  sms: Phone,
+  email: Mail,
+  whatsapp: MessageSquare,
+  letter: FileText,
 };
 
-interface Step {
-  dayOffset: number;
-  channel: string;
-  templateName: string;
-  templateBody: string;
-  subject: string;
-  isAutomated: boolean;
-}
+const CHANNEL_CONFIG: Record<string, { icon: any; label: string; color: string; bg: string }> = Object.fromEntries(
+  Object.entries(SHARED_CHANNEL_CONFIG).map(([key, cfg]) => [
+    key,
+    { ...cfg, label: key === 'letter' ? 'Printed Letter' : cfg.label, icon: CHANNEL_ICONS[key] || Phone },
+  ])
+);
 
 function ChannelBadge({ channel }: { channel: string }) {
   const cfg = CHANNEL_CONFIG[channel] || CHANNEL_CONFIG.sms;
@@ -70,7 +72,7 @@ export default function CommunicationTimeline() {
 
   const [timelines, setTimelines] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedTimeline, setSelectedTimeline] = useState<any>(null);
+  const [selectedTimeline, setSelectedTimeline] = useState<CommunicationTimeline | null>(null);
   const [steps, setSteps] = useState<Step[]>([]);
 
   const [showCreate, setShowCreate] = useState(false);

@@ -27,25 +27,9 @@ import {
   fetchEvidenceBundles,
   fetchEvidenceBundle,
 } from '@/lib/external-api';
-
-interface EvidenceBundle {
-  id: number;
-  accountNo: string;
-  bundleReference: string;
-  generatedBy: string;
-  generatedAt: string;
-  bundleData: any;
-  status: string;
-}
-
-const BUNDLE_SECTIONS = [
-  { key: 'noticeHistory', label: 'Notice History' },
-  { key: 'smsLogs', label: 'SMS Logs' },
-  { key: 'emailLogs', label: 'Email Logs' },
-  { key: 'postalBatch', label: 'Postal Batch Records' },
-  { key: 'accountLedger', label: 'Account Ledger Summary' },
-  { key: 'proofOfService', label: 'Proof of Service' },
-];
+import type { EvidenceBundle } from '@/models/legal.models';
+import { EVIDENCE_BUNDLE_SECTIONS as BUNDLE_SECTIONS } from '@/services/debt-config';
+import { formatDate } from '@/services/format.service';
 
 function SectionIndicator({ data, sectionKey }: { data: any; sectionKey: string }) {
   const sectionData = data?.[sectionKey];
@@ -174,16 +158,6 @@ export default function EvidenceBundlePage() {
   const paginatedBundles = bundles.slice((gridPage - 1) * gridPageSize, gridPage * gridPageSize);
   const totalGridPages = Math.ceil(bundles.length / gridPageSize);
 
-  const formatDate = (dateStr: string) => {
-    try {
-      return new Date(dateStr).toLocaleString('en-ZA', {
-        year: 'numeric', month: 'short', day: 'numeric',
-        hour: '2-digit', minute: '2-digit',
-      });
-    } catch {
-      return dateStr;
-    }
-  };
 
   return (
     <PosLayout>

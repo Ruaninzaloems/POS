@@ -32,39 +32,31 @@ import {
   fetchHandoverQueues,
   fetchTerminationQueues,
 } from '@/lib/external-api';
+import { formatDateShort, formatCurrency } from '@/services/format.service';
+import { PROCESS_STATUS_LABELS } from '@/services/debt-config';
+import type { ProcessMonitoringOverview, ProcessRun, ApprovalItem, HandoverQueueItem, TerminationQueueItem } from '@/models/debt.models';
 
-const STATUS_STYLES: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
-  RUNNING: { label: 'Running', className: 'bg-blue-100 text-blue-700 border-blue-200', icon: <Loader2 className="h-3.5 w-3.5 animate-spin" /> },
-  COMPLETED: { label: 'Completed', className: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
-  FAILED: { label: 'Failed', className: 'bg-red-100 text-red-700 border-red-200', icon: <XCircle className="h-3.5 w-3.5" /> },
-  PENDING: { label: 'Pending', className: 'bg-amber-100 text-amber-700 border-amber-200', icon: <Clock className="h-3.5 w-3.5" /> },
-  AWAITING_APPROVAL: { label: 'Awaiting Approval', className: 'bg-orange-100 text-orange-700 border-orange-200', icon: <AlertTriangle className="h-3.5 w-3.5" /> },
-  QUEUED: { label: 'Queued', className: 'bg-indigo-100 text-indigo-700 border-indigo-200', icon: <Clock className="h-3.5 w-3.5" /> },
-  PROCESSING: { label: 'Processing', className: 'bg-blue-100 text-blue-700 border-blue-200', icon: <Loader2 className="h-3.5 w-3.5 animate-spin" /> },
-  REJECTED: { label: 'Rejected', className: 'bg-red-100 text-red-700 border-red-200', icon: <XCircle className="h-3.5 w-3.5" /> },
-  APPROVED: { label: 'Approved', className: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
-  TERMINATED: { label: 'Terminated', className: 'bg-gray-100 text-gray-700 border-gray-200', icon: <Pause className="h-3.5 w-3.5" /> },
+const STATUS_ICONS: Record<string, React.ReactNode> = {
+  RUNNING: <Loader2 className="h-3.5 w-3.5 animate-spin" />,
+  COMPLETED: <CheckCircle2 className="h-3.5 w-3.5" />,
+  FAILED: <XCircle className="h-3.5 w-3.5" />,
+  PENDING: <Clock className="h-3.5 w-3.5" />,
+  AWAITING_APPROVAL: <AlertTriangle className="h-3.5 w-3.5" />,
+  QUEUED: <Clock className="h-3.5 w-3.5" />,
+  PROCESSING: <Loader2 className="h-3.5 w-3.5 animate-spin" />,
+  REJECTED: <XCircle className="h-3.5 w-3.5" />,
+  APPROVED: <CheckCircle2 className="h-3.5 w-3.5" />,
+  TERMINATED: <Pause className="h-3.5 w-3.5" />,
 };
 
 function StatusBadge({ status }: { status: string }) {
-  const s = STATUS_STYLES[status] || { label: status, className: 'bg-gray-100 text-gray-700 border-gray-200', icon: <Clock className="h-3.5 w-3.5" /> };
+  const cfg = PROCESS_STATUS_LABELS[status] || { label: status, className: 'bg-gray-100 text-gray-700 border-gray-200' };
+  const icon = STATUS_ICONS[status] || <Clock className="h-3.5 w-3.5" />;
   return (
-    <span data-testid={`badge-status-${status}`} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold border ${s.className}`}>
-      {s.icon} {s.label}
+    <span data-testid={`badge-status-${status}`} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold border ${cfg.className}`}>
+      {icon} {cfg.label}
     </span>
   );
-}
-
-function formatDate(d: string | null | undefined): string {
-  if (!d) return '—';
-  try {
-    return new Date(d).toLocaleString('en-ZA', { dateStyle: 'short', timeStyle: 'short' });
-  } catch { return d; }
-}
-
-function formatCurrency(value: number | null | undefined): string {
-  if (value == null) return '—';
-  return `R ${value.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export default function ProcessMonitoring() {
@@ -72,7 +64,7 @@ export default function ProcessMonitoring() {
   const [, setLocation] = useLocation();
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('overview');
-  const [overview, setOverview] = useState<any>(null);
+  const [overview, setOverview] = useState<ProcessMonitoringOverview | null>(null);
   const [activeRuns, setActiveRuns] = useState<any[]>([]);
   const [failedRuns, setFailedRuns] = useState<any[]>([]);
   const [pendingApprovals, setPendingApprovals] = useState<any[]>([]);
@@ -309,8 +301,8 @@ function RunsTable({ runs, emptyMessage, testPrefix }: { runs: any[]; emptyMessa
           <TableRow key={r.id || i} className="border-[#D6D6D6] hover:bg-[var(--pos-accent-hover-row)]" data-testid={`row-${testPrefix}-${i}`}>
             <TableCell className="text-sm font-medium text-gray-900">{r.runType || r.jobType || '—'}</TableCell>
             <TableCell><StatusBadge status={r.status} /></TableCell>
-            <TableCell className="text-sm text-gray-700">{formatDate(r.startedAt)}</TableCell>
-            <TableCell className="text-sm text-gray-700">{formatDate(r.completedAt)}</TableCell>
+            <TableCell className="text-sm text-gray-700">{formatDateShort(r.startedAt)}</TableCell>
+            <TableCell className="text-sm text-gray-700">{formatDateShort(r.completedAt)}</TableCell>
             <TableCell className="text-sm text-gray-700 text-right font-medium">{r.totalCount ?? '—'}</TableCell>
             <TableCell className="text-sm text-emerald-600 text-right font-medium">{r.processedCount ?? '—'}</TableCell>
             <TableCell className="text-sm text-red-600 text-right font-medium">{r.errorCount ?? '—'}</TableCell>
@@ -343,7 +335,7 @@ function ApprovalsTable({ approvals }: { approvals: any[] }) {
             <TableCell className="text-sm font-medium text-gray-900">{a.approvalType || a.type || '—'}</TableCell>
             <TableCell className="text-sm text-gray-700 max-w-[200px] truncate">{a.description || '—'}</TableCell>
             <TableCell className="text-sm text-gray-700">{a.submittedBy || '—'}</TableCell>
-            <TableCell className="text-sm text-gray-700">{formatDate(a.submittedAt)}</TableCell>
+            <TableCell className="text-sm text-gray-700">{formatDateShort(a.submittedAt)}</TableCell>
             <TableCell className="text-sm text-gray-700 text-right font-medium">{a.accountCount ?? '—'}</TableCell>
             <TableCell className="text-sm text-gray-700 text-right font-medium">{formatCurrency(a.totalAmount)}</TableCell>
             <TableCell><StatusBadge status={a.status || 'AWAITING_APPROVAL'} /></TableCell>
@@ -376,7 +368,7 @@ function QueueTable({ items, emptyMessage, testPrefix }: { items: any[]; emptyMe
             <TableCell className="text-sm text-gray-700">{item.accountHolder || item.ownerName || '—'}</TableCell>
             <TableCell className="text-sm text-gray-700 text-right font-medium">{formatCurrency(item.outstandingAmount)}</TableCell>
             <TableCell className="text-sm text-gray-700">{item.attorneyName || item.attorney || '—'}</TableCell>
-            <TableCell className="text-sm text-gray-700">{formatDate(item.queuedAt || item.createdAt)}</TableCell>
+            <TableCell className="text-sm text-gray-700">{formatDateShort(item.queuedAt || item.createdAt)}</TableCell>
             <TableCell><StatusBadge status={item.status || 'QUEUED'} /></TableCell>
             <TableCell className="text-sm text-gray-500 max-w-[200px] truncate">{item.reason || item.terminationReason || '—'}</TableCell>
           </TableRow>

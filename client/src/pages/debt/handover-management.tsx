@@ -34,10 +34,8 @@ import {
   type HandoverRecord,
   type Attorney,
 } from '@/lib/external-api';
-
-type HandoverOption = 'account' | 'bulk' | 'rotation';
-
-const PAGE_SIZE = 50;
+import type { HandoverOption } from '@/models/debt.models';
+import { PAGE_SIZE } from '@/services/debt-config';
 
 export default function HandoverManagement() {
   const { toast } = useToast();

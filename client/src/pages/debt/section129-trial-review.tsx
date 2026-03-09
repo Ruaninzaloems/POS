@@ -36,17 +36,8 @@ import {
   DollarSign,
   Receipt,
 } from 'lucide-react';
-
-const PAGE_SIZE = 50;
-
-function getStatusColor(status: string): string {
-  const s = status.toLowerCase();
-  if (s.includes('final')) return 'bg-emerald-500/15 text-emerald-700 border-emerald-200';
-  if (s.includes('trial run review') || s.includes('review')) return 'bg-amber-500/15 text-amber-700 border-amber-200';
-  if (s.includes('trial')) return 'bg-blue-500/15 text-blue-700 border-blue-200';
-  if (s.includes('authorized') || s.includes('approved')) return 'bg-green-500/15 text-green-700 border-green-200';
-  return 'bg-slate-500/15 text-slate-700 border-slate-200';
-}
+import { PAGE_SIZE } from '@/services/debt-config';
+import { getStatusColor } from '@/services/validation.service';
 
 export default function Section129TrialReview() {
   const { toast } = useToast();

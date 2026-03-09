@@ -52,115 +52,13 @@ import {
   deleteWorkflowStage,
   reorderWorkflowStages,
 } from '@/lib/external-api';
+import type { ProcessWorkflow, StageRule, StageTemplate, StageAction, StageTimer, WorkflowStage } from '@/models/debt.models';
+import { formatDate } from '@/services/format.service';
+import { RULE_FIELDS, RULE_OPERATORS, WORKFLOW_ACTION_TYPES, CHANNEL_OPTIONS } from '@/services/debt-config';
 
-interface Workflow_ {
-  id: number | string;
-  name: string;
-  description?: string;
-  isActive: boolean;
-  version?: string;
-  stageCount?: number;
-  createdAt?: string;
-  modifiedAt?: string;
-  modifiedBy?: string;
-}
-
-interface StageRule {
-  id?: number | string;
-  field: string;
-  operator: string;
-  value: string;
-  logicOperator?: string;
-}
-
-interface StageTemplate {
-  id?: number | string;
-  templateCode: string;
-  templateName: string;
-  channel?: string;
-}
-
-interface StageAction {
-  id?: number | string;
-  actionType: string;
-  description?: string;
-  isAutomated: boolean;
-  config?: string;
-}
-
-interface StageTimer {
-  waitDays: number;
-  businessDaysOnly: boolean;
-  escalateOnExpiry: boolean;
-}
-
-interface Stage {
-  id: number | string;
-  workflowId: number | string;
-  stageNumber: number;
-  name: string;
-  description?: string;
-  isActive: boolean;
-  rules: StageRule[];
-  templates: StageTemplate[];
-  actions: StageAction[];
-  timer: StageTimer;
-}
-
-const RULE_FIELDS = [
-  { value: 'outstandingBalance', label: 'Outstanding Balance' },
-  { value: 'daysPastDue', label: 'Days Past Due' },
-  { value: 'accountAge', label: 'Account Age (months)' },
-  { value: 'accountType', label: 'Account Type' },
-  { value: 'serviceType', label: 'Service Type' },
-  { value: 'previousStageComplete', label: 'Previous Stage Complete' },
-  { value: 'paymentArrangementActive', label: 'Payment Arrangement Active' },
-  { value: 'indigentStatus', label: 'Indigent Status' },
-  { value: 'legalHold', label: 'Legal Hold' },
-  { value: 'municipalArea', label: 'Municipal Area' },
-  { value: 'customerCategory', label: 'Customer Category' },
-  { value: 'lastPaymentDays', label: 'Days Since Last Payment' },
-];
-
-const RULE_OPERATORS = [
-  { value: 'eq', label: '= equals' },
-  { value: 'neq', label: '≠ not equal' },
-  { value: 'gt', label: '> greater than' },
-  { value: 'gte', label: '≥ greater or equal' },
-  { value: 'lt', label: '< less than' },
-  { value: 'lte', label: '≤ less or equal' },
-  { value: 'in', label: 'in (list)' },
-  { value: 'notIn', label: 'not in (list)' },
-  { value: 'isTrue', label: 'is true' },
-  { value: 'isFalse', label: 'is false' },
-];
-
-const ACTION_TYPES = [
-  { value: 'SEND_SMS', label: 'Send SMS' },
-  { value: 'SEND_EMAIL', label: 'Send Email' },
-  { value: 'SEND_LETTER', label: 'Generate & Send Letter' },
-  { value: 'GENERATE_NOTICE', label: 'Generate Legal Notice' },
-  { value: 'HANDOVER_ATTORNEY', label: 'Handover to Attorney' },
-  { value: 'ISSUE_SUMMONS', label: 'Issue Summons' },
-  { value: 'APPLY_RESTRICTION', label: 'Apply Service Restriction' },
-  { value: 'FLAG_ACCOUNT', label: 'Flag Account' },
-  { value: 'CREATE_TASK', label: 'Create Manual Task' },
-  { value: 'ESCALATE', label: 'Escalate to Supervisor' },
-  { value: 'UPDATE_STATUS', label: 'Update Account Status' },
-  { value: 'WEBHOOK', label: 'Trigger Webhook' },
-];
-
-const CHANNEL_OPTIONS = [
-  { value: 'SMS', label: 'SMS' },
-  { value: 'EMAIL', label: 'Email' },
-  { value: 'LETTER', label: 'Letter' },
-  { value: 'WHATSAPP', label: 'WhatsApp' },
-];
-
-function formatDate(d: string | null | undefined): string {
-  if (!d) return '—';
-  try { return new Date(d).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' }); } catch { return d; }
-}
+type Workflow_ = ProcessWorkflow;
+type Stage = WorkflowStage;
+const ACTION_TYPES = WORKFLOW_ACTION_TYPES;
 
 function emptyTimer(): StageTimer {
   return { waitDays: 14, businessDaysOnly: true, escalateOnExpiry: false };

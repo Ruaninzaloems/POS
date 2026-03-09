@@ -22,27 +22,10 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { fetchGeographicDistribution } from '@/lib/external-api';
-
-type ViewTab = 'ward' | 'suburb' | 'town' | 'propertyType';
-type SortField = 'name' | 'totalDebt' | 'accountCount' | 'avgDebt' | 'avgRiskScore';
-type SortDir = 'asc' | 'desc';
-
-interface GeoItem {
-  name: string;
-  totalDebt: number;
-  accountCount: number;
-  avgDebt: number;
-  avgRiskScore: number;
-  riskCounts: Record<string, number>;
-  dominantRisk: string;
-}
-
-const RISK_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  LOW: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
-  MEDIUM: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
-  HIGH: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
-  UNKNOWN: { bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' },
-};
+import type { GeoItem, ViewTab, SortField, SortDir } from '@/models/analytics.models';
+import { RISK_COLORS } from '@/services/debt-config';
+import { formatCurrency } from '@/services/format.service';
+import { sortByField } from '@/services/validation.service';
 
 function RiskBadge({ category }: { category: string }) {
   const c = RISK_COLORS[category] || RISK_COLORS.UNKNOWN;
@@ -64,19 +47,6 @@ function HeatBar({ score }: { score: number }) {
       <span className="text-xs text-muted-foreground">{clamp.toFixed(1)}</span>
     </div>
   );
-}
-
-function formatCurrency(value: number): string {
-  return `R ${value.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-function sortItems(items: GeoItem[], field: SortField, dir: SortDir): GeoItem[] {
-  return [...items].sort((a, b) => {
-    let cmp = 0;
-    if (field === 'name') cmp = a.name.localeCompare(b.name);
-    else cmp = (a[field] as number) - (b[field] as number);
-    return dir === 'asc' ? cmp : -cmp;
-  });
 }
 
 const TAB_CONFIG: Record<ViewTab, { label: string; icon: React.ComponentType<any>; color: string }> = {
@@ -138,7 +108,7 @@ export default function GeographicMapping() {
       town: data.byTown,
       propertyType: data.byPropertyType,
     };
-    return sortItems(map[tab] || [], sortField, sortDir);
+    return sortByField(map[tab] || [], sortField, sortDir);
   })() : [];
 
   const totalDebtAll = currentItems.reduce((s, i) => s + i.totalDebt, 0);
