@@ -155,23 +155,46 @@ export function ReceiptModal() {
     try {
       let finalBlob: Blob | null = null;
 
-      if (isMiscReceipt && receiptIds.length === 1) {
-        const rid = receiptIds[0];
-        console.log(`[ReceiptModal] Using print-miscellaneous-receipt for single misc receipt id=${rid}`);
-        try {
-          const miscRes = await platinumPrintMiscReceiptRaw(rid);
-          if (miscRes.ok) {
-            const b = await miscRes.blob();
-            if (b.size >= 100) finalBlob = b;
-            else console.warn(`[ReceiptModal] print-miscellaneous-receipt returned tiny PDF (${b.size} bytes) for id=${rid}`);
-          } else {
-            let detail = '';
-            try { const errJson = await miscRes.json(); detail = errJson.detail || errJson.message || ''; } catch { detail = `HTTP ${miscRes.status}`; }
-            console.warn(`[ReceiptModal] print-miscellaneous-receipt failed for id=${rid}: ${detail}, falling back to print-receipt`);
+      if (isMiscReceipt) {
+        for (const rid of receiptIds) {
+          console.log(`[ReceiptModal] Using print-miscellaneous-receipt for misc receipt id=${rid}`);
+          try {
+            const miscRes = await platinumPrintMiscReceiptRaw(rid);
+            if (miscRes.ok) {
+              const b = await miscRes.blob();
+              if (b.size >= 100) {
+                const pdfUrl = URL.createObjectURL(b);
+                const printFrame = document.createElement('iframe');
+                printFrame.style.position = 'fixed';
+                printFrame.style.top = '-10000px';
+                printFrame.style.left = '-10000px';
+                printFrame.style.width = '0';
+                printFrame.style.height = '0';
+                printFrame.src = pdfUrl;
+                document.body.appendChild(printFrame);
+                printFrame.onload = () => {
+                  try { printFrame.contentWindow?.print(); } catch { window.open(pdfUrl, '_blank'); }
+                  setTimeout(() => { document.body.removeChild(printFrame); URL.revokeObjectURL(pdfUrl); }, 60000);
+                };
+                if (!finalBlob) finalBlob = b;
+              } else {
+                console.warn(`[ReceiptModal] print-miscellaneous-receipt returned tiny PDF (${b.size} bytes) for id=${rid}`);
+              }
+            } else {
+              let detail = '';
+              try { const errJson = await miscRes.json(); detail = errJson.detail || errJson.message || ''; } catch { detail = `HTTP ${miscRes.status}`; }
+              console.warn(`[ReceiptModal] print-miscellaneous-receipt failed for id=${rid}: ${detail}`);
+            }
+          } catch (e: any) {
+            console.warn(`[ReceiptModal] print-miscellaneous-receipt error for id=${rid}: ${e.message}`);
           }
-        } catch (e: any) {
-          console.warn(`[ReceiptModal] print-miscellaneous-receipt error for id=${rid}: ${e.message}, falling back to print-receipt`);
         }
+        if (finalBlob) {
+          closeReceiptModal();
+          setIsPrinting(false);
+          return;
+        }
+        console.warn(`[ReceiptModal] All misc receipt prints failed, falling back to print-receipt`);
       }
 
       if (!finalBlob) {

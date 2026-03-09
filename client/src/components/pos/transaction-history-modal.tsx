@@ -101,15 +101,37 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
         (tx.items && tx.items.length > 0 && tx.items.every((i: any) => i.type === 'DIRECT_INCOME'));
 
       let blob: Blob | null = null;
+      let miscPrinted = false;
 
-      if (isMiscReceipt && receiptIds.length === 1) {
-        try {
-          const miscRes = await platinumPrintMiscReceiptRaw(receiptIds[0]);
-          if (miscRes.ok) {
-            const b = await miscRes.blob();
-            if (b.size >= 100) blob = b;
-          }
-        } catch {}
+      if (isMiscReceipt) {
+        for (const rid of receiptIds) {
+          try {
+            const miscRes = await platinumPrintMiscReceiptRaw(rid);
+            if (miscRes.ok) {
+              const b = await miscRes.blob();
+              if (b.size >= 100) {
+                const pdfUrl = URL.createObjectURL(b);
+                const printFrame = document.createElement('iframe');
+                printFrame.style.position = 'fixed';
+                printFrame.style.top = '-10000px';
+                printFrame.style.left = '-10000px';
+                printFrame.style.width = '0';
+                printFrame.style.height = '0';
+                printFrame.src = pdfUrl;
+                document.body.appendChild(printFrame);
+                printFrame.onload = () => {
+                  try { printFrame.contentWindow?.print(); } catch { window.open(pdfUrl, '_blank'); }
+                  setTimeout(() => { document.body.removeChild(printFrame); URL.revokeObjectURL(pdfUrl); }, 60000);
+                };
+                miscPrinted = true;
+              }
+            }
+          } catch {}
+        }
+        if (miscPrinted) {
+          toast({ title: "Receipt Ready", description: `Receipt ${tx.receiptNumber || receiptId} sent to printer.` });
+          return;
+        }
       }
 
       if (!blob) {

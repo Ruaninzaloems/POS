@@ -28,6 +28,7 @@ import {
     ViewReceiptItem,
     ReceiptSearchQuery,
     platinumPrintReceiptRaw,
+    platinumPrintMiscReceiptRaw,
 } from '@/lib/external-api';
 import { AccountEnquiryDialog } from '@/components/account-enquiry-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -581,19 +582,36 @@ export default function ViewReceipts() {
             return;
         }
         const receiptNo = getReceiptField(receipt, 'receiptNo') || '';
+        const payOption = getReceiptField(receipt, 'paymentOption');
+        const isMisc = payOption === 'Miscellaneous Payment' || (receipt as any).isMiscPayment === 1 || (receipt as any).isMiscPayment === true;
         setPrintingReceiptId(serialNo);
         try {
-            const res = await platinumPrintReceiptRaw([Number(serialNo)], receiptNo ? [receiptNo] : undefined, true);
-            if (!res.ok) {
-                let detail = '';
-                try { const errJson = await res.json(); detail = errJson.detail || errJson.message || ''; } catch { detail = `HTTP ${res.status}`; }
-                console.error('[ViewReceipts] print-receipt API failed:', res.status, detail);
-                toast({ title: "Print Failed", description: `The billing system returned an error: ${detail || `HTTP ${res.status}`}`, variant: "destructive" });
-                return;
+            let blob: Blob | null = null;
+
+            if (isMisc) {
+                try {
+                    const miscRes = await platinumPrintMiscReceiptRaw(Number(serialNo));
+                    if (miscRes.ok) {
+                        const b = await miscRes.blob();
+                        if (b.size >= 100) blob = b;
+                    }
+                } catch {}
             }
-            const blob = await res.blob();
-            if (blob.size < 100) {
-                console.error('[ViewReceipts] print-receipt returned empty PDF:', blob.size, 'bytes');
+
+            if (!blob) {
+                const res = await platinumPrintReceiptRaw([Number(serialNo)], receiptNo ? [receiptNo] : undefined, true);
+                if (!res.ok) {
+                    let detail = '';
+                    try { const errJson = await res.json(); detail = errJson.detail || errJson.message || ''; } catch { detail = `HTTP ${res.status}`; }
+                    console.error('[ViewReceipts] print-receipt API failed:', res.status, detail);
+                    toast({ title: "Print Failed", description: `The billing system returned an error: ${detail || `HTTP ${res.status}`}`, variant: "destructive" });
+                    return;
+                }
+                blob = await res.blob();
+            }
+
+            if (!blob || blob.size < 100) {
+                console.error('[ViewReceipts] print-receipt returned empty PDF:', blob?.size, 'bytes');
                 toast({ title: "Print Failed", description: "The billing system returned an empty PDF.", variant: "destructive" });
                 return;
             }
