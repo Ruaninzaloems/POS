@@ -2158,20 +2158,23 @@ export async function registerRoutes(
         AccHolderName: sanitizedPayload.accHolderName,
       };
 
-      const attempts: { endpoint: string; payload: any }[] = [
-        { endpoint: `/api/billing-payment-miscellaneous/submit/${sanitizedPayload.userId}`, payload: sanitizedPayload },
-        { endpoint: `/api/billing-payment-miscellaneous/submit`, payload: pascalPayload },
-        { endpoint: `/api/billing-payment-miscellaneous/submit`, payload: sanitizedPayload },
+      const posEndpoint = `/api/billing-payment-miscellaneous/submit/${sanitizedPayload.userId}`;
+      const attempts: { endpoint: string; payload: any; label: string }[] = [
+        { endpoint: posEndpoint, payload: pascalPayload, label: 'PascalCase+userId' },
+        { endpoint: posEndpoint, payload: sanitizedPayload, label: 'camelCase+userId' },
       ];
 
       let data: any = null;
-      for (const { endpoint: ep, payload: pl } of attempts) {
+      for (const { endpoint: ep, payload: pl, label: lbl } of attempts) {
         data = await platinumPost(session, ep, pl);
         if (data && !data._error) {
-          console.log(`[misc-submit] SUCCESS via ${ep}:`, JSON.stringify(data)?.substring(0, 1000));
+          console.log(`[misc-submit] SUCCESS via ${lbl} (${ep}):`, JSON.stringify(data)?.substring(0, 1000));
+          if (data.receiptNo && typeof data.receiptNo === 'string' && data.receiptNo.startsWith('EFT')) {
+            console.warn(`[misc-submit] WARNING: API returned EFT receipt number "${data.receiptNo}" — expected POS receipt. This may indicate wrong API endpoint or server-side config.`);
+          }
           break;
         }
-        console.warn(`[misc-submit] ${ep} returned error (${data?.status}):`, JSON.stringify(data)?.substring(0, 500));
+        console.warn(`[misc-submit] ${lbl} (${ep}) returned error (${data?.status}):`, JSON.stringify(data)?.substring(0, 500));
       }
 
       recordPaymentSubmission(miscDedupKey, data);
