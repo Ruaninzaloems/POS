@@ -1,6 +1,6 @@
 # Phase 1 — Blockers Action List
 
-> 3 open items remain. G-01 has been resolved (frontend side). API team still needs to build the Platinum endpoint.
+> 4 blockers identified during Phase 1 analysis. 1 resolved (frontend side). 3 require DBA/API team action before Phase 1 development can proceed.
 
 ---
 
@@ -9,13 +9,17 @@
 | Field | Detail |
 |-------|--------|
 | **Blocker ID** | G-01 |
-| **Status** | **Frontend resolved** — trash button wired with confirmation dialog, proxy route added (`POST /api/platinum/billing-debt/section129-delete-run`), API function created (`deleteSection129Run`). Non-deletable statuses (Approved, Authorized, Final Running, Final Complete) are enforced client-side. |
-| **Remaining** | API Team must build `POST /api/BillingDebt/section129-delete-run` on Platinum. Accepts `{ runId }`. Validates run exists and status is deletable. Hard-deletes from `Billing_Section129LetterOFDemand` and `Billing_Section129LetterOFDemandDetails`. Returns `{ success: true, message: '...' }`. |
+| **Description** | The Remove (trash icon) button existed on every row in the Generated Notice Files grid but had no click handler and no API endpoint to delete a run. |
+| **Why It Blocked Phase 1** | Users could create trial runs but not remove incorrect or abandoned ones. The grid would accumulate junk data with no cleanup path. |
+| **DB Change Needed** | None — uses existing `Billing_Section129LetterOFDemand` and `Billing_Section129LetterOFDemandDetails` tables. |
+| **What Was Done (Frontend)** | Trash button wired with confirmation dialog (`AlertDialog`). Proxy route added: `POST /api/platinum/billing-debt/section129-delete-run` with auth, `PROCESS_SECTION129` permission check, and audit field injection. API function `deleteSection129Run(runId)` created. Runs with status Approved, Authorized, Final Running, or Final Complete are disabled client-side — button greyed out. Grid refreshes after successful delete. |
+| **Remaining (API Team)** | Build `POST /api/BillingDebt/section129-delete-run` on Platinum. Accepts `{ runId }`. Validates run exists and status is not Approved/Authorized/Final Running/Final Complete. Hard-deletes from both `Billing_Section129LetterOFDemand` and `Billing_Section129LetterOFDemandDetails`. Returns `{ success: true, message: '...' }`. |
+| **Owner** | API Team (Platinum endpoint) |
 | **Decision** | Recommend hard delete — unprocessed trial runs have no audit value. |
 
 ---
 
-## G-02: `IncludePensioners` Column Missing from EMS
+## G-02: `IncludePensioners` Column Missing from EMS — ❌ OPEN
 
 | Field | Detail |
 |-------|--------|
@@ -30,7 +34,7 @@
 
 ---
 
-## G-03: `WhatsApp` Column Missing from EMS
+## G-03: `WhatsApp` Column Missing from EMS — ❌ OPEN
 
 | Field | Detail |
 |-------|--------|
@@ -45,7 +49,7 @@
 
 ---
 
-## G-06: Run Files Table Does Not Exist
+## G-06: Run Files Table Does Not Exist — ❌ OPEN
 
 | Field | Detail |
 |-------|--------|
@@ -76,3 +80,18 @@ CREATE TABLE [dbo].[Billing_Section129RunFiles](
 | **Frontend Impact** | None — frontend already expects the correct response shape. |
 | **Owner** | DBA (table) + API Team (read endpoints + worker writes) |
 | **Decision Needed** | Option A: Create the new `Billing_Section129RunFiles` table (recommended — supports multiple files per run). Option B: API constructs a synthetic file array from the three path columns on the header (quick workaround but breaks for multi-batch runs). Which approach? |
+
+---
+
+## Summary
+
+| Blocker | Status | Owner | Action Required |
+|---------|--------|-------|----------------|
+| G-01 | ✅ Frontend resolved | API Team | Build Platinum endpoint |
+| G-02 | ❌ Open | DBA + API Team | Add `IncludePensioners` column, confirm pensioner flag source |
+| G-03 | ❌ Open | DBA + API Team | Add `WhatsApp` column, confirm WhatsApp infrastructure availability |
+| G-06 | ❌ Open | DBA + API Team | Create `Billing_Section129RunFiles` table (recommended Option A) |
+
+> **SQL for all 3 open blockers is ready to execute in `PHASE1_DB_CHANGE_SCRIPT.sql`.**
+>
+> Phase 1 development cannot proceed until G-02, G-03, and G-06 are resolved by the DBA and API team.
