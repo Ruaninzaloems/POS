@@ -209,24 +209,38 @@ export class CashierSetupComponent implements OnInit {
 
     try {
       const [optionsResult, typesResult, rangeResult]: any[] = await Promise.all([
-        firstValueFrom(this.api.get('/api/platinum/receipt-prepaid/pos-payment-type', {
-          cashierId: String(cashierId), userId: String(userId), officeId: String(officeId)
+        firstValueFrom(this.api.get('/api/platinum/receipt-prepaid/cashier-payment-options', {
+          userId: String(userId), cashofficeId: String(officeId), cashierId: String(cashierId)
         })),
-        firstValueFrom(this.api.get('/api/platinum/receipt-prepaid/pos-payment-type', {
-          cashierId: String(cashierId), userId: String(userId), officeId: String(officeId)
+        firstValueFrom(this.api.get('/api/platinum/receipt-prepaid/cashier-payment-types', {
+          userId: String(userId), cashofficeId: String(officeId), cashierId: String(cashierId)
         })),
         firstValueFrom(this.api.get('/api/platinum/receipt-prepaid/validate-receipt-range', {
           userId: String(userId), cashierId: String(cashierId), finYear: this.finYear(), officeId: String(officeId)
         })),
       ]);
 
-      this.paymentOptions.set(optionsResult?.data || []);
-      this.paymentOptionsSource.set(optionsResult?.source || '');
-      this.paymentTypes.set(typesResult?.data || []);
-      this.paymentTypesSource.set(typesResult?.source || '');
+      const optionsArr = optionsResult?.data || (Array.isArray(optionsResult) ? optionsResult : []);
+      this.paymentOptions.set(optionsArr.map((o: any) => ({
+        posPaymentOption_ID: o.posPaymentOption_ID || o.paymentOptionId || o.id || 0,
+        posPaymentOptionDesc: o.posPaymentOptionDesc || o.description || o.name || '',
+        isTicked: o.isTicked ?? o.tickedFlag ?? true,
+        enabled: o.enabled ?? true,
+      })));
+      this.paymentOptionsSource.set(optionsResult?.source || 'platinum');
+
+      const typesArr = typesResult?.data || (Array.isArray(typesResult) ? typesResult : []);
+      this.paymentTypes.set(typesArr.map((t: any) => ({
+        posPaymentType_ID: t.posPaymentType_ID || t.paymentTypeId || t.id || 0,
+        posPaymentTypeDesc: t.posPaymentTypeDesc || t.description || t.name || '',
+        isTicked: t.isTicked ?? t.tickedFlag ?? true,
+        enabled: t.enabled ?? true,
+      })));
+      this.paymentTypesSource.set(typesResult?.source || 'platinum');
+
       this.receiptRangeStatus.set(rangeResult);
     } catch (e: any) {
-      this.configError.set('Failed to load cashier configuration.');
+      this.configError.set('Failed to load cashier configuration. Click Retry to try again.');
     } finally {
       this.configLoading.set(false);
     }
