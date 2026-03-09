@@ -1,4 +1,4 @@
-import { Component, signal, computed, OnInit, inject } from '@angular/core';
+import { Component, signal, computed, OnInit, inject, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -41,6 +41,9 @@ interface PaymentType {
   styleUrl: './cashier-setup.component.css'
 })
 export class CashierSetupComponent implements OnInit {
+  @Input() embedded = false;
+  @Output() sessionStarted = new EventEmitter<void>();
+
   private api = inject(ApiService);
   private toast = inject(ToastService);
   private auth = inject(AuthService);
@@ -323,7 +326,7 @@ export class CashierSetupComponent implements OnInit {
           this.step3Status.set('success');
           this.setupComplete.set(true);
           this.toast.success('Existing session reclaimed successfully.');
-          this.router.navigate(['/pos']);
+          this.completeSetup();
           return;
         } else {
           throw new Error(reclaimMsg || 'Failed to reclaim existing session.');
@@ -339,7 +342,7 @@ export class CashierSetupComponent implements OnInit {
       this.step3Status.set('success');
       this.setupComplete.set(true);
       this.toast.success('Cashier session started successfully.');
-      this.router.navigate(['/pos']);
+      this.completeSetup();
     } catch (err: any) {
       const msg = err?.message || 'Unknown error';
       this.error.set(msg.startsWith('Failed to start') ? msg : `Failed to start session: ${msg}`);
@@ -383,7 +386,7 @@ export class CashierSetupComponent implements OnInit {
         this.step3Status.set('success');
         this.setupComplete.set(true);
         this.toast.success('Session reclaimed successfully.');
-        this.router.navigate(['/pos']);
+        this.completeSetup();
       } else {
         const cleanMessage = apiMessage.replace(/<br\s*\/?>\s*•?\s*/gi, '\n').trim();
         throw new Error(cleanMessage || 'Failed to reclaim session.');
@@ -393,6 +396,14 @@ export class CashierSetupComponent implements OnInit {
       this.step3Status.set('error');
     } finally {
       this.submitting.set(false);
+    }
+  }
+
+  private completeSetup(): void {
+    if (this.embedded) {
+      this.sessionStarted.emit();
+    } else {
+      this.router.navigate(['/pos']);
     }
   }
 

@@ -18,9 +18,7 @@ export class HomeComponent {
   site = this.auth.site;
 
   quickLinks = [
-    { label: 'POS Receipting', route: '/pos', icon: 'receipt_long', desc: 'Process payments and issue receipts', color: 'blue' },
-    { label: 'Cashier Setup', route: '/cashier-setup', icon: 'login', desc: 'Start or manage your cashier session', color: 'teal' },
-    { label: 'Day-End', route: '/cashier-day-end', icon: 'event_available', desc: 'Day-end reconciliation', color: 'green' },
+    { label: 'POS Receipting', route: '/pos', icon: 'point_of_sale', desc: 'Setup, transact and day-end reconciliation', color: 'blue' },
     { label: 'View Receipts', route: '/view-receipts', icon: 'description', desc: 'Search and reprint receipts', color: 'purple' },
     { label: 'Billing Dashboard', route: '/billing-dashboard', icon: 'bar_chart', desc: 'View billing statistics & alerts', color: 'amber' },
     { label: 'General Enquiries', route: '/enquiries/general', icon: 'manage_search', desc: 'Look up account details', color: 'indigo' },

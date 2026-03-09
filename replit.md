@@ -92,8 +92,7 @@ angular-client/src/app/
 The Debt & Legal solution employs a hybrid architecture where Replit handles the UI, rules engine, and process orchestration. Platinum serves as the system of record (API only), and Azure Service Bus manages long-running background jobs. Direct synchronous APIs are used for configuration, lookups, enquiries, and status reads. All write actions include full audit metadata.
 
 ### Key Features
-- **POS & Cashier**: Unified POS screen with account search, payment processing, split payments, cash rounding, receipt generation, cashier session management, float tracking
-- **Day-End Reconciliation**: Multi-step submission/approval workflow with denomination counting
+- **POS Workflow (Tabbed)**: Single-page workflow at `/pos` with 3 tabs: (1) Session Setup (cashier registration, office selection, float), (2) POS Receipting (account search, payment processing, split payments, cash rounding, receipts, drop box, cancel receipts), (3) Day-End Reconciliation (denomination counting, recon submission). Auto-advances to Transact tab when session is active. Wrapper: `PosWorkflowComponent` embeds `CashierSetupComponent`, `PosComponent`, `CashierDayEndComponent`. Old routes `/cashier-setup` and `/cashier-day-end` redirect to `/pos`.
 - **Direct Deposits**: Manual allocation queue, auto-allocation with AI matching, bulk CSV processing
 - **Enquiries**: Multi-tab account detail view with 25+ tab categories, quick/advanced search
 - **Supervisor Dashboard**: Day-end approval/decline, cancellation requests, cash reports

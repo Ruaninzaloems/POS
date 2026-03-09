@@ -12,9 +12,9 @@ export const routes: Routes = [
     loadComponent: () => import('./shared/layout/pos-layout.component').then(m => m.PosLayoutComponent),
     children: [
       { path: '', loadComponent: () => import('./features/home/home.component').then(m => m.HomeComponent) },
-      { path: 'pos', loadComponent: () => import('./features/pos/pos.component').then(m => m.PosComponent) },
-      { path: 'cashier-setup', loadComponent: () => import('./features/cashier/cashier-setup.component').then(m => m.CashierSetupComponent) },
-      { path: 'cashier-day-end', loadComponent: () => import('./features/cashier/cashier-day-end.component').then(m => m.CashierDayEndComponent) },
+      { path: 'pos', loadComponent: () => import('./features/pos/pos-workflow.component').then(m => m.PosWorkflowComponent) },
+      { path: 'cashier-setup', redirectTo: 'pos', pathMatch: 'full' },
+      { path: 'cashier-day-end', redirectTo: 'pos', pathMatch: 'full' },
       { path: 'direct-deposits/manual', loadComponent: () => import('./features/direct-deposits/manual/unmatched-queue.component').then(m => m.UnmatchedQueueComponent) },
       { path: 'direct-deposits/manual/allocate/:id', loadComponent: () => import('./features/direct-deposits/manual/allocate-transaction.component').then(m => m.AllocateTransactionComponent) },
       { path: 'direct-deposits/manual/history', loadComponent: () => import('./features/direct-deposits/manual/allocation-history.component').then(m => m.AllocationHistoryComponent) },

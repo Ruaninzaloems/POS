@@ -35,7 +35,7 @@ export class PosLayoutComponent {
 
   sidebarCollapsed = signal(false);
   mobileSidebarOpen = signal(false);
-  expandedGroups = signal<Set<string>>(new Set(['Cashier Operations', 'Billing & Payments']));
+  expandedGroups = signal<Set<string>>(new Set(['Billing & Payments']));
 
   isSite02 = this.auth.isSite02;
   user = this.auth.user;
@@ -73,14 +73,7 @@ export class PosLayoutComponent {
 
   navItems: NavItem[] = [
     { label: 'Dashboard', href: '/', icon: 'dashboard' },
-    {
-      label: 'Cashier Operations', icon: 'point_of_sale',
-      children: [
-        { label: 'POS Receipting', href: '/pos', icon: 'receipt_long' },
-        { label: 'Cashier Setup', href: '/cashier-setup', icon: 'login' },
-        { label: 'Day-End Reconciliation', href: '/cashier-day-end', icon: 'event_available' },
-      ]
-    },
+    { label: 'POS Receipting', href: '/pos', icon: 'point_of_sale' },
     {
       label: 'Billing & Payments', icon: 'payments',
       children: [

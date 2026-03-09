@@ -1,0 +1,145 @@
+.workflow-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.workflow-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 16px 24px 0;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.workflow-tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #64748b;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s ease;
+  position: relative;
+  font-family: 'Inter', sans-serif;
+}
+
+.workflow-tab:hover:not(.disabled) {
+  color: var(--platinum-primary, #0f2b46);
+  background: #f8fafc;
+}
+
+.workflow-tab.active {
+  color: var(--platinum-primary, #0f2b46);
+  border-bottom-color: var(--platinum-accent, #c9a84c);
+}
+
+.workflow-tab.completed {
+  color: #16a34a;
+}
+
+.workflow-tab.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.tab-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.workflow-tab.active .tab-number {
+  background: var(--platinum-primary, #0f2b46);
+  color: #fff;
+}
+
+.workflow-tab.completed .tab-number,
+.tab-number.check {
+  background: #16a34a;
+  color: #fff;
+}
+
+.tab-check-icon {
+  font-size: 16px;
+}
+
+.tab-label {
+  white-space: nowrap;
+}
+
+.tab-connector {
+  width: 40px;
+  height: 2px;
+  background: #e2e8f0;
+  flex-shrink: 0;
+}
+
+.tab-connector.active {
+  background: var(--platinum-accent, #c9a84c);
+}
+
+.workflow-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.checking-session {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  gap: 16px;
+  color: #64748b;
+  font-size: 15px;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e2e8f0;
+  border-top-color: var(--platinum-primary, #0f2b46);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 640px) {
+  .workflow-tabs {
+    padding: 12px 12px 0;
+  }
+
+  .workflow-tab {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+
+  .tab-connector {
+    width: 16px;
+  }
+
+  .tab-label {
+    display: none;
+  }
+}

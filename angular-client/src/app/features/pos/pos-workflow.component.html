@@ -1,0 +1,69 @@
+<div class="workflow-container">
+  <div class="workflow-tabs">
+    <button
+      class="workflow-tab"
+      [class.active]="activeTab() === 'setup'"
+      [class.completed]="isTabComplete('setup')"
+      (click)="setTab('setup')"
+      data-testid="tab-setup">
+      <span class="tab-number" [class.check]="isTabComplete('setup')">
+        @if (isTabComplete('setup')) {
+          <span class="material-icons tab-check-icon">check</span>
+        } @else {
+          1
+        }
+      </span>
+      <span class="tab-label">Session Setup</span>
+    </button>
+
+    <div class="tab-connector" [class.active]="canAccessTransact()"></div>
+
+    <button
+      class="workflow-tab"
+      [class.active]="activeTab() === 'transact'"
+      [class.disabled]="!canAccessTransact()"
+      (click)="setTab('transact')"
+      [disabled]="!canAccessTransact()"
+      data-testid="tab-transact">
+      <span class="tab-number">2</span>
+      <span class="tab-label">POS Receipting</span>
+    </button>
+
+    <div class="tab-connector" [class.active]="canAccessDayEnd()"></div>
+
+    <button
+      class="workflow-tab"
+      [class.active]="activeTab() === 'day-end'"
+      [class.disabled]="!canAccessDayEnd()"
+      (click)="setTab('day-end')"
+      [disabled]="!canAccessDayEnd()"
+      data-testid="tab-dayend">
+      <span class="tab-number">3</span>
+      <span class="tab-label">Day-End Reconciliation</span>
+    </button>
+  </div>
+
+  <div class="workflow-content">
+    @if (checkingSession()) {
+      <div class="checking-session">
+        <div class="spinner"></div>
+        <p>Checking session status...</p>
+      </div>
+    } @else {
+      @if (activeTab() === 'setup') {
+        <app-cashier-setup
+          [embedded]="true"
+          (sessionStarted)="onSessionStarted()">
+        </app-cashier-setup>
+      }
+
+      @if (activeTab() === 'transact') {
+        <app-pos></app-pos>
+      }
+
+      @if (activeTab() === 'day-end') {
+        <app-cashier-day-end></app-cashier-day-end>
+      }
+    }
+  </div>
+</div>
