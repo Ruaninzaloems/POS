@@ -85,13 +85,13 @@ export default function BatchProcessing() {
     setLoading(true);
     try {
       const [jobsData, schedulesData] = await Promise.all([
-        fetchBatchJobs().catch(() => []),
-        fetchBatchSchedules().catch(() => []),
+        fetchBatchJobs(),
+        fetchBatchSchedules(),
       ]);
       setJobs(Array.isArray(jobsData) ? jobsData : jobsData?.jobs || []);
       setSchedules(Array.isArray(schedulesData) ? schedulesData : schedulesData?.schedules || []);
     } catch (e: any) {
-      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+      toast({ title: 'Failed to load batch data', description: e.message || 'Platinum API unavailable', variant: 'destructive' });
     } finally {
       setLoading(false);
     }

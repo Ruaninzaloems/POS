@@ -56,14 +56,19 @@ export default function HandoverReport() {
     const loadRefData = async () => {
       setLoadingRef(true);
       try {
-        const [attList, bcList] = await Promise.all([
-          fetchAttorneyList().catch(() => []),
-          fetchBillingCycles().catch(() => []),
+        const results = await Promise.allSettled([
+          fetchAttorneyList(),
+          fetchBillingCycles(),
         ]);
-        setAttorneys(attList);
-        setBillingCycles(bcList);
+        const [attResult, bcResult] = results;
+        if (attResult.status === 'fulfilled') setAttorneys(attResult.value);
+        if (bcResult.status === 'fulfilled') setBillingCycles(bcResult.value);
+        const failed = results.filter(r => r.status === 'rejected');
+        if (failed.length > 0) {
+          toast({ title: 'Partial Load Error', description: `${failed.length} reference data source(s) unavailable from Platinum API.`, variant: 'destructive' });
+        }
       } catch (e: any) {
-        toast({ title: 'Load Error', description: e.message || 'Failed to load reference data.', variant: 'destructive' });
+        toast({ title: 'Load Error', description: e.message || 'Failed to load reference data from Platinum API.', variant: 'destructive' });
       } finally {
         setLoadingRef(false);
       }

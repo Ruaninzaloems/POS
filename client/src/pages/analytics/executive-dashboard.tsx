@@ -55,22 +55,27 @@ export default function ExecutiveDashboard() {
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [ov, ag, rc, pl, at, ri] = await Promise.all([
-        fetchDebtOverview().catch(() => null),
-        fetchAgingAnalysis().catch(() => null),
-        fetchRecoveryStats().catch(() => null),
-        fetchLegalPipeline().catch(() => null),
-        fetchAttorneyPerformance().catch(() => null),
-        fetchRiskDistribution().catch(() => null),
+      const results = await Promise.allSettled([
+        fetchDebtOverview(),
+        fetchAgingAnalysis(),
+        fetchRecoveryStats(),
+        fetchLegalPipeline(),
+        fetchAttorneyPerformance(),
+        fetchRiskDistribution(),
       ]);
-      setOverview(ov);
-      setAging(ag);
-      setRecovery(rc);
-      setPipeline(pl);
-      setAttorneys(at);
-      setRisk(ri);
+      const [ovR, agR, rcR, plR, atR, riR] = results;
+      if (ovR.status === 'fulfilled') setOverview(ovR.value);
+      if (agR.status === 'fulfilled') setAging(agR.value);
+      if (rcR.status === 'fulfilled') setRecovery(rcR.value);
+      if (plR.status === 'fulfilled') setPipeline(plR.value);
+      if (atR.status === 'fulfilled') setAttorneys(atR.value);
+      if (riR.status === 'fulfilled') setRisk(riR.value);
+      const failed = results.filter(r => r.status === 'rejected');
+      if (failed.length > 0) {
+        toast({ title: 'Partial Load Error', description: `${failed.length} dashboard data source(s) unavailable from Platinum API.`, variant: 'destructive' });
+      }
     } catch (err: any) {
-      toast({ title: 'Failed to load dashboard', description: err.message, variant: 'destructive' });
+      toast({ title: 'Failed to load dashboard', description: err.message || 'Platinum API unavailable', variant: 'destructive' });
     } finally {
       setLoading(false);
     }

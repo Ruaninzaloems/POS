@@ -82,18 +82,23 @@ export default function Section129Config() {
 
   const loadDropdowns = useCallback(async () => {
     try {
-      const [tpl, smsTpl, billTypes, attyList] = await Promise.all([
-        fetchSection129Templates().catch(() => []),
-        fetchSection129SmsTemplates().catch(() => []),
-        fetchAdditionalBillingTypes().catch(() => []),
-        fetchAttorneyList().catch(() => []),
+      const results = await Promise.allSettled([
+        fetchSection129Templates(),
+        fetchSection129SmsTemplates(),
+        fetchAdditionalBillingTypes(),
+        fetchAttorneyList(),
       ]);
-      setTemplates(Array.isArray(tpl) ? tpl : []);
-      setSmsTemplates(Array.isArray(smsTpl) ? smsTpl : []);
-      setAdditionalBillingTypes(Array.isArray(billTypes) ? billTypes : []);
-      setAttorneys(Array.isArray(attyList) ? attyList : []);
-    } catch (e) {
-      console.error('Failed to load dropdowns:', e);
+      const [tplR, smsR, billR, attyR] = results;
+      if (tplR.status === 'fulfilled') setTemplates(Array.isArray(tplR.value) ? tplR.value : []);
+      if (smsR.status === 'fulfilled') setSmsTemplates(Array.isArray(smsR.value) ? smsR.value : []);
+      if (billR.status === 'fulfilled') setAdditionalBillingTypes(Array.isArray(billR.value) ? billR.value : []);
+      if (attyR.status === 'fulfilled') setAttorneys(Array.isArray(attyR.value) ? attyR.value : []);
+      const failed = results.filter(r => r.status === 'rejected');
+      if (failed.length > 0) {
+        toast({ title: 'Partial Load Error', description: `${failed.length} dropdown source(s) unavailable from Platinum API.`, variant: 'destructive' });
+      }
+    } catch (e: any) {
+      toast({ title: 'Load Error', description: e.message || 'Failed to load configuration data from Platinum API.', variant: 'destructive' });
     }
   }, []);
 

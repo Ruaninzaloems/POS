@@ -67,18 +67,23 @@ export default function HandoverManagement() {
     const loadRefData = async () => {
       setLoadingRef(true);
       try {
-        const [attList, bcList, townList, ageList] = await Promise.all([
-          fetchAttorneyList().catch(() => []),
-          fetchBillingCycles().catch(() => []),
-          fetchTowns().catch(() => []),
-          fetchAgeingRanges().catch(() => []),
+        const results = await Promise.allSettled([
+          fetchAttorneyList(),
+          fetchBillingCycles(),
+          fetchTowns(),
+          fetchAgeingRanges(),
         ]);
-        setAttorneys(attList);
-        setBillingCycles(bcList);
-        setTowns(townList);
-        setAgeingRanges(ageList);
+        const [attResult, bcResult, townResult, ageResult] = results;
+        if (attResult.status === 'fulfilled') setAttorneys(attResult.value);
+        if (bcResult.status === 'fulfilled') setBillingCycles(bcResult.value);
+        if (townResult.status === 'fulfilled') setTowns(townResult.value);
+        if (ageResult.status === 'fulfilled') setAgeingRanges(ageResult.value);
+        const failed = results.filter(r => r.status === 'rejected');
+        if (failed.length > 0) {
+          toast({ title: 'Partial Load Error', description: `${failed.length} reference data source(s) unavailable from Platinum API.`, variant: 'destructive' });
+        }
       } catch (e: any) {
-        toast({ title: 'Load Error', description: e.message || 'Failed to load reference data.', variant: 'destructive' });
+        toast({ title: 'Load Error', description: e.message || 'Failed to load reference data from Platinum API.', variant: 'destructive' });
       } finally {
         setLoadingRef(false);
       }

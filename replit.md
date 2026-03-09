@@ -7,64 +7,38 @@ This project is a React/Express/PostgreSQL web application prototype for a Munic
 Preferred communication style: Simple, everyday language.
 Theme: SAMRAS warm/light theme — `bg-[#F2F4F7]` background, `bg-white` cards with `border-[#D6D6D6] shadow-sm`, `bg-[#F7F7F7]` inputs with `border-[#D6D6D6]`, accent via `var(--pos-accent)` orange. NO dark slate themes. All pages must use this consistent light theme.
 
+## Permanent Project Standards (NON-NEGOTIABLE)
+Full details in **`PROJECT_IMPLEMENTATION_RULES.md`** and **`POST_CHANGE_CHECKLIST.md`** (both in repo root). These rules apply to EVERY development task — no exceptions.
+
+1. **Platinum API Only** — ALL feature data from Platinum APIs exclusively. No local DB for feature data. No SQLite. No JSON files as storage. No mock persistence. No fallback data in live flows. No hardcoded business data. Local PostgreSQL ONLY for POS core tables (users, cashier_sessions, transactions) and AI chat support tables (conversations, messages). When a Platinum API call fails, surface the error clearly — never silently swallow with `.catch(() => [])` or return fake success.
+2. **Angular-Ready Always** — Business logic in plain TypeScript services (not components). Typed models/DTOs in framework-neutral files. Components are presentational only. No React-only patterns that block Angular migration. Minimize custom hooks for business logic. All shared logic lives in `client/src/services/` and `client/src/models/`.
+3. **Deployment-Ready Always** — Production-structured code after every change. No temporary hacks. Clean builds. Error/loading/empty/retry states on all API screens. No dead code. Config externalized by environment.
+4. **Post-Change Compliance Review** — After every task, run `POST_CHANGE_CHECKLIST.md` and verify: Platinum-only, no local DB, no fallbacks, Angular-ready, deployment-ready, business logic outside UI, typed contracts, environment handling correct. Report any violations immediately.
+
 ## System Architecture
 
-### Debt & Legal Hybrid Architecture
-The Section 129 and Handover solution follows a hybrid architecture documented in the `debt-legal-architecture` skill (`.agents/skills/debt-legal-architecture/`). Key principles: Replit = UI + rules engine + process orchestrator; Platinum = system of record (API only); Azure Service Bus = long-running background jobs only (trial runs, final runs, lapse checks, handover batches, bulk notice generation). Direct synchronous APIs are used for all configuration, lookups, enquiry screens, and status reads. Every write action must include full audit metadata (CapturerID, DateCaptured, ModifierID, DateModified, StatusID, etc.). 12 core modules are defined: Configuration, Rule Engine, Trial Review, Trial Run, Authorisation, Final Run, Lapse Tracker, Handover, Handover Termination, General Enquiries, Reports/Files, and Audit/Dashboard.
-
 ### Core Design Principles
-The system uses a React 18 frontend with TypeScript, Vite, `wouter` for routing, styled with Tailwind CSS and `shadcn/ui`. State management uses React Context API, and data fetching relies on TanStack React Query. The Express 5 backend acts as a pure authenticated proxy to the Platinum Inzalo EMS API — ALL feature data comes exclusively from Platinum, no local database for feature data. The local PostgreSQL database is used ONLY for POS core tables (users, cashier_sessions, transactions). The backend manages user sessions, implements a global request queue, and response caching. The application is designed as a self-contained Web Component (`<pos-app>`) for embedding into existing Angular applications. Multi-site theming is supported via CSS custom properties and an accent color system.
+The system uses a React 18 frontend with TypeScript, Vite, `wouter` for routing, styled with Tailwind CSS and `shadcn/ui`. State management uses React Context API, and data fetching relies on TanStack React Query. The Express 5 backend acts as a pure authenticated proxy to the Platinum Inzalo EMS API, which is the exclusive source for all feature data. The local PostgreSQL database is used ONLY for POS core tables (users, cashier_sessions, transactions). The backend manages user sessions, implements a global request queue, and response caching. The application is designed as a self-contained Web Component (`<pos-app>`) for embedding into existing Angular applications. Multi-site theming is supported via CSS custom properties and an accent color system.
+
+### Debt & Legal Hybrid Architecture
+The Debt & Legal solution employs a hybrid architecture where Replit handles the UI, rules engine, and process orchestration. Platinum serves as the system of record (API only), and Azure Service Bus manages long-running background jobs. Direct synchronous APIs are used for configuration, lookups, enquiries, and status reads. All write actions include full audit metadata.
 
 ### Key Features and Implementations
-
-#### Direct Deposit Allocation
-Supports direct deposit allocation with batched server-side submissions and client polling for progress. Includes a "Generic Import" tab for bulk CSV uploads with client-side parsing and validation. The unmatched queue features bulk selection, an "Auto-Match Page" function using AI-enhanced and regex-based analysis, and inline match confidence indicators. AI-enhanced matching leverages OpenAI for description parsing and identifier extraction across Platinum API endpoints. It avoids hardcoded municipality data, relying on API autocomplete endpoints for SG code matching and comprehensive ERF parsing.
-
-#### Receipt Processing and Performance
-Receipt generation separates printing from payment processing. Lookup strategies for unreconciled receipts are prioritized, and performance enhancements include parallelization of API calls and suppression of session polling during transactions. Miscellaneous receipts are routed dynamically. For large multi-account payments, dynamic timeout scaling is implemented, and payments exceeding a `CHUNK_SIZE` are split into parallel batches.
-
-#### Day-End Reconciliation
-Involves a multi-step submission and approval workflow with distinct statuses. The system manages cashier sessions based on reconciliation status, and server-side endpoints verify record creation. Returned day-end sessions are recoverable.
-
-#### Cash Handling
-Includes a cash-on-hand limit pre-check before processing cash payments and implements SA 10c cash rounding.
-
-#### Debt Management Module
-A full debt recovery workflow covers Section 129 Letter of Demand processes and account handover management, including Section 129 Notice generation, Handover Management (Account, Bulk, Rotation modes), and Handover Termination. All debt operations proxy through dedicated Platinum API endpoints. This module includes configurable Section 129 parameters, debt reports, run file management, and specific debt tabs in the General Enquiries dialog. Permissions and audit trails are enforced.
-
-#### Legal Compliance (Platinum API Proxy)
-Legal compliance validation, audit trails, evidence bundles, and rule management all proxy to Platinum API (`/api/BillingDebt/legal-rules`, `/api/BillingDebt/compliance-log`, `/api/BillingDebt/evidence-bundle`, `/api/BillingDebt/validate-legal-action`). Admin pages exist for managing legal rule versions and viewing compliance audit trails. `requireLegalAdmin()` fails closed — only superUser OR explicit ADMIN/LEGAL_ADMIN/COMPLIANCE_ADMIN/DEBT_ADMIN permission grants access.
-
-#### Intelligent Debt Qualification & Risk Scoring (Platinum API Proxy)
-Debt scoring and qualification rules proxy to Platinum API (`/api/BillingDebt/score-account`, `/api/BillingDebt/risk-scores`, `/api/BillingDebt/scoring-weights`, `/api/BillingDebt/qualification-rules`). Risk Scoring page (`/debt/risk-scoring`) and Qualification Rules page (`/debt/qualification-rules`) in sidebar.
-
-#### Advanced Communication Engine (Platinum API Proxy)
-Omni-channel communication management proxies to Platinum API (`/api/BillingDebt/communication-timelines`, `/api/BillingDebt/communication-dispatch`, `/api/BillingDebt/communication-log`, `/api/BillingDebt/communication-scheduled`, `/api/BillingDebt/communication-stats`). Communication Timeline page (`/debt/communication-timelines`) and Communication Dashboard (`/debt/communication-dashboard`) with 4 tabs (Overview, Log, Scheduled, Send). All write operations require `requireLegalAdmin` authorization.
-
-#### Intelligence & Analytics Module (Platinum API Proxy)
-Executive-level analytics proxy to Platinum API (`/api/BillingDashboard/debt-overview`, `/api/BillingDashboard/aging-analysis`, `/api/BillingDashboard/recovery-stats`, `/api/BillingDashboard/legal-pipeline`, `/api/BillingDashboard/attorney-performance`, `/api/BillingDashboard/risk-distribution`, `/api/BillingDashboard/predictive-forecasting`, `/api/BillingDashboard/geographic-distribution`). Three pages: Executive Debt Dashboard (`/analytics/executive-dashboard`), Predictive Recovery Forecasting (`/analytics/predictive-forecasting`), Geographic Debt Mapping (`/analytics/geographic-mapping`). All require `requireAuth` + `requireLegalAdmin`.
-
-#### Batch Processing Engine (Platinum API Proxy)
-Batch processing for scheduled debt recovery jobs proxies to Platinum API (`/api/BillingDebt/batch-jobs`, `/api/BillingDebt/batch-schedules`, `/api/BillingDebt/batch-trigger`, `/api/BillingDebt/batch-cancel`). Supports 5 job types: Trial Runs, Final Runs, Lapse Checks, Notifications, Attorney Allocation. Batch Processing page (`/debt/batch-processing`) shows KPI stats, trigger buttons, scheduled jobs table, and filterable job history with cancel capability. Trigger/cancel require `requireLegalAdmin`.
-
-#### Process Monitoring (Platinum API Proxy)
-Real-time process monitoring proxies to Platinum API (`/api/BillingDebt/process-monitoring-overview`, `/api/BillingDebt/process-active-runs`, `/api/BillingDebt/process-failed-runs`, `/api/BillingDebt/process-pending-approvals`, `/api/BillingDebt/process-handover-queues`, `/api/BillingDebt/process-termination-queues`). Process Monitoring page (`/debt/process-monitoring`) with tabbed interface: Overview (summary cards with drill-down), Active Runs, Failed Runs, Pending Approvals, Handover Queue, Termination Queue. All require `requireAuth`.
-
-#### Digital Document Management (Platinum API Proxy)
-Two sub-features:
-1. **Document Templates** (`/debt/document-templates`): Version-controlled template management proxying to Platinum API (`/api/BillingDebt/document-templates`, `/api/BillingDebt/document-templates/:id/versions`, `/api/BillingDebt/document-templates/:id/upload`, `/api/BillingDebt/document-templates/:id/download`). CRUD for templates with category filter (SECTION_129, HANDOVER, AOD, FINAL_DEMAND, SUMMONS, ARRANGEMENT, CLEARANCE, GENERAL), version history dialog, upload new versions with change notes, download current/archived versions. Write operations require `requireLegalAdmin`.
-2. **Digital Signatures** (`/debt/digital-signatures`): Electronic signature management for AOD agreements proxying to Platinum API (`/api/BillingDebt/digital-signatures`, `/api/BillingDebt/digital-signatures/:id`, `/api/BillingDebt/digital-signatures/audit-log`). Send signature requests with signer info, expiry, amount; track status (PENDING/SENT/VIEWED/SIGNED/DECLINED/EXPIRED/CANCELLED); view request details with timeline and signature hash verification; full audit log tab. KPI summary cards. Write operations require `requireLegalAdmin`.
-
-#### Debt Process Engine (Platinum API Proxy)
-Configurable workflow engine for debt recovery processes proxying to Platinum API (`/api/BillingDebt/process-workflows`, `/api/BillingDebt/process-workflows/:id/stages`, `/api/BillingDebt/process-workflows/:id/stages/reorder`). Process Engine page (`/debt/process-engine`) with two views: workflow list and stage detail. Each workflow contains ordered stages (e.g., Stage 1: Reminder SMS → Stage 2: Arrear SMS → Stage 3: 14 Day Notice → Stage 4: Section 129 → Stage 5: Handover → Stage 6: Summons → Stage 7: Judgment → Stage 8: Warrant). Each stage has: entry rules (condition builder with AND/OR logic across 12 field types), document templates (linked by channel — SMS/Email/Letter/WhatsApp), automated/manual actions (12 action types including Send SMS, Generate Notice, Handover to Attorney, Apply Restriction, Issue Summons), and configurable timers (wait days, business days only, auto-escalate on expiry). Stages can be reordered via drag. Write operations require `requireLegalAdmin`.
+-   **Angular-Ready Architecture**: All business logic, validation, formatting, constants, and type definitions are extracted into framework-neutral plain TypeScript files for direct reuse in Angular standalone feature modules. React page components are presentational only.
+-   **Direct Deposit Allocation**: Supports batched server-side submissions and client polling, bulk CSV uploads with client-side parsing/validation, and AI-enhanced auto-matching using OpenAI for description parsing.
+-   **Receipt Processing**: Separates printing from payment processing, prioritizes lookup strategies for unreconciled receipts, and includes performance enhancements like parallelized API calls and dynamic timeout scaling for large payments.
+-   **Day-End Reconciliation**: Implements a multi-step submission and approval workflow, managing cashier sessions based on reconciliation status.
+-   **Cash Handling**: Includes pre-checks for cash-on-hand limits and implements SA 10c cash rounding.
+-   **Debt Management Module**: Covers Section 129 Letter of Demand processes and account handover management (including Section 129 Notice generation, Handover Management, and Handover Termination) by proxying all operations through dedicated Platinum API endpoints.
+-   **Legal Compliance, Intelligent Debt Qualification & Risk Scoring, Advanced Communication Engine, Intelligence & Analytics Module, Batch Processing Engine, Process Monitoring, Digital Document Management, and Debt Process Engine**: These modules primarily function as proxies to their respective Platinum API endpoints, providing UI and orchestration for complex workflows, data management, and reporting functionalities. They enforce strict access controls and integrate with Platinum for data persistence and business logic execution.
 
 ### Angular-Ready Architecture (Shared Services Layer)
 All business logic, validation, formatting, constants, and type definitions are extracted into framework-neutral plain TypeScript files for direct reuse in Angular standalone feature modules:
 - **`client/src/models/debt.models.ts`** — All debt feature interfaces (ProcessWorkflow, WorkflowStage, StageRule, StageAction, DocumentTemplate, SignatureRequest, BatchJob, Condition, Section129Config, Section129ConfigEntry, Section129Run, Section129RunAccount, Section129RunFile, HandoverRecord, Attorney, HandoverTermination, QualificationRunResult, RiskScore, CommunicationStats, CommunicationTimeline, ProcessMonitoringOverview, etc.)
 - **`client/src/models/legal.models.ts`** — Legal interfaces (LegalRuleVersion, RuleFormData, ComplianceLogEntry, EvidenceBundle)
-- **`client/src/models/analytics.models.ts`** — Analytics interfaces (DebtOverview, AgingAnalysis, GeoItem, ForecastScenario, etc.)
+- **`client/src/models/analytics.models.ts`** — Analytics interfaces (DebtOverview, AgingAnalysis, GeoItem, ForecastScenario, ForecastData, etc.)
 - **`client/src/services/format.service.ts`** — Framework-neutral formatters (formatDate, formatCurrency, formatCurrencyCompact, formatFileSize, formatDuration, formatTimestamp, getFinancialYear, getFinancialYearList)
-- **`client/src/services/validation.service.ts`** — Framework-neutral validators (validateRequired, validatePercentageSum, validateEmail, isCourtReady, getRiskCategory, getStatusColor, sortByField)
+- **`client/src/services/validation.service.ts`** — Framework-neutral validators (validateRequired, validatePercentageSum, validateEmail, isCourtReady, getRiskCategory, getStatusColor, sortByField, getConfidenceLabel)
 - **`client/src/services/debt-config.ts`** — All shared constants (RULE_FIELDS, RULE_OPERATORS, WORKFLOW_ACTION_TYPES, CHANNEL_OPTIONS, TEMPLATE_CATEGORIES, DOC_TYPES, LEGAL_CATEGORIES, QUALIFICATION_FIELD_OPTIONS, RISK_COLORS, status label maps, PAGE_SIZE, SECTION129_DEFAULTS)
 
 All React page components are presentational only — they import types, constants, and utilities from these shared files. No inline type definitions, no inline formatting functions, no inline constant arrays in page files.
@@ -72,7 +46,7 @@ All React page components are presentational only — they import types, constan
 ## External Dependencies
 
 ### External APIs
--   **Platinum Inzalo EMS API**: The central dependency for all core POS operations, including payments, prepaid services, clearance, day-end processes, direct deposits, authentication, billing enquiry, and dashboard functionalities. It integrates various modules such as `ReceiptPrepaid`, `billing-payment`, `auth-day-end-reconcile`, `billing-direct-deposit-allocation`, `BillingEnquiry`, `BillingDashboard`, and `BillingDebt`.
+-   **Platinum Inzalo EMS API**: The central dependency for all core POS operations, including payments, prepaid services, clearance, day-end processes, direct deposits, authentication, billing enquiry, dashboard, and various debt management modules (e.g., `ReceiptPrepaid`, `billing-payment`, `auth-day-end-reconcile`, `billing-direct-deposit-allocation`, `BillingEnquiry`, `BillingDashboard`, `BillingDebt`).
 
 ### Frontend Libraries
 -   `shadcn/ui` + `Radix UI`: For robust and customizable UI components.
@@ -81,4 +55,4 @@ All React page components are presentational only — they import types, constan
 -   `react-to-print`: For client-side printing.
 
 ### Databases
--   **PostgreSQL**: Used ONLY for POS core tables: `users`, `cashier_sessions`, `transactions`. All debt/legal/communication/analytics data comes from Platinum API. Drizzle ORM is used for database interactions.
+-   **PostgreSQL**: Used ONLY for POS core tables: `users`, `cashier_sessions`, `transactions`, and AI chat tables: `conversations`, `messages`. All other feature-related data is sourced from the Platinum Inzalo EMS API. Drizzle ORM is used for database interactions.

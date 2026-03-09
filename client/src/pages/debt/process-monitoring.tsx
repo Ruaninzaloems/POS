@@ -74,22 +74,27 @@ export default function ProcessMonitoring() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [ov, ar, fr, pa, hq, tq] = await Promise.all([
-        fetchProcessMonitoringOverview().catch(() => null),
-        fetchActiveRuns().catch(() => []),
-        fetchFailedRuns().catch(() => []),
-        fetchPendingApprovals().catch(() => []),
-        fetchHandoverQueues().catch(() => []),
-        fetchTerminationQueues().catch(() => []),
+      const results = await Promise.allSettled([
+        fetchProcessMonitoringOverview(),
+        fetchActiveRuns(),
+        fetchFailedRuns(),
+        fetchPendingApprovals(),
+        fetchHandoverQueues(),
+        fetchTerminationQueues(),
       ]);
-      setOverview(ov);
-      setActiveRuns(Array.isArray(ar) ? ar : ar?.runs || []);
-      setFailedRuns(Array.isArray(fr) ? fr : fr?.runs || []);
-      setPendingApprovals(Array.isArray(pa) ? pa : pa?.approvals || []);
-      setHandoverQueues(Array.isArray(hq) ? hq : hq?.queues || []);
-      setTerminationQueues(Array.isArray(tq) ? tq : tq?.queues || []);
+      const [ovR, arR, frR, paR, hqR, tqR] = results;
+      if (ovR.status === 'fulfilled') setOverview(ovR.value);
+      if (arR.status === 'fulfilled') { const ar = arR.value; setActiveRuns(Array.isArray(ar) ? ar : ar?.runs || []); }
+      if (frR.status === 'fulfilled') { const fr = frR.value; setFailedRuns(Array.isArray(fr) ? fr : fr?.runs || []); }
+      if (paR.status === 'fulfilled') { const pa = paR.value; setPendingApprovals(Array.isArray(pa) ? pa : pa?.approvals || []); }
+      if (hqR.status === 'fulfilled') { const hq = hqR.value; setHandoverQueues(Array.isArray(hq) ? hq : hq?.queues || []); }
+      if (tqR.status === 'fulfilled') { const tq = tqR.value; setTerminationQueues(Array.isArray(tq) ? tq : tq?.queues || []); }
+      const failed = results.filter(r => r.status === 'rejected');
+      if (failed.length > 0) {
+        toast({ title: 'Partial Load Error', description: `${failed.length} monitoring data source(s) unavailable from Platinum API.`, variant: 'destructive' });
+      }
     } catch (e: any) {
-      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+      toast({ title: 'Error', description: e.message || 'Platinum API unavailable', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
