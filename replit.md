@@ -56,3 +56,17 @@ All React page components are presentational only — they import types, constan
 
 ### Databases
 -   **PostgreSQL**: Used ONLY for POS core tables: `users`, `cashier_sessions`, `transactions`, and AI chat tables: `conversations`, `messages`. All other feature-related data is sourced from the Platinum Inzalo EMS API. Drizzle ORM is used for database interactions.
+
+## Phase Deliverable Standard
+Every development phase (Phase 1, 2, 3, ...) produces exactly 5 output files. See skill `.agents/skills/phase-deliverables/SKILL.md` for the template and naming conventions.
+
+### Phase Status
+- **Phase 0** (Foundation/Analysis) — COMPLETED → `PHASE0_MASTER_MATRIX.md`
+- **Phase 1** (Section 129 Notices) — DESIGN COMPLETE, PENDING API TEAM BUILD
+  - `PHASE1_SECTION129_NOTICES_DETAIL_PACK.md` — master design (1,153 lines)
+  - `PHASE1_BLOCKERS_ACTION_LIST.md` — 4 blockers requiring decisions
+  - `PHASE1_API_DEVELOPER_HANDOVER.md` — API team implementation pack
+  - `PHASE1_DB_CHANGE_SCRIPT.sql` — idempotent SQL with rollback
+  - `PHASE1_SERVICE_BUS_PACK.md` — async queue/worker definitions
+  - `PHASE1_SIGNOFF_CHECKLIST.md` — 54-item signoff gate
+- **Phase 2** (Section 129 Configuration) — NOT STARTED (blocked by Phase 1 signoff)
