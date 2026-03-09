@@ -127,36 +127,36 @@ export default function ComplianceAuditTrail() {
 
   return (
     <PosLayout>
-      <div className="flex-1 overflow-y-auto bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 min-h-0">
+      <div className="flex-1 overflow-y-auto bg-[#F2F4F7] min-h-0">
         <div className="max-w-7xl mx-auto p-3 sm:p-4 lg:p-6 space-y-4">
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-1" data-testid="text-breadcrumb">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1" data-testid="text-breadcrumb">
             <span>Compliance</span>
             <BreadcrumbSep className="w-3 h-3" />
-            <span className="text-slate-300">Audit Trail</span>
+            <span className="text-foreground">Audit Trail</span>
           </div>
 
           <div className="flex items-center gap-3 mb-1">
-            <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
-              <Shield className="w-5 h-5 text-blue-400" />
+            <div className="p-2 rounded-lg bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
+              <Shield className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-lg sm:text-xl font-bold text-white tracking-tight" data-testid="text-page-title">
+              <h1 className="text-lg sm:text-xl font-bold text-foreground tracking-tight" data-testid="text-page-title">
                 Compliance Audit Trail
               </h1>
-              <p className="text-xs text-slate-400">Court-ready audit log of all compliance actions with full traceability</p>
+              <p className="text-xs text-muted-foreground">Court-ready audit log of all compliance actions with full traceability</p>
             </div>
           </div>
 
-          <Card className="bg-slate-800/40 border-slate-700/40 backdrop-blur-sm">
+          <Card className="bg-white border-[#D6D6D6] shadow-sm">
             <CardContent className="p-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400 flex items-center gap-1">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1">
                     Action Type
                     <HelpTip text="Filter by compliance action type" side="right" />
                   </Label>
                   <Select value={actionType} onValueChange={setActionType}>
-                    <SelectTrigger className="bg-slate-900/60 border-slate-600/50 text-white h-9" data-testid="select-action-type">
+                    <SelectTrigger className="bg-[#F7F7F7] border-[#D6D6D6] h-9" data-testid="select-action-type">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -168,7 +168,7 @@ export default function ComplianceAuditTrail() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400 flex items-center gap-1">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1">
                     Account Number
                     <HelpTip text="Filter by account number or entity ID" side="right" />
                   </Label>
@@ -176,13 +176,13 @@ export default function ComplianceAuditTrail() {
                     value={accountNo}
                     onChange={(e) => setAccountNo(e.target.value)}
                     placeholder="Enter account number"
-                    className="bg-slate-900/60 border-slate-600/50 text-white h-9"
+                    className="bg-[#F7F7F7] border-[#D6D6D6] h-9"
                     data-testid="input-account-no"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400 flex items-center gap-1">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1">
                     User
                     <HelpTip text="Filter by user name" side="right" />
                   </Label>
@@ -190,13 +190,13 @@ export default function ComplianceAuditTrail() {
                     value={userFilter}
                     onChange={(e) => setUserFilter(e.target.value)}
                     placeholder="Enter user name"
-                    className="bg-slate-900/60 border-slate-600/50 text-white h-9"
+                    className="bg-[#F7F7F7] border-[#D6D6D6] h-9"
                     data-testid="input-user"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400 flex items-center gap-1">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1">
                     Date From
                     <HelpTip text="Filter logs from this date" side="right" />
                   </Label>
@@ -204,13 +204,13 @@ export default function ComplianceAuditTrail() {
                     type="date"
                     value={dateFrom}
                     onChange={(e) => setDateFrom(e.target.value)}
-                    className="bg-slate-900/60 border-slate-600/50 text-white h-9"
+                    className="bg-[#F7F7F7] border-[#D6D6D6] h-9"
                     data-testid="input-date-from"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400 flex items-center gap-1">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1">
                     Date To
                     <HelpTip text="Filter logs up to this date" side="right" />
                   </Label>
@@ -218,7 +218,7 @@ export default function ComplianceAuditTrail() {
                     type="date"
                     value={dateTo}
                     onChange={(e) => setDateTo(e.target.value)}
-                    className="bg-slate-900/60 border-slate-600/50 text-white h-9"
+                    className="bg-[#F7F7F7] border-[#D6D6D6] h-9"
                     data-testid="input-date-to"
                   />
                 </div>
@@ -228,7 +228,7 @@ export default function ComplianceAuditTrail() {
                 <Button
                   onClick={handleSubmit}
                   disabled={loading}
-                  className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                  className="bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-white font-semibold rounded-lg shadow-sm"
                   data-testid="button-search"
                 >
                   {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Search className="w-4 h-4 mr-1" />}
@@ -237,7 +237,7 @@ export default function ComplianceAuditTrail() {
                 <Button
                   onClick={handleClear}
                   variant="outline"
-                  className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                  className="border-[#D6D6D6] hover:bg-[var(--pos-accent-tint)] text-muted-foreground"
                   data-testid="button-clear"
                 >
                   <RotateCcw className="w-4 h-4 mr-1" />
@@ -246,7 +246,7 @@ export default function ComplianceAuditTrail() {
                 <Button
                   onClick={handleCancel}
                   variant="outline"
-                  className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                  className="border-[#D6D6D6] hover:bg-[var(--pos-accent-tint)] text-muted-foreground"
                   data-testid="button-cancel"
                 >
                   <XCircle className="w-4 h-4 mr-1" />
@@ -257,21 +257,21 @@ export default function ComplianceAuditTrail() {
           </Card>
 
           {searched && (
-            <Card className="bg-slate-800/40 border-slate-700/40 backdrop-blur-sm">
+            <Card className="bg-white border-[#D6D6D6] shadow-sm">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-sm font-semibold text-white" data-testid="text-results-title">
+                  <h2 className="text-sm font-semibold text-foreground" data-testid="text-results-title">
                     Audit Trail ({results.length} record{results.length !== 1 ? 's' : ''})
                   </h2>
                 </div>
 
                 {loading ? (
-                  <div className="flex items-center gap-2 text-slate-400 text-sm py-8 justify-center">
+                  <div className="flex items-center gap-2 text-muted-foreground text-sm py-8 justify-center">
                     <Loader2 className="w-4 h-4 animate-spin" />
                     Loading compliance logs...
                   </div>
                 ) : results.length === 0 ? (
-                  <p className="text-slate-500 text-sm text-center py-8" data-testid="text-no-results">
+                  <p className="text-muted-foreground text-sm text-center py-8" data-testid="text-no-results">
                     No compliance logs found matching the selected criteria.
                   </p>
                 ) : (
@@ -279,21 +279,21 @@ export default function ComplianceAuditTrail() {
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
-                          <TableRow className="border-slate-700/50 hover:bg-transparent">
-                            <TableHead className="text-xs text-slate-400 font-medium w-8"></TableHead>
-                            <TableHead className="text-xs text-slate-400 font-medium whitespace-nowrap">Status</TableHead>
-                            <TableHead className="text-xs text-slate-400 font-medium whitespace-nowrap">Timestamp</TableHead>
-                            <TableHead className="text-xs text-slate-400 font-medium whitespace-nowrap">Action Type</TableHead>
-                            <TableHead className="text-xs text-slate-400 font-medium whitespace-nowrap">Entity</TableHead>
-                            <TableHead className="text-xs text-slate-400 font-medium whitespace-nowrap">User</TableHead>
-                            <TableHead className="text-xs text-slate-400 font-medium whitespace-nowrap">IP Address</TableHead>
-                            <TableHead className="text-xs text-slate-400 font-medium whitespace-nowrap">API Call ID</TableHead>
-                            <TableHead className="text-xs text-slate-400 font-medium whitespace-nowrap">Legislation</TableHead>
-                            <TableHead className="text-xs text-slate-400 font-medium whitespace-nowrap">Process Stage</TableHead>
-                            <TableHead className="text-xs text-slate-400 font-medium whitespace-nowrap">Proof of Delivery</TableHead>
+                          <TableRow className="bg-[#F7F7F7] border-b hover:bg-transparent">
+                            <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider w-8"></TableHead>
+                            <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Status</TableHead>
+                            <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Timestamp</TableHead>
+                            <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Action Type</TableHead>
+                            <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Entity</TableHead>
+                            <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">User</TableHead>
+                            <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">IP Address</TableHead>
+                            <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">API Call ID</TableHead>
+                            <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Legislation</TableHead>
+                            <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Process Stage</TableHead>
+                            <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Proof of Delivery</TableHead>
                           </TableRow>
                         </TableHeader>
-                        <TableBody>
+                        <TableBody className="divide-y divide-[#E5E5E5]">
                           {paginatedResults.map((row, idx) => {
                             const globalIdx = (gridPage - 1) * gridPageSize + idx;
                             const isExpanded = expandedRow === globalIdx;
@@ -301,115 +301,115 @@ export default function ComplianceAuditTrail() {
                             return (
                               <React.Fragment key={globalIdx}>
                                 <TableRow
-                                  className="border-slate-700/30 hover:bg-slate-700/20 transition-colors cursor-pointer"
+                                  className="hover:bg-[var(--pos-accent-hover-row)] transition-colors cursor-pointer"
                                   onClick={() => setExpandedRow(isExpanded ? null : globalIdx)}
                                   data-testid={`row-audit-${globalIdx}`}
                                 >
-                                  <TableCell className="text-xs text-slate-300 w-8">
+                                  <TableCell className="text-xs text-foreground w-8">
                                     {isExpanded ? (
-                                      <ChevronUp className="w-4 h-4 text-slate-400" />
+                                      <ChevronUp className="w-4 h-4 text-muted-foreground" />
                                     ) : (
-                                      <ChevronDown className="w-4 h-4 text-slate-400" />
+                                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
                                     )}
                                   </TableCell>
                                   <TableCell className="text-xs">
                                     {courtReady ? (
-                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-medium" data-testid={`badge-court-ready-${globalIdx}`}>
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-medium" data-testid={`badge-court-ready-${globalIdx}`}>
                                         <CheckCircle2 className="w-3 h-3" />
                                         Court Ready
                                       </span>
                                     ) : (
-                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-medium" data-testid={`badge-incomplete-${globalIdx}`}>
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-medium" data-testid={`badge-incomplete-${globalIdx}`}>
                                         <AlertTriangle className="w-3 h-3" />
                                         Incomplete
                                       </span>
                                     )}
                                   </TableCell>
-                                  <TableCell className="text-xs text-slate-300 whitespace-nowrap">{formatTimestamp(row.timestamp)}</TableCell>
+                                  <TableCell className="text-xs text-foreground whitespace-nowrap">{formatTimestamp(row.timestamp)}</TableCell>
                                   <TableCell className="text-xs">
-                                    <span className="px-2 py-0.5 rounded bg-slate-700/60 text-slate-200 font-mono text-[11px]">
+                                    <span className="px-2 py-0.5 rounded bg-slate-100 text-foreground font-mono text-[11px]">
                                       {row.actionType || '—'}
                                     </span>
                                   </TableCell>
-                                  <TableCell className="text-xs text-slate-300 whitespace-nowrap">
-                                    <span className="text-slate-500 text-[10px]">{row.entityType || ''}</span>
+                                  <TableCell className="text-xs text-foreground whitespace-nowrap">
+                                    <span className="text-muted-foreground text-[10px]">{row.entityType || ''}</span>
                                     {row.entityType && row.entityId ? ' / ' : ''}
                                     <span className="font-medium">{row.entityId || '—'}</span>
                                   </TableCell>
-                                  <TableCell className="text-xs text-slate-300 whitespace-nowrap">{row.userName || row.userId || '—'}</TableCell>
-                                  <TableCell className="text-xs text-slate-300 font-mono whitespace-nowrap">{row.ipAddress || '—'}</TableCell>
-                                  <TableCell className="text-xs text-slate-300 font-mono whitespace-nowrap max-w-[120px] truncate" title={row.apiCallId || ''}>
+                                  <TableCell className="text-xs text-foreground whitespace-nowrap">{row.userName || row.userId || '—'}</TableCell>
+                                  <TableCell className="text-xs text-foreground font-mono whitespace-nowrap">{row.ipAddress || '—'}</TableCell>
+                                  <TableCell className="text-xs text-foreground font-mono whitespace-nowrap max-w-[120px] truncate" title={row.apiCallId || ''}>
                                     {row.apiCallId ? row.apiCallId.substring(0, 8) + '...' : '—'}
                                   </TableCell>
-                                  <TableCell className="text-xs text-slate-300 whitespace-nowrap max-w-[150px] truncate" title={row.legislationRef || ''}>
+                                  <TableCell className="text-xs text-foreground whitespace-nowrap max-w-[150px] truncate" title={row.legislationRef || ''}>
                                     {row.legislationRef || '—'}
                                   </TableCell>
-                                  <TableCell className="text-xs text-slate-300 whitespace-nowrap">{row.processStage || '—'}</TableCell>
-                                  <TableCell className="text-xs text-slate-300 whitespace-nowrap">{row.proofOfDelivery || '—'}</TableCell>
+                                  <TableCell className="text-xs text-foreground whitespace-nowrap">{row.processStage || '—'}</TableCell>
+                                  <TableCell className="text-xs text-foreground whitespace-nowrap">{row.proofOfDelivery || '—'}</TableCell>
                                 </TableRow>
 
                                 {isExpanded && (
-                                  <TableRow className="border-slate-700/30 bg-slate-800/60" data-testid={`row-audit-detail-${globalIdx}`}>
+                                  <TableRow className="bg-[#F7F7F7]" data-testid={`row-audit-detail-${globalIdx}`}>
                                     <TableCell colSpan={11} className="p-4">
                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                          <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Full Details</h4>
+                                          <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">Full Details</h4>
                                           <div className="space-y-1.5 text-xs">
                                             <div className="flex gap-2">
-                                              <span className="text-slate-500 w-28 shrink-0">ID:</span>
-                                              <span className="text-slate-300">{row.id}</span>
+                                              <span className="text-muted-foreground w-28 shrink-0">ID:</span>
+                                              <span className="text-foreground">{row.id}</span>
                                             </div>
                                             <div className="flex gap-2">
-                                              <span className="text-slate-500 w-28 shrink-0">Action Type:</span>
-                                              <span className="text-slate-300">{row.actionType}</span>
+                                              <span className="text-muted-foreground w-28 shrink-0">Action Type:</span>
+                                              <span className="text-foreground">{row.actionType}</span>
                                             </div>
                                             <div className="flex gap-2">
-                                              <span className="text-slate-500 w-28 shrink-0">Entity Type:</span>
-                                              <span className="text-slate-300">{row.entityType}</span>
+                                              <span className="text-muted-foreground w-28 shrink-0">Entity Type:</span>
+                                              <span className="text-foreground">{row.entityType}</span>
                                             </div>
                                             <div className="flex gap-2">
-                                              <span className="text-slate-500 w-28 shrink-0">Entity ID:</span>
-                                              <span className="text-slate-300">{row.entityId}</span>
+                                              <span className="text-muted-foreground w-28 shrink-0">Entity ID:</span>
+                                              <span className="text-foreground">{row.entityId}</span>
                                             </div>
                                             <div className="flex gap-2">
-                                              <span className="text-slate-500 w-28 shrink-0">Rule Version ID:</span>
-                                              <span className="text-slate-300">{row.ruleVersionId ?? '—'}</span>
+                                              <span className="text-muted-foreground w-28 shrink-0">Rule Version ID:</span>
+                                              <span className="text-foreground">{row.ruleVersionId ?? '—'}</span>
                                             </div>
                                             <div className="flex gap-2">
-                                              <span className="text-slate-500 w-28 shrink-0">Legislation:</span>
-                                              <span className="text-slate-300">{row.legislationRef || '—'}</span>
+                                              <span className="text-muted-foreground w-28 shrink-0">Legislation:</span>
+                                              <span className="text-foreground">{row.legislationRef || '—'}</span>
                                             </div>
                                             <div className="flex gap-2">
-                                              <span className="text-slate-500 w-28 shrink-0">Process Stage:</span>
-                                              <span className="text-slate-300">{row.processStage || '—'}</span>
+                                              <span className="text-muted-foreground w-28 shrink-0">Process Stage:</span>
+                                              <span className="text-foreground">{row.processStage || '—'}</span>
                                             </div>
                                             <div className="flex gap-2">
-                                              <span className="text-slate-500 w-28 shrink-0">Proof of Delivery:</span>
-                                              <span className="text-slate-300">{row.proofOfDelivery || '—'}</span>
+                                              <span className="text-muted-foreground w-28 shrink-0">Proof of Delivery:</span>
+                                              <span className="text-foreground">{row.proofOfDelivery || '—'}</span>
                                             </div>
                                             <div className="flex gap-2">
-                                              <span className="text-slate-500 w-28 shrink-0">User ID:</span>
-                                              <span className="text-slate-300">{row.userId || '—'}</span>
+                                              <span className="text-muted-foreground w-28 shrink-0">User ID:</span>
+                                              <span className="text-foreground">{row.userId || '—'}</span>
                                             </div>
                                             <div className="flex gap-2">
-                                              <span className="text-slate-500 w-28 shrink-0">User Name:</span>
-                                              <span className="text-slate-300">{row.userName || '—'}</span>
+                                              <span className="text-muted-foreground w-28 shrink-0">User Name:</span>
+                                              <span className="text-foreground">{row.userName || '—'}</span>
                                             </div>
                                             <div className="flex gap-2">
-                                              <span className="text-slate-500 w-28 shrink-0">IP Address:</span>
-                                              <span className="text-slate-300 font-mono">{row.ipAddress || '—'}</span>
+                                              <span className="text-muted-foreground w-28 shrink-0">IP Address:</span>
+                                              <span className="text-foreground font-mono">{row.ipAddress || '—'}</span>
                                             </div>
                                             <div className="flex gap-2">
-                                              <span className="text-slate-500 w-28 shrink-0">API Call ID:</span>
-                                              <span className="text-slate-300 font-mono text-[11px] break-all">{row.apiCallId || '—'}</span>
+                                              <span className="text-muted-foreground w-28 shrink-0">API Call ID:</span>
+                                              <span className="text-foreground font-mono text-[11px] break-all">{row.apiCallId || '—'}</span>
                                             </div>
                                             <div className="flex gap-2">
-                                              <span className="text-slate-500 w-28 shrink-0">Document Ver:</span>
-                                              <span className="text-slate-300">{row.documentVersion || '—'}</span>
+                                              <span className="text-muted-foreground w-28 shrink-0">Document Ver:</span>
+                                              <span className="text-foreground">{row.documentVersion || '—'}</span>
                                             </div>
                                             <div className="flex gap-2">
-                                              <span className="text-slate-500 w-28 shrink-0">Timestamp:</span>
-                                              <span className="text-slate-300">{formatTimestamp(row.timestamp)}</span>
+                                              <span className="text-muted-foreground w-28 shrink-0">Timestamp:</span>
+                                              <span className="text-foreground">{formatTimestamp(row.timestamp)}</span>
                                             </div>
                                           </div>
                                         </div>
@@ -417,8 +417,8 @@ export default function ComplianceAuditTrail() {
                                         <div className="space-y-3">
                                           {row.communicationProof && (
                                             <div>
-                                              <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Communication Proof</h4>
-                                              <pre className="bg-slate-900/80 border border-slate-700/50 rounded p-3 text-[11px] text-slate-300 font-mono overflow-x-auto max-h-40 whitespace-pre-wrap" data-testid={`text-comm-proof-${globalIdx}`}>
+                                              <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-1.5">Communication Proof</h4>
+                                              <pre className="bg-white border border-[#D6D6D6] rounded p-3 text-[11px] text-foreground font-mono overflow-x-auto max-h-40 whitespace-pre-wrap" data-testid={`text-comm-proof-${globalIdx}`}>
                                                 {typeof row.communicationProof === 'string'
                                                   ? row.communicationProof
                                                   : JSON.stringify(row.communicationProof, null, 2)}
@@ -428,8 +428,8 @@ export default function ComplianceAuditTrail() {
 
                                           {row.metadata && (
                                             <div>
-                                              <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Metadata</h4>
-                                              <pre className="bg-slate-900/80 border border-slate-700/50 rounded p-3 text-[11px] text-slate-300 font-mono overflow-x-auto max-h-40 whitespace-pre-wrap" data-testid={`text-metadata-${globalIdx}`}>
+                                              <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-1.5">Metadata</h4>
+                                              <pre className="bg-white border border-[#D6D6D6] rounded p-3 text-[11px] text-foreground font-mono overflow-x-auto max-h-40 whitespace-pre-wrap" data-testid={`text-metadata-${globalIdx}`}>
                                                 {typeof row.metadata === 'string'
                                                   ? row.metadata
                                                   : JSON.stringify(row.metadata, null, 2)}
@@ -438,7 +438,7 @@ export default function ComplianceAuditTrail() {
                                           )}
 
                                           {!row.communicationProof && !row.metadata && (
-                                            <p className="text-xs text-slate-500 italic">No additional metadata or communication proof recorded.</p>
+                                            <p className="text-xs text-muted-foreground italic">No additional metadata or communication proof recorded.</p>
                                           )}
                                         </div>
                                       </div>
@@ -453,8 +453,8 @@ export default function ComplianceAuditTrail() {
                     </div>
 
                     {totalGridPages > 1 && (
-                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-700/30">
-                        <span className="text-xs text-slate-500">
+                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#D6D6D6]">
+                        <span className="text-xs text-muted-foreground">
                           Page {gridPage} of {totalGridPages}
                         </span>
                         <div className="flex items-center gap-1">
@@ -463,7 +463,7 @@ export default function ComplianceAuditTrail() {
                             size="sm"
                             onClick={() => setGridPage(p => Math.max(1, p - 1))}
                             disabled={gridPage <= 1}
-                            className="h-7 px-2 text-slate-400"
+                            className="h-7 px-2 text-muted-foreground"
                             data-testid="button-prev-page"
                           >
                             <ChevronLeft className="w-4 h-4" />
@@ -473,7 +473,7 @@ export default function ComplianceAuditTrail() {
                             size="sm"
                             onClick={() => setGridPage(p => Math.min(totalGridPages, p + 1))}
                             disabled={gridPage >= totalGridPages}
-                            className="h-7 px-2 text-slate-400"
+                            className="h-7 px-2 text-muted-foreground"
                             data-testid="button-next-page"
                           >
                             <ChevronRight className="w-4 h-4" />

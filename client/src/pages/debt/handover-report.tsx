@@ -143,9 +143,9 @@ export default function HandoverReport() {
   const getStatusBadge = (status: string) => {
     if (!status) return <Badge variant="outline" data-testid="badge-status-unknown">—</Badge>;
     const s = status.toLowerCase();
-    if (s.includes('active')) return <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30" data-testid={`badge-status-${status}`}>{status}</Badge>;
+    if (s.includes('active')) return <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200" data-testid={`badge-status-${status}`}>{status}</Badge>;
     if (s.includes('terminated') || s.includes('closed')) return <Badge className="bg-red-500/15 text-red-400 border-red-500/30" data-testid={`badge-status-${status}`}>{status}</Badge>;
-    if (s.includes('pending')) return <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30" data-testid={`badge-status-${status}`}>{status}</Badge>;
+    if (s.includes('pending')) return <Badge className="bg-amber-50 text-amber-700 border-amber-200" data-testid={`badge-status-${status}`}>{status}</Badge>;
     return <Badge variant="outline" data-testid={`badge-status-${status}`}>{status}</Badge>;
   };
 
@@ -153,40 +153,40 @@ export default function HandoverReport() {
 
   return (
     <PosLayout>
-      <div className="flex-1 overflow-y-auto bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 min-h-0">
+      <div className="flex-1 overflow-y-auto bg-[#F2F4F7] min-h-0">
         <div className="max-w-7xl mx-auto p-3 sm:p-4 lg:p-6 space-y-4">
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-1" data-testid="text-breadcrumb">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1" data-testid="text-breadcrumb">
             <span>Billing</span>
             <ChevronRight className="w-3 h-3" />
             <span>Reports</span>
             <ChevronRight className="w-3 h-3" />
             <span>Debt Recovery</span>
             <ChevronRight className="w-3 h-3" />
-            <span className="text-slate-300">Handover Report</span>
+            <span className="text-foreground">Handover Report</span>
           </div>
 
           <div className="flex items-center gap-3 mb-1">
-            <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
-              <FileBarChart className="w-5 h-5 text-blue-400" />
+            <div className="p-2 rounded-lg bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
+              <FileBarChart className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-lg sm:text-xl font-bold text-white tracking-tight" data-testid="text-page-title">
+              <h1 className="text-lg sm:text-xl font-bold text-foreground tracking-tight" data-testid="text-page-title">
                 Handover Report
               </h1>
-              <p className="text-xs text-slate-400">Generate and view handover reports for debt recovery</p>
+              <p className="text-xs text-muted-foreground">Generate and view handover reports for debt recovery</p>
             </div>
           </div>
 
-          <Card className="bg-slate-800/40 border-slate-700/40 backdrop-blur-sm">
+          <Card className="bg-white border-[#D6D6D6] shadow-sm">
             <CardContent className="p-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400 flex items-center gap-1">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1">
                     Financial Year
                     <HelpTip text="Select the financial year for the report" side="right" />
                   </Label>
                   <Select value={finYear} onValueChange={setFinYear}>
-                    <SelectTrigger className="bg-slate-900/60 border-slate-600/50 text-white h-9" data-testid="select-fin-year">
+                    <SelectTrigger className="bg-[#F7F7F7] border-[#D6D6D6] h-9" data-testid="select-fin-year">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -198,12 +198,12 @@ export default function HandoverReport() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400 flex items-center gap-1">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1">
                     Billing Month
                     <HelpTip text="Filter by billing month (July-June financial year)" side="right" />
                   </Label>
                   <Select value={finMonth} onValueChange={setFinMonth}>
-                    <SelectTrigger className="bg-slate-900/60 border-slate-600/50 text-white h-9" data-testid="select-fin-month">
+                    <SelectTrigger className="bg-[#F7F7F7] border-[#D6D6D6] h-9" data-testid="select-fin-month">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -216,12 +216,12 @@ export default function HandoverReport() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400 flex items-center gap-1">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1">
                     Billing Cycle
                     <HelpTip text="Filter by billing cycle" side="right" />
                   </Label>
                   <Select value={billingCycle} onValueChange={setBillingCycle}>
-                    <SelectTrigger className="bg-slate-900/60 border-slate-600/50 text-white h-9" data-testid="select-billing-cycle">
+                    <SelectTrigger className="bg-[#F7F7F7] border-[#D6D6D6] h-9" data-testid="select-billing-cycle">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -234,12 +234,12 @@ export default function HandoverReport() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400 flex items-center gap-1">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1">
                     Attorney
                     <HelpTip text="Filter by assigned attorney" side="right" />
                   </Label>
                   <Select value={selectedAttorneyId} onValueChange={setSelectedAttorneyId}>
-                    <SelectTrigger className="bg-slate-900/60 border-slate-600/50 text-white h-9" data-testid="select-attorney">
+                    <SelectTrigger className="bg-[#F7F7F7] border-[#D6D6D6] h-9" data-testid="select-attorney">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -254,7 +254,7 @@ export default function HandoverReport() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400 flex items-center gap-1">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1">
                     Account Number
                     <HelpTip text="Filter by specific account number" side="right" />
                   </Label>
@@ -262,7 +262,7 @@ export default function HandoverReport() {
                     value={accountNo}
                     onChange={(e) => setAccountNo(e.target.value)}
                     placeholder="Enter account number"
-                    className="bg-slate-900/60 border-slate-600/50 text-white h-9"
+                    className="bg-[#F7F7F7] border-[#D6D6D6] h-9"
                     data-testid="input-account-no"
                   />
                 </div>
@@ -272,7 +272,7 @@ export default function HandoverReport() {
                 <Button
                   onClick={handleSubmit}
                   disabled={loadingResults || loadingRef}
-                  className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                  className="bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-white font-semibold rounded-lg shadow-sm"
                   data-testid="button-submit"
                 >
                   {loadingResults ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Send className="w-4 h-4 mr-1" />}
@@ -281,7 +281,7 @@ export default function HandoverReport() {
                 <Button
                   onClick={handleClear}
                   variant="outline"
-                  className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                  className="border-[#D6D6D6] text-foreground hover:bg-[var(--pos-accent-tint)]"
                   data-testid="button-clear"
                 >
                   <RotateCcw className="w-4 h-4 mr-1" />
@@ -290,7 +290,7 @@ export default function HandoverReport() {
                 <Button
                   onClick={handleCancel}
                   variant="outline"
-                  className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                  className="border-[#D6D6D6] text-foreground hover:bg-[var(--pos-accent-tint)]"
                   data-testid="button-cancel"
                 >
                   <XCircle className="w-4 h-4 mr-1" />
@@ -301,17 +301,17 @@ export default function HandoverReport() {
           </Card>
 
           {loadingResults && (
-            <div className="flex items-center gap-2 text-slate-400 text-sm py-8 justify-center">
+            <div className="flex items-center gap-2 text-muted-foreground text-sm py-8 justify-center">
               <Loader2 className="w-4 h-4 animate-spin" />
               Loading report data...
             </div>
           )}
 
           {!loadingResults && hasSearched && (
-            <Card className="bg-slate-800/40 border-slate-700/40 backdrop-blur-sm">
+            <Card className="bg-white border-[#D6D6D6] shadow-sm">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-sm font-semibold text-white" data-testid="text-results-title">
+                  <h2 className="text-sm font-semibold text-foreground" data-testid="text-results-title">
                     Results ({results.length} record{results.length !== 1 ? 's' : ''})
                   </h2>
                   {totalPages > 1 && (
@@ -321,12 +321,12 @@ export default function HandoverReport() {
                         size="sm"
                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                         disabled={currentPage <= 1}
-                        className="h-7 px-2 text-slate-400"
+                        className="h-7 px-2 text-muted-foreground"
                         data-testid="button-prev-page"
                       >
                         <ChevronLeft className="w-4 h-4" />
                       </Button>
-                      <span className="text-xs text-slate-500 px-2" data-testid="text-page-info">
+                      <span className="text-xs text-muted-foreground px-2" data-testid="text-page-info">
                         {currentPage} / {totalPages}
                       </span>
                       <Button
@@ -334,7 +334,7 @@ export default function HandoverReport() {
                         size="sm"
                         onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                         disabled={currentPage >= totalPages}
-                        className="h-7 px-2 text-slate-400"
+                        className="h-7 px-2 text-muted-foreground"
                         data-testid="button-next-page"
                       >
                         <ChevronRight className="w-4 h-4" />
@@ -344,16 +344,16 @@ export default function HandoverReport() {
                 </div>
 
                 {results.length === 0 ? (
-                  <p className="text-slate-500 text-sm text-center py-8" data-testid="text-no-results">
+                  <p className="text-muted-foreground text-sm text-center py-8" data-testid="text-no-results">
                     No handover records found for the selected criteria.
                   </p>
                 ) : (
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
-                        <TableRow className="border-slate-700/50 hover:bg-transparent">
+                        <TableRow className="border-[#E5E5E5] hover:bg-transparent">
                           {resultColumns.map(col => (
-                            <TableHead key={col} className="text-xs text-slate-400 font-medium whitespace-nowrap">
+                            <TableHead key={col} className="text-xs text-muted-foreground font-medium whitespace-nowrap">
                               {col.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim()}
                             </TableHead>
                           ))}
@@ -363,11 +363,11 @@ export default function HandoverReport() {
                         {paginatedResults.map((row, idx) => (
                           <TableRow
                             key={idx}
-                            className="border-slate-700/30 hover:bg-slate-700/20 transition-colors"
+                            className="border-[#E5E5E5] hover:bg-[var(--pos-accent-hover-row)] transition-colors"
                             data-testid={`row-result-${idx}`}
                           >
                             {resultColumns.map(col => (
-                              <TableCell key={col} className="text-xs text-slate-300 whitespace-nowrap">
+                              <TableCell key={col} className="text-xs text-foreground whitespace-nowrap">
                                 {col.toLowerCase().includes('status')
                                   ? getStatusBadge(String(row[col] || ''))
                                   : col.toLowerCase().includes('amount') || col.toLowerCase().includes('balance')

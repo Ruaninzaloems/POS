@@ -187,29 +187,29 @@ export default function LegalRulesPage() {
 
   return (
     <PosLayout>
-      <div className="flex-1 overflow-y-auto bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 min-h-0">
+      <div className="flex-1 overflow-y-auto bg-[#F2F4F7] min-h-0">
         <div className="max-w-7xl mx-auto p-3 sm:p-4 lg:p-6 space-y-4">
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-1" data-testid="text-breadcrumb">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1" data-testid="text-breadcrumb">
             <span>Compliance</span>
             <BreadcrumbSep className="w-3 h-3" />
-            <span className="text-slate-300">Legal Rules Administration</span>
+            <span className="text-foreground">Legal Rules Administration</span>
           </div>
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-violet-500/10 border border-violet-500/20">
-                <Scale className="w-5 h-5 text-violet-400" />
+              <div className="p-2 rounded-lg bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
+                <Scale className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-lg sm:text-xl font-bold text-white tracking-tight" data-testid="text-page-title">
+                <h1 className="text-lg sm:text-xl font-bold text-foreground tracking-tight" data-testid="text-page-title">
                   Legal Rules Administration
                 </h1>
-                <p className="text-xs text-slate-400">Manage legal rule versions for compliance validation</p>
+                <p className="text-xs text-muted-foreground">Manage legal rule versions for compliance validation</p>
               </div>
             </div>
             <Button
               onClick={openAddDialog}
-              className="bg-violet-600 hover:bg-violet-700 text-white"
+              className="bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-white font-semibold rounded-lg shadow-sm"
               data-testid="button-add-rule"
             >
               <Plus className="w-4 h-4 mr-1" />
@@ -217,7 +217,7 @@ export default function LegalRulesPage() {
             </Button>
           </div>
 
-          <Card className="bg-slate-800/40 border-slate-700/40 backdrop-blur-sm">
+          <Card className="bg-white border-[#D6D6D6] shadow-sm">
             <CardContent className="p-4">
               <div className="flex flex-col sm:flex-row gap-3 mb-4">
                 <div className="flex-1">
@@ -225,13 +225,13 @@ export default function LegalRulesPage() {
                     value={searchQuery}
                     onChange={(e) => { setSearchQuery(e.target.value); setGridPage(1); }}
                     placeholder="Search by rule code, title, or legislation..."
-                    className="bg-slate-900/60 border-slate-600/50 text-white h-9"
+                    className="bg-[#F7F7F7] border-[#D6D6D6] h-9"
                     data-testid="input-search-rules"
                   />
                 </div>
                 <div className="w-full sm:w-56">
                   <Select value={categoryFilter} onValueChange={(v) => { setCategoryFilter(v); setGridPage(1); }}>
-                    <SelectTrigger className="bg-slate-900/60 border-slate-600/50 text-white h-9" data-testid="select-category-filter">
+                    <SelectTrigger className="bg-[#F7F7F7] border-[#D6D6D6] h-9" data-testid="select-category-filter">
                       <SelectValue placeholder="All Categories" />
                     </SelectTrigger>
                     <SelectContent>
@@ -245,12 +245,12 @@ export default function LegalRulesPage() {
               </div>
 
               {loading ? (
-                <div className="flex items-center gap-2 text-slate-400 text-sm py-8 justify-center">
+                <div className="flex items-center gap-2 text-muted-foreground text-sm py-8 justify-center">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   Loading legal rules...
                 </div>
               ) : filteredRules.length === 0 ? (
-                <p className="text-slate-500 text-sm text-center py-8" data-testid="text-no-rules">
+                <p className="text-muted-foreground text-sm text-center py-8" data-testid="text-no-rules">
                   No legal rules found.
                 </p>
               ) : (
@@ -258,47 +258,47 @@ export default function LegalRulesPage() {
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
-                        <TableRow className="border-slate-700/50 hover:bg-transparent">
-                          <TableHead className="text-xs text-slate-400 font-medium whitespace-nowrap">Rule Code</TableHead>
-                          <TableHead className="text-xs text-slate-400 font-medium whitespace-nowrap">Title</TableHead>
-                          <TableHead className="text-xs text-slate-400 font-medium whitespace-nowrap">Legislation</TableHead>
-                          <TableHead className="text-xs text-slate-400 font-medium whitespace-nowrap">Category</TableHead>
-                          <TableHead className="text-xs text-slate-400 font-medium whitespace-nowrap">Version</TableHead>
-                          <TableHead className="text-xs text-slate-400 font-medium whitespace-nowrap">Effective From</TableHead>
-                          <TableHead className="text-xs text-slate-400 font-medium whitespace-nowrap">Status</TableHead>
-                          <TableHead className="text-xs text-slate-400 font-medium whitespace-nowrap">Actions</TableHead>
+                        <TableRow className="bg-[#F7F7F7] border-b hover:bg-transparent">
+                          <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Rule Code</TableHead>
+                          <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Title</TableHead>
+                          <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Legislation</TableHead>
+                          <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Category</TableHead>
+                          <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Version</TableHead>
+                          <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Effective From</TableHead>
+                          <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Status</TableHead>
+                          <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
-                      <TableBody>
+                      <TableBody className="divide-y divide-[#E5E5E5]">
                         {paginatedRules.map((rule) => (
                           <TableRow
                             key={rule.id}
-                            className="border-slate-700/30 hover:bg-slate-700/20 transition-colors"
+                            className="hover:bg-[var(--pos-accent-hover-row)] transition-colors"
                             data-testid={`row-rule-${rule.id}`}
                           >
-                            <TableCell className="text-xs text-slate-300 font-mono whitespace-nowrap" data-testid={`text-rule-code-${rule.id}`}>
+                            <TableCell className="text-xs text-foreground font-mono whitespace-nowrap" data-testid={`text-rule-code-${rule.id}`}>
                               {rule.ruleCode}
                             </TableCell>
-                            <TableCell className="text-xs text-slate-300 max-w-[200px] truncate" data-testid={`text-rule-title-${rule.id}`}>
+                            <TableCell className="text-xs text-foreground max-w-[200px] truncate" data-testid={`text-rule-title-${rule.id}`}>
                               {rule.title}
                             </TableCell>
-                            <TableCell className="text-xs text-slate-400 max-w-[200px] truncate">
+                            <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
                               {rule.legislationRef}
                             </TableCell>
                             <TableCell className="text-xs">
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-violet-500/20 text-violet-400">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-50 text-purple-700 border border-purple-200">
                                 {CATEGORY_LABELS[rule.category] || rule.category}
                               </span>
                             </TableCell>
-                            <TableCell className="text-xs text-slate-300 text-center">
+                            <TableCell className="text-xs text-foreground text-center">
                               v{rule.version}
                             </TableCell>
-                            <TableCell className="text-xs text-slate-300 whitespace-nowrap">
+                            <TableCell className="text-xs text-foreground whitespace-nowrap">
                               {rule.effectiveFrom ? new Date(rule.effectiveFrom).toLocaleDateString() : '—'}
                             </TableCell>
                             <TableCell className="text-xs">
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                                rule.isActive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
+                                rule.isActive ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'
                               }`} data-testid={`status-rule-${rule.id}`}>
                                 {rule.isActive ? 'Active' : 'Inactive'}
                               </span>
@@ -308,7 +308,7 @@ export default function LegalRulesPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-7 w-7 p-0 text-slate-400 hover:text-violet-400"
+                                  className="h-7 w-7 p-0 text-muted-foreground hover:text-[var(--pos-accent)]"
                                   onClick={() => openEditDialog(rule)}
                                   title="Edit Rule"
                                   data-testid={`button-edit-rule-${rule.id}`}
@@ -318,7 +318,7 @@ export default function LegalRulesPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-7 w-7 p-0 text-slate-400 hover:text-amber-400"
+                                  className="h-7 w-7 p-0 text-muted-foreground hover:text-amber-600"
                                   onClick={() => setHistoryRule(historyRule?.id === rule.id ? null : rule)}
                                   title="Version History"
                                   data-testid={`button-history-rule-${rule.id}`}
@@ -328,7 +328,7 @@ export default function LegalRulesPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-7 w-7 p-0 text-slate-400 hover:text-red-400"
+                                  className="h-7 w-7 p-0 text-muted-foreground hover:text-red-600"
                                   onClick={() => handleDelete(rule)}
                                   title="Deactivate Rule"
                                   data-testid={`button-delete-rule-${rule.id}`}
@@ -344,16 +344,16 @@ export default function LegalRulesPage() {
                   </div>
 
                   {historyRule && (
-                    <div className="mt-3 p-3 bg-slate-900/60 rounded-lg border border-slate-700/40">
+                    <div className="mt-3 p-3 bg-[#F7F7F7] rounded-lg border border-[#D6D6D6]">
                       <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-xs font-semibold text-white flex items-center gap-1">
-                          <History className="w-3.5 h-3.5 text-amber-400" />
+                        <h3 className="text-xs font-semibold text-foreground flex items-center gap-1">
+                          <History className="w-3.5 h-3.5 text-amber-600" />
                           Version History — {historyRule.ruleCode}
                         </h3>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-6 w-6 p-0 text-slate-400"
+                          className="h-6 w-6 p-0 text-muted-foreground"
                           onClick={() => setHistoryRule(null)}
                           data-testid="button-close-history"
                         >
@@ -361,17 +361,17 @@ export default function LegalRulesPage() {
                         </Button>
                       </div>
                       <div className="space-y-1.5">
-                        <div className="flex items-center gap-3 text-xs text-slate-400 p-2 bg-slate-800/50 rounded">
-                          <span className="font-mono text-violet-400">v{historyRule.version}</span>
-                          <span className="text-slate-300">{historyRule.title}</span>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground p-2 bg-white rounded border border-[#D6D6D6]">
+                          <span className="font-mono text-purple-700">v{historyRule.version}</span>
+                          <span className="text-foreground">{historyRule.title}</span>
                           <span>Effective: {historyRule.effectiveFrom ? new Date(historyRule.effectiveFrom).toLocaleDateString() : '—'}</span>
                           {historyRule.effectiveTo && (
                             <span>Until: {new Date(historyRule.effectiveTo).toLocaleDateString()}</span>
                           )}
-                          <span className={historyRule.isActive ? 'text-emerald-400' : 'text-red-400'}>
+                          <span className={historyRule.isActive ? 'text-emerald-700' : 'text-red-700'}>
                             {historyRule.isActive ? 'Active' : 'Inactive'}
                           </span>
-                          <span className="text-slate-500 ml-auto">
+                          <span className="text-muted-foreground ml-auto">
                             Updated: {historyRule.updatedAt ? new Date(historyRule.updatedAt).toLocaleString() : '—'}
                           </span>
                         </div>
@@ -380,8 +380,8 @@ export default function LegalRulesPage() {
                   )}
 
                   {totalGridPages > 1 && (
-                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-700/30">
-                      <span className="text-xs text-slate-500">
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#D6D6D6]">
+                      <span className="text-xs text-muted-foreground">
                         Page {gridPage} of {totalGridPages} ({filteredRules.length} rule{filteredRules.length !== 1 ? 's' : ''})
                       </span>
                       <div className="flex items-center gap-1">
@@ -390,7 +390,7 @@ export default function LegalRulesPage() {
                           size="sm"
                           onClick={() => setGridPage(p => Math.max(1, p - 1))}
                           disabled={gridPage <= 1}
-                          className="h-7 px-2 text-slate-400"
+                          className="h-7 px-2 text-muted-foreground"
                           data-testid="button-prev-page"
                         >
                           <ChevronLeft className="w-4 h-4" />
@@ -400,7 +400,7 @@ export default function LegalRulesPage() {
                           size="sm"
                           onClick={() => setGridPage(p => Math.min(totalGridPages, p + 1))}
                           disabled={gridPage >= totalGridPages}
-                          className="h-7 px-2 text-slate-400"
+                          className="h-7 px-2 text-muted-foreground"
                           data-testid="button-next-page"
                         >
                           <ChevronRight className="w-4 h-4" />
@@ -417,15 +417,15 @@ export default function LegalRulesPage() {
 
       {dialogOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-4 border-b border-slate-700">
-              <h2 className="text-sm font-semibold text-white" data-testid="text-dialog-title">
+          <div className="bg-white border border-[#D6D6D6] rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b border-[#D6D6D6]">
+              <h2 className="text-sm font-semibold text-foreground" data-testid="text-dialog-title">
                 {editingRule ? 'Edit Legal Rule' : 'Add Legal Rule'}
               </h2>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 w-7 p-0 text-slate-400"
+                className="h-7 w-7 p-0 text-muted-foreground"
                 onClick={() => setDialogOpen(false)}
                 data-testid="button-close-dialog"
               >
@@ -434,50 +434,50 @@ export default function LegalRulesPage() {
             </div>
             <div className="p-4 space-y-3">
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-400">Rule Code *</Label>
+                <Label className="text-xs text-muted-foreground">Rule Code *</Label>
                 <Input
                   value={form.ruleCode}
                   onChange={(e) => setForm(f => ({ ...f, ruleCode: e.target.value }))}
                   placeholder="e.g. NCA_S129_NOTICE"
-                  className="bg-slate-900/60 border-slate-600/50 text-white h-9"
+                  className="bg-[#F7F7F7] border-[#D6D6D6] h-9"
                   disabled={!!editingRule}
                   data-testid="input-rule-code"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-400">Title *</Label>
+                <Label className="text-xs text-muted-foreground">Title *</Label>
                 <Input
                   value={form.title}
                   onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))}
                   placeholder="Rule title"
-                  className="bg-slate-900/60 border-slate-600/50 text-white h-9"
+                  className="bg-[#F7F7F7] border-[#D6D6D6] h-9"
                   data-testid="input-rule-title"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-400">Legislation Reference *</Label>
+                <Label className="text-xs text-muted-foreground">Legislation Reference *</Label>
                 <Input
                   value={form.legislationRef}
                   onChange={(e) => setForm(f => ({ ...f, legislationRef: e.target.value }))}
                   placeholder="e.g. National Credit Act 34 of 2005, Section 129(1)(a)"
-                  className="bg-slate-900/60 border-slate-600/50 text-white h-9"
+                  className="bg-[#F7F7F7] border-[#D6D6D6] h-9"
                   data-testid="input-legislation-ref"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-400">Description</Label>
+                <Label className="text-xs text-muted-foreground">Description</Label>
                 <textarea
                   value={form.description}
                   onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
                   placeholder="Rule description..."
-                  className="w-full bg-slate-900/60 border border-slate-600/50 text-white text-sm rounded-md p-2 min-h-[60px] resize-y focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                  className="w-full bg-[#F7F7F7] border border-[#D6D6D6] text-sm rounded-md p-2 min-h-[60px] resize-y focus:outline-none focus:ring-2 focus:ring-[var(--pos-accent)]/50"
                   data-testid="input-rule-description"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-400">Category *</Label>
+                <Label className="text-xs text-muted-foreground">Category *</Label>
                 <Select value={form.category} onValueChange={(v) => setForm(f => ({ ...f, category: v }))}>
-                  <SelectTrigger className="bg-slate-900/60 border-slate-600/50 text-white h-9" data-testid="select-rule-category">
+                  <SelectTrigger className="bg-[#F7F7F7] border-[#D6D6D6] h-9" data-testid="select-rule-category">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -489,22 +489,22 @@ export default function LegalRulesPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400">Effective From *</Label>
+                  <Label className="text-xs text-muted-foreground">Effective From *</Label>
                   <Input
                     type="date"
                     value={form.effectiveFrom}
                     onChange={(e) => setForm(f => ({ ...f, effectiveFrom: e.target.value }))}
-                    className="bg-slate-900/60 border-slate-600/50 text-white h-9"
+                    className="bg-[#F7F7F7] border-[#D6D6D6] h-9"
                     data-testid="input-effective-from"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400">Effective To</Label>
+                  <Label className="text-xs text-muted-foreground">Effective To</Label>
                   <Input
                     type="date"
                     value={form.effectiveTo}
                     onChange={(e) => setForm(f => ({ ...f, effectiveTo: e.target.value }))}
-                    className="bg-slate-900/60 border-slate-600/50 text-white h-9"
+                    className="bg-[#F7F7F7] border-[#D6D6D6] h-9"
                     data-testid="input-effective-to"
                   />
                 </div>
@@ -513,19 +513,19 @@ export default function LegalRulesPage() {
                 <button
                   type="button"
                   onClick={() => setForm(f => ({ ...f, isActive: !f.isActive }))}
-                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${form.isActive ? 'bg-violet-600' : 'bg-slate-600'}`}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${form.isActive ? 'bg-[var(--pos-accent)]' : 'bg-gray-300'}`}
                   data-testid="toggle-is-active"
                 >
                   <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${form.isActive ? 'translate-x-4' : 'translate-x-0.5'}`} />
                 </button>
-                <Label className="text-xs text-slate-300">Active</Label>
+                <Label className="text-xs text-foreground">Active</Label>
               </div>
             </div>
-            <div className="flex items-center justify-end gap-2 p-4 border-t border-slate-700">
+            <div className="flex items-center justify-end gap-2 p-4 border-t border-[#D6D6D6]">
               <Button
                 variant="outline"
                 onClick={() => setDialogOpen(false)}
-                className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                className="border-[#D6D6D6] hover:bg-[var(--pos-accent-tint)] text-muted-foreground"
                 data-testid="button-cancel-dialog"
               >
                 Cancel
@@ -533,7 +533,7 @@ export default function LegalRulesPage() {
               <Button
                 onClick={handleSave}
                 disabled={saving}
-                className="bg-violet-600 hover:bg-violet-700 text-white"
+                className="bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-white font-semibold rounded-lg shadow-sm"
                 data-testid="button-save-rule"
               >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Check className="w-4 h-4 mr-1" />}

@@ -148,40 +148,40 @@ export default function Section129Report() {
 
   return (
     <PosLayout>
-      <div className="flex-1 overflow-y-auto bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 min-h-0">
+      <div className="flex-1 overflow-y-auto bg-[#F2F4F7] min-h-0">
         <div className="max-w-7xl mx-auto p-3 sm:p-4 lg:p-6 space-y-4">
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-1" data-testid="text-breadcrumb">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1" data-testid="text-breadcrumb">
             <span>Billing</span>
             <BreadcrumbSep className="w-3 h-3" />
             <span>Reports</span>
             <BreadcrumbSep className="w-3 h-3" />
             <span>Debt Recovery</span>
             <BreadcrumbSep className="w-3 h-3" />
-            <span className="text-slate-300">Section 129 Notices Report</span>
+            <span className="text-foreground">Section 129 Notices Report</span>
           </div>
 
           <div className="flex items-center gap-3 mb-1">
-            <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
-              <FileWarning className="w-5 h-5 text-amber-400" />
+            <div className="p-2 rounded-lg bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
+              <FileWarning className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-lg sm:text-xl font-bold text-white tracking-tight" data-testid="text-page-title">
+              <h1 className="text-lg sm:text-xl font-bold text-foreground tracking-tight" data-testid="text-page-title">
                 Section 129 Notices Report
               </h1>
-              <p className="text-xs text-slate-400">Filter and view Section 129 notice data for debt recovery</p>
+              <p className="text-xs text-muted-foreground">Filter and view Section 129 notice data for debt recovery</p>
             </div>
           </div>
 
-          <Card className="bg-slate-800/40 border-slate-700/40 backdrop-blur-sm">
+          <Card className="bg-white border-[#D6D6D6] shadow-sm">
             <CardContent className="p-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400 flex items-center gap-1">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1">
                     Financial Year
                     <HelpTip text="Select the financial year for the report" side="right" />
                   </Label>
                   <Select value={finYear} onValueChange={setFinYear} data-testid="select-fin-year">
-                    <SelectTrigger className="bg-slate-900/60 border-slate-600/50 text-white h-9" data-testid="select-fin-year">
+                    <SelectTrigger className="bg-[#F7F7F7] border-[#D6D6D6] h-9" data-testid="select-fin-year">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -193,12 +193,12 @@ export default function Section129Report() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400 flex items-center gap-1">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1">
                     Billing Month
                     <HelpTip text="Filter by billing month (July-June financial year)" side="right" />
                   </Label>
                   <Select value={finMonth} onValueChange={setFinMonth} data-testid="select-fin-month">
-                    <SelectTrigger className="bg-slate-900/60 border-slate-600/50 text-white h-9" data-testid="select-fin-month">
+                    <SelectTrigger className="bg-[#F7F7F7] border-[#D6D6D6] h-9" data-testid="select-fin-month">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -211,12 +211,12 @@ export default function Section129Report() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400 flex items-center gap-1">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1">
                     Billing Cycle
                     <HelpTip text="Filter by billing cycle" side="right" />
                   </Label>
                   <Select value={billingCycle} onValueChange={setBillingCycle} data-testid="select-billing-cycle">
-                    <SelectTrigger className="bg-slate-900/60 border-slate-600/50 text-white h-9" data-testid="select-billing-cycle">
+                    <SelectTrigger className="bg-[#F7F7F7] border-[#D6D6D6] h-9" data-testid="select-billing-cycle">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -229,7 +229,7 @@ export default function Section129Report() {
                 </div>
 
                 <div className="space-y-1.5 relative">
-                  <Label className="text-xs text-slate-400 flex items-center gap-1">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1">
                     Account Number
                     <HelpTip text="Search by account number (type at least 3 characters)" side="right" />
                   </Label>
@@ -239,15 +239,15 @@ export default function Section129Report() {
                     onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                     onFocus={() => accountSuggestions.length > 0 && setShowSuggestions(true)}
                     placeholder="Enter account number"
-                    className="bg-slate-900/60 border-slate-600/50 text-white h-9"
+                    className="bg-[#F7F7F7] border-[#D6D6D6] h-9"
                     data-testid="input-account-no"
                   />
                   {showSuggestions && accountSuggestions.length > 0 && (
-                    <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                    <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-[#D6D6D6] rounded-md shadow-lg max-h-48 overflow-y-auto">
                       {accountSuggestions.map((s, idx) => (
                         <button
                           key={idx}
-                          className="w-full text-left px-3 py-2 text-sm text-white hover:bg-slate-700 transition-colors"
+                          className="w-full text-left px-3 py-2 text-sm text-foreground hover:bg-[var(--pos-accent-tint)] transition-colors"
                           data-testid={`suggestion-account-${idx}`}
                           onMouseDown={() => {
                             setAccountNo(s.accountNo);
@@ -255,7 +255,7 @@ export default function Section129Report() {
                           }}
                         >
                           <span className="font-medium">{s.accountNo}</span>
-                          {s.name && <span className="text-slate-400 ml-2">— {s.name}</span>}
+                          {s.name && <span className="text-muted-foreground ml-2">— {s.name}</span>}
                         </button>
                       ))}
                     </div>
@@ -263,12 +263,12 @@ export default function Section129Report() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400 flex items-center gap-1">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1">
                     Ageing
                     <HelpTip text="Filter by debt ageing period" side="right" />
                   </Label>
                   <Select value={ageing} onValueChange={setAgeing} data-testid="select-ageing">
-                    <SelectTrigger className="bg-slate-900/60 border-slate-600/50 text-white h-9" data-testid="select-ageing">
+                    <SelectTrigger className="bg-[#F7F7F7] border-[#D6D6D6] h-9" data-testid="select-ageing">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -280,7 +280,7 @@ export default function Section129Report() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400 flex items-center gap-1">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1">
                     Amount Greater Than
                     <HelpTip text="Only include accounts with outstanding amount greater than this value (integer, >= 0)" side="right" />
                   </Label>
@@ -296,7 +296,7 @@ export default function Section129Report() {
                       }
                     }}
                     placeholder="0"
-                    className="bg-slate-900/60 border-slate-600/50 text-white h-9"
+                    className="bg-[#F7F7F7] border-[#D6D6D6] h-9"
                     data-testid="input-amount-greater-than"
                   />
                 </div>
@@ -306,7 +306,7 @@ export default function Section129Report() {
                 <Button
                   onClick={handleSubmit}
                   disabled={loading}
-                  className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                  className="bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-white font-semibold rounded-lg shadow-sm"
                   data-testid="button-submit"
                 >
                   {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Search className="w-4 h-4 mr-1" />}
@@ -315,7 +315,7 @@ export default function Section129Report() {
                 <Button
                   onClick={handleClear}
                   variant="outline"
-                  className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                  className="border-[#D6D6D6] text-foreground hover:bg-[var(--pos-accent-tint)]"
                   data-testid="button-clear"
                 >
                   <RotateCcw className="w-4 h-4 mr-1" />
@@ -324,7 +324,7 @@ export default function Section129Report() {
                 <Button
                   onClick={handleCancel}
                   variant="outline"
-                  className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                  className="border-[#D6D6D6] text-foreground hover:bg-[var(--pos-accent-tint)]"
                   data-testid="button-cancel"
                 >
                   <XCircle className="w-4 h-4 mr-1" />
@@ -335,21 +335,21 @@ export default function Section129Report() {
           </Card>
 
           {searched && (
-            <Card className="bg-slate-800/40 border-slate-700/40 backdrop-blur-sm">
+            <Card className="bg-white border-[#D6D6D6] shadow-sm">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-sm font-semibold text-white" data-testid="text-results-title">
+                  <h2 className="text-sm font-semibold text-foreground" data-testid="text-results-title">
                     Results ({results.length} record{results.length !== 1 ? 's' : ''})
                   </h2>
                 </div>
 
                 {loading ? (
-                  <div className="flex items-center gap-2 text-slate-400 text-sm py-8 justify-center">
+                  <div className="flex items-center gap-2 text-muted-foreground text-sm py-8 justify-center">
                     <Loader2 className="w-4 h-4 animate-spin" />
                     Loading report data...
                   </div>
                 ) : results.length === 0 ? (
-                  <p className="text-slate-500 text-sm text-center py-8" data-testid="text-no-results">
+                  <p className="text-muted-foreground text-sm text-center py-8" data-testid="text-no-results">
                     No records found matching the selected criteria.
                   </p>
                 ) : (
@@ -357,9 +357,9 @@ export default function Section129Report() {
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
-                          <TableRow className="border-slate-700/50 hover:bg-transparent">
+                          <TableRow className="border-[#E5E5E5] hover:bg-transparent">
                             {resultColumns.map(col => (
-                              <TableHead key={col} className="text-xs text-slate-400 font-medium whitespace-nowrap">
+                              <TableHead key={col} className="text-xs text-muted-foreground font-medium whitespace-nowrap">
                                 {col.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim()}
                               </TableHead>
                             ))}
@@ -369,11 +369,11 @@ export default function Section129Report() {
                           {paginatedResults.map((row, idx) => (
                             <TableRow
                               key={idx}
-                              className="border-slate-700/30 hover:bg-slate-700/20 transition-colors"
+                              className="border-[#E5E5E5] hover:bg-[var(--pos-accent-hover-row)] transition-colors"
                               data-testid={`row-result-${idx}`}
                             >
                               {resultColumns.map(col => (
-                                <TableCell key={col} className="text-xs text-slate-300 whitespace-nowrap">
+                                <TableCell key={col} className="text-xs text-foreground whitespace-nowrap">
                                   {row[col] != null ? String(row[col]) : '—'}
                                 </TableCell>
                               ))}
@@ -384,8 +384,8 @@ export default function Section129Report() {
                     </div>
 
                     {totalGridPages > 1 && (
-                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-700/30">
-                        <span className="text-xs text-slate-500">
+                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#E5E5E5]">
+                        <span className="text-xs text-muted-foreground">
                           Page {gridPage} of {totalGridPages}
                         </span>
                         <div className="flex items-center gap-1">
@@ -394,7 +394,7 @@ export default function Section129Report() {
                             size="sm"
                             onClick={() => setGridPage(p => Math.max(1, p - 1))}
                             disabled={gridPage <= 1}
-                            className="h-7 px-2 text-slate-400"
+                            className="h-7 px-2 text-muted-foreground"
                             data-testid="button-prev-page"
                           >
                             <ChevronLeft className="w-4 h-4" />
@@ -404,7 +404,7 @@ export default function Section129Report() {
                             size="sm"
                             onClick={() => setGridPage(p => Math.min(totalGridPages, p + 1))}
                             disabled={gridPage >= totalGridPages}
-                            className="h-7 px-2 text-slate-400"
+                            className="h-7 px-2 text-muted-foreground"
                             data-testid="button-next-page"
                           >
                             <ChevronRight className="w-4 h-4" />

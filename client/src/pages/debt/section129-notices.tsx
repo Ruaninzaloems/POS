@@ -280,11 +280,11 @@ export default function Section129Notices() {
 
   const getStatusColor = (status: string) => {
     const s = status.toLowerCase();
-    if (s.includes('final')) return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
-    if (s.includes('authorized') || s.includes('approved')) return 'bg-blue-500/20 text-blue-300 border-blue-500/30';
-    if (s.includes('trial run')) return 'bg-amber-500/20 text-amber-300 border-amber-500/30';
-    if (s.includes('trial review') || s.includes('review')) return 'bg-purple-500/20 text-purple-300 border-purple-500/30';
-    return 'bg-slate-500/20 text-slate-300 border-slate-500/30';
+    if (s.includes('final')) return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    if (s.includes('authorized') || s.includes('approved')) return 'bg-blue-50 text-blue-700 border-blue-200';
+    if (s.includes('trial run')) return 'bg-amber-50 text-amber-700 border-amber-200';
+    if (s.includes('trial review') || s.includes('review')) return 'bg-purple-50 text-purple-700 border-purple-200';
+    return 'bg-slate-100 text-slate-600 border-slate-200';
   };
 
   const finYears = (() => {
@@ -309,28 +309,28 @@ export default function Section129Notices() {
 
   return (
     <PosLayout>
-      <div className="flex-1 overflow-y-auto bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 min-h-0">
+      <div className="flex-1 overflow-y-auto bg-[#F2F4F7] min-h-0">
         <div className="max-w-7xl mx-auto p-3 sm:p-4 lg:p-6 space-y-4">
           <div className="flex items-center gap-3 mb-1">
-            <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
-              <FileWarning className="w-5 h-5 text-amber-400" />
+            <div className="p-2 rounded-lg bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
+              <FileWarning className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-lg sm:text-xl font-bold text-white tracking-tight" data-testid="text-page-title">
+              <h1 className="text-lg sm:text-xl font-bold text-foreground tracking-tight" data-testid="text-page-title">
                 Section 129 — Letter of Demand
               </h1>
-              <p className="text-xs text-slate-400">Generate and manage Section 129 notices for debt recovery</p>
+              <p className="text-xs text-muted-foreground">Generate and manage Section 129 notices for debt recovery</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs text-slate-400 flex items-center gap-1">
+              <Label className="text-xs text-muted-foreground flex items-center gap-1">
                 Financial Year
                 <HelpTip text="Select the financial year for the Section 129 run" side="right" />
               </Label>
               <Select value={finYear} onValueChange={setFinYear} data-testid="select-fin-year">
-                <SelectTrigger className="bg-slate-800/60 border-slate-700/50 text-white h-9" data-testid="select-fin-year">
+                <SelectTrigger className="bg-[#F7F7F7] border-[#D6D6D6] h-9" data-testid="select-fin-year">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -342,12 +342,12 @@ export default function Section129Notices() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs text-slate-400 flex items-center gap-1">
+              <Label className="text-xs text-muted-foreground flex items-center gap-1">
                 Month
                 <HelpTip text="Select the billing month" side="right" />
               </Label>
               <Select value={finMonth} onValueChange={setFinMonth} data-testid="select-fin-month">
-                <SelectTrigger className="bg-slate-800/60 border-slate-700/50 text-white h-9" data-testid="select-fin-month">
+                <SelectTrigger className="bg-[#F7F7F7] border-[#D6D6D6] h-9" data-testid="select-fin-month">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -359,12 +359,12 @@ export default function Section129Notices() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs text-slate-400 flex items-center gap-1">
+              <Label className="text-xs text-muted-foreground flex items-center gap-1">
                 Run Type
                 <HelpTip text="Trial Review: Review accounts before run. Trial Run: Execute trial. Final: Issue notices." side="right" />
               </Label>
               <Select value={runType} onValueChange={(v) => setRunType(v as RunType)} data-testid="select-run-type">
-                <SelectTrigger className="bg-slate-800/60 border-slate-700/50 text-white h-9" data-testid="select-run-type">
+                <SelectTrigger className="bg-[#F7F7F7] border-[#D6D6D6] h-9" data-testid="select-run-type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -375,12 +375,12 @@ export default function Section129Notices() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs text-slate-400 flex items-center gap-1">
+              <Label className="text-xs text-muted-foreground flex items-center gap-1">
                 Handover Option
                 <HelpTip text="Account: Single account. Bulk: All qualifying. Rotation: Auto-distribute to attorneys." side="right" />
               </Label>
               <Select value={handoverOption} onValueChange={(v) => setHandoverOption(v as HandoverOption)} data-testid="select-handover-option">
-                <SelectTrigger className="bg-slate-800/60 border-slate-700/50 text-white h-9" data-testid="select-handover-option">
+                <SelectTrigger className="bg-[#F7F7F7] border-[#D6D6D6] h-9" data-testid="select-handover-option">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -392,15 +392,15 @@ export default function Section129Notices() {
             </div>
           </div>
 
-          <Card className="bg-slate-800/40 border-slate-700/40 backdrop-blur-sm">
+          <Card className="bg-white border-[#D6D6D6] shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-3">
-                <Settings2 className="w-4 h-4 text-cyan-400" />
-                <h2 className="text-sm font-semibold text-white">Section 129 Configuration</h2>
+                <Settings2 className="w-4 h-4 text-[var(--pos-accent)]" />
+                <h2 className="text-sm font-semibold text-foreground">Section 129 Configuration</h2>
                 <HelpTip text="Current configuration values from the billing system for Section 129 notices" side="right" />
               </div>
               {configLoading ? (
-                <div className="flex items-center gap-2 text-slate-400 text-sm py-4">
+                <div className="flex items-center gap-2 text-muted-foreground text-sm py-4">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   Loading configuration...
                 </div>
@@ -414,25 +414,25 @@ export default function Section129Notices() {
                   <ConfigValue label="Minimum Amount" value={`R ${config.minimumAmount.toFixed(2)}`} testId="text-config-min-amount" />
                 </div>
               ) : (
-                <p className="text-slate-500 text-sm" data-testid="text-config-error">
+                <p className="text-muted-foreground text-sm" data-testid="text-config-error">
                   Configuration could not be loaded from the API.
                 </p>
               )}
             </CardContent>
           </Card>
 
-          <Card className="bg-slate-800/40 border-slate-700/40 backdrop-blur-sm">
+          <Card className="bg-white border-[#D6D6D6] shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-3">
-                <Filter className="w-4 h-4 text-cyan-400" />
-                <h2 className="text-sm font-semibold text-white">Filter Parameters</h2>
+                <Filter className="w-4 h-4 text-[var(--pos-accent)]" />
+                <h2 className="text-sm font-semibold text-foreground">Filter Parameters</h2>
                 <HelpTip text="Define criteria for which accounts to include in the Section 129 run" side="right" />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400">Billing Cycle</Label>
+                  <Label className="text-xs text-muted-foreground">Billing Cycle</Label>
                   <Select value={billingCycle} onValueChange={setBillingCycle}>
-                    <SelectTrigger className="bg-slate-900/60 border-slate-600/50 text-white h-9" data-testid="select-billing-cycle">
+                    <SelectTrigger className="bg-[#F7F7F7] border-[#D6D6D6] h-9" data-testid="select-billing-cycle">
                       <SelectValue placeholder="Select cycle" />
                     </SelectTrigger>
                     <SelectContent>
@@ -444,9 +444,9 @@ export default function Section129Notices() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400">Town</Label>
+                  <Label className="text-xs text-muted-foreground">Town</Label>
                   <Select value={town} onValueChange={setTown}>
-                    <SelectTrigger className="bg-slate-900/60 border-slate-600/50 text-white h-9" data-testid="select-town">
+                    <SelectTrigger className="bg-[#F7F7F7] border-[#D6D6D6] h-9" data-testid="select-town">
                       <SelectValue placeholder="All towns" />
                     </SelectTrigger>
                     <SelectContent>
@@ -459,20 +459,20 @@ export default function Section129Notices() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400">Suburb</Label>
+                  <Label className="text-xs text-muted-foreground">Suburb</Label>
                   <Input
                     value={suburb}
                     onChange={(e) => setSuburb(e.target.value)}
                     placeholder="Enter suburb"
-                    className="bg-slate-900/60 border-slate-600/50 text-white h-9"
+                    className="bg-[#F7F7F7] border-[#D6D6D6] h-9"
                     data-testid="input-suburb"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400">Property Category</Label>
+                  <Label className="text-xs text-muted-foreground">Property Category</Label>
                   <Select value={propertyCategory} onValueChange={setPropertyCategory}>
-                    <SelectTrigger className="bg-slate-900/60 border-slate-600/50 text-white h-9" data-testid="select-property-category">
+                    <SelectTrigger className="bg-[#F7F7F7] border-[#D6D6D6] h-9" data-testid="select-property-category">
                       <SelectValue placeholder="All categories" />
                     </SelectTrigger>
                     <SelectContent>
@@ -485,9 +485,9 @@ export default function Section129Notices() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400">Account Type</Label>
+                  <Label className="text-xs text-muted-foreground">Account Type</Label>
                   <Select value={accountType} onValueChange={setAccountType}>
-                    <SelectTrigger className="bg-slate-900/60 border-slate-600/50 text-white h-9" data-testid="select-account-type">
+                    <SelectTrigger className="bg-[#F7F7F7] border-[#D6D6D6] h-9" data-testid="select-account-type">
                       <SelectValue placeholder="All types" />
                     </SelectTrigger>
                     <SelectContent>
@@ -500,9 +500,9 @@ export default function Section129Notices() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400">Type of Person</Label>
+                  <Label className="text-xs text-muted-foreground">Type of Person</Label>
                   <Select value={typeOfPerson} onValueChange={setTypeOfPerson}>
-                    <SelectTrigger className="bg-slate-900/60 border-slate-600/50 text-white h-9" data-testid="select-type-of-person">
+                    <SelectTrigger className="bg-[#F7F7F7] border-[#D6D6D6] h-9" data-testid="select-type-of-person">
                       <SelectValue placeholder="All persons" />
                     </SelectTrigger>
                     <SelectContent>
@@ -515,20 +515,20 @@ export default function Section129Notices() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400">Service Group Code</Label>
+                  <Label className="text-xs text-muted-foreground">Service Group Code</Label>
                   <Input
                     value={serviceGroupCode}
                     onChange={(e) => setServiceGroupCode(e.target.value)}
                     placeholder="Enter code"
-                    className="bg-slate-900/60 border-slate-600/50 text-white h-9"
+                    className="bg-[#F7F7F7] border-[#D6D6D6] h-9"
                     data-testid="input-service-group-code"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400">Ageing</Label>
+                  <Label className="text-xs text-muted-foreground">Ageing</Label>
                   <Select value={ageing} onValueChange={setAgeing}>
-                    <SelectTrigger className="bg-slate-900/60 border-slate-600/50 text-white h-9" data-testid="select-ageing">
+                    <SelectTrigger className="bg-[#F7F7F7] border-[#D6D6D6] h-9" data-testid="select-ageing">
                       <SelectValue placeholder="Select ageing" />
                     </SelectTrigger>
                     <SelectContent>
@@ -540,13 +540,13 @@ export default function Section129Notices() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400">Amount Greater Than</Label>
+                  <Label className="text-xs text-muted-foreground">Amount Greater Than</Label>
                   <Input
                     type="number"
                     value={amountGreaterThan}
                     onChange={(e) => setAmountGreaterThan(e.target.value)}
                     placeholder="0.00"
-                    className="bg-slate-900/60 border-slate-600/50 text-white h-9"
+                    className="bg-[#F7F7F7] border-[#D6D6D6] h-9"
                     data-testid="input-amount-greater-than"
                   />
                 </div>
@@ -559,7 +559,7 @@ export default function Section129Notices() {
                         onCheckedChange={setIncludeIndigents}
                         data-testid="switch-include-indigents"
                       />
-                      <Label className="text-xs text-slate-300 cursor-pointer">
+                      <Label className="text-xs text-foreground cursor-pointer">
                         Include Indigents
                         <HelpTip text="Include accounts flagged as indigent in the run" side="top" />
                       </Label>
@@ -570,7 +570,7 @@ export default function Section129Notices() {
                         onCheckedChange={setIncludePensioners}
                         data-testid="switch-include-pensioners"
                       />
-                      <Label className="text-xs text-slate-300 cursor-pointer">
+                      <Label className="text-xs text-foreground cursor-pointer">
                         Include Pensioners
                         <HelpTip text="Include accounts flagged as pensioners in the run" side="top" />
                       </Label>
@@ -581,7 +581,7 @@ export default function Section129Notices() {
                         onCheckedChange={setExcludeDepositBalances}
                         data-testid="switch-exclude-deposits"
                       />
-                      <Label className="text-xs text-slate-300 cursor-pointer">
+                      <Label className="text-xs text-foreground cursor-pointer">
                         Exclude Deposit Balances
                         <HelpTip text="Exclude deposit balance amounts from the qualifying total" side="top" />
                       </Label>
@@ -593,50 +593,50 @@ export default function Section129Notices() {
           </Card>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            <Card className="bg-slate-800/40 border-slate-700/40 backdrop-blur-sm">
+            <Card className="bg-white border-[#D6D6D6] shadow-sm">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-3">
-                  <User className="w-4 h-4 text-cyan-400" />
-                  <h2 className="text-sm font-semibold text-white">Contact Details</h2>
+                  <User className="w-4 h-4 text-[var(--pos-accent)]" />
+                  <h2 className="text-sm font-semibold text-foreground">Contact Details</h2>
                   <HelpTip text="Contact details to appear on the Section 129 notice" side="right" />
                 </div>
                 <div className="space-y-3">
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-slate-400">Contact Person</Label>
+                    <Label className="text-xs text-muted-foreground">Contact Person</Label>
                     <div className="relative">
-                      <User className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-slate-500" />
+                      <User className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-muted-foreground" />
                       <Input
                         value={contactPerson}
                         onChange={(e) => setContactPerson(e.target.value)}
                         placeholder="Full name"
-                        className="bg-slate-900/60 border-slate-600/50 text-white h-9 pl-8"
+                        className="bg-[#F7F7F7] border-[#D6D6D6] h-9 pl-8"
                         data-testid="input-contact-person"
                       />
                     </div>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-slate-400">Phone</Label>
+                    <Label className="text-xs text-muted-foreground">Phone</Label>
                     <div className="relative">
-                      <Phone className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-slate-500" />
+                      <Phone className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-muted-foreground" />
                       <Input
                         value={contactPhone}
                         onChange={(e) => setContactPhone(e.target.value)}
                         placeholder="Phone number"
-                        className="bg-slate-900/60 border-slate-600/50 text-white h-9 pl-8"
+                        className="bg-[#F7F7F7] border-[#D6D6D6] h-9 pl-8"
                         data-testid="input-contact-phone"
                       />
                     </div>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-slate-400">Email</Label>
+                    <Label className="text-xs text-muted-foreground">Email</Label>
                     <div className="relative">
-                      <Mail className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-slate-500" />
+                      <Mail className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-muted-foreground" />
                       <Input
                         type="email"
                         value={contactEmail}
                         onChange={(e) => setContactEmail(e.target.value)}
                         placeholder="Email address"
-                        className="bg-slate-900/60 border-slate-600/50 text-white h-9 pl-8"
+                        className="bg-[#F7F7F7] border-[#D6D6D6] h-9 pl-8"
                         data-testid="input-contact-email"
                       />
                     </div>
@@ -645,11 +645,11 @@ export default function Section129Notices() {
               </CardContent>
             </Card>
 
-            <Card className="bg-slate-800/40 border-slate-700/40 backdrop-blur-sm">
+            <Card className="bg-white border-[#D6D6D6] shadow-sm">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-3">
-                  <Mail className="w-4 h-4 text-cyan-400" />
-                  <h2 className="text-sm font-semibold text-white">Distribution Options</h2>
+                  <Mail className="w-4 h-4 text-[var(--pos-accent)]" />
+                  <h2 className="text-sm font-semibold text-foreground">Distribution Options</h2>
                   <HelpTip text="Choose how Section 129 notices are distributed to account holders" side="right" />
                 </div>
                 <RadioGroup
@@ -659,34 +659,34 @@ export default function Section129Notices() {
                 >
                   <div className="flex items-center gap-2">
                     <RadioGroupItem value="email" id="dist-email" data-testid="radio-dist-email" />
-                    <Label htmlFor="dist-email" className="text-sm text-slate-300 cursor-pointer">Email</Label>
+                    <Label htmlFor="dist-email" className="text-sm text-foreground cursor-pointer">Email</Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <RadioGroupItem value="sms" id="dist-sms" data-testid="radio-dist-sms" />
-                    <Label htmlFor="dist-sms" className="text-sm text-slate-300 cursor-pointer">SMS</Label>
+                    <Label htmlFor="dist-sms" className="text-sm text-foreground cursor-pointer">SMS</Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <RadioGroupItem value="whatsapp" id="dist-whatsapp" data-testid="radio-dist-whatsapp" />
-                    <Label htmlFor="dist-whatsapp" className="text-sm text-slate-300 cursor-pointer">WhatsApp</Label>
+                    <Label htmlFor="dist-whatsapp" className="text-sm text-foreground cursor-pointer">WhatsApp</Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <RadioGroupItem value="print" id="dist-print" data-testid="radio-dist-print" />
-                    <Label htmlFor="dist-print" className="text-sm text-slate-300 cursor-pointer">Print</Label>
+                    <Label htmlFor="dist-print" className="text-sm text-foreground cursor-pointer">Print</Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <RadioGroupItem value="all" id="dist-all" data-testid="radio-dist-all" />
-                    <Label htmlFor="dist-all" className="text-sm text-slate-300 cursor-pointer">All</Label>
+                    <Label htmlFor="dist-all" className="text-sm text-foreground cursor-pointer">All</Label>
                   </div>
                 </RadioGroup>
 
                 {distributionType === 'email' && (
-                  <div className="mt-4 flex items-center gap-2 pt-3 border-t border-slate-700/40">
+                  <div className="mt-4 flex items-center gap-2 pt-3 border-t border-[#D6D6D6]">
                     <Switch
                       checked={mustEmailBePrinted}
                       onCheckedChange={setMustEmailBePrinted}
                       data-testid="switch-email-printed"
                     />
-                    <Label className="text-xs text-slate-300 cursor-pointer">
+                    <Label className="text-xs text-foreground cursor-pointer">
                       Must email accounts be printed?
                       <HelpTip text="When enabled, accounts that receive email notices will also have printed copies generated" side="top" />
                     </Label>
@@ -696,15 +696,15 @@ export default function Section129Notices() {
             </Card>
           </div>
 
-          <Card className="bg-slate-800/40 border-slate-700/40 backdrop-blur-sm">
+          <Card className="bg-white border-[#D6D6D6] shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <Info className="w-4 h-4 text-cyan-400" />
-                  <h2 className="text-sm font-semibold text-white">Generated Notice Files</h2>
+                  <Info className="w-4 h-4 text-[var(--pos-accent)]" />
+                  <h2 className="text-sm font-semibold text-foreground">Generated Notice Files</h2>
                   <HelpTip text="List of Section 129 runs and their statuses. Click a Trial Review run to review accounts." side="right" />
                   {runs.length > 0 && (
-                    <Badge variant="outline" className="text-xs border-slate-600 text-slate-400" data-testid="badge-run-count">
+                    <Badge variant="outline" className="text-xs border-[#D6D6D6] text-muted-foreground" data-testid="badge-run-count">
                       {runs.length} run{runs.length !== 1 ? 's' : ''}
                     </Badge>
                   )}
@@ -713,7 +713,7 @@ export default function Section129Notices() {
                   variant="ghost"
                   size="sm"
                   onClick={loadData}
-                  className="text-slate-400 hover:text-white h-7 px-2"
+                  className="text-muted-foreground hover:text-foreground h-7 px-2"
                   data-testid="button-refresh-runs"
                 >
                   <RotateCcw className="w-3.5 h-3.5 mr-1" />
@@ -722,12 +722,12 @@ export default function Section129Notices() {
               </div>
 
               {runsLoading ? (
-                <div className="flex items-center gap-2 text-slate-400 text-sm py-6 justify-center">
+                <div className="flex items-center gap-2 text-muted-foreground text-sm py-6 justify-center">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   Loading runs...
                 </div>
               ) : runs.length === 0 ? (
-                <div className="text-center py-8 text-slate-500 text-sm" data-testid="text-no-runs">
+                <div className="text-center py-8 text-muted-foreground text-sm" data-testid="text-no-runs">
                   No Section 129 runs found. Submit a run using the form above.
                 </div>
               ) : (
@@ -735,27 +735,27 @@ export default function Section129Notices() {
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
-                        <TableRow className="border-slate-700/40 hover:bg-transparent">
-                          <TableHead className="text-xs text-slate-400 font-medium">Run ID</TableHead>
-                          <TableHead className="text-xs text-slate-400 font-medium">Status</TableHead>
-                          <TableHead className="text-xs text-slate-400 font-medium">Distribution</TableHead>
-                          <TableHead className="text-xs text-slate-400 font-medium hidden sm:table-cell">Actioned By</TableHead>
-                          <TableHead className="text-xs text-slate-400 font-medium">Date Created</TableHead>
-                          <TableHead className="text-xs text-slate-400 font-medium hidden md:table-cell">Authorized By</TableHead>
-                          <TableHead className="text-xs text-slate-400 font-medium hidden lg:table-cell">Billing Cycle</TableHead>
-                          <TableHead className="text-xs text-slate-400 font-medium hidden xl:table-cell">Parameters</TableHead>
-                          <TableHead className="text-xs text-slate-400 font-medium text-right">Actions</TableHead>
+                        <TableRow className="border-[#D6D6D6] hover:bg-transparent">
+                          <TableHead className="text-xs text-muted-foreground font-medium">Run ID</TableHead>
+                          <TableHead className="text-xs text-muted-foreground font-medium">Status</TableHead>
+                          <TableHead className="text-xs text-muted-foreground font-medium">Distribution</TableHead>
+                          <TableHead className="text-xs text-muted-foreground font-medium hidden sm:table-cell">Actioned By</TableHead>
+                          <TableHead className="text-xs text-muted-foreground font-medium">Date Created</TableHead>
+                          <TableHead className="text-xs text-muted-foreground font-medium hidden md:table-cell">Authorized By</TableHead>
+                          <TableHead className="text-xs text-muted-foreground font-medium hidden lg:table-cell">Billing Cycle</TableHead>
+                          <TableHead className="text-xs text-muted-foreground font-medium hidden xl:table-cell">Parameters</TableHead>
+                          <TableHead className="text-xs text-muted-foreground font-medium text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {paginatedRuns.map((run) => (
                           <TableRow
                             key={run.runId}
-                            className="border-slate-700/30 hover:bg-slate-700/20 cursor-pointer transition-colors"
+                            className="border-[#E5E5E5] hover:bg-[var(--pos-accent-hover-row)] cursor-pointer transition-colors"
                             onClick={() => handleRowClick(run)}
                             data-testid={`row-run-${run.runId}`}
                           >
-                            <TableCell className="text-sm text-white font-mono" data-testid={`text-run-id-${run.runId}`}>
+                            <TableCell className="text-sm text-foreground font-mono" data-testid={`text-run-id-${run.runId}`}>
                               #{run.runId}
                             </TableCell>
                             <TableCell>
@@ -766,21 +766,21 @@ export default function Section129Notices() {
                                 {run.status}
                               </span>
                             </TableCell>
-                            <TableCell className="text-sm text-slate-300">{run.distributionType}</TableCell>
-                            <TableCell className="text-sm text-slate-300 hidden sm:table-cell">{run.actionedBy}</TableCell>
-                            <TableCell className="text-sm text-slate-300">
+                            <TableCell className="text-sm text-foreground">{run.distributionType}</TableCell>
+                            <TableCell className="text-sm text-foreground hidden sm:table-cell">{run.actionedBy}</TableCell>
+                            <TableCell className="text-sm text-foreground">
                               {run.dateCreated ? new Date(run.dateCreated).toLocaleDateString() : '—'}
                             </TableCell>
-                            <TableCell className="text-sm text-slate-300 hidden md:table-cell">{run.authorizedBy || '—'}</TableCell>
-                            <TableCell className="text-sm text-slate-300 hidden lg:table-cell">{run.billingCycle}</TableCell>
-                            <TableCell className="text-sm text-slate-400 hidden xl:table-cell max-w-[180px] truncate">{run.runParameters}</TableCell>
+                            <TableCell className="text-sm text-foreground hidden md:table-cell">{run.authorizedBy || '—'}</TableCell>
+                            <TableCell className="text-sm text-foreground hidden lg:table-cell">{run.billingCycle}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground hidden xl:table-cell max-w-[180px] truncate">{run.runParameters}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center gap-1 justify-end" onClick={(e) => e.stopPropagation()}>
                                 {(run.status === 'Trial Run Review' || run.status === 'Trial Review') && (
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-7 px-2 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10"
+                                    className="h-7 px-2 text-[var(--pos-accent)] hover:text-cyan-300 hover:bg-cyan-500/10"
                                     onClick={() => setLocation(`/debt/section129/review/${run.runId}`)}
                                     data-testid={`button-review-${run.runId}`}
                                   >
@@ -791,7 +791,7 @@ export default function Section129Notices() {
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-7 px-2 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                                    className="h-7 px-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
                                     onClick={() => handleFinalRun(run.runId)}
                                     disabled={finalRunningId === run.runId}
                                     data-testid={`button-final-run-${run.runId}`}
@@ -807,7 +807,7 @@ export default function Section129Notices() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-7 px-2 text-slate-400 hover:text-white hover:bg-slate-600/30"
+                                  className="h-7 px-2 text-muted-foreground hover:text-foreground hover:bg-[var(--pos-accent-tint)]"
                                   onClick={() => handleOpenFileModal(run.runId)}
                                   data-testid={`button-download-${run.runId}`}
                                 >
@@ -830,8 +830,8 @@ export default function Section129Notices() {
                   </div>
 
                   {totalGridPages > 1 && (
-                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-700/30">
-                      <span className="text-xs text-slate-500">
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#E5E5E5]">
+                      <span className="text-xs text-muted-foreground">
                         Page {gridPage} of {totalGridPages} ({runs.length} total)
                       </span>
                       <div className="flex items-center gap-1">
@@ -840,7 +840,7 @@ export default function Section129Notices() {
                           size="sm"
                           disabled={gridPage <= 1}
                           onClick={() => setGridPage(p => p - 1)}
-                          className="h-7 px-2 text-slate-400"
+                          className="h-7 px-2 text-muted-foreground"
                           data-testid="button-grid-prev"
                         >
                           <ChevronLeft className="w-3.5 h-3.5" />
@@ -850,7 +850,7 @@ export default function Section129Notices() {
                           size="sm"
                           disabled={gridPage >= totalGridPages}
                           onClick={() => setGridPage(p => p + 1)}
-                          className="h-7 px-2 text-slate-400"
+                          className="h-7 px-2 text-muted-foreground"
                           data-testid="button-grid-next"
                         >
                           <ChevronRight className="w-3.5 h-3.5" />
@@ -867,7 +867,7 @@ export default function Section129Notices() {
             <Button
               onClick={handleSubmit}
               disabled={submitting || !billingCycle}
-              className="bg-cyan-600 hover:bg-cyan-500 text-white font-medium h-10 px-6"
+              className="bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-white font-semibold rounded-lg shadow-sm h-10 px-6"
               data-testid="button-submit"
             >
               {submitting ? (
@@ -885,7 +885,7 @@ export default function Section129Notices() {
             <Button
               variant="outline"
               onClick={handleClear}
-              className="border-slate-600 text-slate-300 hover:bg-slate-700/40 h-10 px-6"
+              className="border-[#D6D6D6] text-foreground hover:bg-[var(--pos-accent-tint)] h-10 px-6"
               data-testid="button-clear"
             >
               <RotateCcw className="w-4 h-4 mr-2" />
@@ -894,7 +894,7 @@ export default function Section129Notices() {
             <Button
               variant="ghost"
               onClick={() => setLocation('/')}
-              className="text-slate-400 hover:text-white h-10 px-6"
+              className="text-muted-foreground hover:text-foreground h-10 px-6"
               data-testid="button-cancel"
             >
               <XCircle className="w-4 h-4 mr-2" />
@@ -905,42 +905,42 @@ export default function Section129Notices() {
       </div>
 
       <Dialog open={fileModalOpen} onOpenChange={setFileModalOpen}>
-        <DialogContent className="bg-slate-900 border-slate-700 text-white max-w-lg">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-white flex items-center gap-2">
-              <Download className="w-4 h-4 text-cyan-400" />
+            <DialogTitle className="text-foreground flex items-center gap-2">
+              <Download className="w-4 h-4 text-[var(--pos-accent)]" />
               Run #{fileModalRunId} — Files
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-2 max-h-[400px] overflow-y-auto">
             {filesLoading ? (
-              <div className="flex items-center gap-2 text-slate-400 text-sm py-6 justify-center">
+              <div className="flex items-center gap-2 text-muted-foreground text-sm py-6 justify-center">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 Loading files...
               </div>
             ) : runFiles.length === 0 ? (
-              <div className="text-center py-6 text-slate-500 text-sm" data-testid="text-no-files">
+              <div className="text-center py-6 text-muted-foreground text-sm" data-testid="text-no-files">
                 No files found for this run.
               </div>
             ) : (
               runFiles.map((file) => (
                 <div
                   key={file.fileId}
-                  className="flex items-center justify-between p-3 rounded-lg bg-slate-800/60 border border-slate-700/40"
+                  className="flex items-center justify-between p-3 rounded-lg bg-[#F7F7F7] border border-[#D6D6D6]"
                   data-testid={`file-item-${file.fileId}`}
                 >
                   <div className="flex-1 min-w-0 mr-3">
-                    <p className="text-sm text-white font-medium truncate" data-testid={`text-filename-${file.fileId}`}>
+                    <p className="text-sm text-foreground font-medium truncate" data-testid={`text-filename-${file.fileId}`}>
                       {file.fileName}
                     </p>
                     <div className="flex items-center gap-3 mt-1">
-                      <Badge variant="outline" className="text-[10px] border-slate-600 text-slate-400" data-testid={`badge-filetype-${file.fileId}`}>
+                      <Badge variant="outline" className="text-[10px] border-[#D6D6D6] text-muted-foreground" data-testid={`badge-filetype-${file.fileId}`}>
                         {file.fileType}
                       </Badge>
-                      <span className="text-[10px] text-slate-500" data-testid={`text-filesize-${file.fileId}`}>
+                      <span className="text-[10px] text-muted-foreground" data-testid={`text-filesize-${file.fileId}`}>
                         {formatFileSize(file.fileSize)}
                       </span>
-                      <span className="text-[10px] text-slate-500" data-testid={`text-filedate-${file.fileId}`}>
+                      <span className="text-[10px] text-muted-foreground" data-testid={`text-filedate-${file.fileId}`}>
                         {file.dateCreated ? new Date(file.dateCreated).toLocaleDateString() : '—'}
                       </span>
                     </div>
@@ -948,7 +948,7 @@ export default function Section129Notices() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 px-3 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 shrink-0"
+                    className="h-8 px-3 text-[var(--pos-accent)] hover:text-cyan-300 hover:bg-cyan-500/10 shrink-0"
                     onClick={() => handleDownloadFile(file.fileId)}
                     disabled={downloadingFileId === file.fileId}
                     data-testid={`button-download-file-${file.fileId}`}
@@ -971,9 +971,9 @@ export default function Section129Notices() {
 
 function ConfigValue({ label, value, testId }: { label: string; value: string; testId: string }) {
   return (
-    <div className="bg-slate-900/50 rounded-lg p-2.5 border border-slate-700/30">
-      <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">{label}</p>
-      <p className="text-sm text-white font-medium truncate" data-testid={testId}>{value}</p>
+    <div className="bg-[#F7F7F7] rounded-lg p-2.5 border border-[#E5E5E5]">
+      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">{label}</p>
+      <p className="text-sm text-foreground font-medium truncate" data-testid={testId}>{value}</p>
     </div>
   );
 }

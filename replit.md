@@ -5,6 +5,7 @@ This project is a React/Express/PostgreSQL web application prototype for a Munic
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
+Theme: SAMRAS warm/light theme — `bg-[#F2F4F7]` background, `bg-white` cards with `border-[#D6D6D6] shadow-sm`, `bg-[#F7F7F7]` inputs with `border-[#D6D6D6]`, accent via `var(--pos-accent)` orange. NO dark slate themes. All pages must use this consistent light theme.
 
 ## System Architecture
 

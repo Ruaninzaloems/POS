@@ -1,0 +1,176 @@
+1. Letter of Demand Template Configuration
+
+You must be able to configure the actual legal document.
+
+Required fields:
+
+Template name
+Language (English / Afrikaans)
+Letter content
+Municipality details
+Attorney details
+Payment instructions
+Payment deadline (days)
+
+Variables normally required:
+
+Debtor name
+Account number
+Property address
+Outstanding balance
+Interest
+Due date
+Municipality contact details
+
+Without a configurable template you cannot legally maintain different demand letters.
+
+2. Legal Timing Configuration
+
+The system must control when notices are issued.
+
+Typical settings:
+
+Days overdue before first demand
+Days overdue before final demand
+Days before legal handover
+Days before summons
+
+Example configuration:
+
+First reminder: 14 days
+Final demand: 30 days
+Legal handover: 60 days
+
+3. Communication Channels
+
+Legal notices must record how they were delivered.
+
+Configuration required:
+
+Send SMS
+Send Email
+Send WhatsApp
+Generate PDF letter
+Print letter
+
+Each must be configurable per notice stage.
+
+Example:
+
+Final demand
+SMS: Yes
+Email: Yes
+PDF: Yes
+
+4. Proof of Delivery Settings
+
+Courts often require proof of notice delivery.
+
+System must log:
+
+Communication date
+Communication channel
+Recipient details
+Delivery status
+
+Without this, legal actions can be dismissed.
+
+5. Interest and Balance Calculation
+
+Demand letters must contain correct balances.
+
+Configuration required:
+
+Interest tariff reference
+Interest calculation method
+Balance date
+
+6. Debt Threshold Rules
+
+You normally do not issue legal notices for very small amounts.
+
+Typical configuration:
+
+Minimum balance for legal action
+Minimum balance for summons
+
+Example:
+
+Final demand minimum: R500
+Legal action minimum: R2 000
+
+7. Approval Workflow
+
+Debt packs normally require approval before legal instruction.
+
+Configuration required:
+
+Revenue Supervisor approval
+Revenue Manager approval
+CFO approval (optional)
+
+System must log approvals.
+
+8. Attorney Configuration
+
+Legal notices may be issued by different attorneys.
+
+Configuration required:
+
+Attorney name
+Firm name
+Address
+Email
+Contact number
+Reference format
+
+9. Section 129 Document Numbering
+
+Every legal notice must have a unique reference.
+
+Configuration required:
+
+Prefix
+Sequence number
+Financial year reset
+
+Example:
+
+LOD-2025-000124
+
+10. Communication Templates
+
+SMS / Email templates must be configurable.
+
+Example SMS template:
+
+Account {account_number} is overdue with a balance of {balance}.
+Please settle within {days} days to avoid legal action.
+
+What Your Current Screen Appears To Be
+
+Your screen only shows:
+
+Financial year
+Search
+Add new configuration
+
+That is likely just the header configuration table.
+
+It is missing the critical legal elements.
+
+What a Proper Configuration Screen Normally Contains
+
+Example layout:
+
+Section 129 Configuration
+
+Financial Year
+Minimum balance for demand
+Days overdue for demand
+Days before legal handover
+Attorney assigned
+Template used
+Communication channels
+Interest inclusion
+Approval requirement

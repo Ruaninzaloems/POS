@@ -67,7 +67,7 @@ const OPERATOR_OPTIONS = [
 
 function FieldLabel({ field }: { field: string }) {
   const opt = FIELD_OPTIONS.find(f => f.value === field);
-  return <span className="text-xs text-slate-300">{opt?.label || field}</span>;
+  return <span className="text-xs text-foreground">{opt?.label || field}</span>;
 }
 
 export default function QualificationRules() {
@@ -214,82 +214,85 @@ export default function QualificationRules() {
 
   return (
     <PosLayout>
-      <div className="flex flex-col h-full bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white overflow-hidden">
-        <div className="shrink-0 px-4 pt-3 pb-2 border-b border-slate-700/40">
-          <div className="flex items-center gap-2 text-sm text-slate-400 mb-2">
-            <button onClick={() => setLocation('/')} className="hover:text-white transition-colors" data-testid="link-home">Home</button>
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="shrink-0 px-4 pt-3 pb-2 border-b border-[#D6D6D6] bg-white">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+            <button onClick={() => setLocation('/')} className="hover:text-foreground transition-colors" data-testid="link-home">Home</button>
             <BreadcrumbSep className="w-3 h-3" />
-            <span className="text-white font-medium">Smart Qualification Rules</span>
+            <span className="text-foreground font-medium">Smart Qualification Rules</span>
           </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Filter className="w-5 h-5 text-amber-400" />
-              <h1 className="text-lg font-semibold">Smart Qualification Rules</h1>
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] shadow-[0_1px_3px_rgba(0,0,0,0.15)] flex items-center justify-center">
+                <Filter className="w-4 h-4 text-white" />
+              </div>
+              <h1 className="text-lg font-semibold text-foreground">Smart Qualification Rules</h1>
               <HelpTip text="Define complex qualification rules with multiple conditions to identify accounts meeting specific criteria for debt recovery, handover, or legal escalation." />
             </div>
-            <Button size="sm" onClick={openNew} className="bg-amber-600 hover:bg-amber-700" data-testid="button-add-rule">
+            <Button size="sm" onClick={openNew} className="bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-white font-semibold rounded-lg shadow-sm" data-testid="button-add-rule">
               <Plus className="w-3.5 h-3.5 mr-1" />Add Rule
             </Button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto bg-[#F2F4F7] min-h-0">
+          <div className="max-w-7xl mx-auto p-3 sm:p-4 lg:p-6 space-y-4">
           {showEditor && (
-            <Card className="bg-slate-800/40 border-amber-700/40 border-2">
+            <Card className="bg-white border-[var(--pos-accent)] border-2 shadow-sm rounded-xl">
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-amber-300">{editingId ? 'Edit Rule' : 'New Qualification Rule'}</h3>
-                  <Button size="sm" variant="ghost" onClick={() => setShowEditor(false)} className="text-slate-400 hover:text-white h-7"><X className="w-4 h-4" /></Button>
+                  <h3 className="text-sm font-semibold text-foreground">{editingId ? 'Edit Rule' : 'New Qualification Rule'}</h3>
+                  <Button size="sm" variant="ghost" onClick={() => setShowEditor(false)} className="text-muted-foreground hover:text-foreground h-7"><X className="w-4 h-4" /></Button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
-                    <Label className="text-xs text-slate-400">Rule Name</Label>
-                    <Input data-testid="input-rule-name" value={ruleName} onChange={e => setRuleName(e.target.value)} placeholder="e.g., High-value water debtors" className="bg-slate-900/60 border-slate-600/50 text-white h-9" />
+                    <Label className="text-xs text-muted-foreground">Rule Name</Label>
+                    <Input data-testid="input-rule-name" value={ruleName} onChange={e => setRuleName(e.target.value)} placeholder="e.g., High-value water debtors" className="bg-[#F7F7F7] border-[#D6D6D6] h-9" />
                   </div>
                   <div>
-                    <Label className="text-xs text-slate-400">Description</Label>
-                    <Input data-testid="input-rule-desc" value={ruleDescription} onChange={e => setRuleDescription(e.target.value)} placeholder="Optional description..." className="bg-slate-900/60 border-slate-600/50 text-white h-9" />
+                    <Label className="text-xs text-muted-foreground">Description</Label>
+                    <Input data-testid="input-rule-desc" value={ruleDescription} onChange={e => setRuleDescription(e.target.value)} placeholder="Optional description..." className="bg-[#F7F7F7] border-[#D6D6D6] h-9" />
                   </div>
                   <div>
-                    <Label className="text-xs text-slate-400">Priority (higher = first)</Label>
-                    <Input data-testid="input-rule-priority" type="number" value={rulePriority} onChange={e => setRulePriority(e.target.value)} className="bg-slate-900/60 border-slate-600/50 text-white h-9" />
+                    <Label className="text-xs text-muted-foreground">Priority (higher = first)</Label>
+                    <Input data-testid="input-rule-priority" type="number" value={rulePriority} onChange={e => setRulePriority(e.target.value)} className="bg-[#F7F7F7] border-[#D6D6D6] h-9" />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-xs text-slate-400 uppercase tracking-wide">Conditions</Label>
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Conditions</Label>
                   {conditions.map((cond, i) => (
                     <div key={i} className="flex items-center gap-2" data-testid={`condition-${i}`}>
                       {i > 0 && (
                         <Select value={cond.logicOperator} onValueChange={v => updateCondition(i, 'logicOperator', v)}>
-                          <SelectTrigger className="w-20 bg-slate-900/60 border-slate-600/50 text-white h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectTrigger className="w-20 bg-[#F7F7F7] border-[#D6D6D6] h-8 text-xs"><SelectValue /></SelectTrigger>
                           <SelectContent><SelectItem value="AND">AND</SelectItem><SelectItem value="OR">OR</SelectItem></SelectContent>
                         </Select>
                       )}
-                      {i === 0 && <div className="w-20 text-xs text-slate-500 text-center">WHERE</div>}
+                      {i === 0 && <div className="w-20 text-xs text-muted-foreground text-center">WHERE</div>}
                       <Select value={cond.field} onValueChange={v => updateCondition(i, 'field', v)}>
-                        <SelectTrigger className="flex-1 bg-slate-900/60 border-slate-600/50 text-white h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="flex-1 bg-[#F7F7F7] border-[#D6D6D6] h-8 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {FIELD_OPTIONS.map(f => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
                         </SelectContent>
                       </Select>
                       <Select value={cond.operator} onValueChange={v => updateCondition(i, 'operator', v)}>
-                        <SelectTrigger className="w-20 bg-slate-900/60 border-slate-600/50 text-white h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="w-20 bg-[#F7F7F7] border-[#D6D6D6] h-8 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {OPERATOR_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                         </SelectContent>
                       </Select>
-                      <Input value={cond.value} onChange={e => updateCondition(i, 'value', e.target.value)} className="w-32 bg-slate-900/60 border-slate-600/50 text-white h-8 text-xs" placeholder="Value" />
-                      <Button size="sm" variant="ghost" onClick={() => removeCondition(i)} className="text-red-400 hover:text-red-300 h-7 w-7 p-0" disabled={conditions.length <= 1}><X className="w-3.5 h-3.5" /></Button>
+                      <Input value={cond.value} onChange={e => updateCondition(i, 'value', e.target.value)} className="w-32 bg-[#F7F7F7] border-[#D6D6D6] h-8 text-xs" placeholder="Value" />
+                      <Button size="sm" variant="ghost" onClick={() => removeCondition(i)} className="text-red-500 hover:text-red-700 h-7 w-7 p-0" disabled={conditions.length <= 1}><X className="w-3.5 h-3.5" /></Button>
                     </div>
                   ))}
-                  <Button size="sm" variant="ghost" onClick={addCondition} className="text-amber-400 hover:text-amber-300" data-testid="button-add-condition">
+                  <Button size="sm" variant="ghost" onClick={addCondition} className="text-[var(--pos-accent)] hover:text-[var(--pos-accent-dark)]" data-testid="button-add-condition">
                     <Plus className="w-3.5 h-3.5 mr-1" />Add Condition
                   </Button>
                 </div>
 
-                <div className="p-3 bg-slate-900/60 rounded-md">
-                  <p className="text-xs text-slate-400 font-mono">
+                <div className="p-3 bg-[#F7F7F7] rounded-md">
+                  <p className="text-xs text-muted-foreground font-mono">
                     {conditions.map((c, i) => {
                       const fieldLabel = FIELD_OPTIONS.find(f => f.value === c.field)?.label || c.field;
                       const prefix = i === 0 ? 'WHERE' : c.logicOperator;
@@ -299,68 +302,68 @@ export default function QualificationRules() {
                 </div>
 
                 <div className="flex gap-2">
-                  <Button onClick={handleSave} disabled={saving} className="bg-amber-600 hover:bg-amber-700" data-testid="button-save-rule">
+                  <Button onClick={handleSave} disabled={saving} className="bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-white font-semibold rounded-lg shadow-sm" data-testid="button-save-rule">
                     {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-1" />}
                     {editingId ? 'Update Rule' : 'Create Rule'}
                   </Button>
-                  <Button variant="ghost" onClick={() => setShowEditor(false)} className="text-slate-400">Cancel</Button>
+                  <Button variant="ghost" onClick={() => setShowEditor(false)} className="text-muted-foreground">Cancel</Button>
                 </div>
               </CardContent>
             </Card>
           )}
 
-          <Card className="bg-slate-800/40 border-slate-700/40">
+          <Card className="bg-white border-[#D6D6D6] shadow-sm rounded-xl">
             <CardContent className="p-4">
-              <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2"><Filter className="w-4 h-4" />Qualification Rules</h3>
+              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2"><Filter className="w-4 h-4" />Qualification Rules</h3>
               {loading ? (
-                <div className="flex items-center justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
+                <div className="flex items-center justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
               ) : rules.length === 0 ? (
-                <div className="text-center py-8 text-slate-500 text-sm">No qualification rules defined. Click "Add Rule" to create one.</div>
+                <div className="text-center py-8 text-muted-foreground text-sm">No qualification rules defined. Click "Add Rule" to create one.</div>
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow className="border-slate-700/40 hover:bg-transparent">
-                        <TableHead className="text-slate-400 text-xs">Name</TableHead>
-                        <TableHead className="text-slate-400 text-xs">Conditions</TableHead>
-                        <TableHead className="text-slate-400 text-xs">Priority</TableHead>
-                        <TableHead className="text-slate-400 text-xs">Active</TableHead>
-                        <TableHead className="text-slate-400 text-xs">Created</TableHead>
-                        <TableHead className="text-slate-400 text-xs text-right">Actions</TableHead>
+                      <TableRow className="border-[#E5E5E5] hover:bg-transparent bg-[#F7F7F7]">
+                        <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Name</TableHead>
+                        <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Conditions</TableHead>
+                        <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Priority</TableHead>
+                        <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Active</TableHead>
+                        <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Created</TableHead>
+                        <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
-                    <TableBody>
+                    <TableBody className="divide-y divide-[#E5E5E5]">
                       {rules.map((rule: any) => {
                         const conds = (rule.conditions || []) as Condition[];
                         return (
-                          <TableRow key={rule.id} className="border-slate-700/40 hover:bg-slate-800/60" data-testid={`row-rule-${rule.id}`}>
+                          <TableRow key={rule.id} className="hover:bg-[var(--pos-accent-hover-row)]" data-testid={`row-rule-${rule.id}`}>
                             <TableCell>
-                              <div className="text-white text-sm font-medium">{rule.name}</div>
-                              {rule.description && <div className="text-xs text-slate-500">{rule.description}</div>}
+                              <div className="text-foreground text-sm font-medium">{rule.name}</div>
+                              {rule.description && <div className="text-xs text-muted-foreground">{rule.description}</div>}
                             </TableCell>
                             <TableCell>
                               <div className="space-y-0.5">
                                 {conds.slice(0, 3).map((c, ci) => (
-                                  <div key={ci} className="text-xs text-slate-400 font-mono">
-                                    <span className="text-amber-400">{ci === 0 ? '' : c.logicOperator + ' '}</span>
-                                    <FieldLabel field={c.field} /> <span className="text-cyan-400">{c.operator}</span> <span className="text-white">{String(c.value)}</span>
+                                  <div key={ci} className="text-xs text-muted-foreground font-mono">
+                                    <span className="text-amber-700">{ci === 0 ? '' : c.logicOperator + ' '}</span>
+                                    <FieldLabel field={c.field} /> <span className="text-cyan-700">{c.operator}</span> <span className="text-foreground">{String(c.value)}</span>
                                   </div>
                                 ))}
-                                {conds.length > 3 && <div className="text-[10px] text-slate-500">+{conds.length - 3} more</div>}
+                                {conds.length > 3 && <div className="text-[10px] text-muted-foreground">+{conds.length - 3} more</div>}
                               </div>
                             </TableCell>
-                            <TableCell className="text-white text-sm">{rule.priority}</TableCell>
+                            <TableCell className="text-foreground text-sm">{rule.priority}</TableCell>
                             <TableCell>
                               <Switch checked={rule.isActive} onCheckedChange={() => handleToggle(rule)} data-testid={`switch-active-${rule.id}`} />
                             </TableCell>
-                            <TableCell className="text-slate-400 text-sm">{rule.createdAt ? new Date(rule.createdAt).toLocaleDateString() : '-'}</TableCell>
+                            <TableCell className="text-muted-foreground text-sm">{rule.createdAt ? new Date(rule.createdAt).toLocaleDateString() : '-'}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-1">
-                                <Button size="sm" variant="ghost" onClick={() => handleRun(rule.id)} disabled={runningRuleId === rule.id} className="text-emerald-400 hover:text-emerald-300 h-7" data-testid={`button-run-${rule.id}`}>
+                                <Button size="sm" variant="ghost" onClick={() => handleRun(rule.id)} disabled={runningRuleId === rule.id} className="text-emerald-600 hover:text-emerald-700 h-7" data-testid={`button-run-${rule.id}`}>
                                   {runningRuleId === rule.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
                                 </Button>
-                                <Button size="sm" variant="ghost" onClick={() => openEdit(rule)} className="text-slate-400 hover:text-white h-7" data-testid={`button-edit-${rule.id}`}><Pencil className="w-3.5 h-3.5" /></Button>
-                                <Button size="sm" variant="ghost" onClick={() => handleDelete(rule.id)} className="text-red-400 hover:text-red-300 h-7" data-testid={`button-delete-${rule.id}`}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                <Button size="sm" variant="ghost" onClick={() => openEdit(rule)} className="text-muted-foreground hover:text-foreground h-7" data-testid={`button-edit-${rule.id}`}><Pencil className="w-3.5 h-3.5" /></Button>
+                                <Button size="sm" variant="ghost" onClick={() => handleDelete(rule.id)} className="text-red-500 hover:text-red-700 h-7" data-testid={`button-delete-${rule.id}`}><Trash2 className="w-3.5 h-3.5" /></Button>
                               </div>
                             </TableCell>
                           </TableRow>
@@ -373,13 +376,13 @@ export default function QualificationRules() {
             </CardContent>
           </Card>
 
-          <Card className="bg-slate-800/40 border-slate-700/40">
+          <Card className="bg-white border-[#D6D6D6] shadow-sm rounded-xl">
             <CardContent className="p-4 space-y-3">
-              <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2"><Play className="w-4 h-4" />Test Accounts Data</h3>
-              <p className="text-xs text-slate-400">Enter account data as CSV lines to test rules against. Format: <span className="font-mono text-slate-300">accountNo, totalArrears, arrearDays, lastPaymentDays, propertyValue, waterArrears, electricityArrears</span></p>
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2"><Play className="w-4 h-4" />Test Accounts Data</h3>
+              <p className="text-xs text-muted-foreground">Enter account data as CSV lines to test rules against. Format: <span className="font-mono text-foreground">accountNo, totalArrears, arrearDays, lastPaymentDays, propertyValue, waterArrears, electricityArrears</span></p>
               <textarea
                 data-testid="textarea-test-accounts"
-                className="w-full h-28 bg-slate-900/60 border border-slate-600/50 text-white text-sm rounded-md p-2 resize-none focus:ring-2 focus:ring-amber-500 focus:border-transparent font-mono"
+                className="w-full h-28 bg-[#F7F7F7] border border-[#D6D6D6] text-foreground text-sm rounded-md p-2 resize-none focus:ring-2 focus:ring-[var(--pos-accent)] focus:border-transparent font-mono"
                 placeholder={"ACC001, 15000, 120, 90, 800000, 5000, 3000\nACC002, 3000, 30, 15, 250000, 1000, 500\nACC003, 45000, 200, 180, 1200000, 15000, 12000"}
                 value={testAccounts}
                 onChange={e => setTestAccounts(e.target.value)}
@@ -388,46 +391,46 @@ export default function QualificationRules() {
           </Card>
 
           {runResults && (
-            <Card className="bg-slate-800/40 border-emerald-700/40 border-2">
+            <Card className="bg-white border-emerald-300 border-2 shadow-sm rounded-xl">
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-emerald-300 flex items-center gap-2"><CheckCircle2 className="w-4 h-4" />Rule Execution Results — {runResults.rule?.name}</h3>
-                  <Button size="sm" variant="ghost" onClick={() => setRunResults(null)} className="text-slate-400 h-7"><X className="w-4 h-4" /></Button>
+                  <h3 className="text-sm font-semibold text-emerald-700 flex items-center gap-2"><CheckCircle2 className="w-4 h-4" />Rule Execution Results — {runResults.rule?.name}</h3>
+                  <Button size="sm" variant="ghost" onClick={() => setRunResults(null)} className="text-muted-foreground h-7"><X className="w-4 h-4" /></Button>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
-                  <div className="p-3 bg-slate-900/60 rounded text-center">
-                    <div className="text-xl font-bold text-white">{runResults.totalEvaluated}</div>
-                    <div className="text-xs text-slate-400">Evaluated</div>
+                  <div className="p-3 bg-[#F7F7F7] rounded text-center">
+                    <div className="text-xl font-bold text-foreground">{runResults.totalEvaluated}</div>
+                    <div className="text-xs text-muted-foreground">Evaluated</div>
                   </div>
-                  <div className="p-3 bg-emerald-900/20 rounded text-center">
-                    <div className="text-xl font-bold text-emerald-400">{runResults.matchedCount}</div>
-                    <div className="text-xs text-emerald-300">Matched</div>
+                  <div className="p-3 bg-emerald-50 rounded text-center">
+                    <div className="text-xl font-bold text-emerald-700">{runResults.matchedCount}</div>
+                    <div className="text-xs text-emerald-600">Matched</div>
                   </div>
-                  <div className="p-3 bg-slate-900/60 rounded text-center">
-                    <div className="text-xl font-bold text-slate-400">{runResults.unmatchedCount}</div>
-                    <div className="text-xs text-slate-500">Unmatched</div>
+                  <div className="p-3 bg-[#F7F7F7] rounded text-center">
+                    <div className="text-xl font-bold text-muted-foreground">{runResults.unmatchedCount}</div>
+                    <div className="text-xs text-muted-foreground">Unmatched</div>
                   </div>
                 </div>
                 {runResults.matched && runResults.matched.length > 0 && (
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
-                        <TableRow className="border-slate-700/40 hover:bg-transparent">
-                          <TableHead className="text-slate-400 text-xs">Account</TableHead>
-                          <TableHead className="text-slate-400 text-xs">Total Arrears</TableHead>
-                          <TableHead className="text-slate-400 text-xs">Arrear Days</TableHead>
-                          <TableHead className="text-slate-400 text-xs">Last Payment</TableHead>
-                          <TableHead className="text-slate-400 text-xs">Property Value</TableHead>
+                        <TableRow className="border-[#E5E5E5] hover:bg-transparent bg-[#F7F7F7]">
+                          <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Account</TableHead>
+                          <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Total Arrears</TableHead>
+                          <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Arrear Days</TableHead>
+                          <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Last Payment</TableHead>
+                          <TableHead className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Property Value</TableHead>
                         </TableRow>
                       </TableHeader>
-                      <TableBody>
+                      <TableBody className="divide-y divide-[#E5E5E5]">
                         {runResults.matched.map((m: any, i: number) => (
-                          <TableRow key={i} className="border-slate-700/40 hover:bg-slate-800/60" data-testid={`row-matched-${i}`}>
-                            <TableCell className="text-white text-sm font-mono">{m.accountNo}</TableCell>
-                            <TableCell className="text-white text-sm">R {(m.totalArrears || 0).toLocaleString()}</TableCell>
-                            <TableCell className="text-white text-sm">{m.arrearDays || 0}</TableCell>
-                            <TableCell className="text-white text-sm">{m.lastPaymentDays || 0} days ago</TableCell>
-                            <TableCell className="text-white text-sm">R {(m.propertyValue || 0).toLocaleString()}</TableCell>
+                          <TableRow key={i} className="hover:bg-[var(--pos-accent-hover-row)]" data-testid={`row-matched-${i}`}>
+                            <TableCell className="text-foreground text-sm font-mono">{m.accountNo}</TableCell>
+                            <TableCell className="text-foreground text-sm">R {(m.totalArrears || 0).toLocaleString()}</TableCell>
+                            <TableCell className="text-foreground text-sm">{m.arrearDays || 0}</TableCell>
+                            <TableCell className="text-foreground text-sm">{m.lastPaymentDays || 0} days ago</TableCell>
+                            <TableCell className="text-foreground text-sm">R {(m.propertyValue || 0).toLocaleString()}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -438,13 +441,13 @@ export default function QualificationRules() {
             </Card>
           )}
 
-          <Card className="bg-amber-900/10 border-amber-700/20">
+          <Card className="bg-amber-50 border-amber-200 rounded-xl">
             <CardContent className="p-3">
               <div className="flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
-                <div className="text-xs text-amber-300/70">
+                <AlertTriangle className="w-4 h-4 text-amber-700 mt-0.5 shrink-0" />
+                <div className="text-xs text-amber-700">
                   <p className="font-semibold mb-1">Example Qualification Rules</p>
-                  <ul className="space-y-0.5 text-amber-300/50">
+                  <ul className="space-y-0.5 text-amber-600">
                     <li>Water arrears {'>'} 90 days AND electricity arrears {'>'} R1,000 AND no payment in 60 days AND property value {'>'} R500k</li>
                     <li>Total arrears {'>'} R20,000 AND risk score {'>'} 60 AND previous legal actions = 0</li>
                     <li>Rates arrears {'>'} R5,000 OR refuse arrears {'>'} R3,000</li>
@@ -453,6 +456,7 @@ export default function QualificationRules() {
               </div>
             </CardContent>
           </Card>
+          </div>
         </div>
       </div>
     </PosLayout>
