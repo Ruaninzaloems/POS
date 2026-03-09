@@ -2808,3 +2808,283 @@ export async function retryBulkAllocationJob(jobId: number, userId: number): Pro
         return {};
     });
 }
+
+// === DEBT MANAGEMENT — Section 129 & Handover ===
+
+export interface Section129Config {
+    demandLetterTemplate: string;
+    smsTemplate: string;
+    adminFees: number;
+    lapseDays: number;
+    noticeType: string;
+    interestRate: number;
+    minimumAmount: number;
+    includeIndigents: boolean;
+    includePensioners: boolean;
+    excludeDepositBalances: boolean;
+}
+
+export interface Section129Run {
+    runId: number;
+    status: string;
+    distributionType: string;
+    actionedBy: string;
+    dateCreated: string;
+    authorizedBy: string;
+    billingCycle: string;
+    runParameters: string;
+    handoverOption: string;
+    runType: string;
+    totalAccounts: number;
+    totalAmount: number;
+}
+
+export interface Section129RunAccount {
+    accountId: number;
+    accountNo: string;
+    address: string;
+    indigentStatus: string;
+    rebateStatus: string;
+    sgNumber: string;
+    outstandingDays: number;
+    qualifyingAmount: number;
+    noticeFees: number;
+    selected: boolean;
+}
+
+export interface HandoverRecord {
+    handoverId: number;
+    accountNo: string;
+    accountName: string;
+    attorney: string;
+    attorneyId: number;
+    handoverDate: string;
+    status: string;
+    handedOverAmount: number;
+    outstandingDays: number;
+    billingCycle: string;
+    handoverOption: string;
+}
+
+export interface Attorney {
+    attorneyId: number;
+    attorneyName: string;
+    firmName: string;
+    contactNumber: string;
+    email: string;
+    allocationPercentage: number;
+    isActive: boolean;
+}
+
+export interface HandoverTermination {
+    terminationId: number;
+    handoverId: number;
+    accountNo: string;
+    attorney: string;
+    reason: string;
+    notes: string;
+    status: string;
+    terminationDate: string;
+    approvedBy: string;
+}
+
+export async function fetchSection129Config(): Promise<Section129Config> {
+    const res = await apiFetch('/api/platinum/billing-debt/section129-config');
+    if (!res.ok) {
+        throw new Error(`Failed to fetch Section 129 config (status ${res.status})`);
+    }
+    return res.json();
+}
+
+export async function fetchSection129Runs(): Promise<Section129Run[]> {
+    const res = await apiFetch('/api/platinum/billing-debt/section129-runs');
+    if (!res.ok) {
+        throw new Error(`Failed to fetch Section 129 runs (status ${res.status})`);
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+}
+
+export async function submitSection129TrialRun(params: {
+    billingCycle: string;
+    town?: string;
+    suburb?: string;
+    propertyCategory?: string;
+    accountType?: string;
+    typeOfPerson?: string;
+    serviceGroupCode?: string;
+    ageing?: string;
+    amountGreaterThan?: number;
+    includeIndigents?: boolean;
+    includePensioners?: boolean;
+    excludeDepositBalances?: boolean;
+    contactPerson?: string;
+    phone?: string;
+    email?: string;
+    distributionType?: string;
+    mustEmailBePrinted?: boolean;
+    handoverOption?: string;
+}): Promise<Section129Run> {
+    const res = await apiFetch('/api/platinum/billing-debt/section129-trial-run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+    });
+    if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(text || `Failed to submit Section 129 trial run (status ${res.status})`);
+    }
+    return res.json();
+}
+
+export async function submitSection129TrialReview(params: {
+    runId: number;
+    selectedAccountIds: number[];
+    finalReviewComplete: boolean;
+}): Promise<{ success: boolean; message: string }> {
+    const res = await apiFetch('/api/platinum/billing-debt/section129-trial-review-submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+    });
+    if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(text || `Failed to submit trial review (status ${res.status})`);
+    }
+    return res.json();
+}
+
+export async function authorizeSection129Run(params: {
+    runId: number;
+    notes: string;
+    review: string;
+}): Promise<{ success: boolean; message: string }> {
+    const res = await apiFetch('/api/platinum/billing-debt/section129-authorize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+    });
+    if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(text || `Failed to authorize Section 129 run (status ${res.status})`);
+    }
+    return res.json();
+}
+
+export async function submitSection129FinalRun(params: {
+    runId: number;
+}): Promise<{ success: boolean; message: string }> {
+    const res = await apiFetch('/api/platinum/billing-debt/section129-final-run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+    });
+    if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(text || `Failed to submit Section 129 final run (status ${res.status})`);
+    }
+    return res.json();
+}
+
+export async function fetchSection129RunAccounts(runId: number): Promise<Section129RunAccount[]> {
+    const res = await apiFetch(`/api/platinum/billing-debt/section129-run-accounts?runId=${runId}`);
+    if (!res.ok) {
+        throw new Error(`Failed to fetch Section 129 run accounts (status ${res.status})`);
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+}
+
+export async function fetchHandoverList(): Promise<HandoverRecord[]> {
+    const res = await apiFetch('/api/platinum/billing-debt/handover-list');
+    if (!res.ok) {
+        throw new Error(`Failed to fetch handover list (status ${res.status})`);
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+}
+
+export async function submitHandover(params: {
+    handoverOption: string;
+    attorneyId: number;
+    accountNo?: string;
+    billingCycle?: string;
+    town?: string;
+    ageing?: string;
+    amountGreaterThan?: number;
+    rotationAllocations?: { attorneyId: number; percentage: number }[];
+}): Promise<{ success: boolean; message: string }> {
+    const res = await apiFetch('/api/platinum/billing-debt/handover-submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+    });
+    if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(text || `Failed to submit handover (status ${res.status})`);
+    }
+    return res.json();
+}
+
+export async function terminateHandover(params: {
+    handoverIds: number[];
+    reason: string;
+    notes: string;
+}): Promise<{ success: boolean; message: string }> {
+    const res = await apiFetch('/api/platinum/billing-debt/handover-terminate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+    });
+    if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(text || `Failed to terminate handover (status ${res.status})`);
+    }
+    return res.json();
+}
+
+export async function fetchAttorneyList(): Promise<Attorney[]> {
+    const res = await apiFetch('/api/platinum/billing-debt/attorney-list');
+    if (!res.ok) {
+        throw new Error(`Failed to fetch attorney list (status ${res.status})`);
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+}
+
+export async function fetchBillingCycles(): Promise<{ id: string; name: string }[]> {
+    const res = await apiFetch('/api/platinum/billing-debt/billing-cycles');
+    if (!res.ok) {
+        throw new Error(`Failed to fetch billing cycles (status ${res.status})`);
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+}
+
+export async function fetchTowns(): Promise<{ id: string; name: string }[]> {
+    const res = await apiFetch('/api/platinum/billing-debt/towns');
+    if (!res.ok) {
+        throw new Error(`Failed to fetch towns (status ${res.status})`);
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+}
+
+export async function fetchHandoverReport(params?: {
+    attorneyId?: number;
+    dateFrom?: string;
+    dateTo?: string;
+    status?: string;
+}): Promise<any> {
+    const searchParams = new URLSearchParams();
+    if (params?.attorneyId) searchParams.append('attorneyId', String(params.attorneyId));
+    if (params?.dateFrom) searchParams.append('dateFrom', params.dateFrom);
+    if (params?.dateTo) searchParams.append('dateTo', params.dateTo);
+    if (params?.status) searchParams.append('status', params.status);
+    const qs = searchParams.toString();
+    const res = await apiFetch(`/api/platinum/billing-debt/handover-report${qs ? '?' + qs : ''}`);
+    if (!res.ok) {
+        throw new Error(`Failed to fetch handover report (status ${res.status})`);
+    }
+    return res.json();
+}

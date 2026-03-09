@@ -27,6 +27,12 @@ import GeneralEnquiries from "@/pages/enquiries-general";
 import ClientCommunications from "@/pages/client-communications";
 import BulkAllocationProgress from "@/pages/bulk-allocation-progress";
 
+import Section129Notices from "@/pages/debt/section129-notices";
+import Section129TrialReview from "@/pages/debt/section129-trial-review";
+import Section129Authorization from "@/pages/debt/section129-authorization";
+import HandoverManagement from "@/pages/debt/handover-management";
+import HandoverTermination from "@/pages/debt/handover-termination";
+
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   constructor(props: { children: ReactNode }) {
     super(props);
@@ -96,6 +102,14 @@ function Router() {
         <Redirect to="/enquiries/general" />
       </Route>
       <Route path="/supervisor" component={SupervisorDashboard} />
+
+      {/* Debt Management Module */}
+      <Route path="/debt/section129" component={Section129Notices} />
+      <Route path="/debt/section129/review/:runId" component={Section129TrialReview} />
+      <Route path="/debt/section129/authorize" component={Section129Authorization} />
+      <Route path="/debt/handover" component={HandoverManagement} />
+      <Route path="/debt/handover/terminate" component={HandoverTermination} />
+
       <Route component={NotFound} />
     </Switch>
   );

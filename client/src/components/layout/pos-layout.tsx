@@ -23,7 +23,11 @@ import {
   AlertTriangle,
   MessageSquareMore,
   Power,
-  CircleDot
+  CircleDot,
+  Landmark,
+  FileWarning,
+  Briefcase,
+  XCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HelpTip } from '@/components/ui/help-tip';
@@ -195,6 +199,11 @@ export function PosLayout({ children }: PosLayoutProps) {
     'General Enquiries': 'Look up account details and balances',
     'Client Communications': 'Send messages to account holders',
     'Supervisor': 'Review cashier submissions (supervisor only)',
+    'Debt Management': 'Debt recovery, Section 129 notices, and handover management',
+    'Section 129 Notices': 'Run Section 129 Letter of Demand notice workflows',
+    'Section 129 Authorization': 'Approve Section 129 trial runs for final processing',
+    'Handover Management': 'Hand over accounts to attorneys for debt collection',
+    'Handover Termination': 'Terminate active handovers when debt is resolved',
   };
 
   const navItems = [
@@ -223,6 +232,16 @@ export function PosLayout({ children }: PosLayoutProps) {
     },
     { label: 'Client Communications', href: '/communications', icon: MessageSquareMore },
     { label: 'Supervisor', href: '/supervisor', icon: ShieldCheck },
+    {
+        label: 'Debt Management',
+        icon: Landmark,
+        children: [
+            { label: 'Section 129 Notices', href: '/debt/section129', icon: FileWarning },
+            { label: 'Section 129 Authorization', href: '/debt/section129/authorize', icon: ShieldCheck },
+            { label: 'Handover Management', href: '/debt/handover', icon: Briefcase },
+            { label: 'Handover Termination', href: '/debt/handover/terminate', icon: XCircle },
+        ]
+    },
   ];
 
   const sessionDot = apiSessionActive === null ? 'bg-slate-400' : apiSessionActive ? 'bg-emerald-400' : 'bg-red-400';

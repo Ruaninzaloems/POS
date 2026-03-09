@@ -1,0 +1,167 @@
+Review the current proxy route plan for Section 129 and Handover and refine it to align exactly with the formal specification and existing table structures.
+
+Current proposed proxy routes:
+
+GET /api/platinum/billing-debt/section129-config
+
+GET /api/platinum/billing-debt/section129-runs
+
+POST /api/platinum/billing-debt/section129-trial-run
+
+POST /api/platinum/billing-debt/section129-trial-review-submit
+
+POST /api/platinum/billing-debt/section129-authorize
+
+POST /api/platinum/billing-debt/section129-final-run
+
+GET /api/platinum/billing-debt/section129-run-accounts?runId=X
+
+GET /api/platinum/billing-debt/handover-list
+
+POST /api/platinum/billing-debt/handover-submit
+
+POST /api/platinum/billing-debt/handover-terminate
+
+GET /api/platinum/billing-debt/attorney-list
+
+GET /api/platinum/billing-debt/billing-cycles
+
+GET /api/platinum/billing-debt/towns
+
+GET /api/platinum/billing-debt/handover-report
+
+Tasks:
+
+Verify whether this API list is complete for the full Section 129 and Handover lifecycle.
+
+Identify all missing APIs required for:
+
+configuration create/update/enable
+
+financial years
+
+filter dropdowns
+
+template lookup
+
+file/report listing and download
+
+handover detail and transaction detail
+
+approvals and audit history
+
+general enquiries integration if required
+
+For every API, provide:
+
+route name
+
+HTTP method
+
+purpose
+
+Platinum target endpoint/path
+
+request payload
+
+query parameters
+
+response payload
+
+validation rules
+
+error responses
+
+required status handling
+
+required audit fields
+
+All write APIs must explicitly include and persist audit/action metadata, including at minimum:
+
+CapturerID / userId
+
+DateCaptured
+
+ModifierID
+
+DateModified
+
+ReviewerID where applicable
+
+ReviewDate where applicable
+
+StatusID
+
+comments/notes where applicable
+
+Use and respect the existing and proposed Platinum table structures, especially:
+
+Billing_Section129_Config
+
+Billing_Section129_ConfigFee
+
+Billing_Section129_ConfigAttorney
+
+Billing_Section129_Run
+
+Billing_Section129_RunAccount
+
+Billing_Section129_RunAccountTransaction
+
+Billing_Section129_File
+
+Billing_Section129_Approval
+
+Billing_Section129_AuditLog
+
+Cons_Handovers
+
+Cons_Handovers_Transactions
+
+Do not use fallback data.
+
+If a Platinum endpoint does not yet exist, return a clear explicit error message.
+
+Output the result as:
+
+Phase-by-phase API plan
+
+Table-to-API mapping
+
+Detailed payload contract for each API
+
+Audit and status matrix
+
+Missing Platinum endpoint list
+
+Important business rules to respect:
+
+one enabled Section 129 config per financial year
+
+lapse days are workdays
+
+three process options: Account, Bulk, Rotation
+
+exclude handed-over accounts
+
+ignore RPP balances
+
+exclude accounts with active clearances
+
+final run must use approved trial data
+
+handover and termination must be auditable
+
+no silent defaults or mock responses
+
+My recommendation
+
+Do not let Replit only build the proxy routes first.
+Make Replit produce the full API contract document first.
+Then you review it against your tables and statuses before any code is written.
+
+After that, build server/routes.ts.
+
+Then build the Platinum endpoints.
+
+Then connect the screens.
