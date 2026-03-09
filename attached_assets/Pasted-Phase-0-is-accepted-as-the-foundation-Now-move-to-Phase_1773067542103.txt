@@ -1,0 +1,257 @@
+Phase 0 is accepted as the foundation.
+
+Now move to Phase 1 — Section 129 Notices only.
+
+I do not want broad summaries.
+I need full detail for this page so I can brief the API developers properly.
+
+For Phase 1, return the output in these exact sections:
+
+1. Screen breakdown
+
+Using the existing frontend page, list every:
+
+field
+
+filter
+
+dropdown
+
+checkbox
+
+radio option
+
+grid
+
+button
+
+action
+
+For each item, state:
+
+label on screen
+
+required or optional
+
+load source
+
+validation
+
+whether it is editable, read-only, or conditionally shown
+
+whether it changes by Run Type or Handover Option
+
+2. Page logic
+
+Explain the page logic step by step for:
+
+page load
+
+selecting financial year
+
+selecting run type
+
+selecting handover option
+
+loading config
+
+loading filters
+
+search/load generated notice files
+
+submit logic
+
+clear/reset logic
+
+final run locking logic
+
+3. Business rules
+
+List every rule that applies to this page, including:
+
+one enabled config per financial year
+
+lapse days are workdays
+
+Account / Bulk / Rotation rules
+
+exclude handover accounts
+
+ignore RPP balances
+
+exclude active clearances
+
+final run must use approved trial data
+
+distribution option rules
+
+validation rules for mandatory fields
+
+For each rule, say:
+
+where the rule is enforced
+
+frontend or API or worker
+
+synchronous or async
+
+4. API list for this page only
+
+Give the exact APIs needed for Section 129 Notices only.
+
+For each API provide:
+
+endpoint
+
+method
+
+purpose
+
+direct API or async
+
+whether Service Bus is required
+
+whether a worker is required
+
+source tables
+
+target tables
+
+request payload
+
+response payload
+
+validations
+
+error responses
+
+audit fields written
+
+statuses updated
+
+5. Swagger-ready contracts
+
+For each Phase 1 API, provide:
+
+request schema
+
+response schema
+
+enums
+
+example payload
+
+example success response
+
+example validation error
+
+example dependency error
+
+6. Database mapping
+
+For this page only, map:
+
+existing tables reused
+
+fields used from each table
+
+missing fields
+
+new fields needed
+
+new tables needed if any
+
+Do not just say “new table required”.
+Show exactly:
+
+table name
+
+why it is needed
+
+columns required
+
+which API writes to it
+
+which API reads from it
+
+7. Sync vs async matrix
+
+For every Phase 1 action, show:
+
+action
+
+frontend
+
+direct API
+
+Service Bus
+
+worker
+
+database write
+
+status update
+
+8. Status and audit mapping
+
+For this page only, show:
+
+statuses used
+
+when each status is set
+
+which API or worker sets it
+
+which audit fields are captured at each step
+
+9. Open gaps / blockers
+
+List anything still unknown for this page:
+
+missing DB field
+
+missing table
+
+unclear frontend behavior
+
+unclear status mapping
+
+missing existing API dependency
+
+10. Final implementation pack
+
+End with a clean summary table with these columns:
+
+Feature
+
+Endpoint
+
+Method
+
+Direct or Async
+
+Service Bus
+
+Worker
+
+Tables Used
+
+DB Changes Needed
+
+Swagger Ready
+
+Blocked Yes/No
+
+Important instructions:
+
+Focus on Phase 1 only
+
+Do not move to Authorization or Configuration yet
+
+Do not give summary language
+
+Give implementation detail only
+
+Use the existing frontend page and EMS schema together
+
+Assume I will hand this directly to API developers
