@@ -3709,3 +3709,63 @@ export async function fetchSignatureAuditLog(): Promise<any> {
     if (!res.ok) throw new Error(`Failed to fetch signature audit log (status ${res.status})`);
     return res.json();
 }
+
+export async function fetchProcessWorkflows(): Promise<any> {
+    const res = await apiFetch('/api/process-engine/workflows');
+    if (!res.ok) throw new Error(`Failed to fetch process workflows (status ${res.status})`);
+    return res.json();
+}
+
+export async function fetchProcessWorkflow(workflowId: string): Promise<any> {
+    const res = await apiFetch(`/api/process-engine/workflows/${workflowId}`);
+    if (!res.ok) throw new Error(`Failed to fetch workflow (status ${res.status})`);
+    return res.json();
+}
+
+export async function createProcessWorkflow(data: { name: string; description?: string; isActive?: boolean }): Promise<any> {
+    const res = await apiFetch('/api/process-engine/workflows', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    if (!res.ok) throw new Error(`Failed to create workflow (status ${res.status})`);
+    return res.json();
+}
+
+export async function updateProcessWorkflow(workflowId: string, data: { name?: string; description?: string; isActive?: boolean }): Promise<any> {
+    const res = await apiFetch(`/api/process-engine/workflows/${workflowId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    if (!res.ok) throw new Error(`Failed to update workflow (status ${res.status})`);
+    return res.json();
+}
+
+export async function deleteProcessWorkflow(workflowId: string): Promise<any> {
+    const res = await apiFetch(`/api/process-engine/workflows/${workflowId}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(`Failed to delete workflow (status ${res.status})`);
+    return res.json();
+}
+
+export async function fetchWorkflowStages(workflowId: string): Promise<any> {
+    const res = await apiFetch(`/api/process-engine/workflows/${workflowId}/stages`);
+    if (!res.ok) throw new Error(`Failed to fetch workflow stages (status ${res.status})`);
+    return res.json();
+}
+
+export async function createWorkflowStage(workflowId: string, data: any): Promise<any> {
+    const res = await apiFetch(`/api/process-engine/workflows/${workflowId}/stages`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    if (!res.ok) throw new Error(`Failed to create stage (status ${res.status})`);
+    return res.json();
+}
+
+export async function updateWorkflowStage(workflowId: string, stageId: string, data: any): Promise<any> {
+    const res = await apiFetch(`/api/process-engine/workflows/${workflowId}/stages/${stageId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    if (!res.ok) throw new Error(`Failed to update stage (status ${res.status})`);
+    return res.json();
+}
+
+export async function deleteWorkflowStage(workflowId: string, stageId: string): Promise<any> {
+    const res = await apiFetch(`/api/process-engine/workflows/${workflowId}/stages/${stageId}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(`Failed to delete stage (status ${res.status})`);
+    return res.json();
+}
+
+export async function reorderWorkflowStages(workflowId: string, order: { id: string | number; stageNumber: number }[]): Promise<any> {
+    const res = await apiFetch(`/api/process-engine/workflows/${workflowId}/stages/reorder`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order }) });
+    if (!res.ok) throw new Error(`Failed to reorder stages (status ${res.status})`);
+    return res.json();
+}

@@ -32,6 +32,7 @@ import {
   Activity,
   FileText,
   PenLine,
+  Workflow,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HelpTip } from '@/components/ui/help-tip';
@@ -250,6 +251,7 @@ export function PosLayout({ children }: PosLayoutProps) {
             { label: 'Process Monitoring', href: '/debt/process-monitoring', icon: Activity },
             { label: 'Document Templates', href: '/debt/document-templates', icon: FileText },
             { label: 'Digital Signatures', href: '/debt/digital-signatures', icon: PenLine },
+            { label: 'Process Engine', href: '/debt/process-engine', icon: Workflow },
         ]
     },
   ];

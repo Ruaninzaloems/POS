@@ -7989,5 +7989,112 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
     }
   });
 
+  app.get("/api/process-engine/workflows", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/BillingDebt/process-workflows", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/process-engine/workflows/:workflowId", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, `/api/BillingDebt/process-workflows/${req.params.workflowId}`, req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/process-engine/workflows", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const data = await platinumPost(session, "/api/BillingDebt/process-workflows", injectAuditFields(session, req.body));
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.put("/api/process-engine/workflows/:workflowId", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const data = await platinumPost(session, `/api/BillingDebt/process-workflows/${req.params.workflowId}`, injectAuditFields(session, req.body));
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.delete("/api/process-engine/workflows/:workflowId", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const data = await platinumPost(session, `/api/BillingDebt/process-workflows/${req.params.workflowId}/delete`, injectAuditFields(session, {}));
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/process-engine/workflows/:workflowId/stages", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, `/api/BillingDebt/process-workflows/${req.params.workflowId}/stages`, req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/process-engine/workflows/:workflowId/stages", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const data = await platinumPost(session, `/api/BillingDebt/process-workflows/${req.params.workflowId}/stages`, injectAuditFields(session, req.body));
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.put("/api/process-engine/workflows/:workflowId/stages/:stageId", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const data = await platinumPost(session, `/api/BillingDebt/process-workflows/${req.params.workflowId}/stages/${req.params.stageId}`, injectAuditFields(session, req.body));
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.delete("/api/process-engine/workflows/:workflowId/stages/:stageId", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const data = await platinumPost(session, `/api/BillingDebt/process-workflows/${req.params.workflowId}/stages/${req.params.stageId}/delete`, injectAuditFields(session, {}));
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/process-engine/workflows/:workflowId/stages/reorder", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const data = await platinumPost(session, `/api/BillingDebt/process-workflows/${req.params.workflowId}/stages/reorder`, injectAuditFields(session, req.body));
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   return httpServer;
 }

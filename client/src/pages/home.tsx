@@ -40,6 +40,7 @@ import {
   Cog,
   Activity,
   PenLine,
+  Workflow,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HelpTip } from '@/components/ui/help-tip';
@@ -79,6 +80,7 @@ const debtChildren: MenuItem[] = [
   { label: 'Process Monitoring', href: '/debt/process-monitoring', icon: Activity, description: 'Real-time process monitoring dashboard', helpTip: 'Monitor active runs, failed processes, pending approvals, handover queues, and termination queues in real time' },
   { label: 'Document Templates', href: '/debt/document-templates', icon: FileText, description: 'Version-controlled document templates', helpTip: 'Manage version-controlled templates for Section 129 notices, handover documents, AOD agreements, and other legal correspondence' },
   { label: 'Digital Signatures', href: '/debt/digital-signatures', icon: PenLine, description: 'Electronic signature management', helpTip: 'Send AOD agreements and other documents for electronic signature, track signing status and maintain audit trails' },
+  { label: 'Debt Process Engine', href: '/debt/process-engine', icon: Workflow, description: 'Configurable workflow engine', helpTip: 'Define debt recovery workflows with ordered stages — each stage has entry rules, document templates, automated actions, and wait timers. Infinitely configurable without hardcoding flows.' },
 ];
 
 const complianceChildren: MenuItem[] = [
