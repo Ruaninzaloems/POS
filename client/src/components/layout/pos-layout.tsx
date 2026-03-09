@@ -28,6 +28,8 @@ import {
   FileWarning,
   Briefcase,
   XCircle,
+  Cog,
+  Activity,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HelpTip } from '@/components/ui/help-tip';
@@ -204,6 +206,8 @@ export function PosLayout({ children }: PosLayoutProps) {
     'Section 129 Authorization': 'Approve Section 129 trial runs for final processing',
     'Handover Management': 'Hand over accounts to attorneys for debt collection',
     'Handover Termination': 'Terminate active handovers when debt is resolved',
+    'Batch Processing': 'Run and manage scheduled batch jobs for debt recovery',
+    'Process Monitoring': 'Monitor active runs, failed processes, and queues',
   };
 
   const navItems = [
@@ -240,6 +244,8 @@ export function PosLayout({ children }: PosLayoutProps) {
             { label: 'Section 129 Authorization', href: '/debt/section129/authorize', icon: ShieldCheck },
             { label: 'Handover Management', href: '/debt/handover', icon: Briefcase },
             { label: 'Handover Termination', href: '/debt/handover/terminate', icon: XCircle },
+            { label: 'Batch Processing', href: '/debt/batch-processing', icon: Cog },
+            { label: 'Process Monitoring', href: '/debt/process-monitoring', icon: Activity },
         ]
     },
   ];

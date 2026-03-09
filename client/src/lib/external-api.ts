@@ -3580,3 +3580,71 @@ export async function fetchGeographicDistribution(): Promise<any> {
     if (!res.ok) throw new Error(`Failed to fetch geographic distribution (status ${res.status})`);
     return res.json();
 }
+
+export async function fetchBatchJobs(): Promise<any> {
+    const res = await apiFetch('/api/batch-processing/jobs');
+    if (!res.ok) throw new Error(`Failed to fetch batch jobs (status ${res.status})`);
+    return res.json();
+}
+
+export async function fetchBatchSchedules(): Promise<any> {
+    const res = await apiFetch('/api/batch-processing/schedules');
+    if (!res.ok) throw new Error(`Failed to fetch batch schedules (status ${res.status})`);
+    return res.json();
+}
+
+export async function triggerBatchJob(jobType: string): Promise<any> {
+    const res = await apiFetch('/api/batch-processing/trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobType }),
+    });
+    if (!res.ok) throw new Error(`Failed to trigger batch job (status ${res.status})`);
+    return res.json();
+}
+
+export async function cancelBatchJob(jobId: string): Promise<any> {
+    const res = await apiFetch('/api/batch-processing/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId }),
+    });
+    if (!res.ok) throw new Error(`Failed to cancel batch job (status ${res.status})`);
+    return res.json();
+}
+
+export async function fetchProcessMonitoringOverview(): Promise<any> {
+    const res = await apiFetch('/api/process-monitoring/overview');
+    if (!res.ok) throw new Error(`Failed to fetch process monitoring overview (status ${res.status})`);
+    return res.json();
+}
+
+export async function fetchActiveRuns(): Promise<any> {
+    const res = await apiFetch('/api/process-monitoring/active-runs');
+    if (!res.ok) throw new Error(`Failed to fetch active runs (status ${res.status})`);
+    return res.json();
+}
+
+export async function fetchFailedRuns(): Promise<any> {
+    const res = await apiFetch('/api/process-monitoring/failed-runs');
+    if (!res.ok) throw new Error(`Failed to fetch failed runs (status ${res.status})`);
+    return res.json();
+}
+
+export async function fetchPendingApprovals(): Promise<any> {
+    const res = await apiFetch('/api/process-monitoring/pending-approvals');
+    if (!res.ok) throw new Error(`Failed to fetch pending approvals (status ${res.status})`);
+    return res.json();
+}
+
+export async function fetchHandoverQueues(): Promise<any> {
+    const res = await apiFetch('/api/process-monitoring/handover-queues');
+    if (!res.ok) throw new Error(`Failed to fetch handover queues (status ${res.status})`);
+    return res.json();
+}
+
+export async function fetchTerminationQueues(): Promise<any> {
+    const res = await apiFetch('/api/process-monitoring/termination-queues');
+    if (!res.ok) throw new Error(`Failed to fetch termination queues (status ${res.status})`);
+    return res.json();
+}

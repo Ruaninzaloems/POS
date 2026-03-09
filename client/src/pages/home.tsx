@@ -37,6 +37,8 @@ import {
   TrendingUp,
   MapPin,
   LineChart,
+  Cog,
+  Activity,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HelpTip } from '@/components/ui/help-tip';
@@ -72,6 +74,8 @@ const debtChildren: MenuItem[] = [
   { label: 'Qualification Rules', href: '/debt/qualification-rules', icon: Filter, description: 'Smart qualification rules builder', helpTip: 'Define complex multi-condition rules to qualify accounts for debt recovery, handover, or legal action' },
   { label: 'Communication Timelines', href: '/debt/communication-timelines', icon: Clock, description: 'Automated escalation timelines', helpTip: 'Configure automated communication timelines with multi-channel escalation steps for debt recovery' },
   { label: 'Communication Dashboard', href: '/debt/communication-dashboard', icon: Send, description: 'Omni-channel communication hub', helpTip: 'Monitor delivery status across SMS, Email, WhatsApp, and printed letters — track scheduled communications and dispatch ad-hoc messages' },
+  { label: 'Batch Processing', href: '/debt/batch-processing', icon: Cog, description: 'Scheduled batch processing engine', helpTip: 'Run and manage scheduled batch jobs — trial runs, final runs, lapse checks, notifications, and attorney allocation' },
+  { label: 'Process Monitoring', href: '/debt/process-monitoring', icon: Activity, description: 'Real-time process monitoring dashboard', helpTip: 'Monitor active runs, failed processes, pending approvals, handover queues, and termination queues in real time' },
 ];
 
 const complianceChildren: MenuItem[] = [

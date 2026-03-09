@@ -41,6 +41,12 @@ Omni-channel communication management proxies to Platinum API (`/api/BillingDebt
 #### Intelligence & Analytics Module (Platinum API Proxy)
 Executive-level analytics proxy to Platinum API (`/api/BillingDashboard/debt-overview`, `/api/BillingDashboard/aging-analysis`, `/api/BillingDashboard/recovery-stats`, `/api/BillingDashboard/legal-pipeline`, `/api/BillingDashboard/attorney-performance`, `/api/BillingDashboard/risk-distribution`, `/api/BillingDashboard/predictive-forecasting`, `/api/BillingDashboard/geographic-distribution`). Three pages: Executive Debt Dashboard (`/analytics/executive-dashboard`), Predictive Recovery Forecasting (`/analytics/predictive-forecasting`), Geographic Debt Mapping (`/analytics/geographic-mapping`). All require `requireAuth` + `requireLegalAdmin`.
 
+#### Batch Processing Engine (Platinum API Proxy)
+Batch processing for scheduled debt recovery jobs proxies to Platinum API (`/api/BillingDebt/batch-jobs`, `/api/BillingDebt/batch-schedules`, `/api/BillingDebt/batch-trigger`, `/api/BillingDebt/batch-cancel`). Supports 5 job types: Trial Runs, Final Runs, Lapse Checks, Notifications, Attorney Allocation. Batch Processing page (`/debt/batch-processing`) shows KPI stats, trigger buttons, scheduled jobs table, and filterable job history with cancel capability. Trigger/cancel require `requireLegalAdmin`.
+
+#### Process Monitoring (Platinum API Proxy)
+Real-time process monitoring proxies to Platinum API (`/api/BillingDebt/process-monitoring-overview`, `/api/BillingDebt/process-active-runs`, `/api/BillingDebt/process-failed-runs`, `/api/BillingDebt/process-pending-approvals`, `/api/BillingDebt/process-handover-queues`, `/api/BillingDebt/process-termination-queues`). Process Monitoring page (`/debt/process-monitoring`) with tabbed interface: Overview (summary cards with drill-down), Active Runs, Failed Runs, Pending Approvals, Handover Queue, Termination Queue. All require `requireAuth`.
+
 ## External Dependencies
 
 ### External APIs

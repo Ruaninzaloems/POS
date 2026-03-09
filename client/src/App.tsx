@@ -40,6 +40,8 @@ import RiskScoring from "@/pages/debt/risk-scoring";
 import QualificationRules from "@/pages/debt/qualification-rules";
 import CommunicationTimeline from "@/pages/debt/communication-timeline";
 import CommunicationDashboard from "@/pages/debt/communication-dashboard";
+import BatchProcessing from "@/pages/debt/batch-processing";
+import ProcessMonitoring from "@/pages/debt/process-monitoring";
 import ComplianceAuditTrail from "@/pages/legal/audit-trail";
 import LegalRulesPage from "@/pages/legal/rules";
 import EvidenceBundlePage from "@/pages/legal/evidence-bundle";
@@ -131,6 +133,8 @@ function Router() {
       <Route path="/debt/qualification-rules" component={QualificationRules} />
       <Route path="/debt/communication-timelines" component={CommunicationTimeline} />
       <Route path="/debt/communication-dashboard" component={CommunicationDashboard} />
+      <Route path="/debt/batch-processing" component={BatchProcessing} />
+      <Route path="/debt/process-monitoring" component={ProcessMonitoring} />
 
       {/* Legal Compliance Module */}
       <Route path="/legal/rules" component={LegalRulesPage} />
