@@ -4,7 +4,9 @@
       class="workflow-tab"
       [class.active]="activeTab() === 'setup'"
       [class.completed]="isTabComplete('setup')"
+      [class.disabled]="!canAccessSetup()"
       (click)="setTab('setup')"
+      [disabled]="!canAccessSetup()"
       data-testid="tab-setup">
       <span class="tab-number" [class.check]="isTabComplete('setup')">
         @if (isTabComplete('setup')) {

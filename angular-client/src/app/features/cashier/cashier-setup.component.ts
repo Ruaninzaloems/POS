@@ -126,8 +126,8 @@ export class CashierSetupComponent implements OnInit {
 
     try {
       const data: any = await firstValueFrom(
-        this.api.get('/api/platinum/receipt-prepaid/validate-cashier', {
-          userId: String(userId),
+        this.api.get('/api/platinum/auth/active-cashier-by-userid', {
+          userid: String(userId),
           finYear: finYear
         })
       );

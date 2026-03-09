@@ -23,9 +23,11 @@ export class PosWorkflowComponent implements OnInit {
   activeTab = signal<WorkflowTab>('setup');
   sessionReady = signal(false);
   checkingSession = signal(true);
+  sessionActive = signal(false);
 
   user = this.auth.user;
 
+  canAccessSetup = computed(() => !this.sessionActive());
   canAccessTransact = computed(() => this.sessionReady());
   canAccessDayEnd = computed(() => this.sessionReady());
 
@@ -37,14 +39,16 @@ export class PosWorkflowComponent implements OnInit {
     this.checkingSession.set(true);
     try {
       const userId = this.user()?.user_ID;
+      const finYear = this.user()?.finYear || '';
       if (!userId) {
         this.checkingSession.set(false);
         return;
       }
 
       const data: any = await firstValueFrom(
-        this.api.get('/api/platinum/receipt-prepaid/active-cashier-details', {
-          userId: String(userId)
+        this.api.get('/api/platinum/auth/active-cashier-by-userid', {
+          userid: String(userId),
+          finYear
         })
       ).catch(() => null);
 
@@ -56,8 +60,13 @@ export class PosWorkflowComponent implements OnInit {
       const hasPendingDayEnd = data.hasPendingDayEnd === true;
       const hasDayEndReturned = data.hasDayEndReturned === true;
 
-      if ((isActive || hasDayEndReturned) && !hasPendingDayEnd) {
+      if (isActive && !hasPendingDayEnd) {
         this.sessionReady.set(true);
+        this.sessionActive.set(true);
+        this.activeTab.set('transact');
+      } else if (hasDayEndReturned) {
+        this.sessionReady.set(true);
+        this.sessionActive.set(true);
         this.activeTab.set('transact');
       }
     } catch {
@@ -68,10 +77,12 @@ export class PosWorkflowComponent implements OnInit {
 
   onSessionStarted(): void {
     this.sessionReady.set(true);
+    this.sessionActive.set(true);
     this.activeTab.set('transact');
   }
 
   setTab(tab: WorkflowTab): void {
+    if (tab === 'setup' && !this.canAccessSetup()) return;
     if (tab === 'transact' && !this.canAccessTransact()) return;
     if (tab === 'day-end' && !this.canAccessDayEnd()) return;
     this.activeTab.set(tab);
