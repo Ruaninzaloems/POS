@@ -325,6 +325,7 @@ export async function registerRoutes(
       console.log(`[active-cashier] RAW cashier field:`, JSON.stringify(vcData?.cashier)?.substring(0, 500) || 'null');
       console.log(`[active-cashier] RAW cashOffice field:`, JSON.stringify(vcData?.cashOffice)?.substring(0, 300) || 'null');
       console.log(`[active-cashier] RAW cashierReconcile field:`, JSON.stringify(vcData?.cashierReconcile)?.substring(0, 500));
+      console.log(`[active-cashier] RAW reconcileStatusCode: ${vcData?.reconcileStatusCode}, reconcileStatusDescription: ${vcData?.reconcileStatusDescription}`);
 
       if (!vcData || vcData._error) {
         console.error(`[active-cashier] validate-cashier API failed or returned error:`, vcData?._error || 'no data');
@@ -334,7 +335,14 @@ export async function registerRoutes(
       let cashier = vcData.cashier || null;
       let cashOffice = vcData.cashOffice || null;
       const receiptRange = vcData.receiptRange || vcData.receiptRangeAvailable || null;
-      const cashierReconcile = vcData.cashierReconcile || null;
+      let cashierReconcile = vcData.cashierReconcile || null;
+
+      const topLevelReconcileStatus = String(vcData.reconcileStatusDescription || vcData.reconcileStatusCode || '').toLowerCase().trim();
+      const topLevelIsReturned = topLevelReconcileStatus.includes('return');
+      if (topLevelIsReturned && !cashierReconcile) {
+        console.log(`[active-cashier] Top-level reconcileStatus indicates RETURNED ("${vcData.reconcileStatusDescription}") but cashierReconcile is null — synthesizing reconcile record`);
+        cashierReconcile = { status: vcData.reconcileStatusDescription || 'Returned', reason: vcData.returnReason || '', _synthetic: true };
+      }
 
       let sessionFromCache = false;
 
@@ -346,12 +354,18 @@ export async function registerRoutes(
           console.log(`[active-cashier] Trying knownCashierId=${knownId} from session`);
           try {
             const details = await platinumGet(session, `/api/ReceiptPrepaid/cashier-detailsById`, { cashierId: String(knownId) });
-            if (details && !details._error && details.id && details.isActive === true) {
-              cashier = details;
-              cashOffice = details.const_CashOffice || null;
-              console.log(`[active-cashier] knownCashierId fallback SUCCESS — id: ${details.id}, isActive: ${details.isActive}, isVirtual: ${details.isVirtual}, officeId: ${details.officeId}`);
-            } else {
-              console.log(`[active-cashier] knownCashierId fallback returned no active session: id=${details?.id}, isActive=${details?.isActive}`);
+            if (details && !details._error && details.id) {
+              if (details.isActive === true) {
+                cashier = details;
+                cashOffice = details.const_CashOffice || null;
+                console.log(`[active-cashier] knownCashierId fallback SUCCESS — id: ${details.id}, isActive: ${details.isActive}, isVirtual: ${details.isVirtual}, officeId: ${details.officeId}`);
+              } else if (topLevelIsReturned || cashierReconcile) {
+                cashier = details;
+                cashOffice = details.const_CashOffice || null;
+                console.log(`[active-cashier] knownCashierId fallback: cashier isActive=false but day-end is RETURNED — using cashier record for session recovery. id: ${details.id}, officeId: ${details.officeId}`);
+              } else {
+                console.log(`[active-cashier] knownCashierId fallback returned no active session: id=${details?.id}, isActive=${details?.isActive}`);
+              }
             }
           } catch (knownErr: any) {
             console.warn(`[active-cashier] knownCashierId lookup failed:`, knownErr.message);
@@ -380,6 +394,32 @@ export async function registerRoutes(
             }
           } catch (fbErr: any) {
             console.warn(`[active-cashier] Fallback active-cashierid check failed:`, fbErr.message);
+          }
+        }
+
+        if (!cashier && (topLevelIsReturned || cashierReconcile)) {
+          console.log(`[active-cashier] Day-end is returned/pending but no cashier found — searching cashier-list for userId=${userId}`);
+          try {
+            const cashierList = await platinumGet(session, "/api/ReceiptPrepaid/cashier-list", {});
+            const allCashiers = Array.isArray(cashierList) ? cashierList : [];
+            const numUserId = parseInt(String(userId), 10);
+            const matchedCashier = allCashiers.find((c: any) => c.user_Id === numUserId || c.userId === numUserId);
+            if (matchedCashier) {
+              console.log(`[active-cashier] Found cashier in cashier-list for userId=${userId} — cashierId=${matchedCashier.id}, isActive=${matchedCashier.isActive}`);
+              cashier = matchedCashier;
+              cashOffice = matchedCashier.const_CashOffice || null;
+              if (!cashOffice && matchedCashier.officeId) {
+                try {
+                  const offices = await platinumGet(session, "/api/ReceiptPrepaid/cash-offices", { finYear, userId });
+                  const officeList = Array.isArray(offices) ? offices : [];
+                  cashOffice = officeList.find((o: any) => (o.cashOffice_ID || o.id) === matchedCashier.officeId) || null;
+                } catch {} 
+              }
+            } else {
+              console.log(`[active-cashier] No matching cashier found in cashier-list for userId=${userId}`);
+            }
+          } catch (clErr: any) {
+            console.warn(`[active-cashier] cashier-list lookup failed:`, clErr.message);
           }
         }
 
@@ -445,13 +485,18 @@ export async function registerRoutes(
       }
       console.log(`[active-cashier] validate-cashier result — registered: ${isCashierRegistered}, isActive: ${isSessionActive} (POS_Cashier.IsActive=${cashier?.isActive}), cashierId: ${cashierId}, officeId: ${activeOfficeId}, officeName: ${activeOfficeName}, cashierReconcile: ${resolvedCashierReconcile ? 'PRESENT' : 'null'}, reconcileStatus: "${reconcileStatus}", session.dayEndPending: ${session.dayEndPending}, hasPendingDayEnd: ${hasPendingDayEnd}, hasDayEndReturned: ${hasDayEndReturned}, isReconcileCompleted: ${isReconcileCompleted}`);
 
+      if (cashierId && cashierId > 0) {
+        (session as any).knownCashierId = cashierId;
+        if (cashier) (session as any).knownCashierData = cashier;
+      }
+
       const cashierDetails = cashier ? {
         ...cashier,
         const_CashOffice: cashOffice,
       } : null;
 
       res.json({
-        active: isSessionActive,
+        active: isSessionActive || hasDayEndReturned,
         cashierId: isCashierRegistered ? cashierId : null,
         cashierRegistered: isCashierRegistered,
         cashFloat,

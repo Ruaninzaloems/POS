@@ -438,7 +438,29 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
             cashOffice: officeName
           });
 
-          if (data.isActive === true && data.officeId) {
+          const hasPendingDayEnd = data.hasPendingDayEnd === true;
+          const hasDayEndReturned = data.hasDayEndReturned === true;
+
+          if (hasDayEndReturned) {
+            const officeId = String(data.officeId || data.details?.officeId || data.details?.const_CashOffice?.cashOffice_ID || '');
+            const cashFloat = data.cashFloat ?? data.details?.cashFloat ?? 0;
+            const resolvedOfficeName = officeName || data.details?.const_CashOffice?.cashOfficeDesc || '';
+            const resolvedCashierId = data.details?.id || data.cashierId || receiptCashierId;
+            if (resolvedCashierId) setPlatinumCashierId(resolvedCashierId);
+            console.log(`[Session] Day-end reconcile was RETURNED by supervisor — cashier can re-submit. cashierId: ${resolvedCashierId}, officeId: ${officeId}, office: ${resolvedOfficeName}`);
+            setDayEndStatus('RETURNED');
+            setDayEndReturnReason(data.dayEndReturnReason || '');
+            setActiveSession(true);
+            setApiSessionActive(true);
+            if (officeId) {
+              setSessionDetails({
+                startTime: Date.now(),
+                officeId,
+                officeDesc: resolvedOfficeName,
+                floatAmount: cashFloat
+              });
+            }
+          } else if (data.isActive === true && data.officeId) {
             const officeId = String(data.officeId);
             const cashFloat = data.cashFloat ?? data.details?.cashFloat ?? 0;
             console.log(`[Session] validate-cashier API confirms session is active (POS_Cashier.IsActive=1). isActive is the single source of truth.`);
@@ -456,21 +478,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
               console.warn(`[Session] validate-cashier call failed, using fallback cashier ID: ${receiptCashierId}`);
             }
 
-            const hasPendingDayEnd = data.hasPendingDayEnd === true;
-            const hasDayEndReturned = data.hasDayEndReturned === true;
-            if (hasDayEndReturned) {
-              console.log(`[Session] Day-end reconcile was RETURNED by supervisor — cashier can re-submit`);
-              setDayEndStatus('RETURNED');
-              setDayEndReturnReason(data.dayEndReturnReason || '');
-              setActiveSession(true);
-              setApiSessionActive(true);
-              setSessionDetails({
-                startTime: Date.now(),
-                officeId,
-                officeDesc: officeName,
-                floatAmount: cashFloat
-              });
-            } else if (hasPendingDayEnd) {
+            if (hasPendingDayEnd) {
               console.log(`[Session] cashierReconcile is present in validate-cashier response — day-end is pending supervisor approval`);
               setDayEndStatus('PENDING_APPROVAL');
               setActiveSession(false);
