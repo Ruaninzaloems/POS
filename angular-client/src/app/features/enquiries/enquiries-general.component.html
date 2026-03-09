@@ -1140,11 +1140,11 @@
         </button>
 
         <!-- Smart Search Dropdown -->
-        @if (showDropdown() && (dropdownResults().length > 0 || dropdownSearching())) {
+        @if (showDropdown() && (dropdownResults().length > 0 || dropdownSearching() || (!dropdownSearching() && quickQuery().length >= 2))) {
           <div class="search-dropdown" data-testid="smart-search-dropdown" (click)="$event.stopPropagation()">
             @if (dropdownSearching() && dropdownResults().length === 0) {
               <div class="dropdown-loading">
-                <div class="search-spinner"></div>
+                <div class="search-spinner-inline"></div>
                 <span>Searching accounts...</span>
               </div>
             }
@@ -1157,7 +1157,12 @@
             }
             @if (dropdownResults().length > 0) {
               <div class="dropdown-header">
-                <span>{{ dropdownResults().length }} account{{ dropdownResults().length !== 1 ? 's' : '' }}</span>
+                <span class="dropdown-header-count">{{ dropdownResults().length }}</span>
+                <span>account{{ dropdownResults().length !== 1 ? 's' : '' }} found</span>
+                @if (dropdownSearching()) {
+                  <div class="search-spinner-inline small"></div>
+                }
+                <span class="dropdown-header-hint">Click to view details</span>
               </div>
               <div class="dropdown-list">
                 @for (account of dropdownResults().slice(0, 20); track getAccountId(account); let i = $index) {
@@ -1173,14 +1178,29 @@
                     <div class="dropdown-info">
                       <div class="dropdown-info-top">
                         <span class="dropdown-acct-num">{{ getAccountNum(account) }}</span>
-                        <span class="dropdown-name">{{ getAccountName(account) }}</span>
+                        @if (getAccountName(account) !== 'Unknown') {
+                          <span class="dropdown-name-divider">—</span>
+                          <span class="dropdown-name">{{ getAccountName(account) }}</span>
+                        }
                       </div>
                       @if (account.locationAddress || account.address || account.deliveryAddress) {
-                        <div class="dropdown-address">{{ (account.locationAddress || account.address || account.deliveryAddress || '').replace('\r\n', ', ') }}</div>
+                        <div class="dropdown-address">
+                          <span class="dropdown-address-icon">📍</span>
+                          {{ (account.locationAddress || account.address || account.deliveryAddress || '').replace('\r\n', ', ') }}
+                        </div>
+                      }
+                      @if (account.idRegistrationNumber) {
+                        <div class="dropdown-id">ID: {{ account.idRegistrationNumber }}</div>
                       }
                     </div>
-                    <div class="dropdown-balance" [class.positive]="getOutstanding(account) > 0" [class.negative]="getOutstanding(account) <= 0">
-                      R {{ formatCurrency(getOutstanding(account)) }}
+                    <div class="dropdown-right">
+                      <div class="dropdown-balance" [class.positive]="getOutstanding(account) > 0" [class.negative]="getOutstanding(account) <= 0" [class.zero]="getOutstanding(account) === 0">
+                        R {{ formatCurrency(getOutstanding(account)) }}
+                      </div>
+                      @if (account.accountStatus || account.statusDesc) {
+                        <span class="dropdown-status" [class.active-status]="isAccountActive(account)">{{ account.accountStatus || account.statusDesc }}</span>
+                      }
+                      <span class="dropdown-open-hint">View →</span>
                     </div>
                   </div>
                 }

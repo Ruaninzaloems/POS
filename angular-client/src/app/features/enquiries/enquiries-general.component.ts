@@ -321,11 +321,20 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       else if (field === 'sgNumber') body['sgNumber'] = num;
       else body[field] = num;
 
-      const [searchResults, autocompleteResults] = await Promise.allSettled([
+      const acType = this.getAutocompleteType(field);
+      const requests: Promise<any>[] = [
         this.withTimeout(firstValueFrom(this.api.post<any>('/api/platinum/billing-enquiry/enquiry-results', body)), 15000),
-        this.withTimeout(firstValueFrom(this.api.get<any>('/api/platinum/billing-enquiry/autocomplete', { search: num, type: this.getAutocompleteType(field) })), 10000),
-      ]);
+        this.withTimeout(firstValueFrom(this.api.get<any>('/api/platinum/billing-enquiry/autocomplete', { search: num, type: acType })), 10000),
+      ];
 
+      if (/^\d{4,}$/.test(num) && field === 'accountNo') {
+        requests.push(
+          this.withTimeout(firstValueFrom(this.api.post<any>('/api/platinum/billing-enquiry/enquiry-results', { oldAccount: num })), 10000),
+          this.withTimeout(firstValueFrom(this.api.get<any>('/api/platinum/billing-enquiry/autocomplete', { search: num, type: 'erfNumber' })), 8000),
+        );
+      }
+
+      const results = await Promise.allSettled(requests);
       if (this.quickSearchToken !== token) return;
 
       const processResults = (data: any) => {
@@ -336,40 +345,99 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         }
       };
 
-      if (searchResults.status === 'fulfilled') processResults(searchResults.value);
+      if (results[0].status === 'fulfilled') processResults(results[0].value);
 
-      if (autocompleteResults.status === 'fulfilled') {
-        const suggestions = this.normalizeArray(autocompleteResults.value);
+      const processAutocomplete = (result: PromiseSettledResult<any>) => {
+        if (result.status !== 'fulfilled') return;
+        const suggestions = this.normalizeArray(result.value);
         for (const s of suggestions) {
           if (s.accountId && s.accountId > 0 && !seen.has(s.accountId)) {
             seen.add(s.accountId);
-            const displayParts = (s.displayItem || '').split(' - ');
+            const display = s.displayItem || '';
+            const parts = display.split(' - ');
+            const acctNum = parts[0]?.trim() || '';
+            const rest = parts.slice(1).join(' - ').trim();
+            const nameParts = rest.split(',');
+            const name = nameParts[0]?.trim() || '';
+            const address = nameParts.slice(1).join(',').trim() || '';
             merged.push({
               account_ID: s.accountId,
               accountID: s.accountId,
-              accountNumber: displayParts[0]?.trim() || String(s.accountId).padStart(12, '0'),
-              name: displayParts.slice(1).join(' - ').trim() || '',
-              surname_Company: displayParts.slice(1).join(' - ').trim() || '',
-            } as SearchResult);
+              accountNumber: acctNum || String(s.accountId).padStart(12, '0'),
+              name: name,
+              surname_Company: name,
+              locationAddress: address,
+              _fromAutocomplete: true,
+            } as unknown as SearchResult);
           }
         }
-      }
+      };
 
-      if (/^\d{4,}$/.test(num) && field === 'accountNo') {
-        try {
-          const oldCodeResults = await firstValueFrom(
-            this.api.post<any>('/api/platinum/billing-enquiry/enquiry-results', { oldAccount: num })
-          );
-          if (this.quickSearchToken === token) processResults(oldCodeResults);
-        } catch {}
-      }
+      processAutocomplete(results[1]);
+
+      if (results.length > 2 && results[2].status === 'fulfilled') processResults(results[2].value);
+      if (results.length > 3) processAutocomplete(results[3]);
 
       this.dropdownResults.set([...merged]);
       if (merged.length > 0) this.showDropdown.set(true);
+
+      this.enrichAutocompleteResults(merged, token);
     } catch (e: any) {
       if (this.quickSearchToken === token) this.dropdownResults.set([]);
     } finally {
       if (this.quickSearchToken === token) this.dropdownSearching.set(false);
+    }
+  }
+
+  private async enrichAutocompleteResults(results: SearchResult[], token: number): Promise<void> {
+    const toEnrich = results.filter((r: any) => r._fromAutocomplete);
+    if (toEnrich.length === 0) return;
+
+    const enrichPromises = toEnrich.slice(0, 5).map(async (item) => {
+      try {
+        const id = item.account_ID || item.accountID;
+        const [details, balance] = await Promise.allSettled([
+          this.withTimeout(firstValueFrom(this.api.post<any>('/api/platinum/billing-enquiry/enquiry-results', { accountID: String(id) })), 8000),
+          this.withTimeout(firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-balance/${id}`)), 6000),
+        ]);
+
+        if (this.quickSearchToken !== token) return;
+
+        if (details.status === 'fulfilled') {
+          const arr = this.normalizeArray(details.value);
+          if (arr.length > 0) {
+            const full = arr[0];
+            if (full.name || full.surname_Company) item.name = full.name || full.surname_Company;
+            if (full.surname_Company) item.surname_Company = full.surname_Company;
+            if (full.locationAddress) item.locationAddress = full.locationAddress;
+            if (full.address) item.address = full.address;
+            if (full.deliveryAddress) item.deliveryAddress = full.deliveryAddress;
+            if (full.accountStatus) item.accountStatus = full.accountStatus;
+            if (full.statusDesc) item.statusDesc = full.statusDesc;
+            if (full.accountNumber) item.accountNumber = full.accountNumber;
+            if (full.idRegistrationNumber) item.idRegistrationNumber = full.idRegistrationNumber;
+            if (full.accountType) item.accountType = full.accountType;
+            if (full.accountDesc) item.accountDesc = full.accountDesc;
+            if (full.outStandingAmount != null) item.outStandingAmount = full.outStandingAmount;
+            if (full.outStandingAmt != null) item.outStandingAmt = full.outStandingAmt;
+            if (full.oldAccountCode) item.oldAccountCode = full.oldAccountCode;
+            if (full.sgNumber) item.sgNumber = full.sgNumber;
+            delete (item as any)._fromAutocomplete;
+          }
+        }
+        if (balance.status === 'fulfilled') {
+          const bal = balance.value;
+          const amount = bal?.totalBalance ?? bal?.balance ?? bal?.outstandingAmount;
+          if (amount != null) {
+            item.outStandingAmount = amount;
+          }
+        }
+      } catch {}
+    });
+
+    await Promise.allSettled(enrichPromises);
+    if (this.quickSearchToken === token) {
+      this.dropdownResults.set([...this.dropdownResults()]);
     }
   }
 
