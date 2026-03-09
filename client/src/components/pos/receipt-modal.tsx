@@ -384,6 +384,12 @@ export function ReceiptModal() {
               <DialogDescription className="text-lg font-mono text-foreground font-medium" data-testid="text-receipt-number">
                  {currentTransaction.receiptNumber}
               </DialogDescription>
+              {splitReceipts.length > 1 && (
+                <p className="text-xs text-muted-foreground mt-1">{splitReceipts.length} of {splitReceipts.length} receipts</p>
+              )}
+              {splitReceipts.length === 1 && (
+                <p className="text-xs text-muted-foreground mt-1">1 of 1 receipt</p>
+              )}
             </>
           )}
         </DialogHeader>
@@ -592,7 +598,7 @@ export function ReceiptModal() {
                     <div className="border-t pt-3 mt-2 space-y-2">
                         {hasBothTypes && (
                             <p className="text-xs font-semibold text-green-700 bg-green-50 rounded-md px-2 py-1 text-center">
-                                Split Payment — {splitReceipts.length} receipts (consolidated print)
+                                Split Payment — {splitReceipts.length} of {splitReceipts.length} receipts (consolidated print)
                             </p>
                         )}
                         {isPartialSuccess && (

@@ -2322,6 +2322,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
         setProcessingStep(`Processing receipt for ${directIncomeItems.length > 1 ? `${directIncomeItems.length} Direct Income items` : (directIncomeItems[0]?.description || 'Direct Income')}...`);
         const incGroupTender = isMixedBasket ? incTender : totalTender;
         const incGroupChange = isMixedBasket ? incChange : totalChange;
+        const cashPaidNet = Math.max(0, record.payment.cash - totalChange);
+        const incCashShare = isMixedBasket && grandTotal > 0 ? Math.round((directIncomeTotal / grandTotal) * cashPaidNet * 100) / 100 : cashPaidNet;
+        let remainingIncCash = isSplitPayment ? incCashShare : 0;
+        let firstCashSubmitted = false;
 
         for (let idx = 0; idx < directIncomeItems.length; idx++) {
             const item = directIncomeItems[idx];
@@ -2560,19 +2564,30 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
                         await submitOneMisc(3, perCard, perCard, 0, 'CARD', 'card');
                     }
                 } else if (isSplitPayment) {
-                    const cashPaid = Math.max(0, record.payment.cash - totalChange);
-                    const cashPaidRatio = grandTotal > 0 ? cashPaid / grandTotal : 0;
-                    const itemCash = Math.round(item.amountToPay * cashPaidRatio * 100) / 100;
+                    const itemCash = Math.min(item.amountToPay, Math.round(remainingIncCash * 100) / 100);
                     const itemCard = Math.round((item.amountToPay - itemCash) * 100) / 100;
-                    const itemCashTender = isMixedBasket ? itemCash : record.payment.cash;
-                    const itemCashChange = isMixedBasket ? 0 : totalChange;
+                    remainingIncCash = Math.round((remainingIncCash - itemCash) * 100) / 100;
 
-                    console.log(`[Priority 2 SPLIT] Item "${item.description}": Cash R${itemCash} (tender R${itemCashTender}), Card R${itemCard}`);
+                    let itemCashTender = itemCash;
+                    let itemCashChange = 0;
+                    if (itemCash > 0 && !firstCashSubmitted && !isMixedBasket) {
+                        itemCashTender = record.payment.cash;
+                        itemCashChange = totalChange;
+                        firstCashSubmitted = true;
+                    }
 
-                    await submitOneMisc(1, itemCash, itemCashTender, itemCashChange, 'CASH', 'cash');
+                    console.log(`[Priority 2 SPLIT-WATERFALL] Item "${item.description}": Cash R${itemCash} (tender R${itemCashTender}), Card R${itemCard}, remainingCash R${remainingIncCash}`);
+
+                    if (itemCash > 0) {
+                        await submitOneMisc(1, itemCash, itemCashTender, itemCashChange, 'CASH', 'cash');
+                    }
 
                     if (itemCard > 0) {
                         await submitOneMisc(3, itemCard, itemCard, 0, 'CARD', 'card');
+                    }
+
+                    if (itemCash === 0 && itemCard === 0 && item.amountToPay === 0) {
+                        await submitOneMisc(1, 0, 0, 0, 'SINGLE', 'cash');
                     }
                 } else {
                     const miscPaymentTypeId = record.payment.card > 0 && record.payment.cash === 0 ? 3 : 1;
