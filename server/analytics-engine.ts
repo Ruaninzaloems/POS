@@ -2,6 +2,7 @@ import { db } from "./db";
 import { eq, desc, sql, and, gte, lte, count } from "drizzle-orm";
 import {
   debtRiskScores,
+  debtScoringWeights,
   legalComplianceLog,
   communicationLog,
   scheduledCommunications,
@@ -222,9 +223,17 @@ export class AnalyticsEngine {
     const medPct = totalScored > 0 ? (medRisk?.count || 0) / totalScored : 0;
     const highPct = totalScored > 0 ? (highRisk?.count || 0) / totalScored : 0;
 
-    const lowRecoveryRate = 0.75;
-    const medRecoveryRate = 0.45;
-    const highRecoveryRate = 0.15;
+    const weights = await db.select().from(debtScoringWeights).limit(100);
+    const getWeight = (name: string, fallback: number) => {
+      const found = weights.find(row => row.factorKey === name);
+      const parsed = found ? parseFloat(String(found.weight)) : NaN;
+      return Number.isFinite(parsed) ? parsed : fallback;
+    };
+    const lowRecoveryRate = getWeight('recovery_rate_low', 0.75);
+    const medRecoveryRate = getWeight('recovery_rate_medium', 0.45);
+    const highRecoveryRate = getWeight('recovery_rate_high', 0.15);
+    const forecast60Multiplier = getWeight('forecast_60day_multiplier', 1.05);
+    const forecast90Multiplier = getWeight('forecast_90day_multiplier', 1.08);
 
     const weightedRecoveryRate = (lowPct * lowRecoveryRate) + (medPct * medRecoveryRate) + (highPct * highRecoveryRate);
 
@@ -268,8 +277,8 @@ export class AnalyticsEngine {
       ],
       forecast: {
         next30Days: { estimatedRate: Math.round(weightedRecoveryRate * 100) },
-        next60Days: { estimatedRate: Math.round(weightedRecoveryRate * 100 * 1.05) },
-        next90Days: { estimatedRate: Math.round(weightedRecoveryRate * 100 * 1.08) },
+        next60Days: { estimatedRate: Math.round(weightedRecoveryRate * 100 * forecast60Multiplier) },
+        next90Days: { estimatedRate: Math.round(weightedRecoveryRate * 100 * forecast90Multiplier) },
       },
     };
   }

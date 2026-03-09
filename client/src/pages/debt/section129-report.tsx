@@ -23,6 +23,7 @@ import {
   fetchBillingCycles,
   fetchSection129Report,
   fetchAccounts,
+  fetchAgeingRanges,
 } from '@/lib/external-api';
 
 export default function Section129Report() {
@@ -37,10 +38,11 @@ export default function Section129Report() {
   const [finMonth, setFinMonth] = useState('__all__');
   const [billingCycle, setBillingCycle] = useState('__all__');
   const [accountNo, setAccountNo] = useState('');
-  const [ageing, setAgeing] = useState('30');
+  const [ageing, setAgeing] = useState('');
   const [amountGreaterThan, setAmountGreaterThan] = useState('0');
 
   const [billingCycles, setBillingCycles] = useState<{ id: string; name: string }[]>([]);
+  const [ageingRanges, setAgeingRanges] = useState<{ id: string; name: string }[]>([]);
   const [accountSuggestions, setAccountSuggestions] = useState<{ accountNo: string; name: string }[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [results, setResults] = useState<any[]>([]);
@@ -52,6 +54,7 @@ export default function Section129Report() {
 
   useEffect(() => {
     fetchBillingCycles().then(setBillingCycles).catch(() => {});
+    fetchAgeingRanges().then(setAgeingRanges).catch(() => {});
   }, []);
 
   const handleAccountSearch = useCallback(async (query: string) => {
@@ -108,7 +111,7 @@ export default function Section129Report() {
     setFinMonth('__all__');
     setBillingCycle('__all__');
     setAccountNo('');
-    setAgeing('30');
+    setAgeing('');
     setAmountGreaterThan('0');
     setResults([]);
     setSearched(false);
@@ -135,14 +138,6 @@ export default function Section129Report() {
     { value: '4', label: 'April' }, { value: '5', label: 'May' }, { value: '6', label: 'June' },
   ];
 
-  const ageingOptions = [
-    { value: '30', label: '30 Days' },
-    { value: '60', label: '60 Days' },
-    { value: '90', label: '90 Days' },
-    { value: '120', label: '120 Days' },
-    { value: '150', label: '150 Days' },
-    { value: '180', label: '180+ Days' },
-  ];
 
   const paginatedResults = results.slice((gridPage - 1) * gridPageSize, gridPage * gridPageSize);
   const totalGridPages = Math.ceil(results.length / gridPageSize);
@@ -277,8 +272,8 @@ export default function Section129Report() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {ageingOptions.map(a => (
-                        <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
+                      {ageingRanges.map(a => (
+                        <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

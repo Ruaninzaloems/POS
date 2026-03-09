@@ -38,6 +38,10 @@ import {
   submitSection129FinalRun,
   fetchBillingCycles,
   fetchTowns,
+  fetchPropertyCategories,
+  fetchAccountTypes,
+  fetchPersonTypes,
+  fetchAgeingRanges,
   fetchSection129RunFiles,
   downloadSection129File,
   type Section129Config,
@@ -74,6 +78,10 @@ export default function Section129Notices() {
   const [runsLoading, setRunsLoading] = useState(true);
   const [billingCycles, setBillingCycles] = useState<{ id: string; name: string }[]>([]);
   const [towns, setTowns] = useState<{ id: string; name: string }[]>([]);
+  const [propertyCategories, setPropertyCategories] = useState<{ id: string; name: string }[]>([]);
+  const [accountTypes, setAccountTypes] = useState<{ id: string; name: string }[]>([]);
+  const [personTypes, setPersonTypes] = useState<{ id: string; name: string }[]>([]);
+  const [ageingRanges, setAgeingRanges] = useState<{ id: string; name: string }[]>([]);
 
   const [billingCycle, setBillingCycle] = useState('');
   const [town, setTown] = useState('');
@@ -112,6 +120,10 @@ export default function Section129Notices() {
       fetchSection129Runs(),
       fetchBillingCycles(),
       fetchTowns(),
+      fetchPropertyCategories(),
+      fetchAccountTypes(),
+      fetchPersonTypes(),
+      fetchAgeingRanges(),
     ]);
 
     if (results[0].status === 'fulfilled') {
@@ -133,6 +145,18 @@ export default function Section129Notices() {
     }
     if (results[3].status === 'fulfilled') {
       setTowns(results[3].value);
+    }
+    if (results[4].status === 'fulfilled') {
+      setPropertyCategories(results[4].value);
+    }
+    if (results[5].status === 'fulfilled') {
+      setAccountTypes(results[5].value);
+    }
+    if (results[6].status === 'fulfilled') {
+      setPersonTypes(results[6].value);
+    }
+    if (results[7].status === 'fulfilled') {
+      setAgeingRanges(results[7].value);
     }
   }, []);
 
@@ -279,14 +303,6 @@ export default function Section129Notices() {
     { value: '10', label: 'October' }, { value: '11', label: 'November' }, { value: '12', label: 'December' },
   ];
 
-  const ageingOptions = [
-    { value: '30', label: '30+ Days' },
-    { value: '60', label: '60+ Days' },
-    { value: '90', label: '90+ Days' },
-    { value: '120', label: '120+ Days' },
-    { value: '150', label: '150+ Days' },
-    { value: '180', label: '180+ Days' },
-  ];
 
   const paginatedRuns = runs.slice((gridPage - 1) * gridPageSize, gridPage * gridPageSize);
   const totalGridPages = Math.ceil(runs.length / gridPageSize);
@@ -461,10 +477,9 @@ export default function Section129Notices() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__all__">All Categories</SelectItem>
-                      <SelectItem value="residential">Residential</SelectItem>
-                      <SelectItem value="commercial">Commercial</SelectItem>
-                      <SelectItem value="industrial">Industrial</SelectItem>
-                      <SelectItem value="agricultural">Agricultural</SelectItem>
+                      {propertyCategories.map(pc => (
+                        <SelectItem key={pc.id} value={pc.id}>{pc.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -477,9 +492,9 @@ export default function Section129Notices() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__all__">All Types</SelectItem>
-                      <SelectItem value="normal">Normal</SelectItem>
-                      <SelectItem value="indigent">Indigent</SelectItem>
-                      <SelectItem value="government">Government</SelectItem>
+                      {accountTypes.map(at => (
+                        <SelectItem key={at.id} value={at.id}>{at.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -492,8 +507,9 @@ export default function Section129Notices() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__all__">All</SelectItem>
-                      <SelectItem value="natural">Natural Person</SelectItem>
-                      <SelectItem value="legal">Legal Person</SelectItem>
+                      {personTypes.map(pt => (
+                        <SelectItem key={pt.id} value={pt.id}>{pt.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -516,8 +532,8 @@ export default function Section129Notices() {
                       <SelectValue placeholder="Select ageing" />
                     </SelectTrigger>
                     <SelectContent>
-                      {ageingOptions.map(a => (
-                        <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
+                      {ageingRanges.map(a => (
+                        <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

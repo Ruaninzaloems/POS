@@ -30,20 +30,12 @@ import {
   fetchAttorneyList,
   fetchBillingCycles,
   fetchTowns,
+  fetchAgeingRanges,
   type HandoverRecord,
   type Attorney,
 } from '@/lib/external-api';
 
 type HandoverOption = 'account' | 'bulk' | 'rotation';
-
-const AGEING_OPTIONS = [
-  { value: '30', label: '30+ Days' },
-  { value: '60', label: '60+ Days' },
-  { value: '90', label: '90+ Days' },
-  { value: '120', label: '120+ Days' },
-  { value: '150', label: '150+ Days' },
-  { value: '180', label: '180+ Days' },
-];
 
 const PAGE_SIZE = 50;
 
@@ -62,6 +54,7 @@ export default function HandoverManagement() {
   const [attorneys, setAttorneys] = useState<Attorney[]>([]);
   const [billingCycles, setBillingCycles] = useState<{ id: string; name: string }[]>([]);
   const [towns, setTowns] = useState<{ id: string; name: string }[]>([]);
+  const [ageingRanges, setAgeingRanges] = useState<{ id: string; name: string }[]>([]);
 
   const [rotationAllocations, setRotationAllocations] = useState<{ attorneyId: number; attorneyName: string; percentage: number }[]>([]);
 
@@ -76,14 +69,16 @@ export default function HandoverManagement() {
     const loadRefData = async () => {
       setLoadingRef(true);
       try {
-        const [attList, bcList, townList] = await Promise.all([
+        const [attList, bcList, townList, ageList] = await Promise.all([
           fetchAttorneyList().catch(() => []),
           fetchBillingCycles().catch(() => []),
           fetchTowns().catch(() => []),
+          fetchAgeingRanges().catch(() => []),
         ]);
         setAttorneys(attList);
         setBillingCycles(bcList);
         setTowns(townList);
+        setAgeingRanges(ageList);
       } catch (e: any) {
         toast({ title: 'Load Error', description: e.message || 'Failed to load reference data.', variant: 'destructive' });
       } finally {
@@ -349,8 +344,8 @@ export default function HandoverManagement() {
                           <SelectValue placeholder="Select ageing..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {AGEING_OPTIONS.map(a => (
-                            <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
+                          {ageingRanges.map(a => (
+                            <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -425,8 +420,8 @@ export default function HandoverManagement() {
                           <SelectValue placeholder="Select ageing..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {AGEING_OPTIONS.map(a => (
-                            <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
+                          {ageingRanges.map(a => (
+                            <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>

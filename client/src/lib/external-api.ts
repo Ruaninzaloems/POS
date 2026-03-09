@@ -3139,8 +3139,36 @@ export async function fetchBillingCycles(): Promise<{ id: string; name: string }
 export async function fetchTowns(): Promise<{ id: string; name: string }[]> {
     const res = await apiFetch('/api/platinum/billing-debt/towns');
     if (!res.ok) {
-        throw new Error(`Failed to fetch towns (status ${res.status})`);
+        throw new Error(`Failed to fetch towns from API (status ${res.status})`);
     }
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+}
+
+export async function fetchPropertyCategories(): Promise<{ id: string; name: string }[]> {
+    const res = await apiFetch('/api/platinum/billing-debt/property-categories');
+    if (!res.ok) throw new Error(`Failed to fetch property categories from API (status ${res.status})`);
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+}
+
+export async function fetchAccountTypes(): Promise<{ id: string; name: string }[]> {
+    const res = await apiFetch('/api/platinum/billing-debt/account-types');
+    if (!res.ok) throw new Error(`Failed to fetch account types from API (status ${res.status})`);
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+}
+
+export async function fetchPersonTypes(): Promise<{ id: string; name: string }[]> {
+    const res = await apiFetch('/api/platinum/billing-debt/person-types');
+    if (!res.ok) throw new Error(`Failed to fetch person types from API (status ${res.status})`);
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+}
+
+export async function fetchAgeingRanges(): Promise<{ id: string; name: string }[]> {
+    const res = await apiFetch('/api/platinum/billing-debt/ageing-ranges');
+    if (!res.ok) throw new Error(`Failed to fetch ageing ranges from API (status ${res.status})`);
     const data = await res.json();
     return Array.isArray(data) ? data : [];
 }
