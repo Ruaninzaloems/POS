@@ -80,8 +80,8 @@ export default function Section129Config() {
   const [addPercentDebtor, setAddPercentDebtor] = useState('');
   const [addPercentHandover, setAddPercentHandover] = useState('');
 
-  const [templates, setTemplates] = useState<{ id: string; name: string }[]>([{ id: 'section129-standard', name: 'Section 129 Standard' }]);
-  const [smsTemplates, setSmsTemplates] = useState<{ id: string; name: string }[]>([{ id: 'sms-notification', name: 'SMS Notification' }]);
+  const [templates, setTemplates] = useState<{ id: string; name: string }[]>([]);
+  const [smsTemplates, setSmsTemplates] = useState<{ id: string; name: string }[]>([]);
   const [additionalBillingTypes, setAdditionalBillingTypes] = useState<{ id: string; name: string }[]>([]);
   const [attorneys, setAttorneys] = useState<Attorney[]>([]);
   const [saving, setSaving] = useState(false);
@@ -101,13 +101,13 @@ export default function Section129Config() {
   const loadDropdowns = useCallback(async () => {
     try {
       const [tpl, smsTpl, billTypes, attyList] = await Promise.all([
-        fetchSection129Templates().catch(() => [{ id: 'section129-standard', name: 'Section 129 Standard' }]),
-        fetchSection129SmsTemplates().catch(() => [{ id: 'sms-notification', name: 'SMS Notification' }]),
+        fetchSection129Templates().catch(() => []),
+        fetchSection129SmsTemplates().catch(() => []),
         fetchAdditionalBillingTypes().catch(() => []),
         fetchAttorneyList().catch(() => []),
       ]);
-      setTemplates(Array.isArray(tpl) && tpl.length > 0 ? tpl : [{ id: 'section129-standard', name: 'Section 129 Standard' }]);
-      setSmsTemplates(Array.isArray(smsTpl) && smsTpl.length > 0 ? smsTpl : [{ id: 'sms-notification', name: 'SMS Notification' }]);
+      setTemplates(Array.isArray(tpl) ? tpl : []);
+      setSmsTemplates(Array.isArray(smsTpl) ? smsTpl : []);
       setAdditionalBillingTypes(Array.isArray(billTypes) ? billTypes : []);
       setAttorneys(Array.isArray(attyList) ? attyList : []);
     } catch (e) {
