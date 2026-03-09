@@ -66,6 +66,27 @@ A full debt recovery workflow under the "Debt" sidebar group covers Section 129 
 
 **Debt Proxy Routes** (server/routes.ts under `/api/platinum/billing-debt/*`): section129-config, section129-config-list, section129-config-save, section129-templates, section129-sms-templates, additional-billing-types, section129-runs, section129-trial-run, section129-trial-review-submit, section129-authorize, section129-final-run, section129-run-accounts, section129-run-files, section129-download-file, section129-report, sms-log-report, handover-list, handover-submit, handover-terminate, handover-report, attorney-list, billing-cycles, towns.
 
+#### Legal Compliance Engine
+A full legal compliance framework under the "Compliance" sidebar group covering South African legislative best practice.
+
+**Legal Rules Engine** (`server/legal-compliance.ts`): Validates every debt action against applicable legislation (NCA, MSA, MPRA, POPIA, CPA). Each action is mapped to relevant legislation categories. `validateAction()` checks active rules and returns violations. Rules are stored in `legal_rule_versions` database table with version tracking, effective dates, and soft-delete support.
+
+**Court-Ready Audit Trail** (`legal_compliance_log` table): Every debt action automatically stores: user, timestamp, IP address, UUID API call ID, document version, communication proof, applicable legislation reference, legal rule version, and process stage. Compliance logging is fire-and-forget (non-blocking) on all debt POST routes.
+
+**Litigation Evidence Bundle** (`litigation_evidence_bundles` table): On-demand generation of court submission packs per account. Bundles include: notice history, SMS logs, email logs, postal batch records, account ledger summary, proof of service, and handover records. Each section has completeness indicators.
+
+**Legal Rules Administration** (`/legal/rules`): CRUD admin page for managing legal rule versions. Category filter (NCA/MSA/MPRA/POPIA/CPA), version tracking, effective date management.
+
+**Compliance Audit Trail Page** (`/legal/audit-trail`): Searchable audit log with filters by action type, account, user, date range. "Court Ready" badge per record when all required fields populated. Expandable row detail for full metadata.
+
+**Evidence Bundle Page** (`/legal/evidence-bundle`): Generate and view litigation evidence bundles. Structured sections with completeness indicators.
+
+**Database Tables**: `legal_rule_versions`, `legal_compliance_log`, `litigation_evidence_bundles` (PostgreSQL, Drizzle ORM).
+
+**Default Rules Seeded**: 8 rules covering NCA S129 Notice/Timeframe, MSA Credit Control/Customer Care, MPRA Rates, POPIA Consent/Data Retention, CPA Notice Requirements.
+
+**Legal Compliance API Routes** (`/api/legal/*`): rules (GET/POST/PUT/DELETE), compliance-log (GET), compliance-log/:entityId (GET), evidence-bundle (POST/GET), evidence-bundles (GET), validate-action (POST).
+
 ## External Dependencies
 
 ### Multi-Site Support

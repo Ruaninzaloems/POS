@@ -5,6 +5,7 @@ import { execSync } from "child_process";
 import { writeFileSync, unlinkSync, existsSync } from "fs";
 import type { Request } from "express";
 import OpenAI from "openai";
+import { legalEngine, getClientIp, seedDefaultRules } from "./legal-compliance";
 
 function getSession(req: Request): UserSession {
   if (!req.session.platinumAuth) {
@@ -7012,6 +7013,11 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
       if (!requireDebtPermission(session, DEBT_PERMISSIONS.PROCESS_SECTION129, res)) return;
       const data = await platinumPost(session, "/api/BillingDebt/section129-trial-run", injectAuditFields(session, req.body));
       handlePlatinumResult(res, data);
+      legalEngine.logComplianceAction({
+        actionType: 'TRIAL_RUN', entityType: 'SECTION129_RUN', entityId: req.body.runId?.toString() || req.body.billingCycle || 'unknown',
+        processStage: 'TRIAL_RUN_SUBMITTED', userId: session.userData?.user_ID?.toString(), userName: session.userData?.userName,
+        ipAddress: getClientIp(req), metadata: { finYear: req.body.finYear, billingCycle: req.body.billingCycle, distributionType: req.body.distributionType },
+      }).catch(e => console.error('[LegalCompliance] Log failed:', e.message));
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
@@ -7023,6 +7029,11 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
       if (!requireDebtPermission(session, DEBT_PERMISSIONS.PROCESS_SECTION129, res)) return;
       const data = await platinumPost(session, "/api/BillingDebt/section129-trial-review-submit", injectAuditFields(session, req.body, { isReview: true }));
       handlePlatinumResult(res, data);
+      legalEngine.logComplianceAction({
+        actionType: 'TRIAL_REVIEW', entityType: 'SECTION129_RUN', entityId: req.body.runId?.toString() || 'unknown',
+        processStage: 'TRIAL_REVIEW_SUBMITTED', userId: session.userData?.user_ID?.toString(), userName: session.userData?.userName,
+        ipAddress: getClientIp(req), metadata: { runId: req.body.runId, selectedAccountIds: req.body.selectedAccountIds },
+      }).catch(e => console.error('[LegalCompliance] Log failed:', e.message));
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
@@ -7034,6 +7045,11 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
       if (!requireDebtPermission(session, DEBT_PERMISSIONS.AUTHORISE_SECTION129, res)) return;
       const data = await platinumPost(session, "/api/BillingDebt/section129-authorize", injectAuditFields(session, req.body, { isReview: true }));
       handlePlatinumResult(res, data);
+      legalEngine.logComplianceAction({
+        actionType: 'AUTHORIZATION', entityType: 'SECTION129_RUN', entityId: req.body.runId?.toString() || 'unknown',
+        processStage: 'AUTHORIZATION_GRANTED', userId: session.userData?.user_ID?.toString(), userName: session.userData?.userName,
+        ipAddress: getClientIp(req), metadata: { runId: req.body.runId, notes: req.body.notes },
+      }).catch(e => console.error('[LegalCompliance] Log failed:', e.message));
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
@@ -7045,6 +7061,12 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
       if (!requireDebtPermission(session, DEBT_PERMISSIONS.PROCESS_SECTION129, res)) return;
       const data = await platinumPost(session, "/api/BillingDebt/section129-final-run", injectAuditFields(session, req.body));
       handlePlatinumResult(res, data);
+      legalEngine.logComplianceAction({
+        actionType: 'FINAL_RUN', entityType: 'SECTION129_RUN', entityId: req.body.runId?.toString() || 'unknown',
+        processStage: 'FINAL_RUN_EXECUTED', userId: session.userData?.user_ID?.toString(), userName: session.userData?.userName,
+        ipAddress: getClientIp(req), proofOfDelivery: req.body.distributionType === 'sms' ? 'SMS_SENT' : req.body.distributionType === 'email' ? 'EMAIL_SENT' : 'PRINTED',
+        metadata: { runId: req.body.runId },
+      }).catch(e => console.error('[LegalCompliance] Log failed:', e.message));
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
@@ -7078,6 +7100,11 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
       if (!requireDebtPermission(session, DEBT_PERMISSIONS.HANDOVER_PROCESS, res)) return;
       const data = await platinumPost(session, "/api/BillingDebt/handover-submit", injectAuditFields(session, req.body));
       handlePlatinumResult(res, data);
+      legalEngine.logComplianceAction({
+        actionType: 'HANDOVER_SUBMITTED', entityType: 'HANDOVER', entityId: req.body.accountNo || req.body.billingCycle || 'unknown',
+        processStage: 'HANDOVER_SUBMITTED', userId: session.userData?.user_ID?.toString(), userName: session.userData?.userName,
+        ipAddress: getClientIp(req), metadata: { handoverOption: req.body.handoverOption, attorneyId: req.body.attorneyId },
+      }).catch(e => console.error('[LegalCompliance] Log failed:', e.message));
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
@@ -7089,6 +7116,11 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
       if (!requireDebtPermission(session, DEBT_PERMISSIONS.HANDOVER_PROCESS, res)) return;
       const data = await platinumPost(session, "/api/BillingDebt/handover-terminate", injectAuditFields(session, req.body, { isTermination: true }));
       handlePlatinumResult(res, data);
+      legalEngine.logComplianceAction({
+        actionType: 'TERMINATION', entityType: 'HANDOVER', entityId: req.body.handoverIds?.join(',') || 'unknown',
+        processStage: 'HANDOVER_TERMINATED', userId: session.userData?.user_ID?.toString(), userName: session.userData?.userName,
+        ipAddress: getClientIp(req), metadata: { handoverIds: req.body.handoverIds, reason: req.body.reason },
+      }).catch(e => console.error('[LegalCompliance] Log failed:', e.message));
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
@@ -7175,6 +7207,11 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
       if (!requireDebtPermission(session, DEBT_PERMISSIONS.PROCESS_SECTION129, res)) return;
       const data = await platinumPost(session, "/api/BillingDebt/section129-config-save", injectAuditFields(session, req.body));
       handlePlatinumResult(res, data);
+      legalEngine.logComplianceAction({
+        actionType: 'CONFIG_CHANGE', entityType: 'CONFIG', entityId: req.body.finYear || 'unknown',
+        processStage: 'CONFIG_SAVED', userId: session.userData?.user_ID?.toString(), userName: session.userData?.userName,
+        ipAddress: getClientIp(req), metadata: { finYear: req.body.finYear, enabled: req.body.enabled },
+      }).catch(e => console.error('[LegalCompliance] Log failed:', e.message));
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
@@ -7249,6 +7286,182 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  // =====================================================
+  // LEGAL COMPLIANCE ENGINE ROUTES
+  // =====================================================
+
+  seedDefaultRules().catch(e => console.error("[LegalCompliance] Seed failed:", e.message));
+
+  function requireLegalAdmin(session: UserSession, res: any): boolean {
+    const userData = session.userData || {};
+    const isSuperUser = userData.superUser === true;
+    const permissions: string[] = userData.permissions || userData.roles || [];
+    const hasAdmin = permissions.includes('ADMIN') || permissions.includes('admin') || permissions.includes('LEGAL_ADMIN') || permissions.includes('COMPLIANCE_ADMIN');
+    if (!isSuperUser && !hasAdmin && permissions.length > 0) {
+      res.status(403).json({ message: "Insufficient permissions: Legal administration access required" });
+      return false;
+    }
+    return true;
+  }
+
+  app.get("/api/legal/rules", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const category = req.query.category as string | undefined;
+      const isActive = req.query.isActive === 'true' ? true : req.query.isActive === 'false' ? false : undefined;
+      const rules = await legalEngine.getAllRules({ category, isActive });
+      res.json(rules);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to fetch legal rules", detail: e.message });
+    }
+  });
+
+  app.post("/api/legal/rules", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const rule = await legalEngine.createRule(req.body);
+      await legalEngine.logComplianceAction({
+        actionType: 'CONFIG_CHANGE',
+        entityType: 'LEGAL_RULE',
+        entityId: String(rule.id),
+        processStage: 'RULE_CREATED',
+        userId: session.userData?.user_ID?.toString(),
+        userName: session.userData?.userName,
+        ipAddress: getClientIp(req),
+        metadata: { ruleCode: rule.ruleCode, title: rule.title },
+      });
+      res.json(rule);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to create legal rule", detail: e.message });
+    }
+  });
+
+  app.put("/api/legal/rules/:id", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const id = parseInt(req.params.id);
+      const rule = await legalEngine.updateRule(id, req.body);
+      if (!rule) { res.status(404).json({ message: "Rule not found" }); return; }
+      await legalEngine.logComplianceAction({
+        actionType: 'CONFIG_CHANGE',
+        entityType: 'LEGAL_RULE',
+        entityId: String(id),
+        processStage: 'RULE_UPDATED',
+        userId: session.userData?.user_ID?.toString(),
+        userName: session.userData?.userName,
+        ipAddress: getClientIp(req),
+        metadata: { ruleCode: rule.ruleCode, changes: req.body },
+      });
+      res.json(rule);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to update legal rule", detail: e.message });
+    }
+  });
+
+  app.delete("/api/legal/rules/:id", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const id = parseInt(req.params.id);
+      const rule = await legalEngine.deactivateRule(id);
+      if (!rule) { res.status(404).json({ message: "Rule not found" }); return; }
+      await legalEngine.logComplianceAction({
+        actionType: 'CONFIG_CHANGE',
+        entityType: 'LEGAL_RULE',
+        entityId: String(id),
+        processStage: 'RULE_DEACTIVATED',
+        userId: session.userData?.user_ID?.toString(),
+        userName: session.userData?.userName,
+        ipAddress: getClientIp(req),
+        metadata: { ruleCode: rule.ruleCode },
+      });
+      res.json(rule);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to deactivate legal rule", detail: e.message });
+    }
+  });
+
+  app.get("/api/legal/compliance-log", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const logs = await legalEngine.getComplianceLogs({
+        actionType: req.query.actionType as string,
+        entityType: req.query.entityType as string,
+        entityId: req.query.entityId as string,
+        accountNo: req.query.accountNo as string,
+        userId: req.query.userId as string,
+        dateFrom: req.query.dateFrom as string,
+        dateTo: req.query.dateTo as string,
+        limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
+        offset: req.query.offset ? parseInt(req.query.offset as string) : undefined,
+      });
+      res.json(logs);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to fetch compliance logs", detail: e.message });
+    }
+  });
+
+  app.get("/api/legal/compliance-log/:entityId", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const logs = await legalEngine.getComplianceLogs({ entityId: req.params.entityId });
+      res.json(logs);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to fetch compliance logs", detail: e.message });
+    }
+  });
+
+  app.post("/api/legal/evidence-bundle", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const { accountNo } = req.body;
+      if (!accountNo) { res.status(400).json({ message: "accountNo is required" }); return; }
+      const generatedBy = session.userData?.userName || session.userData?.user_ID?.toString() || 'system';
+      const bundle = await legalEngine.generateEvidenceBundle(accountNo, generatedBy);
+      res.json(bundle);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to generate evidence bundle", detail: e.message });
+    }
+  });
+
+  app.get("/api/legal/evidence-bundles", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const bundles = await legalEngine.getEvidenceBundles({
+        accountNo: req.query.accountNo as string,
+        limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
+      });
+      res.json(bundles);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to fetch evidence bundles", detail: e.message });
+    }
+  });
+
+  app.get("/api/legal/evidence-bundle/:id", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const bundle = await legalEngine.getEvidenceBundle(parseInt(req.params.id));
+      if (!bundle) { res.status(404).json({ message: "Bundle not found" }); return; }
+      res.json(bundle);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to fetch evidence bundle", detail: e.message });
+    }
+  });
+
+  app.post("/api/legal/validate-action", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const { actionType, entityType, metadata } = req.body;
+      const result = await legalEngine.validateAction(actionType, entityType, metadata);
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to validate action", detail: e.message });
     }
   });
 

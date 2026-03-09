@@ -3239,6 +3239,25 @@ export async function fetchHandoverReport(params?: {
     return res.json();
 }
 
+export async function fetchComplianceLogs(params?: Record<string, string>): Promise<any[]> {
+    const searchParams = new URLSearchParams(params || {});
+    const res = await apiFetch(`/api/legal/compliance-log?${searchParams.toString()}`);
+    if (!res.ok) {
+        throw new Error(`Failed to fetch compliance logs (status ${res.status})`);
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+}
+
+export async function fetchComplianceLogsByEntity(entityId: string): Promise<any[]> {
+    const res = await apiFetch(`/api/legal/compliance-log/${encodeURIComponent(entityId)}`);
+    if (!res.ok) {
+        throw new Error(`Failed to fetch compliance logs for entity ${entityId} (status ${res.status})`);
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+}
+
 export async function downloadSection129File(fileId: number | string): Promise<void> {
     const res = await apiFetch(`/api/platinum/billing-debt/section129-download-file?fileId=${fileId}`);
     if (!res.ok) {
@@ -3261,4 +3280,79 @@ export async function downloadSection129File(fileId: number | string): Promise<v
     a.click();
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
+}
+
+export async function fetchLegalRules(filters?: { category?: string }): Promise<any[]> {
+    const params = new URLSearchParams();
+    if (filters?.category) params.append('category', filters.category);
+    const res = await apiFetch(`/api/legal/rules?${params.toString()}`);
+    if (!res.ok) {
+        throw new Error(`Failed to fetch legal rules (status ${res.status})`);
+    }
+    return await res.json();
+}
+
+export async function createLegalRule(data: any): Promise<any> {
+    const res = await apiFetch('/api/legal/rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || `Failed to create legal rule (status ${res.status})`);
+    }
+    return await res.json();
+}
+
+export async function updateLegalRule(id: number, data: any): Promise<any> {
+    const res = await apiFetch(`/api/legal/rules/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || `Failed to update legal rule (status ${res.status})`);
+    }
+    return await res.json();
+}
+
+export async function deleteLegalRule(id: number): Promise<void> {
+    const res = await apiFetch(`/api/legal/rules/${id}`, {
+        method: 'DELETE',
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || `Failed to delete legal rule (status ${res.status})`);
+    }
+}
+
+export async function generateEvidenceBundle(accountNo: string): Promise<any> {
+    const res = await apiFetch('/api/legal/evidence-bundle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountNo }),
+    });
+    if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || `Failed to generate evidence bundle (status ${res.status})`);
+    }
+    return res.json();
+}
+
+export async function fetchEvidenceBundles(): Promise<any[]> {
+    const res = await apiFetch('/api/legal/evidence-bundles');
+    if (!res.ok) {
+        throw new Error(`Failed to fetch evidence bundles (status ${res.status})`);
+    }
+    return res.json();
+}
+
+export async function fetchEvidenceBundle(id: number): Promise<any> {
+    const res = await apiFetch(`/api/legal/evidence-bundle/${id}`);
+    if (!res.ok) {
+        throw new Error(`Failed to fetch evidence bundle (status ${res.status})`);
+    }
+    return res.json();
 }

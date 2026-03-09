@@ -28,6 +28,8 @@ import {
   FileText,
   ClipboardList,
   MessageSquare,
+  Scale,
+  FileStack,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HelpTip } from '@/components/ui/help-tip';
@@ -61,9 +63,16 @@ const debtChildren: MenuItem[] = [
   { label: 'SMS Log Report', href: '/debt/sms-log-report', icon: MessageSquare, description: 'SMS Log Report', helpTip: 'View SMS notification logs for Section 129 notices and debt recovery communications' },
 ];
 
+const complianceChildren: MenuItem[] = [
+  { label: 'Legal Rules', href: '/legal/rules', icon: Scale, description: 'Manage legal rule versions', helpTip: 'Configure and manage legal rule versions for South African legislation compliance validation' },
+  { label: 'Audit Trail', href: '/legal/audit-trail', icon: ShieldCheck, description: 'Court-ready compliance audit trail', helpTip: 'View court-ready audit logs of all compliance actions with full traceability including user, IP, timestamps, and communication proof' },
+  { label: 'Evidence Bundles', href: '/legal/evidence-bundle', icon: FileStack, description: 'Generate and manage litigation evidence bundles', helpTip: 'Generate court-ready evidence bundles containing notice history, communication logs, and proof of service for account litigation' },
+];
+
 const menuEntries: MenuEntry[] = [
   { label: 'Point of Sale', icon: CreditCard, helpTip: 'All POS receipting, payments, deposits, and supervisor functions', children: posChildren },
   { label: 'Debt', icon: Landmark, helpTip: 'Debt management, arrangements, and collections', children: debtChildren },
+  { label: 'Compliance', icon: Scale, helpTip: 'Legal compliance, audit trails, and evidence management', children: complianceChildren },
   { label: 'Billing Dashboard', href: '/billing-dashboard', icon: BarChart3, description: 'Billing statistics and notifications', helpTip: 'View billing notifications, alerts, and system status across all municipal services' },
   { label: 'General Enquiries', href: '/enquiries/general', icon: Search, description: 'Search and view account details', helpTip: 'Look up account balances, transaction history, and billing details' },
   { label: 'Client Communications', href: '/communications', icon: MessageSquareMore, description: 'Send custom emails and SMS to account holders', helpTip: 'Send emails and SMS messages to account holders' },
@@ -74,7 +83,7 @@ export default function HomePage() {
   const [, setLocation] = useLocation();
   const { currentUser, activeSession, endSession, viewMode, toggleViewMode, siteInfo } = usePos();
   const isSite02 = siteInfo?.id === 'site02';
-  const [groupOpen, setGroupOpen] = useState<Record<string, boolean>>({ 'Point of Sale': true, 'Debt': true });
+  const [groupOpen, setGroupOpen] = useState<Record<string, boolean>>({ 'Point of Sale': true, 'Debt': true, 'Compliance': true });
   const toggleGroup = (label: string) => setGroupOpen(prev => ({ ...prev, [label]: !prev[label] }));
 
   return (
