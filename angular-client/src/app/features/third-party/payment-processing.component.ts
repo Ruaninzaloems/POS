@@ -117,10 +117,7 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
   giStep = signal<GenericStep>('upload');
   giFile = signal<File | null>(null);
   giPaymentRef = signal('');
-  giReceiptDate = signal(() => {
-    const now = new Date();
-    return now.toISOString().split('T')[0];
-  });
+  giReceiptDate = signal(new Date().toISOString().split('T')[0]);
   giPaymentTypeId = signal('5');
   giPostToCashbook = signal(true);
   giSubmitting = signal(false);
@@ -600,6 +597,202 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
     const files = event.dataTransfer?.files;
     if (files && files[0]) {
       this.giFile.set(files[0]);
+    }
+  }
+
+  giPreviewTotal = computed(() => this.giPreviewRows().reduce((s, r) => s + (r.amount || 0), 0));
+
+  async handleGiPreview(): Promise<void> {
+    if (!this.giFile()) {
+      this.giError.set('Please select a CSV file.');
+      return;
+    }
+    this.giPreviewLoading.set(true);
+    this.giError.set('');
+    this.giPreviewRows.set([]);
+    try {
+      const text = await this.giFile()!.text();
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      const rows: GenericPreviewRow[] = [];
+      const receiptDate = this.giReceiptDate() || new Date().toISOString().split('T')[0];
+      const paymentTypeId = Number(this.giPaymentTypeId()) || 5;
+
+      for (let i = 0; i < lines.length; i++) {
+        const parts = lines[i].split(',').map(p => p.trim().replace(/^["']|["']$/g, ''));
+        if (parts.length < 2) continue;
+        const accountNumber = parts[0];
+        const amount = parseFloat(parts[1]);
+        if (!accountNumber || isNaN(amount)) continue;
+        rows.push({
+          rowNum: i + 1,
+          accountNumber,
+          amount,
+          receiptDate,
+          paymentTypeId,
+          isValid: true,
+          validationStatus: 'unverified',
+          validationMsg: '',
+        });
+      }
+
+      if (rows.length === 0) {
+        this.giError.set('No valid rows found in CSV. Expected format: AccountNumber, Amount');
+        this.giPreviewLoading.set(false);
+        return;
+      }
+
+      const batchSize = 10;
+      for (let i = 0; i < rows.length; i += batchSize) {
+        const batch = rows.slice(i, i + batchSize);
+        const lookups = batch.map(async (row) => {
+          try {
+            const result: any = await firstValueFrom(
+              this.api.post('/api/platinum/direct-deposit-allocation/validate-generic-import', {
+                accountNumber: row.accountNumber,
+                amount: row.amount,
+              })
+            );
+            if (result?.isValid === false || result?.error) {
+              row.isValid = false;
+              row.validationStatus = 'invalid';
+              row.validationMsg = result.message || result.error || 'Account not found';
+            } else {
+              row.isValid = true;
+              row.validationStatus = 'valid';
+              row.validationMsg = result?.message || 'Account verified';
+              if (result?.ownerName) row.ownerName = result.ownerName;
+              if (result?.address) row.address = result.address;
+            }
+          } catch {
+            row.validationStatus = 'unverified';
+            row.validationMsg = 'Could not validate';
+          }
+        });
+        await Promise.all(lookups);
+      }
+
+      this.giPreviewRows.set(rows);
+      this.giStep.set('preview');
+    } catch (e: any) {
+      this.giError.set('Failed to parse CSV: ' + (e?.message || 'Unknown error'));
+    } finally {
+      this.giPreviewLoading.set(false);
+    }
+  }
+
+  async handleGiSubmit(): Promise<void> {
+    const validRows = this.giPreviewRows().filter(r => r.isValid);
+    if (validRows.length === 0) {
+      this.toast.error('No valid rows to submit.');
+      return;
+    }
+    this.giSubmitting.set(true);
+    this.giError.set('');
+    try {
+      const user = this.auth.user();
+      const cashierInfo = this.cashierInfo();
+      const receiptDate = this.giReceiptDate() || new Date().toISOString().split('T')[0];
+      const dateParts = receiptDate.split('-');
+      const formattedDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : receiptDate;
+      const payload = {
+        cashOfficeId: Number(this.giSelectedCashOfficeId()) || Number(cashierInfo?.cashOfficeId) || 0,
+        cashierId: Number(cashierInfo?.cashierId) || Number(user?.user_ID) || 0,
+        finYear: user?.finYear || '',
+        postToCashbook: this.giPostToCashbook(),
+        payments: validRows.map(r => ({
+          accountNumber: r.accountNumber,
+          amount: r.amount,
+          receiptDate: formattedDate,
+          paymentTypeId: Number(this.giPaymentTypeId()) || 5,
+        })),
+      };
+
+      const result: any = await firstValueFrom(
+        this.api.post('/api/platinum/direct-deposit-allocation/submit-generic-import', payload)
+      );
+
+      if (result?.jobId || result?.id) {
+        this.giJobId.set(String(result.jobId || result.id));
+        this.giStep.set('processing');
+        this.startGiPolling();
+      } else {
+        const items = result?.results || result?.items || (Array.isArray(result) ? result : []);
+        if (items.length > 0) {
+          this.giResults.set(items.filter((r: any) => !r.errorMessage));
+          this.giErrors.set(items.filter((r: any) => !!r.errorMessage));
+          this.giStep.set('results');
+          this.toast.success(`Processed ${items.length} allocation(s).`);
+        } else {
+          this.toast.success('Import submitted successfully.');
+          this.giStep.set('results');
+        }
+      }
+    } catch (e: any) {
+      this.toast.error('Submit failed: ' + (e?.message || 'Unknown error'));
+    } finally {
+      this.giSubmitting.set(false);
+    }
+  }
+
+  private startGiPolling(): void {
+    if (this.giPollRef) clearInterval(this.giPollRef);
+    this.giPolling.set(true);
+    this.giPollRef = setInterval(async () => {
+      try {
+        const status: any = await firstValueFrom(
+          this.api.get(`/api/platinum/direct-deposit-allocation/generic-import-status/${this.giJobId()}`)
+        );
+        this.giStatus.set(status);
+        if (status?.isComplete || status?.status === 'Complete' || status?.status === 'Completed') {
+          clearInterval(this.giPollRef);
+          this.giPollRef = null;
+          this.giPolling.set(false);
+          await this.loadGiResults();
+        }
+      } catch {
+        clearInterval(this.giPollRef);
+        this.giPollRef = null;
+        this.giPolling.set(false);
+        this.toast.error('Lost connection to job status. Check results manually.');
+        this.giStep.set('results');
+      }
+    }, 3000);
+  }
+
+  private async loadGiResults(): Promise<void> {
+    this.giLoadingResults.set(true);
+    try {
+      const [results, errors] = await Promise.all([
+        firstValueFrom(this.api.get(`/api/platinum/direct-deposit-allocation/generic-import-results/${this.giJobId()}`)).catch(() => []),
+        firstValueFrom(this.api.get(`/api/platinum/direct-deposit-allocation/generic-import-errors/${this.giJobId()}`)).catch(() => []),
+      ]);
+      this.giResults.set(Array.isArray(results) ? results : []);
+      this.giErrors.set(Array.isArray(errors) ? errors : []);
+      this.giStep.set('results');
+      const successCount = this.giResults().length;
+      const errorCount = this.giErrors().length;
+      this.toast.success(`Import complete: ${successCount} successful, ${errorCount} failed.`);
+    } catch (e: any) {
+      this.toast.error('Failed to load results: ' + (e?.message || ''));
+      this.giStep.set('results');
+    } finally {
+      this.giLoadingResults.set(false);
+    }
+  }
+
+  resetGi(): void {
+    this.giStep.set('upload');
+    this.giFile.set(null);
+    this.giPaymentRef.set('');
+    this.giPreviewRows.set([]);
+    this.giResults.set([]);
+    this.giErrors.set([]);
+    this.giJobId.set('');
+    this.giStatus.set(null);
+    this.giError.set('');
+    if (this.giPollRef) {
+      clearInterval(this.giPollRef);
+      this.giPollRef = null;
     }
   }
 }

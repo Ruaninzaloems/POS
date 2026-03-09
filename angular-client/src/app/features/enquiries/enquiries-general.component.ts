@@ -106,9 +106,15 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   tabLoading = signal(false);
   tabError = signal<string | null>(null);
 
+  advancedSuggestions = signal<{ displayItem: string; accountId: number }[]>([]);
+  activeFieldKey = signal<string | null>(null);
+  advancedFieldLoading = signal(false);
+
   private debounceTimer: any;
+  private advancedDebounceTimers: Record<string, any> = {};
   private searchToken = 0;
   private quickSearchToken = 0;
+  private advancedSearchToken = 0;
   private balanceCache = new Map<number, number>();
 
   searchFields: SearchField[] = [
@@ -193,6 +199,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     if (this.debounceTimer) clearTimeout(this.debounceTimer);
+    Object.values(this.advancedDebounceTimers).forEach(t => clearTimeout(t));
   }
 
   get detectedSearchType(): { field: string; label: string } {
@@ -281,6 +288,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     }
   }
 
+  private withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) => setTimeout(() => reject(new Error('Request timeout')), ms)),
+    ]);
+  }
+
   async doQuickSearch(query: string): Promise<void> {
     if (query.trim().length < 2) {
       this.dropdownResults.set([]);
@@ -305,8 +319,8 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       else body[field] = num;
 
       const [searchResults, autocompleteResults] = await Promise.allSettled([
-        firstValueFrom(this.api.post<any>('/api/platinum/billing-enquiry/enquiry-results', body)),
-        firstValueFrom(this.api.get<any>('/api/platinum/billing-enquiry/autocomplete', { search: num, type: this.getAutocompleteType(field) })),
+        this.withTimeout(firstValueFrom(this.api.post<any>('/api/platinum/billing-enquiry/enquiry-results', body)), 15000),
+        this.withTimeout(firstValueFrom(this.api.get<any>('/api/platinum/billing-enquiry/autocomplete', { search: num, type: this.getAutocompleteType(field) })), 10000),
       ]);
 
       if (this.quickSearchToken !== token) return;
@@ -417,8 +431,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       if (c.sgNumber) body['sgNumber'] = c.sgNumber;
       if (c.erfNumber) body['erfNumber'] = c.erfNumber;
 
-      const data = await firstValueFrom(
-        this.api.post<any>('/api/platinum/billing-enquiry/enquiry-results', body)
+      const data = await this.withTimeout(
+        firstValueFrom(this.api.post<any>('/api/platinum/billing-enquiry/enquiry-results', body)),
+        20000
       );
       if (this.searchToken !== token) return;
       const arr = this.normalizeArray(data);
@@ -426,7 +441,8 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       this.enrichBalances(arr, token);
     } catch (e: any) {
       if (this.searchToken === token) {
-        this.searchError.set(e?.error?.message || e?.message || 'Search failed');
+        const msg = e?.message === 'Request timeout' ? 'Search timed out. Please try again.' : (e?.error?.message || e?.message || 'Search failed');
+        this.searchError.set(msg);
         this.results.set([]);
       }
     } finally {
@@ -502,6 +518,14 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.showDropdown.set(false);
     this.highlightIdx.set(-1);
     this.showAdvanced.set(false);
+    this.searching.set(false);
+    this.dropdownSearching.set(false);
+    this.advancedSuggestions.set([]);
+    this.activeFieldKey.set(null);
+    this.advancedFieldLoading.set(false);
+    ++this.searchToken;
+    ++this.quickSearchToken;
+    ++this.advancedSearchToken;
   }
 
   onQuickKeyDown(event: KeyboardEvent): void {
@@ -528,6 +552,58 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
   updateCriteria(key: string, value: string): void {
     this.criteria.update(prev => ({ ...prev, [key]: value }));
+    if (this.advancedDebounceTimers[key]) clearTimeout(this.advancedDebounceTimers[key]);
+    if (value.trim().length >= 2) {
+      this.activeFieldKey.set(key);
+      this.advancedFieldLoading.set(true);
+      this.advancedDebounceTimers[key] = setTimeout(() => this.doAdvancedAutocomplete(key, value), 350);
+    } else {
+      if (this.activeFieldKey() === key) {
+        this.activeFieldKey.set(null);
+        this.advancedSuggestions.set([]);
+        this.advancedFieldLoading.set(false);
+      }
+    }
+  }
+
+  async doAdvancedAutocomplete(fieldKey: string, value: string): Promise<void> {
+    const token = ++this.advancedSearchToken;
+    const acType = this.getAutocompleteType(fieldKey);
+    try {
+      const data = await firstValueFrom(
+        this.api.get<any>('/api/platinum/billing-enquiry/autocomplete', { search: value.trim(), type: acType })
+      );
+      if (this.advancedSearchToken !== token) return;
+      const arr = this.normalizeArray(data);
+      const suggestions = arr
+        .filter((s: any) => s.displayItem && s.accountId)
+        .slice(0, 15)
+        .map((s: any) => ({ displayItem: s.displayItem, accountId: s.accountId }));
+      this.advancedSuggestions.set(suggestions);
+      this.activeFieldKey.set(fieldKey);
+    } catch {
+      if (this.advancedSearchToken === token) {
+        this.advancedSuggestions.set([]);
+      }
+    } finally {
+      if (this.advancedSearchToken === token) {
+        this.advancedFieldLoading.set(false);
+      }
+    }
+  }
+
+  selectAdvancedSuggestion(fieldKey: string, suggestion: { displayItem: string; accountId: number }): void {
+    const display = suggestion.displayItem || '';
+    const parts = display.split(' - ');
+    const val = parts[0]?.trim() || String(suggestion.accountId);
+    this.criteria.update(prev => ({ ...prev, [fieldKey]: val }));
+    this.activeFieldKey.set(null);
+    this.advancedSuggestions.set([]);
+  }
+
+  closeAdvancedSuggestions(): void {
+    this.activeFieldKey.set(null);
+    this.advancedSuggestions.set([]);
   }
 
   toggleAdvanced(): void {

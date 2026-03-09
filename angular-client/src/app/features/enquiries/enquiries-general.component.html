@@ -1201,7 +1201,7 @@
         <div class="advanced-search" data-testid="advanced-search-panel">
           <div class="advanced-grid">
             @for (field of searchFields; track field.key) {
-              <div class="advanced-field">
+              <div class="advanced-field advanced-field-autocomplete">
                 <label class="field-label">{{ field.icon }} {{ field.label }}</label>
                 <input
                   type="text"
@@ -1210,8 +1210,25 @@
                   [value]="(criteria()[field.key] || '')"
                   (input)="updateCriteria(field.key, $any($event.target).value)"
                   (keydown.enter)="handleFullSearch()"
+                  (blur)="closeAdvancedSuggestions()"
                   [attr.data-testid]="'input-field-' +  field.key  + ''"
+                  autocomplete="off"
                 />
+                @if (activeFieldKey() === field.key && (advancedSuggestions().length > 0 || advancedFieldLoading())) {
+                  <div class="advanced-suggestions-dropdown" [attr.data-testid]="'suggestions-' + field.key">
+                    @if (advancedFieldLoading() && advancedSuggestions().length === 0) {
+                      <div class="adv-suggestion-loading">
+                        <div class="search-spinner"></div>
+                        <span>Loading suggestions...</span>
+                      </div>
+                    }
+                    @for (suggestion of advancedSuggestions(); track suggestion.accountId) {
+                      <div class="adv-suggestion-item" (mousedown)="selectAdvancedSuggestion(field.key, suggestion); $event.preventDefault()" [attr.data-testid]="'suggestion-' + field.key + '-' + suggestion.accountId">
+                        {{ suggestion.displayItem }}
+                      </div>
+                    }
+                  </div>
+                }
               </div>
             }
           </div>
