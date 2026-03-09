@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AlertCircle, AlertTriangle, Ban, Receipt, CheckCircle2, Clock, Printer, Search, X, FileWarning, Info, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { platinumPrintReceiptRaw } from '@/lib/external-api';
+import { platinumPrintReceiptRaw, platinumPrintMiscReceiptRaw } from '@/lib/external-api';
 
 interface TransactionHistoryModalProps {
   isOpen: boolean;
@@ -96,15 +96,36 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
         toast({ title: "Print Failed", description: "No receipt ID available for reprinting.", variant: "destructive" });
         return;
       }
-      const res = await platinumPrintReceiptRaw(receiptIds, receiptNos.length > 0 ? receiptNos : undefined, true);
-      if (!res.ok) {
-        let detail = '';
-        try { const errJson = await res.json(); detail = errJson.detail || errJson.message || ''; } catch { detail = `HTTP ${res.status}`; }
-        toast({ title: "Print Failed", description: `The billing system returned an error: ${detail || `HTTP ${res.status}`}`, variant: "destructive" });
-        return;
+
+      const isMiscReceipt = tx.splitReceipts?.some(sr => sr.receiptDetail?.paymentOption === 'Miscellaneous Payment') ||
+        (tx.items && tx.items.length > 0 && tx.items.every((i: any) => i.type === 'DIRECT_INCOME'));
+
+      let blob: Blob | null = null;
+
+      if (isMiscReceipt && receiptIds.length > 0) {
+        for (const rid of receiptIds) {
+          try {
+            const miscRes = await platinumPrintMiscReceiptRaw(rid);
+            if (miscRes.ok) {
+              const b = await miscRes.blob();
+              if (b.size >= 100) { blob = b; break; }
+            }
+          } catch {}
+        }
       }
-      const blob = await res.blob();
-      if (blob.size < 100) {
+
+      if (!blob) {
+        const res = await platinumPrintReceiptRaw(receiptIds, receiptNos.length > 0 ? receiptNos : undefined, true);
+        if (!res.ok) {
+          let detail = '';
+          try { const errJson = await res.json(); detail = errJson.detail || errJson.message || ''; } catch { detail = `HTTP ${res.status}`; }
+          toast({ title: "Print Failed", description: `The billing system returned an error: ${detail || `HTTP ${res.status}`}`, variant: "destructive" });
+          return;
+        }
+        blob = await res.blob();
+      }
+
+      if (!blob || blob.size < 100) {
         toast({ title: "Print Failed", description: "The billing system returned an empty PDF.", variant: "destructive" });
         return;
       }

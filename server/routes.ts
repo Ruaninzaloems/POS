@@ -1665,11 +1665,61 @@ export async function registerRoutes(
   app.post("/api/platinum/billing-payment/print-miscellaneous-receipt", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const queryParams = req.query as Record<string, string>;
-      console.log(`[print-misc-receipt] Params: ${JSON.stringify(queryParams)}, Body keys: ${Object.keys(req.body || {}).join(', ')}`);
-      const data = await platinumPost(session, "/api/billing-payment/print-miscellaneous-receipt", req.body, queryParams);
-      console.log(`[print-misc-receipt] Response:`, JSON.stringify(data)?.substring(0, 500));
-      handlePlatinumResult(res, data);
+      const receiptId = req.query.id as string;
+      if (!receiptId) {
+        return res.status(400).json({ message: "Receipt id query parameter is required (?id=123)" });
+      }
+      console.log(`[print-misc-receipt] Fetching PDF for receipt id=${receiptId}`);
+
+      const token = await refreshSessionToken(session);
+      const apiUrl = getPlatinumApiUrl();
+      const platinumUrl = `${apiUrl}/api/billing-payment/print-miscellaneous-receipt?id=${encodeURIComponent(receiptId)}`;
+
+      const pdfRes = await fetch(platinumUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          Accept: "application/pdf,application/octet-stream,*/*",
+        },
+        body: JSON.stringify({}),
+      });
+
+      if (!pdfRes.ok) {
+        const errorText = await pdfRes.text().catch(() => "");
+        console.error(`[print-misc-receipt] Platinum returned ${pdfRes.status}: ${errorText}`);
+        return res.status(pdfRes.status).json({ message: "Failed to fetch misc receipt PDF from Platinum", detail: errorText });
+      }
+
+      const rawBuffer = Buffer.from(await pdfRes.arrayBuffer());
+      console.log(`[print-misc-receipt] PDF received: ${rawBuffer.length} bytes`);
+
+      if (rawBuffer.length < 100) {
+        return res.status(409).json({ message: "Empty misc receipt PDF", detail: "The billing system returned a blank PDF." });
+      }
+
+      const { PDFDocument } = await import('pdf-lib');
+      try {
+        const doc = await PDFDocument.load(rawBuffer, { ignoreEncryption: true });
+        const pages = doc.getPages();
+        for (const page of pages) {
+          const { width, height } = page.getSize();
+          const contentHeight = Math.min(height, Math.ceil(height * 0.58));
+          page.setCropBox(0, height - contentHeight, width, contentHeight);
+          page.setMediaBox(0, height - contentHeight, width, contentHeight);
+        }
+        const cropped = await doc.save();
+        const pdfBuffer = Buffer.from(cropped);
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", `inline; filename="misc_receipt_${receiptId}.pdf"`);
+        res.setHeader("Content-Length", pdfBuffer.length);
+        return res.send(pdfBuffer);
+      } catch {
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", `inline; filename="misc_receipt_${receiptId}.pdf"`);
+        res.setHeader("Content-Length", rawBuffer.length);
+        return res.send(rawBuffer);
+      }
     } catch (e: any) {
       console.error(`[print-misc-receipt] Error:`, e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });

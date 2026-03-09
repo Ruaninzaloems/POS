@@ -50,6 +50,8 @@ A reusable `AccountEnquiryDialog` component provides comprehensive account enqui
 #### Receipt Processing and Performance
 Receipt generation is optimized by separating printing from payment processing. Lookup strategies for unreconciled receipts are prioritized, and performance enhancements include parallelization of API calls and suppression of session polling during transactions.
 
+**Misc Receipt Routing**: Three Platinum receipt endpoints exist: (1) `POST print-receipt` for consumer/EFT PDFs, (2) `POST print-miscellaneous-receipt?id=123` for misc/direct-income PDFs, (3) `GET pos-multi-receipt-print?receiptId=123` for JSON data. Both `receipt-modal.tsx` and `transaction-history-modal.tsx` detect misc receipts via `paymentOption === 'Miscellaneous Payment'` or all items being `DIRECT_INCOME`, and route to endpoint #2 first with automatic fallback to endpoint #1. The server-side misc print endpoint streams raw PDF binary (with pdf-lib cropping), not JSON.
+
 #### Multi-Account Payment Handling
 For large multi-account payments, the system implements dynamic timeout scaling at the server proxy, client API, and UI levels. Payments exceeding a `CHUNK_SIZE` (25 accounts) are split into parallel batches (up to 3 concurrent chunks) to improve performance and handle partial failures gracefully.
 

@@ -1046,6 +1046,14 @@ export async function platinumPrintMiscellaneousReceipt(data: any, params?: Reco
     });
 }
 
+export async function platinumPrintMiscReceiptRaw(receiptId: number): Promise<Response> {
+    return apiFetch(`/api/platinum/billing-payment/print-miscellaneous-receipt?id=${receiptId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+    });
+}
+
 // --- Clearance ---
 
 export async function platinumGetClearanceIds(params: Record<string, string>): Promise<any[]> {

@@ -6,7 +6,7 @@ import { CheckCircle2, XCircle, Printer, Mail, MessageSquare, Check, Loader2, Al
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { platinumPrintReceiptRaw } from '@/lib/external-api';
+import { platinumPrintReceiptRaw, platinumPrintMiscReceiptRaw } from '@/lib/external-api';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 
@@ -146,30 +146,56 @@ export function ReceiptModal() {
     const cashIds = currentTransaction.splitReceipts?.filter(sr => sr.paymentType === 'cash').map(sr => sr.receiptId).filter(Boolean) || [];
     const cardIds = currentTransaction.splitReceipts?.filter(sr => sr.paymentType === 'card').map(sr => sr.receiptId).filter(Boolean) || [];
     const isSplitPrint = cashIds.length > 0 && cardIds.length > 0;
-    console.log(`[ReceiptModal] Printing ${isSplitPrint ? 'CONSOLIDATED split payment' : 'single'} receipt. IDs: [${receiptIds.join(', ')}], ReceiptNos: [${receiptNos.join(', ')}]${isSplitPrint ? ` (Cash: [${cashIds.join(', ')}], Card: [${cardIds.join(', ')}])` : ''}`);
+
+    const isMiscReceipt = currentTransaction.splitReceipts?.some(sr => sr.receiptDetail?.paymentOption === 'Miscellaneous Payment') ||
+      (transactionItems.length > 0 && transactionItems.every((i: TransactionItem) => i.type === 'DIRECT_INCOME'));
+    console.log(`[ReceiptModal] Printing ${isMiscReceipt ? 'MISC' : isSplitPrint ? 'CONSOLIDATED split payment' : 'single'} receipt. IDs: [${receiptIds.join(', ')}], ReceiptNos: [${receiptNos.join(', ')}]${isSplitPrint ? ` (Cash: [${cashIds.join(', ')}], Card: [${cardIds.join(', ')}])` : ''}`);
 
     setIsPrinting(true);
     try {
-      const res = await platinumPrintReceiptRaw(receiptIds, receiptNos.length > 0 ? receiptNos : undefined);
-      if (!res.ok) {
-        let detail = '';
-        try { const errJson = await res.json(); detail = errJson.detail || errJson.message || ''; } catch { detail = `HTTP ${res.status}`; }
-        console.error('[ReceiptModal] print-receipt API failed:', res.status, detail);
-        const errMsg = `Receipt print failed — the billing system returned an error: ${detail || `HTTP ${res.status}`}. You can reprint from View Receipts.`;
-        setPrintError(errMsg);
-        toast({ title: 'Print Failed', description: errMsg, variant: 'destructive' });
-        return;
+      let finalBlob: Blob | null = null;
+
+      if (isMiscReceipt) {
+        for (const rid of receiptIds) {
+          console.log(`[ReceiptModal] Using print-miscellaneous-receipt for receipt id=${rid}`);
+          try {
+            const miscRes = await platinumPrintMiscReceiptRaw(rid);
+            if (miscRes.ok) {
+              const b = await miscRes.blob();
+              if (b.size >= 100) { finalBlob = b; break; }
+              else console.warn(`[ReceiptModal] print-miscellaneous-receipt returned tiny PDF (${b.size} bytes) for id=${rid}`);
+            } else {
+              let detail = '';
+              try { const errJson = await miscRes.json(); detail = errJson.detail || errJson.message || ''; } catch { detail = `HTTP ${miscRes.status}`; }
+              console.warn(`[ReceiptModal] print-miscellaneous-receipt failed for id=${rid}: ${detail}`);
+            }
+          } catch (e: any) {
+            console.warn(`[ReceiptModal] print-miscellaneous-receipt error for id=${rid}: ${e.message}`);
+          }
+        }
       }
 
-      const blob = await res.blob();
-      if (blob.size < 100) {
-        console.error('[ReceiptModal] print-receipt returned tiny response:', blob.size, 'bytes');
-        const errMsg = 'Receipt print failed — the billing system returned an empty PDF. You can reprint from View Receipts.';
-        setPrintError(errMsg);
-        toast({ title: 'Print Failed', description: errMsg, variant: 'destructive' });
-        return;
+      if (!finalBlob) {
+        const res = await platinumPrintReceiptRaw(receiptIds, receiptNos.length > 0 ? receiptNos : undefined);
+        if (!res.ok) {
+          let detail = '';
+          try { const errJson = await res.json(); detail = errJson.detail || errJson.message || ''; } catch { detail = `HTTP ${res.status}`; }
+          console.error('[ReceiptModal] print-receipt API failed:', res.status, detail);
+          const errMsg = `Receipt print failed — the billing system returned an error: ${detail || `HTTP ${res.status}`}. You can reprint from View Receipts.`;
+          setPrintError(errMsg);
+          toast({ title: 'Print Failed', description: errMsg, variant: 'destructive' });
+          return;
+        }
+        finalBlob = await res.blob();
+        if (!finalBlob || finalBlob.size < 100) {
+          console.error('[ReceiptModal] print-receipt returned tiny response:', finalBlob?.size, 'bytes');
+          const errMsg = 'Receipt print failed — the billing system returned an empty PDF. You can reprint from View Receipts.';
+          setPrintError(errMsg);
+          toast({ title: 'Print Failed', description: errMsg, variant: 'destructive' });
+          return;
+        }
       }
-      const pdfUrl = URL.createObjectURL(blob);
+      const pdfUrl = URL.createObjectURL(finalBlob);
       const pdfTab = window.open(pdfUrl, '_blank');
       if (!pdfTab) {
         const link = document.createElement('a');
@@ -186,7 +212,7 @@ export function ReceiptModal() {
     } finally {
       setIsPrinting(false);
     }
-  }, [currentTransaction, closeReceiptModal, toast]);
+  }, [currentTransaction, transactionItems, closeReceiptModal, toast]);
 
   useEffect(() => {
     if (isReceiptModalOpen && transactionItems.length > 0) {
