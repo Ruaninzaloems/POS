@@ -2206,10 +2206,10 @@ export async function registerRoutes(
         AccHolderName: sanitizedPayload.accHolderName,
       };
 
-      const posEndpoint = `/api/billing-payment-miscellaneous/submit/${sanitizedPayload.userId}`;
+      const posEndpoint = `/api/billing-payment-miscellaneous/submit`;
       const attempts: { endpoint: string; payload: any; label: string }[] = [
-        { endpoint: posEndpoint, payload: pascalPayload, label: 'PascalCase+userId' },
-        { endpoint: posEndpoint, payload: sanitizedPayload, label: 'camelCase+userId' },
+        { endpoint: posEndpoint, payload: pascalPayload, label: 'PascalCase' },
+        { endpoint: posEndpoint, payload: sanitizedPayload, label: 'camelCase' },
       ];
 
       let data: any = null;
