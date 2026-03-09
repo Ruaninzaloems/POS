@@ -9,6 +9,9 @@ Theme: SAMRAS warm/light theme — `bg-[#F2F4F7]` background, `bg-white` cards w
 
 ## System Architecture
 
+### Debt & Legal Hybrid Architecture
+The Section 129 and Handover solution follows a hybrid architecture documented in the `debt-legal-architecture` skill (`.agents/skills/debt-legal-architecture/`). Key principles: Replit = UI + rules engine + process orchestrator; Platinum = system of record (API only); Azure Service Bus = long-running background jobs only (trial runs, final runs, lapse checks, handover batches, bulk notice generation). Direct synchronous APIs are used for all configuration, lookups, enquiry screens, and status reads. Every write action must include full audit metadata (CapturerID, DateCaptured, ModifierID, DateModified, StatusID, etc.). 12 core modules are defined: Configuration, Rule Engine, Trial Review, Trial Run, Authorisation, Final Run, Lapse Tracker, Handover, Handover Termination, General Enquiries, Reports/Files, and Audit/Dashboard.
+
 ### Core Design Principles
 The system uses a React 18 frontend with TypeScript, Vite, `wouter` for routing, styled with Tailwind CSS and `shadcn/ui`. State management uses React Context API, and data fetching relies on TanStack React Query. The Express 5 backend acts as a pure authenticated proxy to the Platinum Inzalo EMS API — ALL feature data comes exclusively from Platinum, no local database for feature data. The local PostgreSQL database is used ONLY for POS core tables (users, cashier_sessions, transactions). The backend manages user sessions, implements a global request queue, and response caching. The application is designed as a self-contained Web Component (`<pos-app>`) for embedding into existing Angular applications. Multi-site theming is supported via CSS custom properties and an accent color system.
 
