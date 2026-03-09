@@ -89,9 +89,9 @@ export class BulkAllocationProgressComponent implements OnInit {
     this.loadingFilters.set(true);
     try {
       const [years, months, processes]: any[] = await Promise.all([
-        firstValueFrom(this.api.get('/api/platinum/bulk-progress-financial-years')),
-        firstValueFrom(this.api.get('/api/platinum/bulk-progress-month-list')),
-        firstValueFrom(this.api.get('/api/platinum/bulk-progress-process-list')),
+        firstValueFrom(this.api.get('/api/platinum/bulk-progress/get-financial-years')),
+        firstValueFrom(this.api.get('/api/platinum/bulk-progress/get-month-list')),
+        firstValueFrom(this.api.get('/api/platinum/bulk-progress/get-process-list')),
       ]);
       this.financialYears.set(Array.isArray(years) ? years : []);
       this.monthList.set(Array.isArray(months) ? months : []);
@@ -122,7 +122,7 @@ export class BulkAllocationProgressComponent implements OnInit {
         shortDirection: this.sortDirection() || null,
       };
       const result: any = await firstValueFrom(
-        this.api.post('/api/platinum/bulk-allocation-list', body)
+        this.api.post('/api/platinum/bulk-progress/get-bulk-allocation-list', body)
       );
       let items: any[] = [];
       let count = 0;
@@ -157,8 +157,8 @@ export class BulkAllocationProgressComponent implements OnInit {
 
     try {
       const [dataResult, accountsResult]: any[] = await Promise.allSettled([
-        firstValueFrom(this.api.get(`/api/platinum/bulk-progress-direct-deposit/${jobId}`)),
-        firstValueFrom(this.api.get(`/api/platinum/bulk-progress-job-accounts/${jobId}`)),
+        firstValueFrom(this.api.get(`/api/platinum/bulk-progress/direct-deposit/${jobId}`)),
+        firstValueFrom(this.api.get(`/api/platinum/bulk-progress/job-account-details/${jobId}`)),
       ]);
 
       const data = dataResult.status === 'fulfilled' ? dataResult.value : null;
@@ -190,7 +190,7 @@ export class BulkAllocationProgressComponent implements OnInit {
     this.retryingJobId.set(jobId);
     try {
       await firstValueFrom(
-        this.api.post('/api/platinum/retry-bulk-allocation', { jobId, userId })
+        this.api.post(`/api/platinum/direct-deposit-errors/retry/${jobId}/${userId}`, {})
       );
       this.toast.success(`Job #${jobId} has been resubmitted for processing.`);
       this.searchAllocations(this.page());

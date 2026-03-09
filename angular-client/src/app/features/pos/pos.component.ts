@@ -79,7 +79,7 @@ export class PosComponent implements OnInit, OnDestroy {
 
     try {
       const data: any = await firstValueFrom(
-        this.api.get('/api/platinum/accounts/search', { query })
+        this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: query })
       );
       const results = Array.isArray(data) ? data : data?.accounts || data?.results || data?.data || [];
       this.searchResults.set(results.map((acc: any) => ({

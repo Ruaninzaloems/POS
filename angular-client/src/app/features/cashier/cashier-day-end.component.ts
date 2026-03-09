@@ -110,7 +110,7 @@ export class CashierDayEndComponent implements OnInit {
     this.isLoadingCashiers.set(true);
     try {
       const data: any = await firstValueFrom(
-        this.api.get('/api/platinum/day-end/cashier-list')
+        this.api.get('/api/platinum/billing-payment-day-end/get-cashier-list')
       );
       const items = this.extractItems(data);
       this.cashierList.set(items);
@@ -134,7 +134,7 @@ export class CashierDayEndComponent implements OnInit {
     this.isLoadingDetails.set(true);
     try {
       const data: any = await firstValueFrom(
-        this.api.get('/api/platinum/day-end/cashier-details', { id: cashierId })
+        this.api.get('/api/platinum/billing-payment-day-end/get-cashier-details', { id: cashierId })
       );
       this.cashierDetails.set(data);
     } catch (e) {
@@ -154,10 +154,10 @@ export class CashierDayEndComponent implements OnInit {
 
     try {
       const [cheques, cards, dropBoxes, reconciles]: any[] = await Promise.all([
-        firstValueFrom(this.api.get('/api/platinum/day-end/cheque-list', { cashierId: String(id) })).catch(() => []),
-        firstValueFrom(this.api.get('/api/platinum/day-end/card-list', { cashierId: String(id) })).catch(() => []),
-        firstValueFrom(this.api.get('/api/platinum/day-end/dropbox-list', { cashierId: String(id) })).catch(() => []),
-        firstValueFrom(this.api.get('/api/platinum/day-end/reconcile-list', { userId, id: cashierId })).catch(() => []),
+        firstValueFrom(this.api.post(`/api/platinum/billing-payment-day-end/get-cashier-receipt-cheque-list?id=${id}`, {})).catch(() => []),
+        firstValueFrom(this.api.post(`/api/platinum/billing-payment-day-end/get-cashier-receipt-card-list?id=${id}`, {})).catch(() => []),
+        firstValueFrom(this.api.post(`/api/platinum/billing-payment-day-end/get-cashier-receipt-drop-box-list?id=${id}`, {})).catch(() => []),
+        firstValueFrom(this.api.get('/api/platinum/billing-payment-day-end/get-cashier-receipt-reconcile-list', { userId, id: cashierId })).catch(() => []),
       ]);
 
       const chequeItems = this.extractItems(cheques);
@@ -233,7 +233,7 @@ export class CashierDayEndComponent implements OnInit {
       };
 
       const result: any = await firstValueFrom(
-        this.api.post('/api/platinum/day-end/save-reconcile', { userId, ...payload })
+        this.api.post('/api/platinum/billing-payment-day-end/save-reconcile-data', { userId, ...payload })
       );
 
       if (result?.error || result?.isError === true || result?.success === false) {
@@ -242,7 +242,7 @@ export class CashierDayEndComponent implements OnInit {
 
       try {
         await firstValueFrom(
-          this.api.post('/api/platinum/day-end/validate-cashbook', { cashierId: Number(this.selectedCashierId()) })
+          this.api.post('/api/platinum/auth-day-end/validate-cashbook', { cashierId: Number(this.selectedCashierId()) })
         );
       } catch {}
 
@@ -254,7 +254,7 @@ export class CashierDayEndComponent implements OnInit {
 
       try {
         await firstValueFrom(
-          this.api.post('/api/platinum/day-end/submit-reconcile', {
+          this.api.post('/api/platinum/auth-day-end/submit-day-auth-reconcile', {
             cashierId: Number(this.selectedCashierId()),
             cashBookId: 1,
             cashierOfficeId,

@@ -207,7 +207,7 @@ export class SupervisorDashboardComponent implements OnInit {
   async loadCashierList(): Promise<void> {
     this.isLoadingShifts.set(true);
     try {
-      const data: any = await firstValueFrom(this.api.post('/api/platinum/auth-day-end/cashier-list'));
+      const data: any = await firstValueFrom(this.api.get('/api/platinum/auth-day-end/cashier-list'));
       let items: any[];
       if (data && data.cashiers) {
         items = this.extractItems(data.cashiers);
@@ -231,7 +231,7 @@ export class SupervisorDashboardComponent implements OnInit {
   async loadPendingCancelRequests(): Promise<void> {
     this.cancelRequestsLoading.set(true);
     try {
-      const data: any = await firstValueFrom(this.api.post('/api/platinum/auth-day-end/pending-cancel-requests'));
+      const data: any = await firstValueFrom(this.api.get('/api/platinum/auth-day-end/pending-cancel-requests'));
       const items = Array.isArray(data) ? data : (data?.items || data?.value || data?.data || data?.results || []);
       this.pendingCancelRequests.set(items.map((item: any, idx: number) => ({
         id: String(item.id || item.receiptId || item.receipt_id || idx),
@@ -262,14 +262,14 @@ export class SupervisorDashboardComponent implements OnInit {
     this.reviewTab.set('cash');
     try {
       const [details, reconcile, cashRes, cardRes, chequeRes, postalRes, dropboxRes, offlineRes] = await Promise.all([
-        firstValueFrom(this.api.post('/api/platinum/auth-day-end/cashier-details', { id: shift.id })).catch(() => null),
-        firstValueFrom(this.api.post('/api/platinum/auth-day-end/cashier-reconcile', { cashierId: shift.id })).catch(() => null),
+        firstValueFrom(this.api.get('/api/platinum/auth-day-end/cashier-details', { id: String(shift.id) })).catch(() => null),
+        firstValueFrom(this.api.get('/api/platinum/auth-day-end/cashier-reconcile-by-cashierid', { cashierId: String(shift.id) })).catch(() => null),
         firstValueFrom(this.api.post(`/api/platinum/auth-day-end/cashier-receipt-cash-list?id=${shift.id}`, this.pagerBody)).catch(() => []),
         firstValueFrom(this.api.post(`/api/platinum/auth-day-end/cashier-receipt-card-list?id=${shift.id}`, this.pagerBody)).catch(() => []),
         firstValueFrom(this.api.post(`/api/platinum/auth-day-end/cashier-receipt-cheque-list?id=${shift.id}`, this.pagerBody)).catch(() => []),
-        firstValueFrom(this.api.post(`/api/platinum/auth-day-end/cashier-receipt-postal-list?id=${shift.id}`, this.pagerBody)).catch(() => []),
-        firstValueFrom(this.api.post(`/api/platinum/auth-day-end/cashier-receipt-dropbox-list?id=${shift.id}`, this.pagerBody)).catch(() => []),
-        firstValueFrom(this.api.post(`/api/platinum/auth-day-end/cashier-receipt-offline-list?id=${shift.id}`, this.pagerBody)).catch(() => []),
+        firstValueFrom(this.api.post(`/api/platinum/auth-day-end/cashier-receipt-postal-order-list?id=${shift.id}`, this.pagerBody)).catch(() => []),
+        firstValueFrom(this.api.post(`/api/platinum/auth-day-end/cashier-receipt-drop-box-list?id=${shift.id}`, this.pagerBody)).catch(() => []),
+        firstValueFrom(this.api.post(`/api/platinum/auth-day-end/cashier-receipt-offline-data-list?id=${shift.id}`, this.pagerBody)).catch(() => []),
       ]);
       this.reviewData.set({
         details, reconcile,
@@ -301,7 +301,7 @@ export class SupervisorDashboardComponent implements OnInit {
       let cashBookId = details?.cashBookId || details?.cashbookId || 0;
       if (!cashBookId) {
         try {
-          const cashbooks: any = await firstValueFrom(this.api.post('/api/platinum/auth-day-end/cashbook-list'));
+          const cashbooks: any = await firstValueFrom(this.api.get('/api/platinum/auth-day-end/cashbook-list'));
           const books = Array.isArray(cashbooks) ? cashbooks : [];
           if (books.length > 0) {
             const match = books.find((b: any) => Number(b.cashOfficeId || b.cashOffice_ID) === Number(cashierOfficeId));
@@ -385,7 +385,7 @@ export class SupervisorDashboardComponent implements OnInit {
 
   async handleDirectCancel(receiptId: number, reason: string): Promise<void> {
     try {
-      await firstValueFrom(this.api.post('/api/platinum/auth-day-end/direct-cancel-receipt', {
+      await firstValueFrom(this.api.post('/api/platinum/auth-day-end/cancel-receipt', {
         id: receiptId, returnReason: reason, userId: this.auth.user()?.user_ID || 0
       }));
       this.toast.success(`Receipt ${receiptId} has been directly cancelled.`);
@@ -472,7 +472,7 @@ export class SupervisorDashboardComponent implements OnInit {
 
   async loadPerOfficeList(): Promise<void> {
     try {
-      const data: any = await firstValueFrom(this.api.post('/api/platinum/per-office/cash-office-list'));
+      const data: any = await firstValueFrom(this.api.get('/api/platinum/auth-day-end-per-office/cash-office-list'));
       this.perOfficeList.set(Array.isArray(data) ? data : (data?.items || []));
     } catch {
       this.perOfficeList.set([]);
@@ -485,7 +485,7 @@ export class SupervisorDashboardComponent implements OnInit {
     this.perOfficeLoading.set(true);
     this.perOfficeStaged.set(false);
     try {
-      const data: any = await firstValueFrom(this.api.post('/api/platinum/per-office/cash-office-selection', { cashOfficeId }));
+      const data: any = await firstValueFrom(this.api.get('/api/platinum/auth-day-end-per-office/cash-office-selection', { cashOfficeId: String(cashOfficeId) }));
       this.perOfficeData.set({
         cashBookId: data?.cashBookId || data?.cashbookId || 0,
         cashBookName: data?.cashBookName || data?.cashbookName || '',
@@ -504,7 +504,7 @@ export class SupervisorDashboardComponent implements OnInit {
   async refreshPerOfficeSummary(): Promise<void> {
     if (!this.perOfficeSelectedId()) return;
     try {
-      const data: any = await firstValueFrom(this.api.post('/api/platinum/per-office/cashier-summary', { cashOfficeId: this.perOfficeSelectedId() }));
+      const data: any = await firstValueFrom(this.api.get('/api/platinum/auth-day-end-per-office/cashier-summary-by-office', { cashOfficeId: String(this.perOfficeSelectedId()) }));
       const items = data?.data || data?.cashierSummary || (Array.isArray(data) ? data : []);
       const prev = this.perOfficeData();
       if (prev) {
@@ -523,10 +523,10 @@ export class SupervisorDashboardComponent implements OnInit {
     if (!this.perOfficeSelectedId() || !this.perOfficeData()) return;
     this.perOfficeVerifying.set(cashierId);
     try {
-      try { await firstValueFrom(this.api.post('/api/platinum/per-office/add-stage')); } catch {}
-      try { await firstValueFrom(this.api.post('/api/platinum/per-office/process-staging-payments', { cashOfficeId: this.perOfficeSelectedId() })); } catch {}
+      try { await firstValueFrom(this.api.post('/api/platinum/auth-day-end-per-office/add-stage')); } catch {}
+      try { await firstValueFrom(this.api.post('/api/platinum/auth-day-end-per-office/process-staging-payments', { cashOfficeId: this.perOfficeSelectedId() })); } catch {}
 
-      const result: any = await firstValueFrom(this.api.post('/api/platinum/per-office/verify-cashier-reconcile', {
+      const result: any = await firstValueFrom(this.api.post('/api/platinum/auth-day-end-per-office/verify-cashier-reconcile', {
         cashierId, cashOfficeId: this.perOfficeSelectedId(), cashBookId: this.perOfficeData().cashBookId,
       }));
       if (result?.isSuccess === false) {
@@ -546,7 +546,7 @@ export class SupervisorDashboardComponent implements OnInit {
     if (!this.perOfficeSelectedId() || !this.perOfficeData()) return;
     this.perOfficeSubmitting.set(true);
     try {
-      const result: any = await firstValueFrom(this.api.post('/api/platinum/per-office/submit-reconcile', {
+      const result: any = await firstValueFrom(this.api.post('/api/platinum/auth-day-end-per-office/submit-reconcile-per-office', {
         cashOfficeId: this.perOfficeSelectedId(), cashBookId: this.perOfficeData().cashBookId,
       }));
       if (result?.isSuccess === false) {
@@ -554,12 +554,12 @@ export class SupervisorDashboardComponent implements OnInit {
       } else {
         this.toast.success('All cashiers in this office have been fully reconciled.');
       }
-      try { await firstValueFrom(this.api.post('/api/platinum/per-office/finish-stage')); } catch {}
+      try { await firstValueFrom(this.api.post('/api/platinum/auth-day-end-per-office/finish-stage')); } catch {}
       await this.refreshPerOfficeSummary();
       this.loadCashierList();
     } catch (e: any) {
       this.toast.error('Office submission failed: ' + (e?.message || ''));
-      try { await firstValueFrom(this.api.post('/api/platinum/per-office/finish-stage')); } catch {}
+      try { await firstValueFrom(this.api.post('/api/platinum/auth-day-end-per-office/finish-stage')); } catch {}
     } finally {
       this.perOfficeSubmitting.set(false);
     }
@@ -567,19 +567,19 @@ export class SupervisorDashboardComponent implements OnInit {
 
   async handlePerOfficeReturn(cashierReconcileId: number, reason: string): Promise<void> {
     try {
-      await firstValueFrom(this.api.post('/api/platinum/per-office/return-reconcile', { id: cashierReconcileId, returnReason: reason }));
+      await firstValueFrom(this.api.post('/api/platinum/auth-day-end-per-office/return-day-end-reconcile', { id: cashierReconcileId, returnReason: reason }));
       this.toast.success('Cashier reconcile returned for correction.');
-      try { await firstValueFrom(this.api.post('/api/platinum/per-office/finish-stage')); } catch {}
+      try { await firstValueFrom(this.api.post('/api/platinum/auth-day-end-per-office/finish-stage')); } catch {}
       await this.refreshPerOfficeSummary();
     } catch (e: any) {
       this.toast.error('Return failed: ' + (e?.message || ''));
-      try { await firstValueFrom(this.api.post('/api/platinum/per-office/finish-stage')); } catch {}
+      try { await firstValueFrom(this.api.post('/api/platinum/auth-day-end-per-office/finish-stage')); } catch {}
     }
   }
 
   async handlePerOfficeCancelReceipt(receiptId: number, reason: string): Promise<void> {
     try {
-      await firstValueFrom(this.api.post('/api/platinum/per-office/cancel-receipt', { id: receiptId, returnReason: reason }));
+      await firstValueFrom(this.api.post('/api/platinum/auth-day-end-per-office/cancel-day-auth-reconcile-receipt', { id: receiptId, returnReason: reason }));
       this.toast.success(`Receipt ${receiptId} cancelled.`);
       await this.refreshPerOfficeSummary();
     } catch (e: any) {

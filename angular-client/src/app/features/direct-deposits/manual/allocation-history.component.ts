@@ -100,9 +100,9 @@ export class AllocationHistoryComponent implements OnInit {
   async loadFilterOptions(): Promise<void> {
     try {
       const [years, months, processes]: any[] = await Promise.all([
-        firstValueFrom(this.api.get('/api/platinum/bulk-progress-financial-years')),
-        firstValueFrom(this.api.get('/api/platinum/bulk-progress-month-list')),
-        firstValueFrom(this.api.get('/api/platinum/bulk-progress-process-list')),
+        firstValueFrom(this.api.get('/api/platinum/bulk-progress/get-financial-years')),
+        firstValueFrom(this.api.get('/api/platinum/bulk-progress/get-month-list')),
+        firstValueFrom(this.api.get('/api/platinum/bulk-progress/get-process-list')),
       ]);
       if (Array.isArray(years) && years.length > 0) {
         this.financialYears.set(years);
@@ -129,7 +129,7 @@ export class AllocationHistoryComponent implements OnInit {
         shortDirection: 'desc',
       };
       const result: any = await firstValueFrom(
-        this.api.post('/api/platinum/bulk-allocation-list', body)
+        this.api.post('/api/platinum/bulk-progress/get-bulk-allocation-list', body)
       );
       const items: AllocationRecord[] = Array.isArray(result?.items || result?.data) ? (result?.items || result?.data) : [];
       this.allocationData.set(items);
@@ -151,10 +151,7 @@ export class AllocationHistoryComponent implements OnInit {
     this.retrying.set(tx.directDepositJob_ID);
     try {
       await firstValueFrom(
-        this.api.post('/api/platinum/retry-bulk-allocation', {
-          jobId: tx.directDepositJob_ID,
-          userId: userId,
-        })
+        this.api.post(`/api/platinum/direct-deposit-errors/retry/${tx.directDepositJob_ID}/${userId}`, {})
       );
       this.toast.success(`Job #${tx.directDepositJob_ID} has been resubmitted for processing.`);
       this.allocationData.update(prev => prev.map(item =>
@@ -176,8 +173,8 @@ export class AllocationHistoryComponent implements OnInit {
     this.detailsLoading.set(true);
     try {
       const [jobResult, errorResult]: any[] = await Promise.allSettled([
-        firstValueFrom(this.api.get(`/api/platinum/bulk-progress-job-accounts/${tx.directDepositJob_ID}`)),
-        firstValueFrom(this.api.get(`/api/platinum/dd-job-account-details/${tx.directDepositJob_ID}`)),
+        firstValueFrom(this.api.get(`/api/platinum/bulk-progress/job-account-details/${tx.directDepositJob_ID}`)),
+        firstValueFrom(this.api.get(`/api/platinum/bulk-progress/job-account-details/${tx.directDepositJob_ID}`)),
       ]);
 
       let details: any[] | null = null;

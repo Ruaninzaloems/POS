@@ -109,7 +109,7 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
     this.error.set('');
     try {
       const result: any = await firstValueFrom(
-        this.api.get(`/api/platinum/pos-item-details/${this.posItemId()}`)
+        this.api.get('/api/platinum/direct-deposit-allocation/get-pos-item-details', { posItemId: String(this.posItemId()) })
       );
       const item = result?.posItem || result || {};
       this.transaction.set({
@@ -159,7 +159,7 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
       }
 
       const results: any = await firstValueFrom(
-        this.api.post('/api/platinum/search-accounts', body)
+        this.api.post('/api/platinum/billing-payment/search-accounts', body)
       );
       const items = Array.isArray(results) ? results : results?.value || [];
       const mapped: SearchResult[] = items.slice(0, 15).map((item: any) => ({
@@ -233,7 +233,7 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
       let sessionId: number | null = null;
       try {
         const sessionResult: any = await firstValueFrom(
-          this.api.post('/api/platinum/dd-virtual-session', {
+          this.api.post('/api/platinum/direct-deposit-allocation/create-virtual-session', {
             posItemId: tx.posItem_ID,
             userId: user?.user_ID || 0,
           })
@@ -250,7 +250,7 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
         this.postingStatus.set(`Processing ${i + 1} of ${allLines.length}: ${line.accountNo}...`);
         try {
           const result: any = await firstValueFrom(
-            this.api.post('/api/platinum/submit-dd-allocation', {
+            this.api.post('/api/dd-allocation/submit-batch', {
               posItemId: tx.posItem_ID,
               accountId: line.accountId,
               accountNo: line.accountNo,
@@ -272,7 +272,7 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
       if (sessionId) {
         try {
           await firstValueFrom(
-            this.api.post('/api/platinum/dd-close-session', { sessionId })
+            this.api.post('/api/platinum/direct-deposit-allocation/close-virtual-session', { sessionId })
           );
         } catch {}
       }

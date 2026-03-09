@@ -237,14 +237,14 @@ export class BillingDashboardComponent implements OnInit {
   };
 
   private itemCountEndpoints: Record<string, string> = {
-    account: '/api/platinum/billing-dashboard/notification-account-item-counts',
-    indigentsubsidy: '/api/platinum/billing-dashboard/subsidy-item-counts',
-    consumption: '/api/platinum/billing-dashboard/notification-consumption-item-counts',
-    debt: '/api/platinum/billing-dashboard/notification-debt-item-counts',
-    billing: '/api/platinum/billing-dashboard/billing-tab-item-details-count',
-    property: '/api/platinum/billing-dashboard/property-tab-item-details-count',
+    account: '/api/platinum/billing-dashboard/get-notification-account-item-counts',
+    indigentsubsidy: '/api/platinum/billing-dashboard/get-subsidy-item-counts',
+    consumption: '/api/platinum/billing-dashboard/get-notification-consumption-item-counts',
+    debt: '/api/platinum/billing-dashboard/get-notification-debt-item-counts',
+    billing: '/api/platinum/billing-dashboard/get-billing-tab-item-details-count',
+    property: '/api/platinum/billing-dashboard/get-property-tab-item-details-count',
     pos: '/api/platinum/billing-dashboard/pos-tab-item-details-count',
-    rebate: '/api/platinum/billing-dashboard/rebate-tab-item-details-count',
+    rebate: '/api/platinum/billing-dashboard/get-rebate-tab-item-details-count',
   };
 
   totalNotifications = computed(() => Object.values(this.counts()).reduce((s, v) => s + v, 0));
@@ -283,8 +283,8 @@ export class BillingDashboardComponent implements OnInit {
     this.loading.set(true);
     try {
       const [alertResult, countResult] = await Promise.allSettled([
-        firstValueFrom(this.api.get('/api/platinum/billing-dashboard/alert-counts')),
-        firstValueFrom(this.api.get('/api/platinum/billing-dashboard/notification-counts')),
+        firstValueFrom(this.api.get('/api/platinum/billing-dashboard/get-alert-counts')),
+        firstValueFrom(this.api.get('/api/platinum/billing-dashboard/get-notification-counts')),
       ]);
 
       if (alertResult.status === 'fulfilled') {

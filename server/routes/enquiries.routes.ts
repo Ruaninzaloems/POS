@@ -365,4 +365,103 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
+
+  const enquiryPathParamMap: Record<string, string> = {
+    "account-balance": "total-balance-debt",
+    "handover-info": "handover-by-account",
+    "name-info": "name-info-by-account",
+    "property-details": "property-details-by-account",
+    "contact-details": "get-contact-details",
+    "contact-details-history": "contact-details-history-by-id",
+    "delivery-address-history": "delivery-address-history-by-id",
+    "deposits": "deposits-by-account-id",
+    "payment-incentive": "payment-incentive-by-account",
+    "generated-statements": "generated-statements-by-id",
+    "debit-order-deduction": "get-debit-order-deduction",
+    "consumption-units": "cons-unit-by-account",
+    "transaction-history": "detailed-transaction-results",
+  };
+
+  app.get("/api/platinum/billing-enquiry/:endpoint/:accountId", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const { endpoint, accountId } = req.params;
+      const mappedEndpoint = enquiryPathParamMap[endpoint] || endpoint;
+
+      const queryParams: Record<string, string> = {
+        ...req.query as Record<string, string>,
+        accountId: accountId,
+      };
+
+      const supervisorRoutes: Record<string, string> = {
+        "total-balance-debt": "TotalBalanceDebt",
+        "deposits-by-account-id": "DepositsByAccountId",
+        "deposit-amount": "DepositAmount",
+        "name-info-by-account": "NameInfoByAccount",
+        "handover-by-account": "HandoverByAccount",
+        "property-details-by-account": "PropertyDetailsByAccount",
+        "cons-unit-by-account": "ConsUnitByAccount",
+        "payment-incentive-by-account": "PaymentIncentiveByAccount",
+        "linked-accounts-on-property": "LinkedAccountsOnProperty",
+        "service-type-balance": "ServiceTypeBalance",
+      };
+
+      if (supervisorRoutes[mappedEndpoint]) {
+        const data = await platinumGet(session, `/api/BillingEnquiry/${supervisorRoutes[mappedEndpoint]}`, queryParams);
+        return handlePlatinumResult(res, data);
+      }
+
+      if (mappedEndpoint === "get-contact-details") {
+        const data = await platinumGet(session, "/api/billing/account-management/get-contact-details", queryParams);
+        return handlePlatinumResult(res, data);
+      }
+
+      const billingEnquiryPlatinumMap: Record<string, string> = {
+        "basic-account-details": "BasicAccountDetails",
+        "account-info-result": "AccountInfoResult",
+        "all-services": "AllServices",
+        "services-search-results": "ServicesSearchResults",
+        "account-rates-details": "GetAccountRatesDetails",
+        "metered-services-on-account": "MeteredServicesOnAccount",
+        "transfer-ownership": "TransferOwnerShip",
+        "contact-details-history-by-id": "get-contactdetails-history-by-id",
+        "delivery-address-history-by-id": "get-delivery-address-history-by-id",
+        "handover-account-enquiry": "getHandoverAccountEnquiry",
+        "account-notifications": "AccountNotifications",
+        "property-notification": "getPropertyNotification",
+        "generated-statements-by-id": "get-generated-statements-by-id",
+        "clearance-inquiries": "ClearanceInquiries",
+        "debtor-note-lists": "DebtorNoteLists",
+        "section129-account-enquiry": "GetSection129AccountEnquiry",
+        "debit-order-deduction-by-account": "debitorderdeductionbyaccountid",
+        "get-debit-order-deduction": "getDebitOrderDeduction",
+        "payment-plans-by-account-id": "PaymentPlansByAccountId",
+        "payment-plan-remaining-capital": "PaymentPlanRemainingCapitalAmount",
+        "repayment-plan-status": "RepaymentPlanStatus",
+        "payment-incentive-journals": "PaymentIncentiveJournals",
+        "rates-run-history": "RatesRunHistory",
+        "attp-application-history": "AttpApplicationHistory",
+        "account-service-meter-per-property": "AccountServiceMeterPerProperty",
+        "detailed-transaction-results": "DetailedTransactionResults",
+        "cons-unit-by-account": "ConsUnitByAccount",
+        "linked-accounts-on-property": "LinkedAccountsOnProperty",
+        "deposit-amount": "DepositAmount",
+        "deposits-by-account-id": "DepositsByAccountId",
+      };
+
+      const platinumPath = billingEnquiryPlatinumMap[mappedEndpoint];
+      if (platinumPath) {
+        const data = await platinumGet(session, `/api/BillingEnquiry/${platinumPath}`, queryParams);
+        return handlePlatinumResult(res, data);
+      }
+
+      const camelCase = mappedEndpoint.replace(/-([a-z])/g, (_: string, c: string) => c.toUpperCase());
+      const pascalCase = camelCase.charAt(0).toUpperCase() + camelCase.slice(1);
+      const data = await platinumGet(session, `/api/BillingEnquiry/${pascalCase}`, queryParams);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      console.error(`[billing-enquiry/:endpoint/:accountId] ${req.params.endpoint}/${req.params.accountId} Error:`, e.message);
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
 }

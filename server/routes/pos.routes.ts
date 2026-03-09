@@ -515,6 +515,21 @@ export function registerPosRoutes(app: Express, httpServer: Server): void {
     }
   });
 
+  app.post("/api/platinum/pos/process-payment", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const userId = session.userData?.user_ID || (session as any).userId || (session as any).user?.id;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found in session" });
+      }
+      const data = await platinumPost(session, `/api/billing-payment/submit-consumer-payment/${userId}`, req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      console.error(`[pos/process-payment] Error:`, e.message);
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   app.put("/api/platinum/user/:id", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;

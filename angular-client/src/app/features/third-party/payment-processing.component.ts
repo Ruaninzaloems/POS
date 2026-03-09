@@ -179,7 +179,7 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
   async loadThirdPartyTypes(): Promise<void> {
     this.loadingTypes.set(true);
     try {
-      const types: any = await firstValueFrom(this.api.get('/api/platinum/third-party/payment-types'));
+      const types: any = await firstValueFrom(this.api.get('/api/platinum/third-party-payments/types'));
       if (Array.isArray(types)) {
         this.thirdPartyTypes.set(types.map((t: any) => ({
           id: t.thirdPartyTypeId ?? t.id,
@@ -197,8 +197,8 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
     const user = this.auth.user();
     if (!user) return;
     try {
-      const details: any = await firstValueFrom(this.api.post('/api/platinum/third-party/cashier-details', {
-        userId: user.user_ID, finYear: user.finYear
+      const details: any = await firstValueFrom(this.api.get('/api/platinum/third-party-payments/cashier-details', {
+        userId: String(user.user_ID), finYear: user.finYear
       }));
       if (details && !details._error) {
         this.cashierInfo.set(details);
@@ -211,7 +211,7 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
 
     this.giLoadingCashOffices.set(true);
     try {
-      const offices: any = await firstValueFrom(this.api.get('/api/platinum/cash-offices'));
+      const offices: any = await firstValueFrom(this.api.get('/api/platinum/receipt-prepaid/cash-offices'));
       if (Array.isArray(offices) && offices.length > 0) {
         this.giCashOffices.set(offices.map((o: any) => ({ id: o.id, name: o.name })));
       }
@@ -235,7 +235,7 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
     this.processResult.set(null);
     try {
       const fileContent = await this.file()!.text();
-      const result: any = await firstValueFrom(this.api.post('/api/platinum/third-party/import-file', {
+      const result: any = await firstValueFrom(this.api.post('/api/platinum/third-party-payments/import-file', {
         ContentType: this.file()!.type || 'text/plain',
         FileName: this.file()!.name,
         Name: this.file()!.name,
@@ -284,7 +284,7 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
     this.loadingTxns.set(true);
     this.loadProgress.set({ step: 'Fetching transactions from server...', percent: 5 });
     try {
-      const txns: any = await firstValueFrom(this.api.get(`/api/platinum/third-party/transactions/${useId}`));
+      const txns: any = await firstValueFrom(this.api.get(`/api/platinum/third-party-payments/${useId}/transactions`));
       if (Array.isArray(txns)) {
         this.loadProgress.set({ step: `Loaded ${txns.length} transaction(s). Resolving consumer accounts...`, percent: 20 });
         const fileAccounts: string[] = [];
@@ -367,8 +367,7 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
           for (let i = 0; i < migratedEntries.length; i += updateBatchSize) {
             const batch = migratedEntries.slice(i, i + updateBatchSize);
             const updates = batch.map(entry =>
-              firstValueFrom(this.api.post('/api/platinum/third-party/update-transaction', {
-                importId: useId, index: entry.index,
+              firstValueFrom(this.api.put(`/api/platinum/third-party-payments/${useId}/transactions/${entry.index}`, {
                 newAccountNumber: entry.newAcct,
                 comment: `Auto-matched: Old "${entry.oldAcct}" \u2192 New "${entry.newAcct}"`,
               })).catch(() => {})
@@ -397,7 +396,7 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
       const batch = unique.slice(i, i + batchSize);
       const lookups = batch.map(async (accNo) => {
         try {
-          const results: any = await firstValueFrom(this.api.post('/api/platinum/third-party/account-search', { accountNo: accNo }));
+          const results: any = await firstValueFrom(this.api.get('/api/platinum/third-party-payments/account-search', { accountNo: accNo }));
           if (Array.isArray(results) && results.length > 0) {
             const result = results[0];
             mapping.set(accNo, {
@@ -425,8 +424,7 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
     if (this.editingIdx() === null) return;
     this.savingEdit.set(true);
     try {
-      await firstValueFrom(this.api.post('/api/platinum/third-party/update-transaction', {
-        importId: this.importId(), index: this.editingIdx(),
+      await firstValueFrom(this.api.put(`/api/platinum/third-party-payments/${this.importId()}/transactions/${this.editingIdx()}`, {
         newAccountNumber: this.editAccountNo(), comment: this.editComment()
       }));
       this.transactions.update(prev => prev.map(t => {
@@ -457,8 +455,8 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
       return { ...t, resolvedAccountId: '', resolvedAccountNumber: '', matchStatus: 'Unmatched' as MatchStatus, validated: false, validationMessage: 'Link cleared by user', comment: 'Link cleared \u2014 needs re-assignment' };
     }));
     if (this.importId()) {
-      firstValueFrom(this.api.post('/api/platinum/third-party/update-transaction', {
-        importId: this.importId(), index: txnIndex, newAccountNumber: '', comment: 'Link cleared \u2014 needs re-assignment'
+      firstValueFrom(this.api.put(`/api/platinum/third-party-payments/${this.importId()}/transactions/${txnIndex}`, {
+        newAccountNumber: '', comment: 'Link cleared \u2014 needs re-assignment'
       })).catch(() => {});
     }
   }
@@ -476,11 +474,11 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
   async handleAccountSearch(): Promise<void> {
     this.searching.set(true);
     try {
-      const results: any = await firstValueFrom(this.api.post('/api/platinum/third-party/account-search', {
-        accountNo: this.searchAccountNo() || undefined,
-        name: this.searchName() || undefined,
-        street: this.searchStreet() || undefined,
-      }));
+      const params: Record<string, string> = {};
+      if (this.searchAccountNo()) params['accountNo'] = this.searchAccountNo();
+      if (this.searchName()) params['name'] = this.searchName();
+      if (this.searchStreet()) params['street'] = this.searchStreet();
+      const results: any = await firstValueFrom(this.api.get('/api/platinum/third-party-payments/account-search', params));
       this.searchResults.set(Array.isArray(results) ? results : []);
     } catch {
       this.searchResults.set([]);
@@ -506,8 +504,8 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
       };
     }));
     if (this.importId()) {
-      firstValueFrom(this.api.post('/api/platinum/third-party/update-transaction', {
-        importId: this.importId(), index: idx, newAccountNumber: accNo, comment: `Manually matched to ${accNo}`
+      firstValueFrom(this.api.put(`/api/platinum/third-party-payments/${this.importId()}/transactions/${idx}`, {
+        newAccountNumber: accNo, comment: `Manually matched to ${accNo}`
       })).catch(() => {});
     }
     this.searchOpen.set(false);
@@ -516,7 +514,7 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
   async handleValidate(): Promise<void> {
     this.validating.set(true);
     try {
-      const result: any = await firstValueFrom(this.api.post('/api/platinum/third-party/validate', { importId: this.importId() }));
+      const result: any = await firstValueFrom(this.api.post(`/api/platinum/third-party-payments/${this.importId()}/validate-for-reconcile`, {}));
       this.validationResult.set(result);
       if (result?.isValid || result?.isSuccess) {
         this.toast.success('Validation passed. Ready to commit.');
@@ -533,7 +531,7 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
   async handleCommit(): Promise<void> {
     this.committing.set(true);
     try {
-      const result: any = await firstValueFrom(this.api.post('/api/platinum/third-party/commit', { importId: this.importId() }));
+      const result: any = await firstValueFrom(this.api.post(`/api/platinum/third-party-payments/${this.importId()}/commit`, {}));
       this.commitResult.set(result);
       this.step.set('committed');
       this.toast.success('Payments committed successfully.');

@@ -93,7 +93,7 @@ export class AutoAllocationComponent implements OnInit {
     this.expandedBatchNum.set(null);
     try {
       const result: any = await firstValueFrom(
-        this.api.post('/api/platinum/bulk-unprocessed', {
+        this.api.post('/api/platinum/direct-deposit-bulk/get-unprocessed', {
           fromDate: new Date(this.fromDate()).toISOString(),
           toDate: new Date(this.toDate()).toISOString(),
         })
@@ -119,7 +119,7 @@ export class AutoAllocationComponent implements OnInit {
     this.error.set(null);
     try {
       const result: any = await firstValueFrom(
-        this.api.post('/api/platinum/bulk-processed', {
+        this.api.post('/api/platinum/direct-deposit-bulk/get-processed', {
           unProcessedBatches: this.unprocessedBatches(),
           processedBatches: this.processedBatches(),
         })
@@ -149,7 +149,7 @@ export class AutoAllocationComponent implements OnInit {
       let currentProcessed = this.processedBatches();
       if (currentProcessed.length === 0) {
         const processedData: any = await firstValueFrom(
-          this.api.post('/api/platinum/bulk-processed', {
+          this.api.post('/api/platinum/direct-deposit-bulk/get-processed', {
             unProcessedBatches: this.unprocessedBatches(),
             processedBatches: [],
           })
@@ -161,7 +161,7 @@ export class AutoAllocationComponent implements OnInit {
       }
 
       const result: any = await firstValueFrom(
-        this.api.post('/api/platinum/bulk-reconcile', {
+        this.api.post('/api/platinum/direct-deposit-bulk/reconcile', {
           userId: userId,
           selectedItem: batch,
           unProcessedBatches: this.unprocessedBatches(),
@@ -180,7 +180,7 @@ export class AutoAllocationComponent implements OnInit {
       if (updatedProcessed.length > 0) this.processedBatches.set(updatedProcessed);
 
       const refreshData: any = await firstValueFrom(
-        this.api.post('/api/platinum/bulk-unprocessed', {
+        this.api.post('/api/platinum/direct-deposit-bulk/get-unprocessed', {
           fromDate: new Date(this.fromDate()).toISOString(),
           toDate: new Date(this.toDate()).toISOString(),
         })
@@ -214,7 +214,7 @@ export class AutoAllocationComponent implements OnInit {
       const user = this.auth.user();
       const userName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.userName : 'Cashier';
       await firstValueFrom(
-        this.api.post('/api/platinum/bulk-print-processed', {
+        this.api.post('/api/platinum/direct-deposit-bulk/print-processed', {
           userName: userName,
           selectedItem: batch,
           processedBatches: this.processedBatches().map(b => ({ ...b, items: [], rejectedItems: [] })),

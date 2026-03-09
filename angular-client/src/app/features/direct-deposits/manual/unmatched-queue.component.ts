@@ -130,7 +130,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
       if (this.toDate()) params['toDate'] = new Date(this.toDate()).toISOString();
 
       const result: any = await firstValueFrom(
-        this.api.get('/api/platinum/bank-recon-pos-items', params)
+        this.api.post('/api/platinum/direct-deposit-allocation/get-bank-recon-positem-list', params)
       );
 
       let items: BankReconPosItem[] = [];
@@ -162,7 +162,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
   async checkItemProcessed(item: BankReconPosItem): Promise<void> {
     try {
       await firstValueFrom(
-        this.api.post('/api/platinum/check-selected-item-processed', { posItemId: item.posItem_ID })
+        this.api.get('/api/platinum/direct-deposit-allocation/check-selected-item-processed', { posItemId: String(item.posItem_ID) })
       );
     } catch (e: any) {
       console.error('Failed to check item processed:', e);
@@ -187,7 +187,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
       for (const accNo of accountNumbers.slice(0, 5)) {
         try {
           const results: any = await firstValueFrom(
-            this.api.post('/api/platinum/search-accounts', { accountNo: accNo })
+            this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: accNo })
           );
           const items = Array.isArray(results) ? results : results?.value || [];
           for (const r of items.slice(0, 3)) {

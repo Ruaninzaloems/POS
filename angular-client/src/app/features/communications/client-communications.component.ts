@@ -135,7 +135,7 @@ export class ClientCommunicationsComponent implements OnInit, OnDestroy {
       const searchBody: any = {};
       if (isNumeric) { searchBody.accountNo = query; } else { searchBody.name = query; }
 
-      const rawData: any = await firstValueFrom(this.api.post('/api/platinum/account/search-payment', searchBody)).catch(() => []);
+      const rawData: any = await firstValueFrom(this.api.post('/api/platinum/billing-payment/search-accounts', searchBody)).catch(() => []);
       const items = Array.isArray(rawData) ? rawData : (rawData?.value || []);
       const results = items.slice(0, 20);
       this.searchResults.set(results);
@@ -146,8 +146,8 @@ export class ClientCommunicationsComponent implements OnInit, OnDestroy {
         if (accId && !this.contactIndicators()[accId]) {
           this.contactIndicators.update(prev => ({ ...prev, [accId]: { email: false, mobile: false, loading: true } }));
           Promise.all([
-            firstValueFrom(this.api.post('/api/platinum/account/contact-details', { accountId: String(accId) })).catch(() => null),
-            firstValueFrom(this.api.get(`/api/platinum/account/name-info/${accId}`)).catch(() => null),
+            firstValueFrom(this.api.get('/api/platinum/billing-account-management/get-contact-details', { accountId: String(accId) })).catch(() => null),
+            firstValueFrom(this.api.get('/api/platinum/billing-enquiry/name-info-by-account', { accountId: String(accId) })).catch(() => null),
           ]).then(([contactRes, nameRes]) => {
             const { email, mobile } = this.extractContactInfo(contactRes, nameRes);
             this.contactIndicators.update(prev => ({ ...prev, [accId]: { email: !!email, mobile: !!mobile, loading: false } }));
@@ -176,9 +176,9 @@ export class ClientCommunicationsComponent implements OnInit, OnDestroy {
     let additionalEmails: string[] = [];
     try {
       const [contactRes, nameRes, addEmailRes] = await Promise.all([
-        firstValueFrom(this.api.post('/api/platinum/account/contact-details', { accountId: String(accountId) })).catch(() => null),
-        firstValueFrom(this.api.get(`/api/platinum/account/name-info/${accountId}`)).catch(() => null),
-        firstValueFrom(this.api.get(`/api/platinum/account/additional-emails/${accountId}`)).catch(() => null),
+        firstValueFrom(this.api.get('/api/platinum/billing-account-management/get-contact-details', { accountId: String(accountId) })).catch(() => null),
+        firstValueFrom(this.api.get('/api/platinum/billing-enquiry/name-info-by-account', { accountId: String(accountId) })).catch(() => null),
+        firstValueFrom(this.api.get('/api/platinum/billing-account-management/get-additional-emails', { accountId: String(accountId) })).catch(() => null),
       ]);
 
       const { email, mobile } = this.extractContactInfo(contactRes, nameRes);
@@ -347,7 +347,7 @@ export class ClientCommunicationsComponent implements OnInit, OnDestroy {
         const batch = unique.slice(batchStart, batchStart + BATCH_SIZE);
         const searchPromises = batch.map(async (accNo) => {
           try {
-            const rawData: any = await firstValueFrom(this.api.post('/api/platinum/account/search-payment', { accountNo: accNo })).catch(() => []);
+            const rawData: any = await firstValueFrom(this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: accNo })).catch(() => []);
             const data = rawData || [];
             const items: any[] = Array.isArray(data) ? data : (data?.value || []);
             return items.find((i: any) => {

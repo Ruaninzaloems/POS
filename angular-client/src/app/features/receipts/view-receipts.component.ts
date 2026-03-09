@@ -160,7 +160,7 @@ export class ViewReceiptsComponent implements OnInit {
   async loadCashiers(): Promise<void> {
     this.loadingCashiers.set(true);
     try {
-      const data: any = await firstValueFrom(this.api.get('/api/platinum/view-receipt/cashiers'));
+      const data: any = await firstValueFrom(this.api.get('/api/platinum/view-receipt/get-cashiers'));
       const items = Array.isArray(data) ? data : (data?.items || data?.value || []);
       this.cashiers.set(items.map((c: any) => ({
         id: String(c.id || c.cashierId || c.user_Id || ''),
@@ -176,7 +176,7 @@ export class ViewReceiptsComponent implements OnInit {
 
   async loadFinYear(): Promise<void> {
     try {
-      const data: any = await firstValueFrom(this.api.get('/api/platinum/view-receipt/active-fin-year'));
+      const data: any = await firstValueFrom(this.api.get('/api/platinum/active-fin-year'));
       if (data && typeof data === 'string') {
         this.cashbookFinYear.set(data);
       } else if (data?.finYear) {
@@ -223,7 +223,7 @@ export class ViewReceiptsComponent implements OnInit {
       if (this.accountFilter()) query.accountNumber = this.accountFilter();
       if (this.receiptFilter()) query.receiptNo = this.receiptFilter();
 
-      const result: any = await firstValueFrom(this.api.post('/api/platinum/view-receipt/list', query));
+      const result: any = await firstValueFrom(this.api.post('/api/platinum/view-receipt/get-receipt-list', query));
       const items = result?.items || result?.value || (Array.isArray(result) ? result : []);
       this.receipts.set(items);
       this.totalCount.set(result?.totalCount || items.length);
@@ -271,7 +271,7 @@ export class ViewReceiptsComponent implements OnInit {
     try {
       const receiptNo = receipt.receiptNo || '';
       const isMisc = (receipt as any).isMiscPayment === true || (receipt as any).isMiscPayment === 1;
-      const endpoint = isMisc ? '/api/platinum/view-receipt/print-misc' : '/api/platinum/view-receipt/print';
+      const endpoint = isMisc ? '/api/platinum/billing-payment/print-miscellaneous-receipt' : '/api/platinum/billing-payment/print-receipt';
       const res: any = await firstValueFrom(this.api.post(endpoint, {
         serialNos: [Number(serialNo)], receiptNos: receiptNo ? [receiptNo] : [], reprint: true
       }));
@@ -301,7 +301,7 @@ export class ViewReceiptsComponent implements OnInit {
     this.bankNoteSearching.set(true);
     this.bankNoteResults.set([]);
     try {
-      const results: any = await firstValueFrom(this.api.post('/api/platinum/view-receipt/bank-statement-notes', { search: this.bankNoteSearchText() }));
+      const results: any = await firstValueFrom(this.api.post('/api/platinum/bank-statement-notes', { search: this.bankNoteSearchText() }));
       const items = Array.isArray(results) ? results : (results?.items || []);
       this.bankNoteResults.set(items);
       if (items.length === 0) {
@@ -324,7 +324,7 @@ export class ViewReceiptsComponent implements OnInit {
     this.eftSearching.set(true);
     this.eftResults.set([]);
     try {
-      const results: any = await firstValueFrom(this.api.post('/api/platinum/view-receipt/eft-bank-statement-notes', { accountId: this.eftAccountSearch() }));
+      const results: any = await firstValueFrom(this.api.post('/api/platinum/view-receipt/search-by-eft-description', { accountId: this.eftAccountSearch() }));
       const items = Array.isArray(results) ? results : (results?.items || []);
       this.eftResults.set(items);
       if (items.length === 0) {
@@ -355,9 +355,10 @@ export class ViewReceiptsComponent implements OnInit {
     this.dataSource.set('none');
     try {
       const monthNum = parseInt(this.cashbookMonth(), 10);
-      const results: any = await firstValueFrom(this.api.post('/api/platinum/view-receipt/cashbook-transaction-trace', {
-        search: this.cashbookSearchText(), finYear: this.cashbookFinYear() || undefined, month: monthNum
-      }));
+      const params: Record<string, string> = { search: this.cashbookSearchText() };
+      if (this.cashbookFinYear()) params['finYear'] = this.cashbookFinYear();
+      if (monthNum) params['month'] = String(monthNum);
+      const results: any = await firstValueFrom(this.api.get('/api/platinum/cashbook-transaction-trace/search', params));
       const items = Array.isArray(results) ? results : (results?.items || []);
       this.cashbookResults.set(items);
       if (items.length === 0) {

@@ -122,7 +122,7 @@ export class CashierSetupComponent implements OnInit {
 
     try {
       const data: any = await firstValueFrom(
-        this.api.get('/api/platinum/cashier/validate', {
+        this.api.get('/api/platinum/receipt-prepaid/validate-cashier', {
           userId: String(userId),
           finYear: finYear
         })
@@ -175,7 +175,7 @@ export class CashierSetupComponent implements OnInit {
     this.step2Status.set('loading');
     try {
       const offices: any = await firstValueFrom(
-        this.api.get('/api/platinum/cash-offices', { finYear: finYear })
+        this.api.get('/api/platinum/receipt-prepaid/cash-offices', { finYear: finYear })
       );
       const officeList = Array.isArray(offices) ? offices : offices?.data || [];
       if (officeList.length > 0) {
@@ -209,13 +209,13 @@ export class CashierSetupComponent implements OnInit {
 
     try {
       const [optionsResult, typesResult, rangeResult]: any[] = await Promise.all([
-        firstValueFrom(this.api.get('/api/platinum/cashier/payment-options', {
+        firstValueFrom(this.api.get('/api/platinum/receipt-prepaid/pos-payment-type', {
           cashierId: String(cashierId), userId: String(userId), officeId: String(officeId)
         })),
-        firstValueFrom(this.api.get('/api/platinum/cashier/payment-types', {
+        firstValueFrom(this.api.get('/api/platinum/receipt-prepaid/pos-payment-type', {
           cashierId: String(cashierId), userId: String(userId), officeId: String(officeId)
         })),
-        firstValueFrom(this.api.get('/api/platinum/cashier/validate-receipt-range', {
+        firstValueFrom(this.api.get('/api/platinum/receipt-prepaid/validate-receipt-range', {
           userId: String(userId), cashierId: String(cashierId), finYear: this.finYear(), officeId: String(officeId)
         })),
       ]);
@@ -275,7 +275,7 @@ export class CashierSetupComponent implements OnInit {
       };
 
       const responseData: any = await firstValueFrom(
-        this.api.post('/api/platinum/cashier/submit-setup', payload)
+        this.api.post('/api/platinum/receipt-prepaid/submit-cashier-setup', payload)
       );
 
       const apiMessage = (responseData?.message || '').trim();
@@ -292,7 +292,7 @@ export class CashierSetupComponent implements OnInit {
           isVirtual: false,
         };
         await firstValueFrom(
-          this.api.post('/api/platinum/cashier/submit-setup', reclaimPayload)
+          this.api.post('/api/platinum/receipt-prepaid/submit-cashier-setup', reclaimPayload)
         );
       } else if (isValidationError) {
         throw new Error(cleanMessage);
