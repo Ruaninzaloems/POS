@@ -147,6 +147,8 @@ interface PosState {
   platinumCashierId: number | null;
   officeLimits: Record<string, number>;
   currentTransactionLimit: number;
+  sessionDropTotal: number;
+  recordDrop: (amount: number) => void;
   allowedPaymentOptions: CashierPaymentOption[];
   allowedPaymentTypes: CashierPaymentType[];
   paymentOptionsSource: string;
@@ -285,6 +287,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
   const [perItemSplitMode, setPerItemSplitMode] = useState(false);
   
   const [officeLimits, setOfficeLimits] = useState<Record<string, number>>({});
+  const [sessionDropTotal, setSessionDropTotal] = useState(0);
+  const recordDrop = (amount: number) => {
+      setSessionDropTotal(prev => prev + amount);
+      console.log(`[Session] Drop recorded: R${amount.toFixed(2)}, new session drop total: R${(sessionDropTotal + amount).toFixed(2)}`);
+  };
   const [allowedPaymentOptions, setAllowedPaymentOptions] = useState<CashierPaymentOption[]>([]);
   const [allowedPaymentTypes, setAllowedPaymentTypes] = useState<CashierPaymentType[]>([]);
   const [paymentOptionsSource, setPaymentOptionsSource] = useState<string>('not-loaded');
@@ -1120,6 +1127,25 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
         toast({ title: "Payment Method Not Allowed", description: "Credit Card payments are not enabled for your profile. Contact your supervisor.", variant: "destructive" });
         paymentInFlightRef.current = false;
         return;
+    }
+
+    if (payment.cash > 0 && currentTransactionLimit > 0) {
+        const sessionCashReceived = recentTransactions
+            .filter(t => t.status === 'COMPLETED')
+            .reduce((sum, t) => sum + (t.payment?.cash || 0), 0);
+        const cashOnHand = (sessionDetails.floatAmount || 0) + sessionCashReceived - sessionDropTotal;
+        const projectedCashOnHand = cashOnHand + payment.cash;
+        console.log(`[Payment] Cash-on-hand pre-check — float: R${sessionDetails.floatAmount}, sessionCash: R${sessionCashReceived.toFixed(2)}, drops: R${sessionDropTotal.toFixed(2)}, current: R${cashOnHand.toFixed(2)}, thisTx: R${payment.cash.toFixed(2)}, projected: R${projectedCashOnHand.toFixed(2)}, limit: R${currentTransactionLimit.toFixed(2)}`);
+        if (projectedCashOnHand > currentTransactionLimit) {
+            toast({
+                title: "Cash on Hand Limit Reached",
+                description: `Accepting R ${payment.cash.toFixed(2)} in cash would exceed your cash-on-hand limit of R ${currentTransactionLimit.toFixed(2)}. Your current cash on hand is R ${cashOnHand.toFixed(2)}. Please do a drop before accepting more cash payments.`,
+                variant: "destructive",
+                duration: 10000,
+            });
+            paymentInFlightRef.current = false;
+            return;
+        }
     }
 
     const earlyRecord = createTransactionRecord(items, totalToPay, payment, currentUser.id, {
@@ -2898,6 +2924,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
       officeLimits,
       updateOfficeLimit,
       currentTransactionLimit,
+      sessionDropTotal,
+      recordDrop,
       allowedPaymentOptions,
       allowedPaymentTypes,
       paymentOptionsSource,

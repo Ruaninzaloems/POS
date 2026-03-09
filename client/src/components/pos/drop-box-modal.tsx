@@ -19,7 +19,7 @@ interface DropBoxModalProps {
 
 export function DropBoxModal({ isOpen, onClose, triggerReason }: DropBoxModalProps) {
     const { toast } = useToast();
-    const { platinumUser, platinumCashierId, currentUser, sessionDetails, officeLimits } = usePos();
+    const { platinumUser, platinumCashierId, currentUser, sessionDetails, officeLimits, recordDrop } = usePos();
     const [amount, setAmount] = useState('');
     const [description, setDescription] = useState('');
     const [step, setStep] = useState<'input' | 'confirm' | 'submitting' | 'success' | 'error'>('input');
@@ -86,6 +86,7 @@ export function DropBoxModal({ isOpen, onClose, triggerReason }: DropBoxModalPro
 
             setReceiptNo(result?.receiptNo || null);
             setStep('success');
+            recordDrop(parsedAmount);
             toast({ title: 'Drop Box Submitted', description: `${formatCurrency(parsedAmount)} has been dropped to the drop box.` });
         } catch (e: any) {
             setErrorMessage(e?.message || 'Failed to submit drop box payment.');

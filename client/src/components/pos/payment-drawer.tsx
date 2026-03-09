@@ -28,7 +28,11 @@ export function PaymentDrawer() {
     viewMode,
     isPaymentTypeAllowed,
     perItemSplitMode,
-    setPerItemSplitMode
+    setPerItemSplitMode,
+    recentTransactions,
+    sessionDetails,
+    currentTransactionLimit,
+    sessionDropTotal
   } = usePos();
 
   const cashAllowed = isPaymentTypeAllowed(1);
@@ -96,6 +100,27 @@ export function PaymentDrawer() {
     if (diff <= 0) return null;
     return { current: rawTotal, rounded, diff };
   }, [totalDue, payment.cashAmount, payment.cardAmount]);
+
+  const cashOnHandWarning = useMemo(() => {
+    if (!currentTransactionLimit || currentTransactionLimit <= 0) return null;
+    const sessionCashReceived = recentTransactions
+        .filter(t => t.status === 'COMPLETED')
+        .reduce((sum, t) => sum + (t.payment?.cash || 0), 0);
+    const cashOnHand = (sessionDetails?.floatAmount || 0) + sessionCashReceived - sessionDropTotal;
+    const projected = cashOnHand + payment.cashAmount;
+    const remaining = currentTransactionLimit - cashOnHand;
+    if (projected > currentTransactionLimit) {
+        return { level: 'exceeded' as const, cashOnHand, projected, limit: currentTransactionLimit, remaining: Math.max(0, remaining) };
+    }
+    if (remaining <= 0) {
+        return { level: 'exceeded' as const, cashOnHand, projected, limit: currentTransactionLimit, remaining: 0 };
+    }
+    const warningThreshold = currentTransactionLimit * 0.8;
+    if (cashOnHand >= warningThreshold) {
+        return { level: 'warning' as const, cashOnHand, projected, limit: currentTransactionLimit, remaining };
+    }
+    return null;
+  }, [recentTransactions, sessionDetails?.floatAmount, currentTransactionLimit, sessionDropTotal, payment.cashAmount]);
 
   const isCompleteEnabled = 
     transactionItems.length > 0 && 
@@ -290,6 +315,39 @@ export function PaymentDrawer() {
             </Button>
         </div>
       </div>
+
+      {cashOnHandWarning && (
+        <div className={`shrink-0 mx-3 mt-2 mb-1 px-3 py-2 rounded-lg border flex items-start gap-2 text-sm ${
+          cashOnHandWarning.level === 'exceeded'
+            ? 'bg-red-50 border-red-300 text-red-800'
+            : 'bg-amber-50 border-amber-300 text-amber-800'
+        }`} data-testid="cash-on-hand-warning">
+          <AlertTriangle className={`w-4 h-4 mt-0.5 shrink-0 ${cashOnHandWarning.level === 'exceeded' ? 'text-red-500' : 'text-amber-500'}`} />
+          <div>
+            <div className="font-semibold">
+              {cashOnHandWarning.level === 'exceeded'
+                ? 'Cash on Hand Limit Reached'
+                : 'Approaching Cash Limit'}
+            </div>
+            <div className="text-xs mt-0.5">
+              {cashOnHandWarning.level === 'exceeded'
+                ? (cashOnHandWarning.projected > cashOnHandWarning.limit && payment.cashAmount > 0
+                    ? `This R ${payment.cashAmount.toFixed(2)} cash payment would push your cash on hand to R ${cashOnHandWarning.projected.toFixed(2)}, exceeding the limit of R ${cashOnHandWarning.limit.toFixed(2)}. Do a drop first.`
+                    : `Cash on hand (R ${cashOnHandWarning.cashOnHand.toFixed(2)}) has reached the limit of R ${cashOnHandWarning.limit.toFixed(2)}. Do a drop before accepting more cash.`)
+                : `R ${cashOnHandWarning.remaining.toFixed(2)} remaining before cash limit of R ${cashOnHandWarning.limit.toFixed(2)}. Consider doing a drop soon.`}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-1.5 h-7 text-xs border-current/30 hover:bg-current/5"
+              onClick={() => setShowDropBox(true)}
+              data-testid="button-drop-from-warning"
+            >
+              <Box className="w-3 h-3 mr-1" /> Do a Drop
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto overscroll-contain">
