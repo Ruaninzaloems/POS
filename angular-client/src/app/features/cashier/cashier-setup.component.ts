@@ -74,6 +74,7 @@ export class CashierSetupComponent implements OnInit {
   dayEndPending = signal(false);
   dayEndCompleted = signal(false);
   setupComplete = signal(false);
+  existingCashierId = signal<number | null>(null);
 
   user = this.auth.user;
 
@@ -133,6 +134,11 @@ export class CashierSetupComponent implements OnInit {
         this.cashierId.set(data.cashierId || userId);
         this.cashierDetails.set(data.details || null);
         this.step1Status.set('success');
+
+        const existingId = data.details?.id || data.cashierId || null;
+        if (existingId) {
+          this.existingCashierId.set(existingId);
+        }
 
         if (data.isActive === true && data.officeId) {
           const pendingFromApi = data.hasPendingDayEnd === true;
@@ -260,7 +266,7 @@ export class CashierSetupComponent implements OnInit {
       return;
     }
     if (this.resumingSession()) {
-      this.error.set('An active session already exists. Resume your current session or complete day-end reconciliation first.');
+      this.error.set('An active session already exists. Use "Resume Session" above to continue, or submit Day-End reconciliation to close the current session.');
       return;
     }
     if (!this.selectedOffice()) {
@@ -298,18 +304,36 @@ export class CashierSetupComponent implements OnInit {
       const isSuccess = /cashier setup added/i.test(cleanMessage);
       const isValidationError = !isSuccess && !isAlreadyOpen && cleanMessage.length > 0;
 
-      if (isAlreadyOpen && responseData?.cashier?.id) {
+      if (isAlreadyOpen) {
+        if (!responseData?.cashier?.id) {
+          throw new Error('A session is already open but no session ID was returned. Please contact your supervisor.');
+        }
         const reclaimPayload = {
           id: responseData.cashier.id,
           cashFloat: float,
           officeId: this.selectedOffice()!.cashOffice_ID,
           isVirtual: false,
         };
-        await firstValueFrom(
+        const reclaimResponse: any = await firstValueFrom(
           this.api.post('/api/platinum/receipt-prepaid/submit-cashier-setup', reclaimPayload)
         );
+        const reclaimMsg = (reclaimResponse?.message || '').trim();
+        if (reclaimResponse?.cashier?.isActive === true || /reclaimed/i.test(reclaimMsg)) {
+          this.existingCashierId.set(reclaimResponse.cashier?.id || responseData.cashier.id);
+          this.step3Status.set('success');
+          this.setupComplete.set(true);
+          this.toast.success('Existing session reclaimed successfully.');
+          this.router.navigate(['/pos']);
+          return;
+        } else {
+          throw new Error(reclaimMsg || 'Failed to reclaim existing session.');
+        }
       } else if (isValidationError) {
         throw new Error(cleanMessage);
+      }
+
+      if (responseData?.cashier?.id) {
+        this.existingCashierId.set(responseData.cashier.id);
       }
 
       this.step3Status.set('success');
@@ -317,21 +341,59 @@ export class CashierSetupComponent implements OnInit {
       this.toast.success('Cashier session started successfully.');
       this.router.navigate(['/pos']);
     } catch (err: any) {
-      this.error.set(`Failed to start session: ${err?.message || 'Unknown error'}`);
+      const msg = err?.message || 'Unknown error';
+      this.error.set(msg.startsWith('Failed to start') ? msg : `Failed to start session: ${msg}`);
       this.step3Status.set('error');
     } finally {
       this.submitting.set(false);
     }
   }
 
-  handleResumeSession(): void {
-    const details = this.cashierDetails();
-    if (!details || !this.userId()) return;
+  async handleResumeSession(): Promise<void> {
+    const existingId = this.existingCashierId();
+    if (!existingId) {
+      this.toast.success('Session resumed.');
+      this.router.navigate(['/pos']);
+      return;
+    }
 
-    this.step3Status.set('success');
-    this.setupComplete.set(true);
-    this.toast.success('Session resumed successfully.');
-    this.router.navigate(['/pos']);
+    this.error.set('');
+    this.submitting.set(true);
+    this.step3Status.set('loading');
+
+    try {
+      const float = parseFloat(this.floatInput()) || 0;
+      const officeId = Number(this.selectedOfficeId()) || this.cashierDetails()?.officeId || 0;
+
+      const reclaimPayload = {
+        id: existingId,
+        cashFloat: float,
+        officeId: officeId,
+        isVirtual: false,
+      };
+
+      const responseData: any = await firstValueFrom(
+        this.api.post('/api/platinum/receipt-prepaid/submit-cashier-setup', reclaimPayload)
+      );
+
+      const apiMessage = (responseData?.message || '').trim();
+      const isReclaimed = /reclaimed/i.test(apiMessage) || responseData?.cashier?.isActive === true;
+
+      if (isReclaimed) {
+        this.step3Status.set('success');
+        this.setupComplete.set(true);
+        this.toast.success('Session reclaimed successfully.');
+        this.router.navigate(['/pos']);
+      } else {
+        const cleanMessage = apiMessage.replace(/<br\s*\/?>\s*•?\s*/gi, '\n').trim();
+        throw new Error(cleanMessage || 'Failed to reclaim session.');
+      }
+    } catch (err: any) {
+      this.error.set(`Failed to resume session: ${err?.message || 'Unknown error'}`);
+      this.step3Status.set('error');
+    } finally {
+      this.submitting.set(false);
+    }
   }
 
   goBack(): void {

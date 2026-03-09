@@ -1,0 +1,109 @@
+POST /api/ReceiptPrepaid/submit-cashier-setup
+ 
+  ---
+  1. New Session (id: 0)
+ 
+  Request
+  POST /api/ReceiptPrepaid/submit-cashier-setup
+  {
+    "id": 0,
+    "user_Id": 213,
+    "cashFloat": 55.00,
+    "stpPort": null,
+    "plesseyPort": null,
+    "officeId": 1,
+    "isVirtual": false
+  }
+ 
+  Response — Success
+  200 OK
+  {
+    "message": "Cashier Setup Added",
+    "cashier": {
+      "id": 31943,
+      "user_Id": 213,
+      "cashFloat": 55.00,
+      "officeId": 1,
+      "isActive": true,
+      "isVirtual": false,
+      "dateCaptured": "2026-02-25T10:00:00"
+    }
+  }
+ 
+  Response — Validation Errors
+  200 OK
+  {
+    "message": "Enter a Cash Float<br /> • Cashier Receipt Range Is Not Available. Please Contact Your Supervisor.",
+    "cashier": { ... }
+  }
+ 
+  Response — Already Open
+  200 OK
+  {
+    "message": "Cashier Already Open",
+    "cashier": {
+      "id": 31943,
+      "user_Id": 213,
+      "isActive": true,
+      ...
+    }
+  }
+  Frontend should then re-send with the returned id to reclaim.
+ 
+  ---
+  2. Re-claim Existing Session (id > 0, isActive omitted or true)
+ 
+  Request
+  POST /api/ReceiptPrepaid/submit-cashier-setup
+  {
+    "id": 31943,
+    "cashFloat": 55.00,
+    "officeId": 1,
+    "isVirtual": false
+  }
+ 
+  Response
+  200 OK
+  {
+    "message": "Cashier Session Reclaimed",
+    "cashier": {
+      "id": 31943,
+      "user_Id": 213,
+      "cashFloat": 55.00,
+      "officeId": 1,
+      "isActive": true,
+      "isVirtual": false,
+      "dateModified": "2026-02-25T10:05:00"
+    }
+  }
+ 
+  ---
+  3. Close Session (id > 0, isActive: false)
+ 
+  Request
+  POST /api/ReceiptPrepaid/submit-cashier-setup
+  {
+    "id": 31943,
+    "user_Id": 213,
+    "cashFloat": null,
+    "stpPort": null,
+    "plesseyPort": null,
+    "officeId": 1,
+    "isVirtual": false,
+    "isActive": false
+  }
+ 
+  Response
+  200 OK
+  {
+    "message": "Cashier Session Closed",
+    "cashier": {
+      "id": 31943,
+      "user_Id": 213,
+      "cashFloat": null,
+      "officeId": 1,
+      "isActive": false,
+      "isVirtual": false,
+      "dateModified": "2026-02-25T10:10:00"
+    }
+  }

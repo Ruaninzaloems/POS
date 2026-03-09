@@ -144,7 +144,7 @@
           </div>
         }
 
-        @if (resumingSession() && cashierDetails() && !dayEndCompleted() && !dayEndPending()) {
+        @if (resumingSession() && !dayEndCompleted() && !dayEndPending()) {
           <div class="resume-section" data-testid="resume-session-section">
             <div class="resume-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2">
@@ -153,16 +153,22 @@
             </div>
             <div class="resume-info">
               <p class="resume-title">Active Session Found</p>
-              <p class="resume-subtitle">Verified via validate-cashier API</p>
+              <p class="resume-subtitle">Session ID: {{ existingCashierId() || cashierId() }}</p>
               <p class="resume-details">
-                Office: <strong>{{ cashierDetails()?.const_CashOffice?.cashOfficeDesc || 'Unknown' }}</strong>
+                Office: <strong>{{ cashierDetails()?.const_CashOffice?.cashOfficeDesc || selectedOffice()?.cashOfficeDesc || 'Unknown' }}</strong>
                 <span class="separator"> | </span>
                 Float: <strong>R {{ (cashierDetails()?.cashFloat ?? 0).toFixed(2) }}</strong>
               </p>
-              <button class="btn-primary resume-btn" (click)="handleResumeSession()" data-testid="button-resume-session">
-                Resume Session
-              </button>
-              <p class="resume-note">You cannot start a new session while an active session exists.</p>
+              <div class="resume-actions">
+                <button class="btn-primary resume-btn" (click)="handleResumeSession()" [disabled]="submitting()" data-testid="button-resume-session">
+                  @if (submitting()) {
+                    <div class="spinner spinner-sm"></div> Reclaiming...
+                  } @else {
+                    Resume Session
+                  }
+                </button>
+              </div>
+              <p class="resume-note">To close this session, submit your Day-End reconciliation for supervisor approval.</p>
             </div>
           </div>
         }
@@ -368,9 +374,9 @@
               data-testid="button-submit"
             >
               @if (submitting()) {
-                <div class="spinner spinner-sm"></div> Setting up...
+                <div class="spinner spinner-sm"></div> Starting Session...
               } @else {
-                Submit
+                Start Session
               }
             </button>
             <button type="button" class="btn-outline btn-cancel" (click)="goBack()" data-testid="button-cancel">
