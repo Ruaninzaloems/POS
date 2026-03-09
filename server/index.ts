@@ -140,12 +140,10 @@ app.use((req, res, next) => {
 
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
-  } else {
-    const { setupVite } = await import("./vite");
-    await setupVite(httpServer, app);
   }
 
-  const port = parseInt(process.env.PORT || "5000", 10);
+  const defaultPort = process.env.NODE_ENV === 'production' ? '5000' : '3000';
+  const port = parseInt(process.env.PORT || defaultPort, 10);
   httpServer.listen(port, "0.0.0.0", () => {
     log(`serving on port ${port}`);
   });

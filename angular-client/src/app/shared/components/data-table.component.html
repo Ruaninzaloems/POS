@@ -1,0 +1,39 @@
+<div class="table-container" data-testid="data-table">
+  <table>
+    <thead>
+      <tr>
+        @for (col of columns; track col.key) {
+          <th
+            [style.width]="col.width || 'auto'"
+            [class.sortable]="col.sortable"
+            (click)="onSort(col)"
+            [attr.data-testid]="'table-header-' + col.key">
+            {{ col.label }}
+            @if (col.sortable) {
+              <span class="sort-icon">{{ getSortIcon(col) }}</span>
+            }
+          </th>
+        }
+      </tr>
+    </thead>
+    <tbody>
+      @if (loading) {
+        <tr>
+          <td [attr.colspan]="columns.length" class="loading-cell">
+            <div class="spinner"></div>
+          </td>
+        </tr>
+      } @else if (data.length === 0) {
+        <tr>
+          <td [attr.colspan]="columns.length" class="empty-cell" data-testid="text-empty-table">
+            {{ emptyMessage }}
+          </td>
+        </tr>
+      } @else {
+        @for (row of data; track $index) {
+          <ng-container [ngTemplateOutlet]="rowTemplate" [ngTemplateOutletContext]="{ $implicit: row, index: $index }"></ng-container>
+        }
+      }
+    </tbody>
+  </table>
+</div>

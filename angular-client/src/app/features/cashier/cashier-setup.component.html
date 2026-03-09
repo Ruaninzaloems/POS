@@ -1,0 +1,384 @@
+@if (sessionLoading() && step1Status() === 'loading' && step2Status() === 'pending') {
+  <div class="setup-loading" data-testid="cashier-setup-loading">
+    <div class="card loading-card">
+      <div class="spinner"></div>
+      <p>Validating cashier registration...</p>
+    </div>
+  </div>
+} @else if (setupComplete()) {
+  <div class="setup-loading">
+    <div class="card loading-card">
+      <div class="spinner"></div>
+      <p>Redirecting to POS...</p>
+    </div>
+  </div>
+} @else if (dayEndPending() && !isCashierRegistered()) {
+  <div class="setup-loading" data-testid="cashier-setup-pending">
+    <div class="card pending-card">
+      <div class="pending-icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2">
+          <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>
+        </svg>
+      </div>
+      <h2>Day-End Pending Supervisor Approval</h2>
+      <p class="pending-text">Your day-end reconciliation has been submitted and is waiting for supervisor review. You cannot start or resume a session until the supervisor approves or returns your submission.</p>
+      <div class="pending-info">
+        <div class="info-row">
+          <span class="info-label">Cashier:</span>
+          <span class="info-value">{{ firstName() }} {{ lastName() }}</span>
+        </div>
+        @if (cashierId()) {
+          <div class="info-row">
+            <span class="info-label">Cashier ID:</span>
+            <span class="info-value">{{ cashierId() }}</span>
+          </div>
+        }
+      </div>
+      <button class="btn-outline" (click)="goBack()" data-testid="button-back-dashboard">Back to Dashboard</button>
+    </div>
+  </div>
+} @else {
+  <div class="setup-page" data-testid="cashier-setup-page">
+    <div class="setup-card card">
+      <div class="setup-header">
+        <h1>Cashier Setup</h1>
+      </div>
+
+      <div class="setup-body">
+        <div class="step-indicators" data-testid="step-indicators">
+          <div class="step-indicator" [class]="getStepClass(step1Status())" data-testid="step-1-indicator">
+            <div class="step-circle">
+              @if (step1Status() === 'loading') {
+                <div class="spinner spinner-sm"></div>
+              } @else if (step1Status() === 'success') {
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+              } @else if (step1Status() === 'error') {
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+              } @else {
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+              }
+            </div>
+            <span class="step-label">Step 1: Validate Cashier</span>
+            @if (step1Status() === 'loading') { <span class="badge badge-info step-badge">In Progress</span> }
+            @if (step1Status() === 'success') { <span class="badge badge-success step-badge">Done</span> }
+            @if (step1Status() === 'error') { <span class="badge badge-danger step-badge">Failed</span> }
+          </div>
+          <div class="step-indicator" [class]="getStepClass(step2Status())" data-testid="step-2-indicator">
+            <div class="step-circle">
+              @if (step2Status() === 'loading') {
+                <div class="spinner spinner-sm"></div>
+              } @else if (step2Status() === 'success') {
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+              } @else if (step2Status() === 'error') {
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+              } @else {
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+              }
+            </div>
+            <span class="step-label">Step 2: Load Cash Offices</span>
+            @if (step2Status() === 'loading') { <span class="badge badge-info step-badge">In Progress</span> }
+            @if (step2Status() === 'success') { <span class="badge badge-success step-badge">Done</span> }
+            @if (step2Status() === 'error') { <span class="badge badge-danger step-badge">Failed</span> }
+          </div>
+          <div class="step-indicator" [class]="getStepClass(step3Status())" data-testid="step-3-indicator">
+            <div class="step-circle">
+              @if (step3Status() === 'loading') {
+                <div class="spinner spinner-sm"></div>
+              } @else if (step3Status() === 'success') {
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+              } @else if (step3Status() === 'error') {
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+              } @else {
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+              }
+            </div>
+            <span class="step-label">Step 3: Start Session</span>
+            @if (step3Status() === 'loading') { <span class="badge badge-info step-badge">In Progress</span> }
+            @if (step3Status() === 'success') { <span class="badge badge-success step-badge">Done</span> }
+            @if (step3Status() === 'error') { <span class="badge badge-danger step-badge">Failed</span> }
+          </div>
+        </div>
+
+        @if (isCashierRegistered() === false) {
+          <div class="alert alert-warning" data-testid="cashier-not-registered-warning">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2">
+              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>
+            </svg>
+            <div>
+              <p class="alert-title">Cashier Not Registered</p>
+              <p class="alert-text">User <strong>{{ firstName() }} {{ lastName() }}</strong> (ID: {{ userId() }}) is not yet registered as a cashier in the billing system. Please contact your system administrator.</p>
+            </div>
+          </div>
+        }
+
+        @if (isCashierRegistered() === true) {
+          <div class="alert alert-success" data-testid="cashier-registered-success">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/>
+            </svg>
+            <div>
+              <p class="alert-title">Cashier Validated</p>
+              <p class="alert-text">
+                User <strong>{{ firstName() }} {{ lastName() }}</strong> (User ID: {{ userId() }}) is registered as a cashier.
+                @if (dayEndCompleted()) {
+                  A day-end reconciliation has been completed. Please start a new session below.
+                } @else if (resumingSession()) {
+                  An active session was found. Resume your session below.
+                } @else {
+                  Select your cash office and float amount below.
+                }
+              </p>
+            </div>
+          </div>
+        }
+
+        @if (dayEndPending()) {
+          <div class="alert alert-warning-bg" data-testid="day-end-pending-section">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="2">
+              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>
+            </svg>
+            <div>
+              <p class="alert-title">Day-End Pending Supervisor Approval</p>
+              <p class="alert-text">Your day-end reconciliation has been submitted and is waiting for supervisor review.</p>
+            </div>
+          </div>
+        }
+
+        @if (resumingSession() && cashierDetails() && !dayEndCompleted() && !dayEndPending()) {
+          <div class="resume-section" data-testid="resume-session-section">
+            <div class="resume-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/>
+              </svg>
+            </div>
+            <div class="resume-info">
+              <p class="resume-title">Active Session Found</p>
+              <p class="resume-subtitle">Verified via validate-cashier API</p>
+              <p class="resume-details">
+                Office: <strong>{{ cashierDetails()?.const_CashOffice?.cashOfficeDesc || 'Unknown' }}</strong>
+                <span class="separator"> | </span>
+                Float: <strong>R {{ (cashierDetails()?.cashFloat ?? 0).toFixed(2) }}</strong>
+              </p>
+              <button class="btn-primary resume-btn" (click)="handleResumeSession()" data-testid="button-resume-session">
+                Resume Session
+              </button>
+              <p class="resume-note">You cannot start a new session while an active session exists.</p>
+            </div>
+          </div>
+        }
+
+        <form class="setup-form" (ngSubmit)="handleSubmit()">
+          <div class="form-row">
+            <label class="form-label form-label-right">Name</label>
+            <input class="form-input" [value]="firstName()" disabled data-testid="input-cashier-name" />
+          </div>
+
+          <div class="form-row">
+            <label class="form-label form-label-right">Surname</label>
+            <input class="form-input" [value]="lastName()" disabled data-testid="input-cashier-surname" />
+          </div>
+
+          <div class="form-row">
+            <label class="form-label form-label-right">User ID</label>
+            <input class="form-input font-mono" [value]="userId()" disabled data-testid="input-cashier-id" />
+          </div>
+
+          <div class="form-row">
+            <label class="form-label form-label-right">Cash Float <span class="required">*</span></label>
+            <input
+              type="number"
+              step="0.01"
+              class="form-input font-mono text-right"
+              [ngModel]="floatInput()"
+              (ngModelChange)="floatInput.set($event)"
+              [disabled]="isCashierRegistered() !== true"
+              data-testid="input-float"
+            />
+          </div>
+
+          <div class="form-row">
+            <label class="form-label form-label-right">Cashier Office <span class="required">*</span></label>
+            <select
+              class="form-select"
+              [ngModel]="selectedOfficeId()"
+              (ngModelChange)="selectedOfficeId.set($event); onOfficeChange()"
+              [disabled]="isCashierRegistered() !== true || cashOffices().length === 0"
+              data-testid="select-cash-office"
+            >
+              <option value="">{{ step2Status() === 'loading' ? 'Loading offices...' : '-- Select Cash Office --' }}</option>
+              @for (office of cashOffices(); track office.cashOffice_ID) {
+                <option [value]="office.cashOffice_ID" [attr.data-testid]="'office-option-' + office.cashOffice_ID">
+                  {{ office.cashOfficeDesc || 'Office ' + office.cashOffice_ID }}{{ defaultOfficeId() && office.cashOffice_ID.toString() === defaultOfficeId() ? ' (Default)' : '' }}
+                </option>
+              }
+            </select>
+          </div>
+
+          @if (isNonDefaultOffice()) {
+            <div class="non-default-note" data-testid="non-default-office-note">
+              Different from registered office — payment functions are specific to this cash office
+            </div>
+          }
+
+          <div class="form-row">
+            <label class="form-label form-label-right">Ledger Vote</label>
+            <input
+              class="form-input font-mono text-sm"
+              [value]="ledgerVoteDisplay()"
+              disabled
+              [title]="ledgerVoteDisplay()"
+              placeholder="Select a cash office to view ledger vote"
+              data-testid="input-ledger-vote"
+            />
+          </div>
+
+          @if (selectedOffice() && !hasValidVote()) {
+            <div class="vote-warning" data-testid="text-vote-warning">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2">
+                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>
+              </svg>
+              SCOA vote not configured — default will be used.
+            </div>
+          }
+
+          @if (isCashierRegistered() && selectedOfficeId()) {
+            <div class="config-panel" data-testid="cashier-config-panel">
+              <div class="config-header">
+                <h3 class="config-title">Cashier Configuration</h3>
+                @if (configLoading()) {
+                  <div class="spinner spinner-sm"></div>
+                }
+                @if (configError() && !configLoading()) {
+                  <button type="button" class="btn-outline btn-sm" (click)="loadCashierConfig()" data-testid="button-retry-config">Retry</button>
+                }
+              </div>
+
+              @if (configError() && !configLoading()) {
+                <div class="config-error" data-testid="config-error">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2">
+                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>
+                  </svg>
+                  {{ configError() }}
+                </div>
+              }
+
+              <div class="config-grid">
+                <div class="config-card" data-testid="card-payment-options">
+                  <div class="config-card-header">
+                    <div>
+                      <p class="config-card-title">Payment Functions</p>
+                      <p class="config-card-subtitle">What you can process</p>
+                    </div>
+                    @if (paymentOptionsSource() && !configLoading()) {
+                      <span class="badge badge-default config-source" data-testid="options-source">{{ paymentOptionsSource() === 'office' ? 'Office' : paymentOptionsSource() === 'platinum' ? 'API' : paymentOptionsSource() }}</span>
+                    }
+                  </div>
+                  @if (configLoading()) {
+                    <div class="config-loading"><div class="spinner spinner-sm"></div> <span>Loading...</span></div>
+                  } @else if (paymentOptions().length === 0) {
+                    <p class="config-empty">No options loaded</p>
+                  } @else {
+                    <div class="config-items">
+                      @for (opt of paymentOptions(); track opt.posPaymentOption_ID) {
+                        <div class="config-item" [attr.data-testid]="'payment-option-' + opt.posPaymentOption_ID">
+                          <span class="config-item-label">{{ opt.posPaymentOptionDesc }}</span>
+                          @if (opt.isTicked && opt.enabled) {
+                            <span class="badge badge-success" [attr.data-testid]="'option-status-' + opt.posPaymentOption_ID">Enabled</span>
+                          } @else {
+                            <span class="badge badge-default" [attr.data-testid]="'option-status-' + opt.posPaymentOption_ID">Disabled</span>
+                          }
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+
+                <div class="config-card config-card-types" data-testid="card-payment-types">
+                  <div class="config-card-header">
+                    <div>
+                      <p class="config-card-title">Tender Methods</p>
+                      <p class="config-card-subtitle">How you can accept payment</p>
+                    </div>
+                    @if (paymentTypesSource() && !configLoading()) {
+                      <span class="badge badge-default config-source" data-testid="types-source">{{ paymentTypesSource() === 'office' ? 'Office' : paymentTypesSource() === 'platinum' ? 'API' : paymentTypesSource() }}</span>
+                    }
+                  </div>
+                  @if (configLoading()) {
+                    <div class="config-loading"><div class="spinner spinner-sm"></div> <span>Loading...</span></div>
+                  } @else if (paymentTypes().length === 0) {
+                    <p class="config-empty">No types loaded</p>
+                  } @else {
+                    <div class="config-items">
+                      @for (t of paymentTypes(); track t.posPaymentType_ID) {
+                        <div class="config-item" [attr.data-testid]="'payment-type-' + t.posPaymentType_ID">
+                          <span class="config-item-label">{{ t.posPaymentTypeDesc }}</span>
+                          @if (t.isTicked && t.enabled) {
+                            <span class="badge badge-success" [attr.data-testid]="'type-status-' + t.posPaymentType_ID">Enabled</span>
+                          } @else {
+                            <span class="badge badge-default" [attr.data-testid]="'type-status-' + t.posPaymentType_ID">Disabled</span>
+                          }
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+
+                <div class="config-card" [class.config-card-valid]="receiptRangeStatus()?.valid" [class.config-card-invalid]="receiptRangeStatus() && !receiptRangeStatus()?.valid" data-testid="card-receipt-range">
+                  <div class="config-card-header">
+                    <div>
+                      <p class="config-card-title">Receipt Status</p>
+                      <p class="config-card-subtitle">Receipt range allocation</p>
+                    </div>
+                  </div>
+                  @if (configLoading()) {
+                    <div class="config-loading"><div class="spinner spinner-sm"></div> <span>Validating...</span></div>
+                  } @else if (!receiptRangeStatus()) {
+                    <p class="config-empty">Waiting for validation...</p>
+                  } @else {
+                    <div class="config-items">
+                      @if (receiptRangeStatus()?.valid) {
+                        <span class="badge badge-success" data-testid="receipt-range-valid">Ready</span>
+                      } @else {
+                        <span class="badge badge-danger" data-testid="receipt-range-invalid">Not Ready</span>
+                      }
+                      @if (receiptRangeStatus()?.officeName) {
+                        <p class="config-detail">Office: {{ receiptRangeStatus().officeName }}</p>
+                      }
+                      @if (!receiptRangeStatus()?.valid && receiptRangeStatus()?.reason) {
+                        <p class="config-detail config-detail-error">{{ receiptRangeStatus().reason }}</p>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+
+          @if (error()) {
+            <div class="form-error" data-testid="text-error">{{ error() }}</div>
+          }
+
+          <div class="form-divider"></div>
+
+          <div class="form-actions">
+            <button
+              type="submit"
+              class="btn-primary btn-submit"
+              [disabled]="!selectedOffice() || submitting() || isCashierRegistered() !== true || dayEndPending() || resumingSession()"
+              data-testid="button-submit"
+            >
+              @if (submitting()) {
+                <div class="spinner spinner-sm"></div> Setting up...
+              } @else {
+                Submit
+              }
+            </button>
+            <button type="button" class="btn-outline btn-cancel" (click)="goBack()" data-testid="button-cancel">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+}

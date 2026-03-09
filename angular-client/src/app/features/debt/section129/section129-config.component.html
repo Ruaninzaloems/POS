@@ -1,0 +1,252 @@
+@if (viewMode === 'detail') {
+  <div class="page-container">
+    <div class="detail-header">
+      <button class="btn btn-ghost btn-icon" (click)="handleCancel()" data-testid="button-back-config">‹</button>
+      <h2 class="page-title" data-testid="text-page-title">{{ isNewEntry ? 'Add New Configuration' : 'Configuration Detail' }}</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-body detail-form">
+        <div class="toggle-item">
+          <input type="checkbox" id="cfg-enabled" [(ngModel)]="enabled" [disabled]="!isNewEntry && selectedEntry !== null" data-testid="checkbox-config-enabled" />
+          <label for="cfg-enabled" class="font-medium">Enabled</label>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="field-group">
+            <span class="field-label">Financial Year *</span>
+            <select class="field-select" [(ngModel)]="selectedFinYear" [disabled]="!isNewEntry" data-testid="select-config-finyear">
+              @for (y of finYears; track y) {
+                <option [value]="y">{{ y }}</option>
+              }
+            </select>
+          </div>
+          <div class="field-group">
+            <span class="field-label">Section 129 Template *</span>
+            <select class="field-select" [(ngModel)]="section129Template" [disabled]="!isNewEntry" data-testid="select-config-template">
+              @for (t of templates; track t.id) {
+                <option [value]="t.name">{{ t.name }}</option>
+              }
+            </select>
+          </div>
+          <div class="field-group">
+            <span class="field-label">SMS Notification Template *</span>
+            <select class="field-select" [(ngModel)]="smsTemplate" [disabled]="!isNewEntry" data-testid="select-config-sms-template">
+              @for (t of smsTemplates; track t.id) {
+                <option [value]="t.name">{{ t.name }}</option>
+              }
+            </select>
+          </div>
+          <div class="field-group">
+            <span class="field-label">No of Lapse Days *</span>
+            <input type="number" class="field-input" [(ngModel)]="lapseDays" min="14" max="99" [disabled]="!isNewEntry" data-testid="input-config-lapse-days" />
+          </div>
+          <div class="field-group">
+            <span class="field-label">No of Notices per File *</span>
+            <input type="number" class="field-input" [(ngModel)]="noticesPerFile" min="1" [disabled]="!isNewEntry" data-testid="input-config-notices-per-file" />
+          </div>
+        </div>
+
+        <div class="section-divider">
+          <h3 class="section-title">Additional Billing (Notice Cost)</h3>
+          @if (isNewEntry) {
+            <div class="add-row">
+              <div class="field-group" style="flex:1">
+                <span class="field-label">Additional Billing Type</span>
+                <select class="field-select" [(ngModel)]="addBillTypeId" data-testid="select-add-billing-type">
+                  <option value="">--Select--</option>
+                  @for (t of additionalBillingTypes; track t.id) {
+                    <option [value]="t.id">{{ t.name }}</option>
+                  }
+                </select>
+              </div>
+              <div class="field-group" style="width:8rem">
+                <span class="field-label">Amount</span>
+                <input type="number" class="field-input" [(ngModel)]="addBillAmount" min="0" step="0.01" placeholder="0.00" data-testid="input-add-billing-amount" />
+              </div>
+              <button class="btn btn-outline btn-sm" (click)="handleAddCostItem()" data-testid="button-add-cost-item">+ Add</button>
+            </div>
+          }
+
+          @if (costItems.length > 0) {
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:3rem">Nr</th>
+                  <th>Additional Billing Type</th>
+                  <th class="text-right">Total Fees</th>
+                  @if (isNewEntry) { <th style="width:3rem"></th> }
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of costItems; track item.nr; let idx = $index) {
+                  <tr>
+                    <td class="font-mono">{{ item.nr }}</td>
+                    <td>{{ item.additionalBillingTypeName }}</td>
+                    <td class="text-right font-mono">R {{ item.amount.toFixed(2) }}</td>
+                    @if (isNewEntry) {
+                      <td><button class="btn btn-ghost btn-icon" style="color:#ef4444" (click)="removeCostItem(idx)" [attr.data-testid]="'button-remove-cost-' + idx">✕</button></td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          } @else {
+            <p class="no-info">No information</p>
+          }
+        </div>
+
+        <div class="section-divider">
+          <div class="toggle-item" style="margin-bottom:0.75rem">
+            <input type="checkbox" id="cfg-rotation" [(ngModel)]="activateRotation" [disabled]="!isNewEntry" data-testid="checkbox-activate-rotation" />
+            <label for="cfg-rotation" class="font-medium">Activate Rotation?</label>
+          </div>
+
+          @if (isNewEntry && activateRotation) {
+            <div class="add-row">
+              <div class="field-group" style="flex:1">
+                <span class="field-label">Attorney</span>
+                <select class="field-select" [(ngModel)]="addAttorneyId" data-testid="select-add-attorney">
+                  <option value="">--Select--</option>
+                  @for (a of activeAttorneys; track a.attorneyId) {
+                    <option [value]="a.attorneyId">{{ a.attorneyName }}</option>
+                  }
+                </select>
+              </div>
+              <div class="field-group" style="width:10rem">
+                <span class="field-label">% Debtor Count</span>
+                <input type="number" class="field-input" [(ngModel)]="addPercentDebtor" min="0" max="100" placeholder="0" data-testid="input-add-percent-debtor" />
+              </div>
+              <div class="field-group" style="width:10rem">
+                <span class="field-label">% Handover Amount</span>
+                <input type="number" class="field-input" [(ngModel)]="addPercentHandover" min="0" max="100" placeholder="0" data-testid="input-add-percent-handover" />
+              </div>
+              <button class="btn btn-outline btn-sm" (click)="handleAddAttorney()" data-testid="button-add-attorney">+ Add</button>
+            </div>
+          }
+
+          @if (attorneyRotation.length > 0) {
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:3rem">Nr</th>
+                  <th>Attorney</th>
+                  <th class="text-right">% Allocation in Debtor Count</th>
+                  <th class="text-right">% Allocation in Handover Amount</th>
+                  @if (isNewEntry) { <th style="width:3rem"></th> }
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of attorneyRotation; track item.nr; let idx = $index) {
+                  <tr>
+                    <td class="font-mono">{{ item.nr }}</td>
+                    <td>{{ item.attorneyName }}</td>
+                    <td class="text-right font-mono">{{ item.percentDebtorCount }}%</td>
+                    <td class="text-right font-mono">{{ item.percentHandoverAmount }}%</td>
+                    @if (isNewEntry) {
+                      <td><button class="btn btn-ghost btn-icon" style="color:#ef4444" (click)="removeAttorney(idx)" [attr.data-testid]="'button-remove-attorney-' + idx">✕</button></td>
+                    }
+                  </tr>
+                }
+                <tr style="background:#F7F7F7">
+                  <td></td>
+                  <td class="font-medium">Total</td>
+                  <td class="text-right font-mono font-medium">{{ totalDebtorPercent }}%</td>
+                  <td class="text-right font-mono font-medium">{{ totalHandoverPercent }}%</td>
+                  @if (isNewEntry) { <td></td> }
+                </tr>
+              </tbody>
+            </table>
+          } @else {
+            <p class="no-info">No information</p>
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-actions">
+      <button class="btn btn-outline" (click)="handleCancel()" data-testid="button-cancel-config">Cancel</button>
+      @if (isNewEntry) {
+        <button class="btn btn-primary" (click)="handleSubmit()" [disabled]="saving()" data-testid="button-submit-config">
+          @if (saving()) { <span class="spinner"></span> }
+          Submit
+        </button>
+      }
+    </div>
+  </div>
+} @else {
+  <div class="page-container">
+    <div class="page-header">
+      <h1 class="page-title" data-testid="text-page-title">Section 129 – Letter of Demand Configuration</h1>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <div class="search-row">
+          <div class="field-group" style="width:12rem">
+            <span class="field-label">Financial Year *</span>
+            <select class="field-select" [(ngModel)]="finYear" data-testid="select-landing-finyear">
+              @for (y of finYears; track y) {
+                <option [value]="y">{{ y }}</option>
+              }
+            </select>
+          </div>
+          <div class="search-buttons">
+            <button class="btn btn-primary" (click)="handleSearch()" [disabled]="loading()" data-testid="button-search-config">
+              @if (loading()) { <span class="spinner"></span> }
+              Search
+            </button>
+            <button class="btn btn-outline" (click)="handleClear()" data-testid="button-clear-config">Clear</button>
+            <button class="btn btn-outline" (click)="openAddNew()" data-testid="button-add-new-config">+ Add New</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    @if (searched) {
+      <div class="card" style="margin-top:1rem">
+        @if (loading()) {
+          <div class="loading-center">
+            <span class="spinner spinner-lg"></span>
+            <span>Loading configurations...</span>
+          </div>
+        } @else if (configEntries.length === 0) {
+          <div class="empty-state">No configuration entries found for {{ finYear }}</div>
+        } @else {
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Financial Year</th>
+                  <th>Section 129 Template</th>
+                  <th>SMS Template</th>
+                  <th>Additional Billing Type</th>
+                  <th class="text-right">Total Fees</th>
+                  <th class="text-right">Notices per File</th>
+                  <th class="text-right">Lapse Days</th>
+                  <th>Rotation Activated</th>
+                  <th>Enabled</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (entry of configEntries; track entry.id ?? $index; let idx = $index) {
+                  <tr class="clickable" (click)="openEntryDetail(entry)" [attr.data-testid]="'config-row-' + (entry.id ?? idx)">
+                    <td>{{ entry.finYear }}</td>
+                    <td>{{ entry.section129Template }}</td>
+                    <td>{{ entry.smsTemplate }}</td>
+                    <td>{{ entry.additionalBillingType || '—' }}</td>
+                    <td class="text-right font-mono">{{ entry.totalFees != null ? 'R ' + entry.totalFees!.toFixed(2) : '—' }}</td>
+                    <td class="text-right font-mono">{{ entry.noticesPerFile }}</td>
+                    <td class="text-right font-mono">{{ entry.lapseDays }}</td>
+                    <td>{{ entry.activateRotation ? 'Yes' : 'No' }}</td>
+                    <td>{{ entry.enabled ? 'Yes' : 'No' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    }
+  </div>
+}

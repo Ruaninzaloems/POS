@@ -1,0 +1,56 @@
+.page-container { padding: 1rem; max-width: 80rem; margin: 0 auto; }
+.breadcrumb { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: var(--pos-text-muted); margin-bottom: 0.75rem; }
+.breadcrumb-link { cursor: pointer; transition: color 0.2s; }
+.breadcrumb-link:hover { color: var(--pos-text); }
+.breadcrumb-sep { font-size: 0.75rem; }
+.breadcrumb-current { color: var(--pos-text); font-weight: 500; }
+.page-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem; }
+.header-left { display: flex; align-items: center; gap: 0.75rem; }
+.icon-box { width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: linear-gradient(135deg, var(--pos-accent), var(--pos-accent-hover)); display: flex; align-items: center; justify-content: center; font-size: 1.25rem; color: white; }
+.page-title { font-size: 1.25rem; font-weight: 700; color: var(--pos-text); }
+.page-subtitle { font-size: 0.875rem; color: var(--pos-text-muted); margin-top: 0.125rem; }
+.content-area { display: flex; flex-direction: column; gap: 1rem; }
+.loading-state { display: flex; align-items: center; justify-content: center; padding: 3rem; }
+.stat-grid { display: grid; gap: 0.75rem; }
+.stat-grid-4 { grid-template-columns: repeat(4, 1fr); }
+.stat-card { padding: 1rem; }
+.stat-row { display: flex; align-items: center; justify-content: space-between; }
+.stat-label-upper { font-size: 0.75rem; color: var(--pos-text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.stat-value { font-size: 1.5rem; font-weight: 700; }
+.stat-amber { color: #D97706; }
+.stat-emerald { color: #059669; }
+.stat-red { color: #DC2626; }
+.stat-icon-box { padding: 0.5rem; border-radius: 0.5rem; font-size: 1.25rem; }
+.stat-icon-amber { background-color: #FFFBEB; color: #D97706; }
+.stat-icon-emerald { background-color: #ECFDF5; color: #059669; }
+.stat-icon-red { background-color: #FEF2F2; color: #DC2626; }
+.filter-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.filter-select { width: auto; min-width: 8rem; }
+.font-medium { font-weight: 500; }
+.font-mono { font-family: monospace; }
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+.text-success { color: var(--pos-success); }
+.text-danger { color: var(--pos-danger); }
+.text-muted { color: var(--pos-text-muted); }
+.truncate-cell { max-width: 12.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.btn-icon { background: none; border: none; cursor: pointer; padding: 0.25rem; border-radius: 0.25rem; font-size: 0.875rem; }
+.btn-icon:hover { background-color: var(--pos-input-bg); }
+.dialog-header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--pos-card-border); }
+.dialog-title { font-size: 1rem; font-weight: 600; color: var(--pos-text); }
+.dialog-body { padding: 1rem 1.5rem; }
+.dialog-footer { padding: 0.75rem 1.5rem; border-top: 1px solid var(--pos-card-border); display: flex; justify-content: flex-end; gap: 0.5rem; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem; }
+.form-group { margin-bottom: 0.5rem; }
+.form-hint { font-size: 0.75rem; color: var(--pos-text-muted); margin-top: 0.25rem; }
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem; }
+.detail-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; }
+.detail-label { font-size: 0.75rem; color: var(--pos-text-muted); margin-bottom: 0.125rem; }
+.detail-section { border-top: 1px solid var(--pos-card-border); padding-top: 0.75rem; margin-top: 0.75rem; }
+.detail-section-title { font-size: 0.75rem; font-weight: 500; color: var(--pos-text-muted); margin-bottom: 0.5rem; }
+.hash-display { font-size: 0.75rem; font-family: monospace; color: var(--pos-text-muted); word-break: break-all; background: var(--pos-input-bg); padding: 0.5rem; border-radius: 0.375rem; border: 1px solid var(--pos-card-border); }
+@media (max-width: 768px) {
+  .stat-grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .form-grid, .detail-grid { grid-template-columns: 1fr; }
+  .detail-grid-3 { grid-template-columns: 1fr; }
+}

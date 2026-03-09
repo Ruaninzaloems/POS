@@ -1,0 +1,18 @@
+@if (open) {
+  <div class="dialog-overlay" (click)="onOverlayClick($event)" data-testid="dialog-overlay">
+    <div class="dialog-content" [class]="'dialog-content dialog-' + size" data-testid="dialog">
+      @if (title) {
+        <div class="dialog-header">
+          <h2 class="dialog-title" data-testid="text-dialog-title">{{ title }}</h2>
+          <button class="dialog-close" (click)="close.emit()" data-testid="button-dialog-close">&times;</button>
+        </div>
+      }
+      <div class="dialog-body">
+        <ng-content />
+      </div>
+      <div class="dialog-footer">
+        <ng-content select="[dialog-footer]" />
+      </div>
+    </div>
+  </div>
+}

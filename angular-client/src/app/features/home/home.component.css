@@ -1,0 +1,25 @@
+.home-page { padding: 1.5rem; max-width: 80rem; margin: 0 auto; }
+.quick-links-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 1rem;
+}
+.quick-link-card {
+  padding: 1.25rem;
+  cursor: pointer;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+.quick-link-card:hover {
+  border-color: var(--pos-accent);
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+.link-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--pos-text);
+  margin-bottom: 0.25rem;
+}
+.link-desc {
+  font-size: 0.8125rem;
+  color: var(--pos-text-muted);
+}

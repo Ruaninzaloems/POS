@@ -1,0 +1,15 @@
+<div class="home-page">
+  <div class="page-header">
+    <h1 class="page-title" data-testid="text-greeting">{{ getGreeting() }}, {{ user()?.firstName || 'User' }}</h1>
+    <p class="page-subtitle">Welcome to the Municipal POS System</p>
+  </div>
+
+  <div class="quick-links-grid">
+    @for (link of quickLinks; track link.route) {
+      <div class="quick-link-card card" (click)="navigate(link.route)" [attr.data-testid]="'card-' + link.label">
+        <h3 class="link-title">{{ link.label }}</h3>
+        <p class="link-desc">{{ link.desc }}</p>
+      </div>
+    }
+  </div>
+</div>

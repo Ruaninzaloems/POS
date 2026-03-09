@@ -1,0 +1,219 @@
+<div class="page-wrapper">
+  <div class="page-bar">
+    <div class="breadcrumb">
+      <button class="breadcrumb-link" (click)="goHome()" data-testid="link-home">Home</button>
+      <span class="breadcrumb-sep">›</span>
+      <span class="breadcrumb-current">Executive Debt Dashboard</span>
+    </div>
+    <div class="bar-title-row">
+      <div class="header-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+      </div>
+      <h1 class="page-title" data-testid="text-page-title">Executive Debt Dashboard</h1>
+    </div>
+  </div>
+
+  <div class="content-area">
+    @if (loading()) {
+      <div class="loading-state">
+        <div class="spinner-lg"></div>
+        <span>Loading dashboard data...</span>
+      </div>
+    } @else {
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+          <div>
+            <div class="stat-value" data-testid="text-total-debt">{{ fmtCurrency(totalDebt) }}</div>
+            <div class="stat-label">Total Debt</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></div>
+          <div>
+            <div class="stat-value text-success" data-testid="text-recovery-rate">{{ overallRecoveryRate }}%</div>
+            <div class="stat-label">Recovery Rate</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg></div>
+          <div>
+            <div class="stat-value text-blue" data-testid="text-legal-count">{{ totalLegal }}</div>
+            <div class="stat-label">Accounts in Legal</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+          <div>
+            <div class="stat-value text-amber" data-testid="text-scored-count">{{ totalScored }}</div>
+            <div class="stat-label">Scored Accounts</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-body">
+            <h3 class="card-title">Debt Aging Breakdown</h3>
+            @if (aging() && aging().totalAccounts > 0) {
+              <div class="bar-list">
+                @for (bucket of agingBars; track bucket.label) {
+                  <div [attr.data-testid]="'aging-bucket-' + bucket.label.replace(' ', '-').toLowerCase()">
+                    <div class="bar-header">
+                      <span class="text-muted">{{ bucket.label }} <span class="text-muted">({{ bucket.count }} accounts)</span></span>
+                      <span class="bar-value">{{ fmtCurrency(bucket.amount) }}</span>
+                    </div>
+                    <div class="bar-track">
+                      <div class="bar-fill" [style.width]="agingBarWidth(bucket.amount)" [style.background]="bucket.color"></div>
+                    </div>
+                  </div>
+                }
+                <div class="text-muted text-right text-xs">{{ aging().totalAccounts }} total accounts</div>
+              </div>
+            } @else {
+              <div class="empty-state">No aging data available. Score accounts to populate aging analysis.</div>
+            }
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+            <h3 class="card-title">Recovery Rate Trend</h3>
+            @if (recoveryByPeriod.length > 0 && totalComms > 0) {
+              <div class="bar-list">
+                @for (period of recoveryByPeriod; track period.label) {
+                  @let rate = getPeriodRate(period);
+                  <div [attr.data-testid]="'recovery-period-' + period.label.replace(' ', '-').toLowerCase()">
+                    <div class="bar-header">
+                      <span class="text-muted">{{ period.label }}</span>
+                      <span [class]="getRateColorClass(rate)" class="font-medium">{{ rate }}%</span>
+                    </div>
+                    <div class="bar-track-sm">
+                      <div class="bar-fill" [style.width]="rate + '%'" [style.background]="getRateBarColor(rate)"></div>
+                    </div>
+                    <div class="text-xs text-muted">{{ getPeriodSent(period) }} sent / {{ getPeriodDelivered(period) }} delivered</div>
+                  </div>
+                }
+                <div class="divider"></div>
+                <div class="flex-between text-xs">
+                  <span class="text-muted">All Time</span>
+                  <span>{{ totalComms }} communications total</span>
+                </div>
+              </div>
+            } @else {
+              <div class="empty-state">No recovery data available. Send communications to track recovery rates.</div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-body">
+            <h3 class="card-title">Legal Pipeline</h3>
+            @if (totalLegal > 0) {
+              <div class="bar-list">
+                @for (stage of pipelineEntries; track stage.label; let idx = $index) {
+                  <div [attr.data-testid]="'pipeline-stage-' + idx">
+                    <div class="bar-header">
+                      <span class="text-muted">{{ stage.label }}</span>
+                      <span class="font-medium">{{ stage.value }}</span>
+                    </div>
+                    <div class="bar-track-lg">
+                      <div class="bar-fill" [style.width]="pipelineBarWidth(stage.value)" [style.background]="stage.color">
+                        @if (stage.value > 0) {
+                          <span class="bar-inner-label">{{ stage.value }}</span>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                }
+                <div class="text-xs text-muted">Flow: Section 129 → Handover → Collection → Recovery</div>
+              </div>
+            } @else {
+              <div class="empty-state">No legal actions recorded yet.</div>
+            }
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+            <h3 class="card-title">Risk Distribution</h3>
+            @if (totalScored > 0) {
+              <div class="risk-bar-wrapper">
+                <div class="risk-bar-track">
+                  @for (cat of ['LOW', 'MEDIUM', 'HIGH']; track cat) {
+                    @let pct = getRiskSegmentWidth(cat);
+                    @if (pct > 0) {
+                      <div
+                        class="risk-segment"
+                        [class.risk-low]="cat === 'LOW'"
+                        [class.risk-medium]="cat === 'MEDIUM'"
+                        [class.risk-high]="cat === 'HIGH'"
+                        [style.width]="pct + '%'"
+                        [attr.data-testid]="'risk-segment-' + cat.toLowerCase()"
+                      >
+                        @if (pct >= 10) {
+                          <span class="risk-segment-label">{{ pct | number:'1.0-0' }}%</span>
+                        }
+                      </div>
+                    }
+                  }
+                </div>
+              </div>
+              <div class="risk-cards">
+                @for (rc of riskCategories; track rc.key) {
+                  <div [class]="'risk-card ' + rc.bgClass">
+                    <div [class]="'risk-card-value ' + 'text-' + rc.colorClass" [attr.data-testid]="'text-risk-' + rc.key.toLowerCase() + '-count'">{{ getRiskCount(rc.key) }}</div>
+                    <div class="risk-card-label">{{ rc.label }}</div>
+                    <div class="risk-card-avg">Avg: {{ getRiskAvgScore(rc.key) }}</div>
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="empty-state">No scored accounts. Use Risk Scoring to score accounts.</div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <h3 class="card-title">Attorney Performance</h3>
+          @if (attorneyList.length > 0) {
+            <div class="table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Attorney</th>
+                    <th class="text-right">Accounts</th>
+                    <th class="text-right">Total Debt</th>
+                    <th class="text-right">Recovered</th>
+                    <th class="text-right">Rate</th>
+                    <th class="text-right">Active</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (att of attorneyList; track $index; let i = $index) {
+                    <tr [attr.data-testid]="'row-attorney-' + i">
+                      <td class="font-medium">{{ att.name }}</td>
+                      <td class="text-right">{{ att.totalAccounts }}</td>
+                      <td class="text-right">{{ fmtCurrency(att.totalDebt) }}</td>
+                      <td class="text-right text-success">{{ fmtCurrency(att.recoveredAmount) }}</td>
+                      <td class="text-right">
+                        <span [class]="getAttRecoveryClass(att.recoveryRate) + ' font-medium'">{{ att.recoveryRate }}%</span>
+                      </td>
+                      <td class="text-right">{{ att.activeAccounts }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <div class="empty-state">No attorney performance data available. Handover accounts to attorneys to track performance.</div>
+          }
+        </div>
+      </div>
+    }
+  </div>
+</div>

@@ -1,0 +1,26 @@
+<div class="page-container">
+  <div class="page-header">
+    <h1 class="page-title" data-testid="text-page-title">Settings</h1>
+    <p class="page-subtitle">System configuration settings</p>
+  </div>
+
+  @if (loading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading...</p>
+    </div>
+  } @else if (error()) {
+    <div class="error-state card">
+      <p class="error-message" data-testid="text-error">{{ error() }}</p>
+      <button class="btn-primary" (click)="loadData()" data-testid="button-retry">Retry</button>
+    </div>
+  } @else {
+    <div class="content-area">
+      <div class="card" style="padding:1.5rem">
+        <p style="color:var(--pos-text-muted)">
+          Settings page — connected to Platinum API
+        </p>
+      </div>
+    </div>
+  }
+</div>

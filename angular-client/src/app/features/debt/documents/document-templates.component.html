@@ -1,0 +1,245 @@
+<div class="page-container">
+  <div class="breadcrumb">
+    <span class="breadcrumb-link" (click)="goHome()" data-testid="link-home">Home</span>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-link" (click)="goDebt()" data-testid="link-debt">Debt Management</span>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-current">Document Templates</span>
+  </div>
+
+  <div class="page-header-row">
+    <div class="header-left">
+      <div class="icon-box">📄</div>
+      <div>
+        <h1 class="page-title" data-testid="text-page-title">Document Templates</h1>
+        <p class="page-subtitle">Version-controlled templates for all debt recovery documents</p>
+      </div>
+    </div>
+    <button class="btn-primary" (click)="openCreate()" data-testid="button-create-template">+ New Template</button>
+  </div>
+
+  <div class="content-area">
+    <div class="card" style="padding: 1rem;">
+      <div class="filter-row" style="margin-bottom: 1rem;">
+        <input class="form-input" style="flex: 1;" [ngModel]="searchText()" (ngModelChange)="searchText.set($event)" placeholder="Search templates by name or code..." data-testid="input-search" />
+        <select class="form-select filter-select" [ngModel]="filterCategory()" (ngModelChange)="filterCategory.set($event)" data-testid="select-category-filter">
+          <option value="ALL">All Categories</option>
+          @for (c of TEMPLATE_CATEGORIES; track c.value) {
+            <option [value]="c.value">{{ c.label }}</option>
+          }
+        </select>
+        <button class="btn-outline" [disabled]="loading()" (click)="loadTemplates()" data-testid="button-refresh">↻</button>
+      </div>
+
+      @if (loading() && templates().length === 0) {
+        <div class="loading-state"><div class="spinner"></div></div>
+      } @else if (filtered().length === 0) {
+        <div class="empty-state">No templates found</div>
+      } @else {
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Template Code</th>
+                <th>Name</th>
+                <th>Category</th>
+                <th class="text-center">Version</th>
+                <th class="text-center">Status</th>
+                <th>Last Modified</th>
+                <th>Modified By</th>
+                <th class="text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (t of filtered(); track t.id; let idx = $index) {
+                <tr [attr.data-testid]="'row-template-' + idx  + ''">
+                  <td class="font-mono font-medium">{{ t.templateCode }}</td>
+                  <td class="font-medium">{{ t.name }}</td>
+                  <td><span class="badge badge-default">{{ getCategoryLabel(t.category) }}</span></td>
+                  <td class="text-center"><span class="badge badge-info">v{{ t.currentVersion || '1.0' }}</span></td>
+                  <td class="text-center">
+                    @if (t.isActive) {
+                      <span class="badge badge-success">Active</span>
+                    } @else {
+                      <span class="badge badge-default">Inactive</span>
+                    }
+                  </td>
+                  <td>{{ fmtDate(t.lastModifiedAt) }}</td>
+                  <td>{{ t.lastModifiedBy || '—' }}</td>
+                  <td class="text-center">
+                    <div class="action-buttons">
+                      <button class="btn-icon" (click)="openEdit(t)" title="Edit" [attr.data-testid]="'button-edit-' + idx  + ''">✎</button>
+                      <button class="btn-icon" (click)="openVersions(t)" title="Version History" [attr.data-testid]="'button-versions-' + idx  + ''">⏱</button>
+                      <button class="btn-icon" (click)="openUpload(t)" title="Upload New Version" [attr.data-testid]="'button-upload-' + idx  + ''">⬆</button>
+                      <button class="btn-icon" (click)="handleDownload('' + t.id)" title="Download Current" [attr.data-testid]="'button-download-' + idx  + ''">⬇</button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  </div>
+
+  @if (showCreateDialog()) {
+    <div class="dialog-overlay" (click)="showCreateDialog.set(false)">
+      <div class="dialog-content dialog-md" (click)="$event.stopPropagation()">
+        <div class="dialog-header">
+          <h2 class="dialog-title">Create Document Template</h2>
+        </div>
+        <div class="dialog-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Template Code</label>
+              <input class="form-input" [ngModel]="formCode()" (ngModelChange)="formCode.set($event)" placeholder="e.g. SEC129_LOD" data-testid="input-template-code" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Category</label>
+              <select class="form-select" [ngModel]="formCategory()" (ngModelChange)="formCategory.set($event)" data-testid="select-category">
+                @for (c of TEMPLATE_CATEGORIES; track c.value) { <option [value]="c.value">{{ c.label }}</option> }
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Template Name</label>
+            <input class="form-input" [ngModel]="formName()" (ngModelChange)="formName.set($event)" placeholder="e.g. Section 129 Letter of Demand" data-testid="input-template-name" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <textarea class="form-input" style="min-height: 80px;" [ngModel]="formDescription()" (ngModelChange)="formDescription.set($event)" placeholder="Describe the purpose..." data-testid="input-description"></textarea>
+          </div>
+          <div class="form-group checkbox-group">
+            <input type="checkbox" [ngModel]="formActive()" (ngModelChange)="formActive.set($event)" data-testid="switch-active" />
+            <label class="form-label" style="margin-bottom: 0;">Active</label>
+          </div>
+        </div>
+        <div class="dialog-footer">
+          <button class="btn-outline" (click)="showCreateDialog.set(false)">Cancel</button>
+          <button class="btn-primary" [disabled]="saving()" (click)="handleCreate()" data-testid="button-save-template">
+            {{ saving() ? 'Creating...' : 'Create' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (showEditDialog()) {
+    <div class="dialog-overlay" (click)="showEditDialog.set(false)">
+      <div class="dialog-content dialog-md" (click)="$event.stopPropagation()">
+        <div class="dialog-header"><h2 class="dialog-title">Edit Template</h2></div>
+        <div class="dialog-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Template Code</label>
+              <input class="form-input" [ngModel]="formCode()" (ngModelChange)="formCode.set($event)" data-testid="input-edit-code" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Category</label>
+              <select class="form-select" [ngModel]="formCategory()" (ngModelChange)="formCategory.set($event)" data-testid="select-edit-category">
+                @for (c of TEMPLATE_CATEGORIES; track c.value) { <option [value]="c.value">{{ c.label }}</option> }
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Template Name</label>
+            <input class="form-input" [ngModel]="formName()" (ngModelChange)="formName.set($event)" data-testid="input-edit-name" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <textarea class="form-input" style="min-height: 80px;" [ngModel]="formDescription()" (ngModelChange)="formDescription.set($event)" data-testid="input-edit-description"></textarea>
+          </div>
+          <div class="form-group checkbox-group">
+            <input type="checkbox" [ngModel]="formActive()" (ngModelChange)="formActive.set($event)" data-testid="switch-edit-active" />
+            <label class="form-label" style="margin-bottom: 0;">Active</label>
+          </div>
+        </div>
+        <div class="dialog-footer">
+          <button class="btn-outline" (click)="showEditDialog.set(false)">Cancel</button>
+          <button class="btn-primary" [disabled]="saving()" (click)="handleUpdate()" data-testid="button-update-template">
+            {{ saving() ? 'Updating...' : 'Update' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (showVersionsDialog()) {
+    <div class="dialog-overlay" (click)="showVersionsDialog.set(false)">
+      <div class="dialog-content dialog-lg" (click)="$event.stopPropagation()">
+        <div class="dialog-header"><h2 class="dialog-title">Version History — {{ versionTemplate()?.name }}</h2></div>
+        <div class="dialog-body">
+          @if (loadingVersions()) {
+            <div class="loading-state"><div class="spinner"></div></div>
+          } @else if (versions().length === 0) {
+            <div class="empty-state">No version history available</div>
+          } @else {
+            <div class="table-container">
+              <table>
+                <thead><tr><th>Version</th><th>Change Notes</th><th>Size</th><th>Uploaded By</th><th>Date</th><th class="text-center">Status</th><th class="text-center">Actions</th></tr></thead>
+                <tbody>
+                  @for (v of versions(); track v.id; let i = $index) {
+                    <tr [attr.data-testid]="'row-version-' + i  + ''">
+                      <td><span class="badge badge-info">v{{ v.version }}</span></td>
+                      <td class="truncate-cell">{{ v.changeNotes || '—' }}</td>
+                      <td>{{ fmtFileSize(v.fileSize) }}</td>
+                      <td>{{ v.uploadedBy || '—' }}</td>
+                      <td>{{ fmtDate(v.uploadedAt) }}</td>
+                      <td class="text-center">
+                        @if (v.isActive !== false) {
+                          <span class="text-success font-medium" style="font-size: 0.75rem;">Current</span>
+                        } @else {
+                          <span class="text-muted" style="font-size: 0.75rem;">Archived</span>
+                        }
+                      </td>
+                      <td class="text-center">
+                        <button class="btn-icon" (click)="handleDownload('' + versionTemplate()?.id, '' + v.id)" [attr.data-testid]="'button-download-version-' + i  + ''">⬇</button>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (showUploadDialog()) {
+    <div class="dialog-overlay" (click)="showUploadDialog.set(false)">
+      <div class="dialog-content dialog-sm" (click)="$event.stopPropagation()">
+        <div class="dialog-header"><h2 class="dialog-title">Upload New Version — {{ versionTemplate()?.name }}</h2></div>
+        <div class="dialog-body">
+          <div class="form-group">
+            <label class="form-label">Version Number</label>
+            <input class="form-input" [ngModel]="uploadVersion()" (ngModelChange)="uploadVersion.set($event)" placeholder="e.g. 1.3" data-testid="input-upload-version" />
+            <p class="form-hint">Current: v{{ versionTemplate()?.currentVersion || '1.0' }}</p>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Change Notes</label>
+            <textarea class="form-input" style="min-height: 80px;" [ngModel]="uploadNotes()" (ngModelChange)="uploadNotes.set($event)" placeholder="Describe what changed..." data-testid="input-upload-notes"></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Template File</label>
+            <div class="file-upload-area">
+              <input type="file" accept=".docx,.doc,.pdf,.xlsx,.xls" (change)="onFileChange($event)" data-testid="input-file" />
+              @if (uploadFileName()) {
+                <p class="font-medium" style="font-size: 0.875rem;">{{ uploadFileName() }}</p>
+              } @else {
+                <p class="text-muted" style="font-size: 0.875rem;">Select a file (.docx, .pdf, .xlsx)</p>
+              }
+            </div>
+          </div>
+        </div>
+        <div class="dialog-footer">
+          <button class="btn-outline" (click)="showUploadDialog.set(false)">Cancel</button>
+          <button class="btn-primary" [disabled]="saving()" (click)="handleUpload()" data-testid="button-upload-version">
+            {{ saving() ? 'Uploading...' : 'Upload' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

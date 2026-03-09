@@ -1,0 +1,11 @@
+<div class="page-header" data-testid="page-header">
+  <div class="page-header-text">
+    <h1 class="page-title" data-testid="text-page-title">{{ title }}</h1>
+    @if (subtitle) {
+      <p class="page-subtitle">{{ subtitle }}</p>
+    }
+  </div>
+  <div class="page-header-actions">
+    <ng-content />
+  </div>
+</div>

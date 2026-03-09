@@ -1,0 +1,11 @@
+<div class="tab-list" data-testid="tabs">
+  @for (tab of tabs; track tab.key) {
+    <button
+      class="tab-item"
+      [class.active]="tab.key === activeTab"
+      (click)="selectTab(tab.key)"
+      [attr.data-testid]="'tab-' + tab.key">
+      {{ tab.label }}
+    </button>
+  }
+</div>

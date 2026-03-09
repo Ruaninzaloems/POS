@@ -1,0 +1,230 @@
+<div class="page-container">
+  <div class="page-header-bar">
+    <div class="header-left">
+      <div class="header-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+      </div>
+      <div>
+        <h1 class="page-title" data-testid="text-page-title">Direct Deposits Auto Allocation</h1>
+        <p class="page-subtitle">Bulk process and reconcile direct deposit payments</p>
+      </div>
+    </div>
+    @if (hasSearched() && unprocessedBatches().length > 0) {
+      <div class="tab-toggle">
+        <button [class.active]="activeView() === 'unprocessed'" (click)="setActiveView('unprocessed')" data-testid="tab-unprocessed">Unprocessed</button>
+        <button [class.active]="activeView() === 'processed'" (click)="setActiveView('processed')" data-testid="tab-processed">Processed</button>
+      </div>
+    }
+  </div>
+
+  <div class="filters-bar">
+    <div class="filters-grid">
+      <div class="filter-group">
+        <label class="form-label">From Date</label>
+        <input type="date" class="form-input" [ngModel]="fromDate()" (ngModelChange)="fromDate.set($event)" data-testid="input-from-date" />
+      </div>
+      <div class="filter-group">
+        <label class="form-label">To Date</label>
+        <input type="date" class="form-input" [ngModel]="toDate()" (ngModelChange)="toDate.set($event)" data-testid="input-to-date" />
+      </div>
+      <div class="filter-actions">
+        <button class="btn-primary" (click)="fetchUnprocessed()" [disabled]="loading()" data-testid="button-fetch-unprocessed">
+          @if (loading()) {
+            <span class="spinner-sm"></span>
+          } @else {
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          }
+          Fetch Deposits
+        </button>
+        @if (hasSearched()) {
+          <button class="btn-outline icon-btn" (click)="fetchUnprocessed()" [disabled]="loading()" title="Refresh" data-testid="button-refresh">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="main-content">
+    @if (error()) {
+      <div class="alert-error" data-testid="alert-error">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span>{{ error() }}</span>
+      </div>
+    }
+
+    @if (!hasSearched()) {
+      <div class="empty-hero">
+        <div class="hero-icon">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+        </div>
+        <h2>Fetch Unprocessed Deposits</h2>
+        <p>Select a date range above and click "Fetch Deposits" to load unprocessed direct deposits for automatic allocation.</p>
+        <div class="steps-grid">
+          <div class="step-card card">
+            <div class="step-num">1</div>
+            <div class="step-title">Search</div>
+            <div class="step-desc">Set date range and fetch deposits</div>
+          </div>
+          <div class="step-card card">
+            <div class="step-num">2</div>
+            <div class="step-title">Review</div>
+            <div class="step-desc">Review batches and allocations</div>
+          </div>
+          <div class="step-card card">
+            <div class="step-num">3</div>
+            <div class="step-title">Process</div>
+            <div class="step-desc">Reconcile and confirm deposits</div>
+          </div>
+        </div>
+      </div>
+    } @else if (loading()) {
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading deposits...</p>
+      </div>
+    } @else if (activeView() === 'unprocessed') {
+      @if (unprocessedBatches().length > 0) {
+        <div class="stats-row" data-testid="stats-summary">
+          <div class="stat-card card">
+            <div class="stat-icon stat-icon-blue"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg></div>
+            <div class="stat-info">
+              <span class="stat-label">Total Records</span>
+              <span class="stat-value" data-testid="stat-value-total-records">{{ totalRecords() }}</span>
+              <span class="stat-sub">{{ formatCurrency(totalValue()) }}</span>
+            </div>
+          </div>
+          <div class="stat-card card">
+            <div class="stat-icon stat-icon-green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+            <div class="stat-info">
+              <span class="stat-label">Allocated</span>
+              <span class="stat-value" data-testid="stat-value-allocated">{{ totalAllocated() }}</span>
+              <span class="stat-sub">{{ formatCurrency(totalAllocatedAmount()) }}</span>
+            </div>
+          </div>
+          <div class="stat-card card">
+            <div class="stat-icon stat-icon-amber"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+            <div class="stat-info">
+              <span class="stat-label">Unallocated</span>
+              <span class="stat-value" data-testid="stat-value-unallocated">{{ totalUnallocated() }}</span>
+              <span class="stat-sub">{{ formatCurrency(totalUnallocatedAmount()) }}</span>
+            </div>
+          </div>
+          <div class="stat-card card">
+            <div class="stat-icon stat-icon-red"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
+            <div class="stat-info">
+              <span class="stat-label">Rejected</span>
+              <span class="stat-value" data-testid="stat-value-rejected">{{ totalRejected() }}</span>
+              <span class="stat-sub">{{ formatCurrency(totalRejectedAmount()) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="batches-list" data-testid="unprocessed-batches">
+          @for (batch of unprocessedBatches(); track trackByNum) {
+            <div class="batch-card card" [attr.data-testid]="'batch-unprocessed-' + batch.num">
+              <div class="batch-header" (click)="toggleBatch(batch.num)" [attr.data-testid]="'button-expand-batch-' + batch.num">
+                <div class="batch-num">{{ batch.num }}</div>
+                <div class="batch-info">
+                  <div class="batch-title-row">
+                    <span class="batch-title">Batch {{ batch.num }}</span>
+                    <span class="badge badge-default">{{ batch.cashBookAuthoriseDateStr || formatDate(batch.cashBookAuthoriseDate) }}</span>
+                  </div>
+                  <div class="batch-meta">
+                    <span>{{ batch.numberOfRecords }} records</span>
+                    <span class="font-mono font-semibold">{{ formatCurrency(batch.totalValue) }}</span>
+                  </div>
+                </div>
+                <div class="batch-badges">
+                  <span class="mini-badge mini-badge-green">✓ {{ batch.billingAllocated }}</span>
+                  <span class="mini-badge mini-badge-amber">◷ {{ batch.billingUnAllocated }}</span>
+                  @if (batch.rejected > 0) {
+                    <span class="mini-badge mini-badge-red">✕ {{ batch.rejected }}</span>
+                  }
+                  <span class="chevron">{{ expandedBatchNum() === batch.num ? '▲' : '▼' }}</span>
+                </div>
+              </div>
+
+              <div class="progress-bar">
+                <div class="progress-fill" [style.width.%]="getAllocPct(batch)"></div>
+              </div>
+
+              @if (expandedBatchNum() === batch.num) {
+                <div class="batch-detail">
+                  <div class="batch-detail-grid">
+                    <div class="detail-item"><span class="detail-label">Total Value</span><span class="detail-value font-mono">{{ formatCurrency(batch.totalValue) }}</span></div>
+                    <div class="detail-item"><span class="detail-label">Allocated</span><span class="detail-value">{{ batch.billingAllocated }} ({{ formatCurrency(batch.billingAllocatedAmount) }})</span></div>
+                    <div class="detail-item"><span class="detail-label">Unallocated</span><span class="detail-value">{{ batch.billingUnAllocated }} ({{ formatCurrency(batch.billingUnAllocatedAmount) }})</span></div>
+                    <div class="detail-item"><span class="detail-label">Rejected</span><span class="detail-value">{{ batch.rejected }} ({{ formatCurrency(batch.rejectedAmount) }})</span></div>
+                  </div>
+                  <div class="batch-actions">
+                    <button class="btn-primary" (click)="reconcileBatch(batch)" [disabled]="processing() || batch.billingUnAllocated === 0" [attr.data-testid]="'button-reconcile-' + batch.num">
+                      @if (processingBatchNum() === batch.num) {
+                        <span class="spinner-sm"></span> Processing...
+                      } @else {
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        Reconcile Batch
+                      }
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="empty-hero">
+          <div class="hero-icon hero-icon-green">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <h2>All Caught Up</h2>
+          <p>All deposits in the selected date range have been processed. Try a different date range to find more.</p>
+        </div>
+      }
+    } @else {
+      @if (processedBatches().length > 0) {
+        <div class="batches-list">
+          @for (batch of processedBatches(); track trackByNum) {
+            <div class="batch-card card" [attr.data-testid]="'batch-processed-' + batch.num">
+              <div class="batch-header" (click)="toggleProcessedBatch(batch.num)">
+                <div class="batch-num batch-num-green">{{ batch.num }}</div>
+                <div class="batch-info">
+                  <div class="batch-title-row">
+                    <span class="batch-title">Batch {{ batch.num }}</span>
+                    <span class="badge badge-success">Processed</span>
+                  </div>
+                  <div class="batch-meta">
+                    <span>{{ batch.numberOfRecords }} records</span>
+                    <span class="font-mono font-semibold">{{ formatCurrency(batch.totalValue) }}</span>
+                  </div>
+                </div>
+                <div class="batch-badges">
+                  <button class="btn-outline btn-sm" (click)="$event.stopPropagation(); printBatch(batch)" [disabled]="printing()" [attr.data-testid]="'button-print-' + batch.num">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                    Print
+                  </button>
+                  <span class="chevron">{{ expandedProcessedNum() === batch.num ? '▲' : '▼' }}</span>
+                </div>
+              </div>
+
+              @if (expandedProcessedNum() === batch.num) {
+                <div class="batch-detail">
+                  <div class="batch-detail-grid">
+                    <div class="detail-item"><span class="detail-label">Total Value</span><span class="detail-value font-mono">{{ formatCurrency(batch.totalValue) }}</span></div>
+                    <div class="detail-item"><span class="detail-label">Records Processed</span><span class="detail-value">{{ batch.numberOfRecordsProcessed }} ({{ formatCurrency(batch.totalProcessedAmount) }})</span></div>
+                    <div class="detail-item"><span class="detail-label">Records Rejected</span><span class="detail-value">{{ batch.numberOfRecordsRejected }} ({{ formatCurrency(batch.totalRejectedAmount) }})</span></div>
+                    <div class="detail-item"><span class="detail-label">Date</span><span class="detail-value">{{ batch.cashBookAuthoriseDateStr || formatDate(batch.cashBookAuthoriseDate) }}</span></div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="empty-state">
+          <p>No processed batches found. Fetch unprocessed deposits first, then process them.</p>
+        </div>
+      }
+    }
+  </div>
+</div>

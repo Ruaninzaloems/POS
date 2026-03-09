@@ -1,0 +1,132 @@
+<div class="page-container">
+  <div class="breadcrumb" data-testid="text-breadcrumb">
+    <span>Billing</span> <span class="sep">›</span>
+    <span>Reports</span> <span class="sep">›</span>
+    <span>Debt Recovery</span> <span class="sep">›</span>
+    <span class="current">Section 129 Notices Report</span>
+  </div>
+
+  <div class="page-header">
+    <h1 class="page-title" data-testid="text-page-title">Section 129 Notices Report</h1>
+    <p class="page-subtitle">Filter and view Section 129 notice data for debt recovery</p>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <div class="filter-grid">
+        <div class="field-group">
+          <span class="field-label">Financial Year</span>
+          <select class="field-select" [(ngModel)]="finYear" data-testid="select-fin-year">
+            @for (fy of finYears; track fy) {
+              <option [value]="fy">{{ fy }}</option>
+            }
+          </select>
+        </div>
+        <div class="field-group">
+          <span class="field-label">Billing Month</span>
+          <select class="field-select" [(ngModel)]="finMonth" data-testid="select-fin-month">
+            <option value="__all__">All</option>
+            @for (m of months; track m.value) {
+              <option [value]="m.value">{{ m.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="field-group">
+          <span class="field-label">Billing Cycle</span>
+          <select class="field-select" [(ngModel)]="billingCycle" data-testid="select-billing-cycle">
+            <option value="__all__">All</option>
+            @for (c of billingCycles; track c.id) {
+              <option [value]="c.id">{{ c.name }}</option>
+            }
+          </select>
+        </div>
+        <div class="field-group suggestion-wrapper">
+          <span class="field-label">Account Number</span>
+          <input class="field-input" [ngModel]="accountNo" (ngModelChange)="handleAccountSearch($event)" (blur)="hideSuggestions()" (focus)="accountSuggestions.length > 0 && (showSuggestions = true)" placeholder="Enter account number" data-testid="input-account-no" />
+          @if (showSuggestions && accountSuggestions.length > 0) {
+            <div class="suggestions-dropdown">
+              @for (s of accountSuggestions; track s.accountNo; let idx = $index) {
+                <button class="suggestion-item" (mousedown)="selectSuggestion(s.accountNo)" [attr.data-testid]="'suggestion-account-' + idx">
+                  <span class="font-medium">{{ s.accountNo }}</span>
+                  @if (s.name) { <span class="text-muted"> — {{ s.name }}</span> }
+                </button>
+              }
+            </div>
+          }
+        </div>
+        <div class="field-group">
+          <span class="field-label">Ageing</span>
+          <select class="field-select" [(ngModel)]="ageing" data-testid="select-ageing">
+            <option value="">All</option>
+            @for (a of ageingRanges; track a.id) {
+              <option [value]="a.id">{{ a.name }}</option>
+            }
+          </select>
+        </div>
+        <div class="field-group">
+          <span class="field-label">Amount Greater Than</span>
+          <input type="number" class="field-input" [(ngModel)]="amountGreaterThan" min="0" step="1" placeholder="0" data-testid="input-amount-greater-than" />
+        </div>
+      </div>
+
+      <div class="action-bar">
+        <button class="btn btn-primary" (click)="handleSubmit()" [disabled]="loading()" data-testid="button-submit">
+          @if (loading()) { <span class="spinner"></span> }
+          Submit
+        </button>
+        <button class="btn btn-outline" (click)="handleClear()" data-testid="button-clear">Clear</button>
+        <button class="btn btn-outline" (click)="handleCancel()" data-testid="button-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  @if (searched) {
+    <div class="card" style="margin-top:1rem">
+      <div class="card-body">
+        <div class="results-header">
+          <h2 class="results-title" data-testid="text-results-title">Results ({{ results.length }} record{{ results.length !== 1 ? 's' : '' }})</h2>
+        </div>
+
+        @if (loading()) {
+          <div class="loading-center">
+            <span class="spinner"></span>
+            Loading report data...
+          </div>
+        } @else if (results.length === 0) {
+          <p class="empty-text" data-testid="text-no-results">No records found matching the selected criteria.</p>
+        } @else {
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  @for (col of resultColumns; track col) {
+                    <th>{{ formatColumnHeader(col) }}</th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of paginatedResults; track $index; let idx = $index) {
+                  <tr [attr.data-testid]="'row-result-' + idx">
+                    @for (col of resultColumns; track col) {
+                      <td>{{ row[col] != null ? row[col] : '—' }}</td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          @if (totalGridPages > 1) {
+            <div class="pagination">
+              <span class="pagination-info">Page {{ gridPage }} of {{ totalGridPages }}</span>
+              <div class="pagination-buttons">
+                <button class="btn btn-ghost btn-sm" (click)="prevPage()" [disabled]="gridPage <= 1" data-testid="button-prev-page">‹</button>
+                <button class="btn btn-ghost btn-sm" (click)="nextPage()" [disabled]="gridPage >= totalGridPages" data-testid="button-next-page">›</button>
+              </div>
+            </div>
+          }
+        }
+      </div>
+    </div>
+  }
+</div>

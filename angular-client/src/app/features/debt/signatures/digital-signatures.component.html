@@ -1,0 +1,235 @@
+<div class="page-container">
+  <div class="breadcrumb">
+    <span class="breadcrumb-link" (click)="goHome()" data-testid="link-home">Home</span>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-link" (click)="goDebt()" data-testid="link-debt">Debt Management</span>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-current">Digital Signatures</span>
+  </div>
+
+  <div class="page-header-row">
+    <div class="header-left">
+      <div class="icon-box">✍</div>
+      <div>
+        <h1 class="page-title" data-testid="text-page-title">Digital Signatures</h1>
+        <p class="page-subtitle">Electronic signature management for debt recovery documents</p>
+      </div>
+    </div>
+    <button class="btn-primary" (click)="openCreate()" data-testid="button-new-request">✉ New Signature Request</button>
+  </div>
+
+  <div class="content-area">
+    <div class="stat-grid stat-grid-4">
+      <div class="card stat-card">
+        <div class="stat-row">
+          <div><div class="stat-label-upper">Pending</div><div class="stat-value stat-amber" data-testid="text-pending-count">{{ pendingCount() }}</div></div>
+          <div class="stat-icon-box stat-icon-amber">⏲</div>
+        </div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-row">
+          <div><div class="stat-label-upper">Signed</div><div class="stat-value stat-emerald" data-testid="text-signed-count">{{ signedCount() }}</div></div>
+          <div class="stat-icon-box stat-icon-emerald">✓</div>
+        </div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-row">
+          <div><div class="stat-label-upper">Declined</div><div class="stat-value stat-red" data-testid="text-declined-count">{{ declinedCount() }}</div></div>
+          <div class="stat-icon-box stat-icon-red">✗</div>
+        </div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-row">
+          <div><div class="stat-label-upper">Expired</div><div class="stat-value" style="color: var(--pos-text-muted);" data-testid="text-expired-count">{{ expiredCount() }}</div></div>
+          <div class="stat-icon-box" style="background-color: #F3F4F6;">⚠</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="padding: 0;">
+      <div class="tab-list">
+        <button class="tab-item" [class.active]="tab() === 'requests'" (click)="onTabChange('requests')" data-testid="tab-requests">Signature Requests</button>
+        <button class="tab-item" [class.active]="tab() === 'audit'" (click)="onTabChange('audit')" data-testid="tab-audit">Audit Log</button>
+      </div>
+
+      <div style="padding: 1rem;">
+        @if (tab() === 'requests') {
+          <div class="filter-row" style="margin-bottom: 1rem;">
+            <input class="form-input" style="flex: 1;" [ngModel]="searchText()" (ngModelChange)="searchText.set($event)" placeholder="Search by account, signer name, or email..." data-testid="input-search" />
+            <select class="form-select filter-select" [ngModel]="filterDocType()" (ngModelChange)="filterDocType.set($event)" data-testid="select-filter-type">
+              <option value="ALL">All Document Types</option>
+              @for (d of DOC_TYPES; track d.value) { <option [value]="d.value">{{ d.label }}</option> }
+            </select>
+            <select class="form-select filter-select" [ngModel]="filterStatus()" (ngModelChange)="filterStatus.set($event)" data-testid="select-filter-status">
+              <option value="ALL">All Statuses</option>
+              @for (entry of statusEntries; track entry[0]) { <option [value]="entry[0]">{{ entry[1].label }}</option> }
+            </select>
+            <button class="btn-outline" [disabled]="loading()" (click)="loadRequests()" data-testid="button-refresh">↻</button>
+          </div>
+
+          @if (loading() && requests().length === 0) {
+            <div class="loading-state"><div class="spinner"></div></div>
+          } @else if (filtered().length === 0) {
+            <div class="empty-state">No signature requests found</div>
+          } @else {
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Account</th><th>Document Type</th><th>Signer</th><th>Email</th>
+                    <th class="text-right">Amount</th><th>Sent</th><th>Signed</th>
+                    <th class="text-center">Status</th><th class="text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (r of filtered(); track $index) {
+                    <tr [attr.data-testid]="'row-request-' + $index  + ''">
+                      <td class="font-mono font-medium">{{ r.accountNo }}</td>
+                      <td class="font-medium" style="font-size: 0.75rem;">{{ getDocTypeLabel(r.documentType) }}</td>
+                      <td>{{ r.signerName }}</td>
+                      <td>{{ r.signerEmail }}</td>
+                      <td class="text-right font-medium">{{ fmtCurrency(r.amount) }}</td>
+                      <td>{{ fmtDate(r.sentAt || r.createdAt) }}</td>
+                      <td>{{ fmtDate(r.signedAt) }}</td>
+                      <td class="text-center"><span class="badge" [ngClass]="getStatusClass(r.status)">{{ getStatusLabel(r.status) }}</span></td>
+                      <td class="text-center">
+                        <button class="btn-icon" (click)="openDetail(r)" title="View Details" [attr.data-testid]="'button-detail-' + $index  + ''">👁</button>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+
+        @if (tab() === 'audit') {
+          @if (loadingAudit()) {
+            <div class="loading-state"><div class="spinner"></div></div>
+          } @else if (auditLog().length === 0) {
+            <div class="empty-state">No audit entries</div>
+          } @else {
+            <div class="table-container">
+              <table>
+                <thead><tr><th>Timestamp</th><th>Action</th><th>Account</th><th>Document</th><th>Signer</th><th>IP Address</th><th>Details</th></tr></thead>
+                <tbody>
+                  @for (entry of auditLog(); track $index) {
+                    <tr [attr.data-testid]="'row-audit-' + $index  + ''">
+                      <td>{{ fmtDate(entry.timestamp) }}</td>
+                      <td><span class="badge" [ngClass]="getStatusClass(entry.action || entry.eventType)">{{ getStatusLabel(entry.action || entry.eventType) }}</span></td>
+                      <td class="font-mono">{{ entry.accountNo || '—' }}</td>
+                      <td>{{ entry.documentType || '—' }}</td>
+                      <td>{{ entry.signerName || entry.userName || '—' }}</td>
+                      <td class="font-mono text-muted">{{ entry.ipAddress || '—' }}</td>
+                      <td class="truncate-cell text-muted">{{ entry.details || entry.notes || '—' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+      </div>
+    </div>
+  </div>
+
+  @if (showCreateDialog()) {
+    <div class="dialog-overlay" (click)="showCreateDialog.set(false)">
+      <div class="dialog-content dialog-md" (click)="$event.stopPropagation()">
+        <div class="dialog-header"><h2 class="dialog-title">New Signature Request</h2></div>
+        <div class="dialog-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Account Number</label>
+              <input class="form-input" [ngModel]="formAccountNo()" (ngModelChange)="formAccountNo.set($event)" placeholder="e.g. 1001234" data-testid="input-account-no" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Document Type</label>
+              <select class="form-select" [ngModel]="formDocType()" (ngModelChange)="formDocType.set($event)" data-testid="select-doc-type">
+                @for (d of DOC_TYPES; track d.value) { <option [value]="d.value">{{ d.label }}</option> }
+              </select>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Signer Full Name</label>
+              <input class="form-input" [ngModel]="formSignerName()" (ngModelChange)="formSignerName.set($event)" placeholder="e.g. John Smith" data-testid="input-signer-name" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Signer Email</label>
+              <input class="form-input" type="email" [ngModel]="formSignerEmail()" (ngModelChange)="formSignerEmail.set($event)" placeholder="e.g. john&#64;example.com" data-testid="input-signer-email" />
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Signer Mobile (optional)</label>
+              <input class="form-input" [ngModel]="formSignerMobile()" (ngModelChange)="formSignerMobile.set($event)" placeholder="e.g. 0821234567" data-testid="input-signer-mobile" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Amount (if applicable)</label>
+              <input class="form-input" type="number" step="0.01" [ngModel]="formAmount()" (ngModelChange)="formAmount.set($event)" placeholder="e.g. 15000.00" data-testid="input-amount" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Expiry (days)</label>
+            <input class="form-input" type="number" min="1" max="90" style="width: 6rem;" [ngModel]="formExpiryDays()" (ngModelChange)="formExpiryDays.set($event)" data-testid="input-expiry-days" />
+            <p class="form-hint">The signer has this many days to sign the document</p>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notes (optional)</label>
+            <textarea class="form-input" style="min-height: 60px;" [ngModel]="formNotes()" (ngModelChange)="formNotes.set($event)" placeholder="Additional instructions..." data-testid="input-notes"></textarea>
+          </div>
+        </div>
+        <div class="dialog-footer">
+          <button class="btn-outline" (click)="showCreateDialog.set(false)">Cancel</button>
+          <button class="btn-primary" [disabled]="saving()" (click)="handleCreate()" data-testid="button-send-request">
+            {{ saving() ? 'Sending...' : 'Send Request' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (showDetailDialog()) {
+    <div class="dialog-overlay" (click)="showDetailDialog.set(false)">
+      <div class="dialog-content dialog-md" (click)="$event.stopPropagation()">
+        <div class="dialog-header"><h2 class="dialog-title">Signature Request Details</h2></div>
+        <div class="dialog-body">
+          @if (loadingDetail()) {
+            <div class="loading-state"><div class="spinner"></div></div>
+          } @else if (detailRequest()) {
+            <div class="detail-grid">
+              <div><p class="detail-label">Account</p><p class="font-mono font-medium" data-testid="text-detail-account">{{ detailRequest()!.accountNo }}</p></div>
+              <div><p class="detail-label">Status</p><span class="badge" [ngClass]="getStatusClass(detailRequest()!.status)">{{ getStatusLabel(detailRequest()!.status) }}</span></div>
+            </div>
+            <div class="detail-grid">
+              <div><p class="detail-label">Document Type</p><p>{{ getDocTypeLabel(detailRequest()!.documentType) }}</p></div>
+              <div><p class="detail-label">Amount</p><p class="font-medium">{{ fmtCurrency(detailRequest()!.amount) }}</p></div>
+            </div>
+            <div class="detail-section">
+              <p class="detail-section-title">Signer Information</p>
+              <div class="detail-grid">
+                <div><p class="detail-label">Name</p><p>{{ detailRequest()!.signerName }}</p></div>
+                <div><p class="detail-label">Email</p><p>{{ detailRequest()!.signerEmail }}</p></div>
+              </div>
+            </div>
+            <div class="detail-section">
+              <p class="detail-section-title">Timeline</p>
+              <div class="detail-grid-3">
+                <div><p class="detail-label">Sent</p><p style="font-size: 0.75rem;">{{ fmtDate(detailRequest()!.sentAt || detailRequest()!.createdAt) }}</p></div>
+                <div><p class="detail-label">Viewed</p><p style="font-size: 0.75rem;">{{ fmtDate(detailRequest()!.viewedAt) }}</p></div>
+                <div><p class="detail-label">Signed</p><p style="font-size: 0.75rem;">{{ fmtDate(detailRequest()!.signedAt) }}</p></div>
+              </div>
+            </div>
+            @if (detailRequest()!.signatureHash) {
+              <div class="detail-section">
+                <p class="detail-section-title">Signature Verification</p>
+                <p class="hash-display" data-testid="text-signature-hash">{{ detailRequest()!.signatureHash }}</p>
+              </div>
+            }
+          }
+        </div>
+      </div>
+    </div>
+  }
+</div>

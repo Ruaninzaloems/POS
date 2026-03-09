@@ -1,0 +1,233 @@
+<div class="page-container">
+  <div class="page-header">
+    <h1 class="page-title" data-testid="text-page-title">Payment Processing</h1>
+    <p class="page-subtitle">Third party payment import and reconciliation</p>
+  </div>
+
+  <div class="tab-list">
+    <button class="tab-item" [class.active]="pageTab() === 'third-party'" (click)="pageTab.set('third-party')" data-testid="tab-third-party">
+      Third Party Import
+    </button>
+    <button class="tab-item" [class.active]="pageTab() === 'generic-import'" (click)="pageTab.set('generic-import')" data-testid="tab-generic-import">
+      Generic Import
+    </button>
+  </div>
+
+  @if (pageTab() === 'third-party') {
+    @if (step() === 'import') {
+      <div class="card import-card">
+        <div class="card-header">
+          <h2>Import Third Party Payment File</h2>
+        </div>
+        <div class="card-body">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Third Party Type <span class="required">*</span></label>
+              <select class="form-select" [ngModel]="selectedTypeId()" (ngModelChange)="selectedTypeId.set($event)" data-testid="select-type">
+                <option value="">Select type...</option>
+                @for (t of thirdPartyTypes(); track t.id) {
+                  <option [value]="t.id">{{ t.name }}</option>
+                }
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Payment Reference</label>
+              <input class="form-input" placeholder="Optional reference" [ngModel]="paymentRef()" (ngModelChange)="paymentRef.set($event)" data-testid="input-payment-ref" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Upload File <span class="required">*</span></label>
+            <input type="file" class="form-input" accept=".csv,.txt,.xls,.xlsx" (change)="onFileChange($event)" data-testid="input-file" />
+            @if (file()) {
+              <span class="file-info">Selected: {{ file()!.name }} ({{ (file()!.size / 1024).toFixed(1) }} KB)</span>
+            }
+          </div>
+
+          @if (processResult()) {
+            <div class="alert" [class.alert-success]="processResult()!.success" [class.alert-error]="!processResult()!.success" data-testid="text-process-result">
+              {{ processResult()!.message }}
+            </div>
+          }
+
+          <div class="form-actions">
+            <button class="btn-primary" (click)="handleImport()" [disabled]="isProcessing() || !selectedTypeId() || !file()" data-testid="button-import">
+              @if (isProcessing()) { <span class="spinner spinner-sm"></span> } Import & Process
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (step() === 'transactions') {
+      <div class="transactions-header">
+        <div class="txn-header-left">
+          <button class="btn-outline" (click)="resetImport()" data-testid="button-back">← Back</button>
+          <h2>Transaction Review</h2>
+          <span class="txn-total">{{ transactions().length }} transactions · {{ formatCurrency(totalImportAmount()) }}</span>
+        </div>
+        <div class="txn-header-right">
+          <button class="btn-outline" (click)="handleValidate()" [disabled]="validating()" data-testid="button-validate">
+            @if (validating()) { <span class="spinner spinner-sm"></span> } Validate
+          </button>
+          <button class="btn-primary" (click)="handleCommit()" [disabled]="committing()" data-testid="button-commit">
+            @if (committing()) { <span class="spinner spinner-sm"></span> } Commit Payments
+          </button>
+        </div>
+      </div>
+
+      @if (loadingTxns()) {
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>{{ loadProgress().step }}</p>
+          @if (loadProgress().percent > 0) {
+            <div class="progress-bar" style="width:300px">
+              <div class="progress-fill" [style.width.%]="loadProgress().percent"></div>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="filter-tabs">
+          <button class="filter-tab" [class.active]="activeFilter() === 'all'" (click)="activeFilter.set('all')" data-testid="filter-all">
+            All ({{ matchCounts().all }})
+          </button>
+          <button class="filter-tab" [class.active]="activeFilter() === 'auto-matched'" (click)="activeFilter.set('auto-matched')" data-testid="filter-auto-matched">
+            Auto-Matched ({{ matchCounts().autoMatched }})
+          </button>
+          <button class="filter-tab" [class.active]="activeFilter() === 'needs-review'" (click)="activeFilter.set('needs-review')" data-testid="filter-needs-review">
+            Needs Review ({{ matchCounts().needsReview }})
+          </button>
+          <button class="filter-tab" [class.active]="activeFilter() === 'unmatched'" (click)="activeFilter.set('unmatched')" data-testid="filter-unmatched">
+            Unmatched ({{ matchCounts().unmatched }})
+          </button>
+          <button class="filter-tab" [class.active]="activeFilter() === 'ready'" (click)="activeFilter.set('ready')" data-testid="filter-ready">
+            Ready ({{ matchCounts().ready }})
+          </button>
+        </div>
+
+        @if (validationResult()) {
+          <div class="alert" [class.alert-success]="validationResult().isValid || validationResult().isSuccess" [class.alert-error]="!(validationResult().isValid || validationResult().isSuccess)">
+            {{ validationResult().message || (validationResult().isValid ? 'Validation passed' : 'Validation failed') }}
+          </div>
+        }
+
+        <div class="table-container card">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Imported Account</th>
+                <th>Resolved Account</th>
+                <th>Owner</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Message</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (txn of filteredTransactions(); track txn.index) {
+                <tr [attr.data-testid]="'row-txn-' + txn.index">
+                  <td>{{ txn.index + 1 }}</td>
+                  <td class="font-mono">{{ txn.importedAccountNumber || '-' }}</td>
+                  <td class="font-mono">
+                    @if (editingIdx() === txn.index) {
+                      <input class="form-input form-input-sm" [ngModel]="editAccountNo()" (ngModelChange)="editAccountNo.set($event)" />
+                    } @else {
+                      {{ txn.resolvedAccountNumber || '-' }}
+                    }
+                  </td>
+                  <td>{{ txn.ownerName || '-' }}</td>
+                  <td class="amount-cell">{{ formatCurrency(txn.amount) }}</td>
+                  <td><span class="badge" [ngClass]="getMatchBadgeClass(txn.matchStatus)">{{ txn.matchStatus }}</span></td>
+                  <td class="message-cell">{{ txn.validationMessage || txn.comment || '-' }}</td>
+                  <td>
+                    @if (editingIdx() === txn.index) {
+                      <div class="action-buttons">
+                        <button class="btn-primary btn-sm" (click)="saveEdit()" [disabled]="savingEdit()">Save</button>
+                        <button class="btn-outline btn-sm" (click)="cancelEdit()">Cancel</button>
+                      </div>
+                    } @else {
+                      <div class="action-buttons">
+                        <button class="btn-outline btn-sm" (click)="startEdit(txn)" title="Edit">✏️</button>
+                        <button class="btn-outline btn-sm" (click)="openSearch(txn.index)" title="Search">🔍</button>
+                        @if (txn.resolvedAccountId) {
+                          <button class="btn-outline btn-sm btn-text-danger" (click)="clearLink(txn.index)" title="Clear">✕</button>
+                        }
+                      </div>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+
+    @if (step() === 'committed') {
+      <div class="card committed-card">
+        <div class="committed-content">
+          <div class="committed-icon">✓</div>
+          <h2>Payments Committed Successfully</h2>
+          <p>{{ transactions().length }} transactions totaling {{ formatCurrency(totalImportAmount()) }} have been committed.</p>
+          <button class="btn-primary" (click)="resetImport()" data-testid="button-new-import">Start New Import</button>
+        </div>
+      </div>
+    }
+  }
+
+  @if (pageTab() === 'generic-import') {
+    <div class="card" style="padding:1.5rem">
+      <p style="color:var(--pos-text-muted)">
+        Generic Import — Upload CSV files for bulk payment allocation. Connected to Platinum API.
+      </p>
+    </div>
+  }
+
+  @if (searchOpen()) {
+    <div class="dialog-overlay" (click)="searchOpen.set(false)">
+      <div class="dialog-content dialog-lg" (click)="$event.stopPropagation()">
+        <div class="dialog-header">
+          <h2>Account Search</h2>
+          <button class="btn-close" (click)="searchOpen.set(false)">✕</button>
+        </div>
+        <div class="dialog-body">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Account Number</label>
+              <input class="form-input" [ngModel]="searchAccountNo()" (ngModelChange)="searchAccountNo.set($event)" data-testid="input-search-account-no" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Name</label>
+              <input class="form-input" [ngModel]="searchName()" (ngModelChange)="searchName.set($event)" data-testid="input-search-name" />
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn-primary" (click)="handleAccountSearch()" [disabled]="searching()" data-testid="button-search-accounts">
+              @if (searching()) { <span class="spinner spinner-sm"></span> } Search
+            </button>
+          </div>
+
+          @if (searchResults().length > 0) {
+            <div class="table-container" style="margin-top:1rem">
+              <table>
+                <thead><tr><th>Account</th><th>Owner</th><th>Address</th><th>Actions</th></tr></thead>
+                <tbody>
+                  @for (r of searchResults(); track $index) {
+                    <tr>
+                      <td class="font-mono">{{ r.accountNumber || r.accountNo || '-' }}</td>
+                      <td>{{ r.ownerName || r.name || '-' }}</td>
+                      <td>{{ r.propertyAddress || r.address || '-' }}</td>
+                      <td><button class="btn-primary btn-sm" (click)="selectSearchResult(r)" [attr.data-testid]="'button-select-' + $index">Select</button></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+</div>

@@ -1,0 +1,372 @@
+<div class="page-container">
+  @if (viewMode() === 'list') {
+    <div class="breadcrumb">
+      <span class="breadcrumb-link" (click)="goHome()" data-testid="link-home">Home</span>
+      <span class="breadcrumb-sep">›</span>
+      <span class="breadcrumb-current">Debt Process Engine</span>
+    </div>
+
+    <div class="page-header-row">
+      <div class="header-left">
+        <div class="icon-box">⚡</div>
+        <div>
+          <h1 class="page-title" data-testid="text-page-title">Debt Process Engine</h1>
+          <p class="page-subtitle">Configurable workflow engine for debt recovery processes</p>
+        </div>
+      </div>
+      <button class="btn-primary" (click)="openCreateWorkflow()" data-testid="button-create-workflow">+ New Workflow</button>
+    </div>
+
+    <div class="content-area">
+      <div class="card" style="padding: 1rem;">
+        @if (loading()) {
+          <div class="loading-state"><div class="spinner"></div></div>
+        } @else if (workflows().length === 0) {
+          <div class="empty-state">
+            <p style="font-size: 0.875rem;">No workflows configured yet</p>
+            <p class="text-muted" style="margin-top: 0.25rem; font-size: 0.75rem;">Create a workflow to define your debt recovery process stages</p>
+          </div>
+        } @else {
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Workflow Name</th><th>Description</th><th class="text-center">Stages</th>
+                  <th class="text-center">Status</th><th>Last Modified</th><th class="text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (wf of workflows(); track wf.id; let idx = $index) {
+                  <tr class="clickable-row" (click)="openWorkflowDetail(wf)" [attr.data-testid]="'row-workflow-' + idx  + ''">
+                    <td class="font-medium">{{ wf.name }}</td>
+                    <td class="truncate-cell text-muted">{{ wf.description || '—' }}</td>
+                    <td class="text-center"><span class="badge badge-info">{{ wf.stageCount ?? '—' }}</span></td>
+                    <td class="text-center">
+                      @if (wf.isActive) {
+                        <span class="badge badge-success">Active</span>
+                      } @else {
+                        <span class="badge badge-default">Inactive</span>
+                      }
+                    </td>
+                    <td>{{ fmtDate(wf.modifiedAt) }}</td>
+                    <td class="text-center" (click)="$event.stopPropagation()">
+                      <div class="action-buttons">
+                        <button class="btn-icon" (click)="openEditWorkflow(wf, $event)" title="Edit" [attr.data-testid]="'button-edit-wf-' + idx  + ''">✎</button>
+                        <button class="btn-icon btn-icon-danger" (click)="handleDeleteWorkflow(wf, $event)" title="Delete" [attr.data-testid]="'button-delete-wf-' + idx  + ''">🗑</button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  @if (viewMode() === 'detail') {
+    <div class="breadcrumb">
+      <span class="breadcrumb-link" (click)="goHome()" data-testid="link-home">Home</span>
+      <span class="breadcrumb-sep">›</span>
+      <span class="breadcrumb-link" (click)="backToList()" data-testid="link-engine">Debt Process Engine</span>
+      <span class="breadcrumb-sep">›</span>
+      <span class="breadcrumb-current">{{ selectedWorkflow()?.name }}</span>
+    </div>
+
+    <div class="page-header-row">
+      <div class="header-left">
+        <div class="icon-box">⚡</div>
+        <div>
+          <h1 class="page-title" data-testid="text-workflow-name">
+            {{ selectedWorkflow()?.name }}
+            @if (selectedWorkflow()?.isActive) {
+              <span class="badge badge-success" style="margin-left: 0.5rem;">Active</span>
+            } @else {
+              <span class="badge badge-default" style="margin-left: 0.5rem;">Inactive</span>
+            }
+          </h1>
+          <p class="page-subtitle">{{ selectedWorkflow()?.description || 'No description' }}</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn-outline" [disabled]="loadingStages()" (click)="selectedWorkflow() && loadStages(selectedWorkflow()!.id)" data-testid="button-refresh-stages">↻</button>
+        <button class="btn-primary" (click)="openCreateStage()" data-testid="button-add-stage">+ Add Stage</button>
+      </div>
+    </div>
+
+    <div class="content-area">
+      @if (loadingStages() && stages().length === 0) {
+        <div class="loading-state"><div class="spinner"></div></div>
+      } @else if (stages().length === 0) {
+        <div class="card" style="padding: 3rem;">
+          <div class="empty-state">
+            <p style="font-size: 0.875rem;">No stages defined yet</p>
+            <p class="text-muted" style="margin-top: 0.25rem; font-size: 0.75rem;">Add stages to define the workflow sequence</p>
+          </div>
+        </div>
+      } @else {
+        @for (stage of stages(); track stage.id; let idx = $index) {
+          <div class="card stage-card" [class.stage-inactive]="!stage.isActive" [attr.data-testid]="'card-stage-' + idx  + ''">
+            <div class="stage-header" (click)="toggleExpanded(stage.id)">
+              <div class="stage-order-controls">
+                <button class="btn-icon btn-icon-sm" [disabled]="idx === 0" (click)="$event.stopPropagation(); moveStage(stage, 'up')" [attr.data-testid]="'button-move-up-' + idx  + ''">▲</button>
+                <button class="btn-icon btn-icon-sm" [disabled]="idx === stages().length - 1" (click)="$event.stopPropagation(); moveStage(stage, 'down')" [attr.data-testid]="'button-move-down-' + idx  + ''">▼</button>
+              </div>
+              <div class="stage-number">{{ stage.stageNumber }}</div>
+              <div class="stage-info">
+                <div class="stage-name-row">
+                  <h3 class="stage-name">{{ stage.name }}</h3>
+                  @if (!stage.isActive) { <span class="badge badge-default" style="font-size: 0.625rem;">Disabled</span> }
+                </div>
+                @if (stage.description) { <p class="stage-desc">{{ stage.description }}</p> }
+              </div>
+              <div class="stage-meta">
+                <span class="stage-meta-item" title="Rules">⚙ {{ stage.rules?.length || 0 }}</span>
+                <span class="stage-meta-item" title="Templates">📄 {{ stage.templates?.length || 0 }}</span>
+                <span class="stage-meta-item" title="Actions">⚡ {{ stage.actions?.length || 0 }}</span>
+                <span class="stage-meta-item" title="Timer">⏲ {{ stage.timer?.waitDays || 0 }}d</span>
+              </div>
+              <div class="stage-actions" (click)="$event.stopPropagation()">
+                <button class="btn-icon" (click)="openEditStage(stage)" title="Edit" [attr.data-testid]="'button-edit-stage-' + idx  + ''">✎</button>
+                <button class="btn-icon btn-icon-danger" (click)="handleDeleteStage(stage)" title="Delete" [attr.data-testid]="'button-delete-stage-' + idx  + ''">🗑</button>
+              </div>
+              <span class="expand-icon">{{ expandedStage() === stage.id ? '▲' : '▼' }}</span>
+            </div>
+
+            @if (expandedStage() === stage.id) {
+              <div class="stage-detail">
+                <div class="stage-detail-grid">
+                  <div>
+                    <h4 class="detail-section-title">Rules ({{ stage.rules?.length || 0 }})</h4>
+                    @if (!stage.rules || stage.rules.length === 0) {
+                      <span class="text-muted" style="font-size: 0.75rem;">No rules</span>
+                    } @else {
+                      <div class="rule-summary">
+                        @for (r of stage.rules; track $index) {
+                          @if ($index > 0) { <span class="rule-logic">{{ r.logicOperator || 'AND' }}</span> }
+                          <span class="badge badge-info" style="font-size: 0.625rem;">{{ getRuleFieldLabel(r.field) }} {{ getRuleOperatorLabel(r.operator) }} {{ r.value }}</span>
+                        }
+                      </div>
+                    }
+                  </div>
+                  <div>
+                    <h4 class="detail-section-title">Templates ({{ stage.templates?.length || 0 }})</h4>
+                    @if (!stage.templates || stage.templates.length === 0) {
+                      <span class="text-muted" style="font-size: 0.75rem;">No templates</span>
+                    } @else {
+                      @for (t of stage.templates; track $index) {
+                        <div style="display: flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; margin-bottom: 0.25rem;">
+                          <span class="badge badge-info" style="font-size: 0.625rem;">{{ t.channel || 'DOC' }}</span>
+                          <span>{{ t.templateName || t.templateCode }}</span>
+                        </div>
+                      }
+                    }
+                  </div>
+                  <div>
+                    <h4 class="detail-section-title">Actions ({{ stage.actions?.length || 0 }})</h4>
+                    @if (!stage.actions || stage.actions.length === 0) {
+                      <span class="text-muted" style="font-size: 0.75rem;">No actions</span>
+                    } @else {
+                      @for (a of stage.actions; track $index) {
+                        <div style="display: flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; margin-bottom: 0.25rem;">
+                          <span class="badge" [ngClass]="a.isAutomated ? 'badge-success' : 'badge-warning'" style="font-size: 0.625rem;">{{ a.isAutomated ? 'Auto' : 'Manual' }}</span>
+                          <span>{{ getActionTypeLabel(a.actionType) }}</span>
+                        </div>
+                      }
+                    }
+                  </div>
+                  <div>
+                    <h4 class="detail-section-title">Timer</h4>
+                    <div style="font-size: 0.75rem; color: var(--pos-text);">
+                      <p><strong>Wait:</strong> {{ stage.timer?.waitDays || 0 }} days</p>
+                      <p><strong>Business days only:</strong> {{ stage.timer?.businessDaysOnly ? 'Yes' : 'No' }}</p>
+                      <p><strong>Auto-escalate:</strong> {{ stage.timer?.escalateOnExpiry ? 'Yes' : 'No' }}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        <div class="card stage-flow-card">
+          <div class="stage-flow">
+            @for (s of stages(); track s.id; let i = $index) {
+              <span class="flow-badge" [class.flow-active]="s.isActive">{{ s.stageNumber }}. {{ s.name }}</span>
+              @if (i < stages().length - 1) { <span class="flow-arrow">→</span> }
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  @if (showWorkflowDialog()) {
+    <div class="dialog-overlay" (click)="showWorkflowDialog.set(false)">
+      <div class="dialog-content dialog-sm" (click)="$event.stopPropagation()">
+        <div class="dialog-header"><h2 class="dialog-title">{{ editingWorkflow() ? 'Edit Workflow' : 'Create Workflow' }}</h2></div>
+        <div class="dialog-body">
+          <div class="form-group">
+            <label class="form-label">Workflow Name</label>
+            <input class="form-input" [ngModel]="wfName()" (ngModelChange)="wfName.set($event)" placeholder="e.g. Standard Debt Recovery" data-testid="input-wf-name" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <textarea class="form-input" style="min-height: 80px;" [ngModel]="wfDescription()" (ngModelChange)="wfDescription.set($event)" placeholder="Describe the workflow purpose..." data-testid="input-wf-description"></textarea>
+          </div>
+          <div class="form-group checkbox-group">
+            <input type="checkbox" [ngModel]="wfActive()" (ngModelChange)="wfActive.set($event)" data-testid="switch-wf-active" />
+            <label class="form-label" style="margin-bottom: 0;">Active</label>
+          </div>
+        </div>
+        <div class="dialog-footer">
+          <button class="btn-outline" (click)="showWorkflowDialog.set(false)">Cancel</button>
+          <button class="btn-primary" [disabled]="saving()" (click)="handleSaveWorkflow()" data-testid="button-save-workflow">
+            {{ saving() ? 'Saving...' : (editingWorkflow() ? 'Update' : 'Create') }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (showStageDialog()) {
+    <div class="dialog-overlay" (click)="showStageDialog.set(false)">
+      <div class="dialog-content dialog-xl" style="max-height: 85vh; overflow-y: auto;" (click)="$event.stopPropagation()">
+        <div class="dialog-header"><h2 class="dialog-title">{{ editingStage() ? 'Edit Stage — ' + editingStage()!.name : 'Add Stage' }}</h2></div>
+        <div class="dialog-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Stage Name</label>
+              <input class="form-input" [ngModel]="stName()" (ngModelChange)="stName.set($event)" placeholder="e.g. Section 129 Notice" data-testid="input-stage-name" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Description</label>
+              <input class="form-input" [ngModel]="stDescription()" (ngModelChange)="stDescription.set($event)" placeholder="Brief description..." data-testid="input-stage-desc" />
+            </div>
+          </div>
+          <div class="form-group checkbox-group">
+            <input type="checkbox" [ngModel]="stActive()" (ngModelChange)="stActive.set($event)" data-testid="switch-stage-active" />
+            <label class="form-label" style="margin-bottom: 0;">Active</label>
+          </div>
+
+          <div class="tab-list" style="margin-top: 1rem;">
+            <button class="tab-item" [class.active]="stageTab() === 'rules'" (click)="stageTab.set('rules')" data-testid="tab-rules">Rules ({{ stRules().length }})</button>
+            <button class="tab-item" [class.active]="stageTab() === 'templates'" (click)="stageTab.set('templates')" data-testid="tab-templates">Templates ({{ stTemplates().length }})</button>
+            <button class="tab-item" [class.active]="stageTab() === 'actions'" (click)="stageTab.set('actions')" data-testid="tab-actions">Actions ({{ stActions().length }})</button>
+            <button class="tab-item" [class.active]="stageTab() === 'timer'" (click)="stageTab.set('timer')" data-testid="tab-timer">Timer</button>
+          </div>
+
+          @if (stageTab() === 'rules') {
+            <div style="margin-top: 0.75rem;">
+              <div class="filter-row" style="margin-bottom: 0.5rem;">
+                <p class="text-muted" style="font-size: 0.75rem;">Define conditions that must be met before this stage activates</p>
+                <button class="btn-outline" style="font-size: 0.75rem;" (click)="addRule()" data-testid="button-add-rule">+ Add Rule</button>
+              </div>
+              @if (stRules().length === 0) {
+                <div class="empty-state" style="padding: 1rem;">No rules — stage will always qualify</div>
+              } @else {
+                @for (rule of stRules(); track $index) {
+                  <div class="rule-editor-row" [attr.data-testid]="'rule-row-' + $index  + ''">
+                    @if ($index > 0) {
+                      <select class="form-select" style="width: 5rem;" [ngModel]="rule.logicOperator || 'AND'" (ngModelChange)="updateRule($index, 'logicOperator', $event)">
+                        <option value="AND">AND</option><option value="OR">OR</option>
+                      </select>
+                    }
+                    <select class="form-select" style="width: 11rem;" [ngModel]="rule.field" (ngModelChange)="updateRule($index, 'field', $event)">
+                      @for (f of RULE_FIELDS; track f.value) { <option [value]="f.value">{{ f.label }}</option> }
+                    </select>
+                    <select class="form-select" style="width: 9rem;" [ngModel]="rule.operator" (ngModelChange)="updateRule($index, 'operator', $event)">
+                      @for (o of RULE_OPERATORS; track o.value) { <option [value]="o.value">{{ o.label }}</option> }
+                    </select>
+                    <input class="form-input" style="flex: 1;" [ngModel]="rule.value" (ngModelChange)="updateRule($index, 'value', $event)" placeholder="Value" />
+                    <button class="btn-icon btn-icon-danger" (click)="removeRule($index)" [attr.data-testid]="'button-remove-rule-' + $index  + ''">✗</button>
+                  </div>
+                }
+              }
+            </div>
+          }
+
+          @if (stageTab() === 'templates') {
+            <div style="margin-top: 0.75rem;">
+              <div class="filter-row" style="margin-bottom: 0.5rem;">
+                <p class="text-muted" style="font-size: 0.75rem;">Link document/message templates used in this stage</p>
+                <button class="btn-outline" style="font-size: 0.75rem;" (click)="addTemplate()" data-testid="button-add-template">+ Add Template</button>
+              </div>
+              @if (stTemplates().length === 0) {
+                <div class="empty-state" style="padding: 1rem;">No templates linked</div>
+              } @else {
+                @for (tpl of stTemplates(); track $index) {
+                  <div class="rule-editor-row" [attr.data-testid]="'template-row-' + $index  + ''">
+                    <select class="form-select" style="width: 7rem;" [ngModel]="tpl.channel || 'SMS'" (ngModelChange)="updateTemplate($index, 'channel', $event)">
+                      @for (c of CHANNEL_OPTIONS; track c.value) { <option [value]="c.value">{{ c.label }}</option> }
+                    </select>
+                    <input class="form-input" style="width: 10rem;" [ngModel]="tpl.templateCode" (ngModelChange)="updateTemplate($index, 'templateCode', $event)" placeholder="Template Code" />
+                    <input class="form-input" style="flex: 1;" [ngModel]="tpl.templateName" (ngModelChange)="updateTemplate($index, 'templateName', $event)" placeholder="Template Name" />
+                    <button class="btn-icon btn-icon-danger" (click)="removeTemplate($index)" [attr.data-testid]="'button-remove-template-' + $index  + ''">✗</button>
+                  </div>
+                }
+              }
+            </div>
+          }
+
+          @if (stageTab() === 'actions') {
+            <div style="margin-top: 0.75rem;">
+              <div class="filter-row" style="margin-bottom: 0.5rem;">
+                <p class="text-muted" style="font-size: 0.75rem;">Define what happens when this stage executes</p>
+                <button class="btn-outline" style="font-size: 0.75rem;" (click)="addAction()" data-testid="button-add-action">+ Add Action</button>
+              </div>
+              @if (stActions().length === 0) {
+                <div class="empty-state" style="padding: 1rem;">No actions defined</div>
+              } @else {
+                @for (act of stActions(); track $index) {
+                  <div class="rule-editor-row" [attr.data-testid]="'action-row-' + $index  + ''">
+                    <select class="form-select" style="width: 12rem;" [ngModel]="act.actionType" (ngModelChange)="updateAction($index, 'actionType', $event)">
+                      @for (a of ACTION_TYPES; track a.value) { <option [value]="a.value">{{ a.label }}</option> }
+                    </select>
+                    <input class="form-input" style="flex: 1;" [ngModel]="act.description || ''" (ngModelChange)="updateAction($index, 'description', $event)" placeholder="Description (optional)" />
+                    <div class="checkbox-group">
+                      <input type="checkbox" [ngModel]="act.isAutomated" (ngModelChange)="updateAction($index, 'isAutomated', $event)" />
+                      <span [style.color]="act.isAutomated ? 'var(--pos-success)' : '#D97706'" style="font-size: 0.625rem; font-weight: 600;">{{ act.isAutomated ? 'Auto' : 'Manual' }}</span>
+                    </div>
+                    <button class="btn-icon btn-icon-danger" (click)="removeAction($index)" [attr.data-testid]="'button-remove-action-' + $index  + ''">✗</button>
+                  </div>
+                }
+              }
+            </div>
+          }
+
+          @if (stageTab() === 'timer') {
+            <div style="margin-top: 0.75rem;">
+              <p class="text-muted" style="font-size: 0.75rem; margin-bottom: 0.75rem;">Configure how long to wait before progressing to the next stage</p>
+              <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr;">
+                <div class="form-group">
+                  <label class="form-label">Wait Period (days)</label>
+                  <input class="form-input" type="number" min="0" max="365" [ngModel]="stTimer().waitDays" (ngModelChange)="updateTimerField('waitDays', +$event)" data-testid="input-wait-days" />
+                </div>
+                <div class="form-group" style="display: flex; align-items: flex-end;">
+                  <div class="checkbox-group">
+                    <input type="checkbox" [ngModel]="stTimer().businessDaysOnly" (ngModelChange)="updateTimerField('businessDaysOnly', $event)" data-testid="switch-business-days" />
+                    <label class="form-label" style="margin-bottom: 0;">Business days only</label>
+                  </div>
+                </div>
+                <div class="form-group" style="display: flex; align-items: flex-end;">
+                  <div class="checkbox-group">
+                    <input type="checkbox" [ngModel]="stTimer().escalateOnExpiry" (ngModelChange)="updateTimerField('escalateOnExpiry', $event)" data-testid="switch-escalate" />
+                    <label class="form-label" style="margin-bottom: 0;">Auto-escalate on expiry</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+        <div class="dialog-footer">
+          <button class="btn-outline" (click)="showStageDialog.set(false)">Cancel</button>
+          <button class="btn-primary" [disabled]="saving()" (click)="handleSaveStage()" data-testid="button-save-stage">
+            {{ saving() ? 'Saving...' : (editingStage() ? 'Update Stage' : 'Add Stage') }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

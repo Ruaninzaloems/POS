@@ -5,13 +5,18 @@ import { fileURLToPath } from "url";
 
 export function serveStatic(app: Express) {
   const currentDir = typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url));
-  let distPath = path.resolve(currentDir, "public");
-  if (!fs.existsSync(distPath)) {
-    distPath = path.resolve(process.cwd(), "dist", "public");
-  }
-  if (!fs.existsSync(distPath)) {
+
+  const candidates = [
+    path.resolve(currentDir, "..", "angular-client", "dist", "angular-client", "browser"),
+    path.resolve(process.cwd(), "angular-client", "dist", "angular-client", "browser"),
+    path.resolve(currentDir, "public"),
+    path.resolve(process.cwd(), "dist", "public"),
+  ];
+
+  let distPath = candidates.find(p => fs.existsSync(p));
+  if (!distPath) {
     throw new Error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`,
+      `Could not find build directory. Checked: ${candidates.join(', ')}. Build the client first.`,
     );
   }
 
@@ -24,7 +29,6 @@ export function serveStatic(app: Express) {
     }
   }));
 
-  // fall through to index.html if the file doesn't exist
   app.use("/{*path}", (_req, res) => {
     res.sendFile(path.resolve(distPath, "index.html"));
   });

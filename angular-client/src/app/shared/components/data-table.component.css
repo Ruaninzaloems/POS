@@ -1,0 +1,21 @@
+:host { display: block; }
+
+.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+.sortable:hover {
+  color: var(--pos-text);
+}
+
+.sort-icon {
+  margin-left: 0.25rem;
+  font-size: 0.75rem;
+}
+
+.loading-cell,
+.empty-cell {
+  text-align: center;
+  padding: 2rem !important;
+  color: var(--pos-text-muted);
+}

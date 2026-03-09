@@ -1,0 +1,7 @@
+<app-dialog [open]="open" [title]="title" size="sm" (close)="cancel.emit()">
+  <p class="confirm-message" data-testid="text-confirm-message">{{ message }}</p>
+  <div dialog-footer>
+    <button class="btn-outline" (click)="cancel.emit()" data-testid="button-cancel">{{ cancelLabel }}</button>
+    <button [class]="variant === 'danger' ? 'btn-danger' : 'btn-primary'" (click)="confirm.emit()" data-testid="button-confirm">{{ confirmLabel }}</button>
+  </div>
+</app-dialog>

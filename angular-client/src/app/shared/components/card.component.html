@@ -1,0 +1,18 @@
+<div class="card" [class.card-padded]="padding" data-testid="card">
+  @if (title) {
+    <div class="card-header">
+      <div class="card-header-text">
+        <h3 class="card-title" data-testid="text-card-title">{{ title }}</h3>
+        @if (subtitle) {
+          <p class="card-subtitle">{{ subtitle }}</p>
+        }
+      </div>
+      <div class="card-actions">
+        <ng-content select="[card-actions]" />
+      </div>
+    </div>
+  }
+  <div class="card-body">
+    <ng-content />
+  </div>
+</div>

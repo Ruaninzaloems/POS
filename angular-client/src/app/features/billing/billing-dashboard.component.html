@@ -1,0 +1,160 @@
+<div class="page-container" data-testid="page-billing-dashboard">
+  <div class="page-header">
+    <div class="header-row">
+      <div>
+        <h1 class="page-title" data-testid="text-page-title">Billing Dashboard</h1>
+        <p class="page-subtitle">Notifications, alerts, and billing system overview</p>
+      </div>
+      <button class="btn-primary" (click)="refreshAll()" [disabled]="loading()" data-testid="button-refresh">
+        @if (loading()) { <span class="spinner spinner-sm"></span> } ↻ Refresh
+      </button>
+    </div>
+  </div>
+
+  @if (loading() && objectKeys(counts()).length === 0) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading billing dashboard...</p>
+    </div>
+  } @else {
+    <div class="alert-bar">
+      @if (alertData().workflow > 0) {
+        <div class="alert-item alert-warning">
+          <span class="alert-icon">⚠</span>
+          <span>{{ alertData().workflow }} workflow alert{{ alertData().workflow !== 1 ? 's' : '' }}</span>
+        </div>
+      }
+      @if (alertData().config > 0) {
+        <div class="alert-item alert-info">
+          <span class="alert-icon">ℹ</span>
+          <span>{{ alertData().config }} configuration alert{{ alertData().config !== 1 ? 's' : '' }}</span>
+        </div>
+      }
+      @if (totalNotifications() > 0) {
+        <div class="alert-item alert-neutral">
+          <span>{{ totalNotifications() }} total notifications across all categories</span>
+        </div>
+      }
+    </div>
+
+    <div class="dashboard-layout">
+      <div class="category-sidebar">
+        @for (cat of categories; track cat.key) {
+          <button class="category-btn" [class.active]="activeCategory() === cat.key" (click)="selectCategory(cat.key)" [attr.data-testid]="'btn-category-' + cat.key">
+            <span class="category-dot" [ngClass]="cat.gradient"></span>
+            <span class="category-label">{{ cat.label }}</span>
+            @if (counts()[cat.key] !== undefined && counts()[cat.key] > 0) {
+              <span class="category-count">{{ counts()[cat.key] }}</span>
+            }
+          </button>
+        }
+      </div>
+
+      <div class="category-content card">
+        <div class="content-header">
+          <h2>{{ activeCat().label }}</h2>
+        </div>
+
+        @if (activeCategory() === 'graphs') {
+          <div class="graphs-placeholder">
+            <p class="text-muted">Graph data panels — connected to Platinum API</p>
+          </div>
+        } @else if (isSubItemsLoading()) {
+          <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading {{ activeCat().label }} details...</p>
+          </div>
+        } @else if (!activeCat().hasItemCountFn) {
+          <div class="empty-state">
+            <p>No sub-item breakdown available for {{ activeCat().label }}</p>
+          </div>
+        } @else if (activeSubItems().length === 0) {
+          <div class="empty-state">
+            <p>All clear — no notifications for {{ activeCat().label }}</p>
+          </div>
+        } @else {
+          <div class="sub-items-list">
+            @for (item of withCounts(); track item.key) {
+              <div class="sub-item-row">
+                <button class="sub-item-btn" [class.expanded]="expandedItem() === item.key" (click)="toggleSubItem(item.key)" [attr.data-testid]="'btn-subitem-' + item.key">
+                  <span class="severity-dot" [ngClass]="getSeverityDotClass(item.severity)"></span>
+                  <span class="sub-item-label" [ngClass]="getSeverityTextClass(item.severity)">{{ item.label }}</span>
+                  <span class="count-badge" [ngClass]="getSeverityBadgeClass(item.severity)">{{ item.count | number }}</span>
+                  @if (item.endpoint) {
+                    <span class="chevron">{{ expandedItem() === item.key ? '▼' : '▶' }}</span>
+                  }
+                </button>
+
+                @if (expandedItem() === item.key && item.endpoint) {
+                  <div class="detail-panel">
+                    @if (detailLoading()) {
+                      <div class="loading-state compact">
+                        <div class="spinner spinner-sm"></div>
+                        <span>Loading details...</span>
+                      </div>
+                    } @else if (detailError()) {
+                      <div class="detail-error">{{ detailError() }}</div>
+                    } @else if (detailItems().length === 0) {
+                      <div class="detail-empty">No detail records found</div>
+                    } @else {
+                      <div class="detail-info">
+                        {{ detailTotalCount() | number }} record{{ detailTotalCount() !== 1 ? 's' : '' }} found
+                      </div>
+                      <div class="table-container">
+                        <table>
+                          <thead>
+                            <tr>
+                              @for (col of detailColumns(); track col) {
+                                <th>{{ getFriendlyLabel(col) }}</th>
+                              }
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @for (row of detailItems(); track $index) {
+                              <tr>
+                                @for (col of detailColumns(); track col) {
+                                  <td [class.amount-cell]="isAmountColumn(col, row[col])">{{ formatCellValue(row[col], col) }}</td>
+                                }
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      </div>
+                      @if (detailTotalPages() > 1) {
+                        <div class="detail-pagination">
+                          <span>{{ (detailPage() - 1) * detailPageSize + 1 }}–{{ detailPage() * detailPageSize > detailTotalCount() ? detailTotalCount() : detailPage() * detailPageSize }} of {{ detailTotalCount() | number }}</span>
+                          <div class="pagination">
+                            <button [disabled]="detailPage() <= 1" (click)="loadDetailTable(expandedItem()!, detailPage() - 1)">‹</button>
+                            <button class="active">{{ detailPage() }}</button>
+                            <button [disabled]="detailPage() >= detailTotalPages()" (click)="loadDetailTable(expandedItem()!, detailPage() + 1)">›</button>
+                          </div>
+                        </div>
+                      }
+                    }
+                  </div>
+                }
+              </div>
+            }
+
+            @if (zeroCounts().length > 0 && withCounts().length > 0) {
+              <div class="zero-counts-toggle">
+                <button class="btn-link" (click)="toggleZeroCounts()" data-testid="btn-show-zero-items">
+                  {{ showZeroCounts() ? 'Hide' : 'Show' }} {{ zeroCounts().length }} items with zero count
+                </button>
+              </div>
+              @if (showZeroCounts()) {
+                @for (item of zeroCounts(); track item.key) {
+                  <div class="sub-item-btn zero-item">
+                    <span class="severity-dot dot-neutral"></span>
+                    <span class="sub-item-label text-muted">{{ item.label }}</span>
+                    <span class="count-badge count-badge-neutral">0</span>
+                  </div>
+                }
+              }
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

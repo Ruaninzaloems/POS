@@ -1,0 +1,153 @@
+<div class="page-container">
+  <div class="page-header">
+    <div class="header-left">
+      <span class="header-icon">&#x2716;</span>
+      <div>
+        <h1 class="page-title" data-testid="text-page-title">Handover Termination</h1>
+        <p class="page-subtitle">Terminate active handovers with supervisor approval</p>
+      </div>
+    </div>
+    <button class="btn btn-outline btn-sm" (click)="goBack()" data-testid="button-back">&#8592; Back</button>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <div class="filter-title">Search & Filter</div>
+      <div class="filter-grid">
+        <div class="form-group">
+          <label class="form-label">Account Number</label>
+          <input class="form-input" placeholder="Search account..." [ngModel]="accountFilter()" (ngModelChange)="accountFilter.set($event); onFilterChange()" data-testid="input-account-filter" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Attorney</label>
+          <select class="form-select" [ngModel]="attorneyFilter()" (ngModelChange)="attorneyFilter.set($event); onFilterChange()" data-testid="select-attorney-filter">
+            <option value="__all__">All Attorneys</option>
+            @for (a of attorneys(); track a.attorneyId) {
+              <option [value]="a.attorneyId">{{ a.attorneyName }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select class="form-select" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event); onFilterChange()" data-testid="select-status-filter">
+            <option value="__all__">All Statuses</option>
+            @for (s of uniqueStatuses(); track s) {
+              <option [value]="s">{{ s }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date From</label>
+          <input class="form-input" type="date" [ngModel]="dateFrom()" (ngModelChange)="dateFrom.set($event); onFilterChange()" data-testid="input-date-from" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date To</label>
+          <input class="form-input" type="date" [ngModel]="dateTo()" (ngModelChange)="dateTo.set($event); onFilterChange()" data-testid="input-date-to" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="header-badges">
+        <h2 class="section-title">Active Handovers</h2>
+        <span class="badge badge-outline" data-testid="badge-handover-count">{{ filteredHandovers().length }} record{{ filteredHandovers().length !== 1 ? 's' : '' }}</span>
+        @if (selectedIds().size > 0) {
+          <span class="badge badge-danger" data-testid="badge-selected-count">{{ selectedIds().size }} selected</span>
+        }
+      </div>
+    </div>
+    <div class="card-body no-pad">
+      @if (loading()) {
+        <div class="loading-state"><div class="spinner"></div><p>Loading handovers...</p></div>
+      } @else if (filteredHandovers().length === 0) {
+        <div class="empty-state">No handovers found matching your filters.</div>
+      } @else {
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th class="w-10">
+                  <input type="checkbox" [checked]="allVisibleSelected()" (change)="toggleSelectAll()" data-testid="checkbox-select-all" />
+                </th>
+                <th>Handover ID</th>
+                <th>Account</th>
+                <th>Account Name</th>
+                <th>Attorney</th>
+                <th>Handover Date</th>
+                <th class="text-right">Amount</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (h of paginatedHandovers(); track h.handoverId) {
+                <tr [class.row-selected]="isSelected(h.handoverId)" (click)="toggleSelect(h.handoverId)" [attr.data-testid]="'row-handover-' + h.handoverId">
+                  <td (click)="$event.stopPropagation()">
+                    <input type="checkbox" [checked]="isSelected(h.handoverId)" (change)="toggleSelect(h.handoverId)" [attr.data-testid]="'checkbox-handover-' + h.handoverId" />
+                  </td>
+                  <td class="font-mono" [attr.data-testid]="'text-handover-id-' + h.handoverId">{{ h.handoverId }}</td>
+                  <td class="font-mono" [attr.data-testid]="'text-account-' + h.handoverId">{{ h.accountNo }}</td>
+                  <td [attr.data-testid]="'text-account-name-' + h.handoverId">{{ h.accountName }}</td>
+                  <td [attr.data-testid]="'text-attorney-' + h.handoverId">{{ h.attorney }}</td>
+                  <td [attr.data-testid]="'text-date-' + h.handoverId">{{ formatDate(h.handoverDate) }}</td>
+                  <td class="text-right font-medium" [attr.data-testid]="'text-amount-' + h.handoverId">{{ formatCurrency(h.handedOverAmount) }}</td>
+                  <td [attr.data-testid]="'cell-status-' + h.handoverId">
+                    <span class="badge" [ngClass]="getStatusClass(h.status)" [attr.data-testid]="'badge-status-' + h.status">{{ h.status }}</span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        @if (totalPages() > 1) {
+          <div class="pagination-bar">
+            <span class="page-info">Page {{ currentPage() }} of {{ totalPages() }}</span>
+            <div class="pagination">
+              <button class="btn btn-outline btn-sm" (click)="prevPage()" [disabled]="currentPage() <= 1" data-testid="button-prev-page">&#8249;</button>
+              <button class="btn btn-outline btn-sm" (click)="nextPage()" [disabled]="currentPage() >= totalPages()" data-testid="button-next-page">&#8250;</button>
+            </div>
+          </div>
+        }
+      }
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <div class="filter-title termination-title">Termination Details</div>
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Termination Reason <span class="required">*</span></label>
+          <select class="form-select" [ngModel]="terminationReason()" (ngModelChange)="terminationReason.set($event)" data-testid="select-termination-reason">
+            <option value="">Select reason...</option>
+            @for (r of TERMINATION_REASONS; track r.value) {
+              <option [value]="r.value">{{ r.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea class="form-input textarea" placeholder="Additional notes for the termination..." [ngModel]="terminationNotes()" (ngModelChange)="terminationNotes.set($event)" maxlength="250" data-testid="input-termination-notes"></textarea>
+          <span class="char-count">{{ terminationNotes().length }}/250</span>
+        </div>
+      </div>
+
+      <div class="termination-footer">
+        <div class="warning-text">&#9888; Termination requires supervisor approval before it is finalized.</div>
+        <div class="action-bar">
+          <button class="btn btn-outline btn-sm" (click)="goBack()" data-testid="button-cancel">Cancel</button>
+          <button class="btn btn-danger btn-sm" (click)="handleSubmitTermination()" [disabled]="submitting() || selectedIds().size === 0 || !terminationReason()" data-testid="button-submit-termination">
+            @if (submitting()) {
+              <span class="spinner-sm"></span> Submitting...
+            } @else {
+              Submit Termination ({{ selectedIds().size }})
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

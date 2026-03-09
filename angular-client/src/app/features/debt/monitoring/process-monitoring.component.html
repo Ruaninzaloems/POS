@@ -1,0 +1,220 @@
+<div class="page-container">
+  <div class="breadcrumb">
+    <span class="breadcrumb-link" (click)="goHome()" data-testid="link-home">Home</span>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-link" (click)="goDebt()" data-testid="link-debt">Debt Management</span>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-current">Process Monitoring</span>
+  </div>
+
+  <div class="page-header-row">
+    <div class="header-left">
+      <div class="icon-box">📊</div>
+      <div>
+        <h1 class="page-title" data-testid="text-page-title">Process Monitoring</h1>
+        <p class="page-subtitle">Monitor all debt recovery processes in real time</p>
+      </div>
+    </div>
+    <button class="btn-outline" [disabled]="loading()" (click)="loadData()" data-testid="button-refresh">
+      {{ loading() ? '↻ Refreshing...' : '↻ Refresh' }}
+    </button>
+  </div>
+
+  <div class="content-area">
+    <div class="stat-grid stat-grid-5">
+      @for (s of stats(); track $index) {
+        <div class="card stat-card" [attr.data-testid]="'text-stat-' + $index  + ''">
+          <div class="stat-label-upper">{{ s.label }}</div>
+          <div class="stat-value" [ngClass]="s.colorClass">{{ s.value }}</div>
+        </div>
+      }
+    </div>
+
+    <div class="card" style="padding: 0;">
+      <div class="tab-list">
+        <button class="tab-item" [class.active]="tab() === 'overview'" (click)="setTab('overview')" data-testid="tab-overview">Overview</button>
+        <button class="tab-item" [class.active]="tab() === 'active'" (click)="setTab('active')" data-testid="tab-active">
+          Active Runs
+          @if (activeRuns().length > 0) { <span class="tab-badge tab-badge-blue">{{ activeRuns().length }}</span> }
+        </button>
+        <button class="tab-item" [class.active]="tab() === 'failed'" (click)="setTab('failed')" data-testid="tab-failed">
+          Failed
+          @if (failedRuns().length > 0) { <span class="tab-badge tab-badge-red">{{ failedRuns().length }}</span> }
+        </button>
+        <button class="tab-item" [class.active]="tab() === 'approvals'" (click)="setTab('approvals')" data-testid="tab-approvals">
+          Pending Approvals
+          @if (pendingApprovals().length > 0) { <span class="tab-badge tab-badge-amber">{{ pendingApprovals().length }}</span> }
+        </button>
+        <button class="tab-item" [class.active]="tab() === 'handovers'" (click)="setTab('handovers')" data-testid="tab-handovers">
+          Handover Queue
+          @if (handoverQueues().length > 0) { <span class="tab-badge tab-badge-indigo">{{ handoverQueues().length }}</span> }
+        </button>
+        <button class="tab-item" [class.active]="tab() === 'terminations'" (click)="setTab('terminations')" data-testid="tab-terminations">
+          Termination Queue
+          @if (terminationQueues().length > 0) { <span class="tab-badge tab-badge-purple">{{ terminationQueues().length }}</span> }
+        </button>
+      </div>
+
+      <div style="padding: 1rem;">
+        @if (loading()) {
+          <div class="loading-state"><div class="spinner"></div></div>
+        } @else {
+          @if (tab() === 'overview') {
+            <div class="overview-grid">
+              @for (section of overviewSections(); track section.tab) {
+                <div class="overview-card" [ngClass]="section.borderClass">
+                  <div class="overview-header">
+                    <h3 class="overview-title">{{ section.title }}</h3>
+                    <span class="overview-count" [attr.data-testid]="'text-overview-' + section.tab  + ''">{{ section.items.length }}</span>
+                  </div>
+                  @if (section.items.length === 0) {
+                    <p class="text-muted" style="font-size: 0.75rem;">No items</p>
+                  } @else {
+                    <div class="overview-items">
+                      @for (item of section.items.slice(0, 3); track $index) {
+                        <div class="overview-item">
+                          <span class="overview-item-label">{{ getItemLabel(item) }}</span>
+                          <span class="badge" [ngClass]="getStatusClass(item.status)">{{ getStatusLabel(item.status) }}</span>
+                        </div>
+                      }
+                      @if (section.items.length > 3) {
+                        <button class="link-btn" (click)="setTab(section.tab)" [attr.data-testid]="'button-view-all-' + section.tab  + ''">
+                          View all {{ section.items.length }} items
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+
+          @if (tab() === 'active') {
+            @if (activeRuns().length === 0) {
+              <div class="empty-state">No active runs</div>
+            } @else {
+              <div class="table-container">
+                <table>
+                  <thead><tr><th>Run Type</th><th>Status</th><th>Started</th><th>Completed</th><th class="text-right">Total</th><th class="text-right">Processed</th><th class="text-right">Errors</th><th>Error Message</th></tr></thead>
+                  <tbody>
+                    @for (r of activeRuns(); track $index) {
+                      <tr [attr.data-testid]="'row-active-' + $index  + ''">
+                        <td class="font-medium">{{ r.runType || r.jobType || '—' }}</td>
+                        <td><span class="badge" [ngClass]="getStatusClass(r.status)">{{ getStatusLabel(r.status) }}</span></td>
+                        <td>{{ fmtDateShort(r.startedAt) }}</td><td>{{ fmtDateShort(r.completedAt) }}</td>
+                        <td class="text-right font-medium">{{ r.totalCount ?? '—' }}</td>
+                        <td class="text-right text-success font-medium">{{ r.processedCount ?? '—' }}</td>
+                        <td class="text-right text-danger font-medium">{{ r.errorCount ?? '—' }}</td>
+                        <td class="text-muted truncate-cell">{{ r.errorMessage || '—' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          }
+
+          @if (tab() === 'failed') {
+            @if (failedRuns().length === 0) {
+              <div class="empty-state">No failed runs</div>
+            } @else {
+              <div class="table-container">
+                <table>
+                  <thead><tr><th>Run Type</th><th>Status</th><th>Started</th><th>Completed</th><th class="text-right">Total</th><th class="text-right">Processed</th><th class="text-right">Errors</th><th>Error Message</th></tr></thead>
+                  <tbody>
+                    @for (r of failedRuns(); track $index) {
+                      <tr [attr.data-testid]="'row-failed-' + $index  + ''">
+                        <td class="font-medium">{{ r.runType || r.jobType || '—' }}</td>
+                        <td><span class="badge" [ngClass]="getStatusClass(r.status)">{{ getStatusLabel(r.status) }}</span></td>
+                        <td>{{ fmtDateShort(r.startedAt) }}</td><td>{{ fmtDateShort(r.completedAt) }}</td>
+                        <td class="text-right font-medium">{{ r.totalCount ?? '—' }}</td>
+                        <td class="text-right text-success font-medium">{{ r.processedCount ?? '—' }}</td>
+                        <td class="text-right text-danger font-medium">{{ r.errorCount ?? '—' }}</td>
+                        <td class="text-muted truncate-cell">{{ r.errorMessage || '—' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          }
+
+          @if (tab() === 'approvals') {
+            @if (pendingApprovals().length === 0) {
+              <div class="empty-state">No pending approvals</div>
+            } @else {
+              <div class="table-container">
+                <table>
+                  <thead><tr><th>Type</th><th>Description</th><th>Submitted By</th><th>Submitted At</th><th class="text-right">Accounts</th><th class="text-right">Amount</th><th>Status</th></tr></thead>
+                  <tbody>
+                    @for (a of pendingApprovals(); track $index) {
+                      <tr [attr.data-testid]="'row-approval-' + $index  + ''">
+                        <td class="font-medium">{{ a.approvalType || a.type || '—' }}</td>
+                        <td class="truncate-cell">{{ a.description || '—' }}</td>
+                        <td>{{ a.submittedBy || '—' }}</td>
+                        <td>{{ fmtDateShort(a.submittedAt) }}</td>
+                        <td class="text-right font-medium">{{ a.accountCount ?? '—' }}</td>
+                        <td class="text-right font-medium">{{ fmtCurrency(a.totalAmount) }}</td>
+                        <td><span class="badge" [ngClass]="getStatusClass(a.status || 'AWAITING_APPROVAL')">{{ getStatusLabel(a.status || 'AWAITING_APPROVAL') }}</span></td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          }
+
+          @if (tab() === 'handovers') {
+            @if (handoverQueues().length === 0) {
+              <div class="empty-state">No items in handover queue</div>
+            } @else {
+              <div class="table-container">
+                <table>
+                  <thead><tr><th>Account No</th><th>Account Holder</th><th class="text-right">Outstanding</th><th>Attorney</th><th>Queued At</th><th>Status</th><th>Reason</th></tr></thead>
+                  <tbody>
+                    @for (item of handoverQueues(); track $index) {
+                      <tr [attr.data-testid]="'row-handover-' + $index  + ''">
+                        <td class="font-mono font-medium">{{ item.accountNo || '—' }}</td>
+                        <td>{{ item.accountHolder || item.ownerName || '—' }}</td>
+                        <td class="text-right font-medium">{{ fmtCurrency(item.outstandingAmount) }}</td>
+                        <td>{{ item.attorneyName || item.attorney || '—' }}</td>
+                        <td>{{ fmtDateShort(item.queuedAt || item.createdAt) }}</td>
+                        <td><span class="badge" [ngClass]="getStatusClass(item.status || 'QUEUED')">{{ getStatusLabel(item.status || 'QUEUED') }}</span></td>
+                        <td class="truncate-cell">{{ item.reason || item.terminationReason || '—' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          }
+
+          @if (tab() === 'terminations') {
+            @if (terminationQueues().length === 0) {
+              <div class="empty-state">No items in termination queue</div>
+            } @else {
+              <div class="table-container">
+                <table>
+                  <thead><tr><th>Account No</th><th>Account Holder</th><th class="text-right">Outstanding</th><th>Attorney</th><th>Queued At</th><th>Status</th><th>Reason</th></tr></thead>
+                  <tbody>
+                    @for (item of terminationQueues(); track $index) {
+                      <tr [attr.data-testid]="'row-termination-' + $index  + ''">
+                        <td class="font-mono font-medium">{{ item.accountNo || '—' }}</td>
+                        <td>{{ item.accountHolder || item.ownerName || '—' }}</td>
+                        <td class="text-right font-medium">{{ fmtCurrency(item.outstandingAmount) }}</td>
+                        <td>{{ item.attorneyName || item.attorney || '—' }}</td>
+                        <td>{{ fmtDateShort(item.queuedAt || item.createdAt) }}</td>
+                        <td><span class="badge" [ngClass]="getStatusClass(item.status || 'QUEUED')">{{ getStatusLabel(item.status || 'QUEUED') }}</span></td>
+                        <td class="truncate-cell">{{ item.reason || item.terminationReason || '—' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          }
+        }
+      </div>
+    </div>
+  </div>
+</div>

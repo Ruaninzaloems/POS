@@ -1,0 +1,8 @@
+<div class="empty-state" data-testid="empty-state">
+  <div class="empty-icon">{{ icon }}</div>
+  <p class="empty-title" data-testid="text-empty-title">{{ title }}</p>
+  @if (message) {
+    <p class="empty-message">{{ message }}</p>
+  }
+  <ng-content />
+</div>

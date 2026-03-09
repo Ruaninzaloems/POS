@@ -1,0 +1,420 @@
+<div class="dayend-container">
+  <div class="dayend-header">
+    <div class="header-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+        <circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/>
+      </svg>
+    </div>
+    <div>
+      <h1 class="header-title" data-testid="text-page-title">Cashier Day End Reconcile</h1>
+      <p class="header-subtitle">Submit your end-of-day cash count and reconciliation</p>
+    </div>
+  </div>
+
+  <div class="dayend-content">
+    <div class="card cashier-select-card">
+      <div class="select-grid">
+        <div class="field">
+          <label class="field-label">Cashier Name *</label>
+          <select
+            class="form-select"
+            [ngModel]="selectedCashierId()"
+            (ngModelChange)="selectedCashierId.set($event); onCashierChange()"
+            data-testid="select-cashier"
+          >
+            <option value="">{{ isLoadingCashiers() ? 'Loading...' : 'Select cashier' }}</option>
+            @for (c of cashierList(); track $index) {
+              <option [value]="c.id || c.cashierId || c.cashier_id || $index">
+                {{ getCashierName(c) }}
+              </option>
+            }
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Cashier Office *</label>
+          <div class="field-display">{{ getCashierOffice() }}</div>
+        </div>
+        <div class="field">
+          <label class="field-label">Reconcile Date</label>
+          <div class="field-display font-mono">{{ today }}</div>
+        </div>
+        <div class="field">
+          <label class="field-label">Reason</label>
+          <input
+            class="form-input"
+            [ngModel]="reason()"
+            (ngModelChange)="reason.set($event)"
+            placeholder="Enter reason..."
+            data-testid="input-reason"
+          />
+        </div>
+      </div>
+      @if (isLoadingDetails()) {
+        <div class="loading-inline">
+          <div class="spinner spinner-sm"></div> Loading cashier details...
+        </div>
+      }
+    </div>
+
+    @if (selectedCashierId()) {
+      <div class="section-banner">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>
+        </svg>
+        Receipt Information
+      </div>
+
+      <div class="card receipt-card">
+        @if (isLoadingReceipts()) {
+          <div class="loading-center">
+            <div class="spinner"></div> Loading receipt data...
+          </div>
+        }
+
+        <div class="receipt-section">
+          <div class="section-header">
+            <h4 class="section-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
+              </svg>
+              Credit Card Receipts
+            </h4>
+            <span class="badge badge-default">{{ cardList().length }} record{{ cardList().length !== 1 ? 's' : '' }}</span>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr class="table-header-accent">
+                  <th>No</th>
+                  <th>Account/Invoice</th>
+                  <th>Receipt No</th>
+                  <th>Date</th>
+                  <th>Cancelled</th>
+                  <th>Card No</th>
+                  <th>Expiry</th>
+                  <th class="text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                @if (cardList().length === 0) {
+                  <tr><td colspan="8" class="empty-cell">No records to display</td></tr>
+                } @else {
+                  @for (item of cardList(); track $index) {
+                    <tr>
+                      <td>{{ $index + 1 }}</td>
+                      <td class="font-mono">{{ item.accountNumber || item.accountId || item.invoiceNumber || '-' }}</td>
+                      <td class="font-mono">{{ item.receiptNo || item.receipt_no || '-' }}</td>
+                      <td>{{ item.receiptDate || item.receiptDateTime || item.date || '-' }}</td>
+                      <td>
+                        @if (isCancelled(item)) {
+                          <span class="badge badge-danger">Yes</span>
+                        } @else {
+                          <span class="text-muted">No</span>
+                        }
+                      </td>
+                      <td class="font-mono">{{ item.cardNo || item.cardNumber || '-' }}</td>
+                      <td>{{ item.expiryDate || item.cardExpiryDate || '-' }}</td>
+                      <td class="text-right font-mono font-bold">R {{ (item.amount || 0).toFixed(2) }}</td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
+          <div class="section-total">
+            <span class="total-badge">Total: R {{ totalCreditAmt().toFixed(2) }}</span>
+          </div>
+        </div>
+
+        <div class="receipt-section">
+          <div class="section-header">
+            <h4 class="section-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>
+              </svg>
+              Cheque Receipts
+            </h4>
+            <span class="badge badge-default">{{ chequeList().length }} record{{ chequeList().length !== 1 ? 's' : '' }}</span>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr class="table-header-accent">
+                  <th>No</th>
+                  <th>Account/Invoice</th>
+                  <th>Receipt No</th>
+                  <th>Date</th>
+                  <th>Cancelled</th>
+                  <th>Cheque No</th>
+                  <th class="text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                @if (chequeList().length === 0) {
+                  <tr><td colspan="7" class="empty-cell">No records to display</td></tr>
+                } @else {
+                  @for (item of chequeList(); track $index) {
+                    <tr>
+                      <td>{{ $index + 1 }}</td>
+                      <td class="font-mono">{{ item.accountNumber || item.accountId || item.invoiceNumber || '-' }}</td>
+                      <td class="font-mono">{{ item.receiptNo || item.receipt_no || '-' }}</td>
+                      <td>{{ item.receiptDate || item.receiptDateTime || item.date || '-' }}</td>
+                      <td>
+                        @if (isCancelled(item)) {
+                          <span class="badge badge-danger">Yes</span>
+                        } @else {
+                          <span class="text-muted">No</span>
+                        }
+                      </td>
+                      <td class="font-mono">{{ item.chequeNo || item.chequeNumber || '-' }}</td>
+                      <td class="text-right font-mono font-bold">R {{ (item.amount || 0).toFixed(2) }}</td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
+          <div class="section-total">
+            <span class="total-badge">Total: R {{ totalChequeAmt().toFixed(2) }}</span>
+          </div>
+        </div>
+
+        <div class="receipt-section">
+          <div class="section-header">
+            <h4 class="section-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>
+              </svg>
+              Dropbox Payment
+            </h4>
+            <span class="badge badge-default">{{ dropBoxList().length }} record{{ dropBoxList().length !== 1 ? 's' : '' }}</span>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr class="table-header-accent">
+                  <th>No</th>
+                  <th>Description</th>
+                  <th>Reference</th>
+                  <th>Comment</th>
+                  <th>Status</th>
+                  <th class="text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                @if (dropBoxList().length === 0) {
+                  <tr><td colspan="6" class="empty-cell">No records to display</td></tr>
+                } @else {
+                  @for (item of dropBoxList(); track $index) {
+                    <tr>
+                      <td>{{ $index + 1 }}</td>
+                      <td>{{ item.description || item.accountNumber || '-' }}</td>
+                      <td class="font-mono">{{ item.referenceNumber || item.receiptNo || item.receipt_no || '-' }}</td>
+                      <td>{{ item.comment || '-' }}</td>
+                      <td>{{ item.status || '-' }}</td>
+                      <td class="text-right font-mono font-bold">R {{ (item.amount || 0).toFixed(2) }}</td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
+          <div class="section-total">
+            <span class="total-badge">Total: R {{ dropBoxTotal().toFixed(2) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-banner">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>
+        </svg>
+        Cash Information
+      </div>
+
+      <div class="card cash-card">
+        @if (enableDenominationCounting()) {
+          <div class="denomination-grid">
+            <div class="denomination-column">
+              <h4 class="denomination-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>
+                </svg>
+                Notes
+              </h4>
+              <div class="denomination-items">
+                @for (d of noteDenominations; track d.key) {
+                  <div class="denomination-row">
+                    <span class="denom-label">{{ d.label }}</span>
+                    <input
+                      type="number"
+                      min="0"
+                      class="form-input denom-input"
+                      [value]="getDenominationCount(d.key)"
+                      (input)="updateDenomination(d.key, $any($event.target).valueAsNumber || 0)"
+                      [attr.data-testid]="'input-' + d.key"
+                    />
+                    <span class="denom-total">= R {{ getDenominationTotal(d.key, d.value).toFixed(2) }}</span>
+                  </div>
+                }
+              </div>
+              <div class="denomination-subtotal">
+                Notes Total: R {{ totalNotes().toFixed(2) }}
+              </div>
+            </div>
+            <div class="denomination-column">
+              <h4 class="denomination-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/>
+                </svg>
+                Coins
+              </h4>
+              <div class="denomination-items">
+                @for (d of coinDenominations; track d.key) {
+                  <div class="denomination-row">
+                    <span class="denom-label">{{ d.label }}</span>
+                    <input
+                      type="number"
+                      min="0"
+                      class="form-input denom-input"
+                      [value]="getDenominationCount(d.key)"
+                      (input)="updateDenomination(d.key, $any($event.target).valueAsNumber || 0)"
+                      [attr.data-testid]="'input-' + d.key"
+                    />
+                    <span class="denom-total">= R {{ getDenominationTotal(d.key, d.value).toFixed(2) }}</span>
+                  </div>
+                }
+              </div>
+              <div class="denomination-subtotal">
+                Coins Total: R {{ totalCoins().toFixed(2) }}
+              </div>
+            </div>
+          </div>
+        } @else {
+          <div class="manual-cash">
+            <label class="field-label">Total Cash on Hand (R)</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              class="form-input cash-total-input"
+              [ngModel]="totalCashAmt()"
+              (ngModelChange)="totalCashAmt.set($event)"
+              placeholder="Enter total cash on hand"
+              data-testid="input-total-cash"
+            />
+          </div>
+        }
+
+        <div class="cash-total-display">
+          <span class="cash-total-label">Total Cash</span>
+          <span class="cash-total-value">R {{ cashOnHand().toFixed(2) }}</span>
+        </div>
+      </div>
+
+      <div class="card summary-card">
+        <div class="summary-rows">
+          <div class="summary-row">
+            <span class="summary-label">Total Cash on Hand + Drop Box (R)</span>
+            <span class="summary-value">{{ totalCashOnHandPlusDropBox().toFixed(2) }}</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Total Cheque Receipts (R)</span>
+            <span class="summary-value">{{ totalChequeAmt().toFixed(2) }}</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Total Debit/Credit Card Receipts (R)</span>
+            <span class="summary-value">{{ totalCreditAmt().toFixed(2) }}</span>
+          </div>
+          <div class="summary-row summary-grand-total">
+            <span class="summary-label">Grand Total (R)</span>
+            <span class="summary-value grand-total-value">{{ grandTotal().toFixed(2) }}</span>
+          </div>
+        </div>
+
+        <div class="action-buttons">
+          <button
+            class="btn-primary btn-submit"
+            (click)="handleSaveReconcile()"
+            [disabled]="isSaving() || !selectedCashierId()"
+            data-testid="button-save-reconcile"
+          >
+            @if (isSaving()) {
+              <div class="spinner spinner-sm"></div>
+            } @else {
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/>
+              </svg>
+            }
+            Submit
+          </button>
+          <button class="btn-outline btn-reset" (click)="resetForm()" data-testid="button-reset">
+            Cancel
+          </button>
+        </div>
+      </div>
+
+      <div class="history-toggle">
+        <button class="btn-ghost" (click)="showTransactionHistory.update(v => !v)" data-testid="button-toggle-history">
+          @if (showTransactionHistory()) {
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m18 15-6-6-6 6"/></svg>
+            Hide Reconcile List
+          } @else {
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+            Show Reconcile List
+          }
+        </button>
+
+        @if (showTransactionHistory()) {
+          <div class="card" style="margin-top: 0.5rem">
+            <div class="reconcile-header">
+              <h3>Reconcile List (System Receipts)</h3>
+            </div>
+            <div class="reconcile-body">
+              @if (isLoadingReceipts()) {
+                <div class="loading-center"><div class="spinner"></div> Loading...</div>
+              } @else if (reconcileList().length === 0) {
+                <div class="empty-state">No reconcile data found.</div>
+              } @else {
+                <div class="table-container">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Receipt No</th>
+                        <th>Account</th>
+                        <th>Payment Type</th>
+                        <th>Date</th>
+                        <th class="text-right">Amount</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (item of reconcileList(); track $index) {
+                        <tr [class.cancelled-row]="isCancelled(item)">
+                          <td>{{ $index + 1 }}</td>
+                          <td class="font-mono">{{ item.receiptNo || item.receipt_no || '-' }}</td>
+                          <td class="font-mono">{{ item.accountNumber || item.accountId || '-' }}</td>
+                          <td>{{ getPayTypeLabel(item) }}</td>
+                          <td>{{ formatDate(item) }}</td>
+                          <td class="text-right font-mono font-bold">R {{ (item.paidAmount || item.amount || 0).toFixed(2) }}</td>
+                          <td>
+                            @if (isCancelled(item)) {
+                              <span class="badge badge-danger">Cancelled</span>
+                            } @else {
+                              <span class="badge badge-success">Active</span>
+                            }
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>

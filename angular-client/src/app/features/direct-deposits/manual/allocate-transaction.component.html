@@ -1,0 +1,227 @@
+<div class="page-container">
+  <div class="page-header-bar">
+    <div class="header-left">
+      <button class="btn-outline icon-btn" (click)="goBack()" data-testid="button-back">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
+      </button>
+      <div class="header-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      </div>
+      <div>
+        <h1 class="page-title" data-testid="text-page-title">Allocate Transaction</h1>
+        <p class="page-subtitle">POS Item #{{ posItemId() }}</p>
+      </div>
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading transaction details...</p>
+    </div>
+  } @else if (error()) {
+    <div class="error-state card" style="margin:1.5rem">
+      <p class="error-message" data-testid="text-error">{{ error() }}</p>
+      <button class="btn-primary" (click)="loadTransaction()" data-testid="button-retry">Retry</button>
+    </div>
+  } @else if (postComplete()) {
+    <div class="completion-screen">
+      <div class="completion-card card">
+        <div class="completion-icon">
+          @if (postErrors().length === 0) {
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          } @else {
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          }
+        </div>
+        <h2 data-testid="text-completion-title">
+          {{ postErrors().length === 0 ? 'Allocation Complete' : 'Allocation Completed with Errors' }}
+        </h2>
+        <p>{{ completedLines().length }} line(s) allocated successfully</p>
+
+        @if (completedLines().length > 0) {
+          <div class="completed-list">
+            @for (line of completedLines(); track trackByIndex($index)) {
+              <div class="completed-item">
+                <span class="font-mono">{{ line.accountNo }}</span>
+                <span>{{ line.name }}</span>
+                <span class="font-mono font-semibold">{{ formatCurrency(line.amount) }}</span>
+                @if (line.receiptNo) {
+                  <span class="badge badge-success">Receipt #{{ line.receiptNo }}</span>
+                }
+              </div>
+            }
+          </div>
+        }
+
+        @if (postErrors().length > 0) {
+          <div class="error-list">
+            <h4>Errors:</h4>
+            @for (err of postErrors(); track trackByIndex($index)) {
+              <p class="error-message">{{ err }}</p>
+            }
+          </div>
+        }
+
+        <div class="completion-actions">
+          <button class="btn-primary" (click)="goBack()" data-testid="button-back-to-queue">Back to Queue</button>
+        </div>
+      </div>
+    </div>
+  } @else if (transaction()) {
+    <div class="allocate-layout">
+      <div class="transaction-panel card">
+        <div class="panel-header">
+          <h3>Transaction Details</h3>
+        </div>
+        <div class="panel-body">
+          <div class="detail-row">
+            <span class="detail-label">POS Item ID</span>
+            <span class="detail-value font-mono">{{ transaction()!.posItem_ID }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Date</span>
+            <span class="detail-value">{{ formatDate(transaction()!.dateOfTransaction) }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Amount</span>
+            <span class="detail-value font-mono font-semibold amount-highlight">{{ formatCurrency(transaction()!.amount) }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Reference</span>
+            <span class="detail-value">{{ transaction()!.reference || '-' }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Note</span>
+            <span class="detail-value">{{ transaction()!.note || '-' }}</span>
+          </div>
+
+          <div class="allocation-summary">
+            <div class="summary-row">
+              <span>Total Allocated</span>
+              <span class="font-mono font-semibold" [class.text-success]="remaining() <= 0.01" [class.text-muted]="remaining() > 0.01">{{ formatCurrency(totalAllocated()) }}</span>
+            </div>
+            <div class="summary-row">
+              <span>Remaining</span>
+              <span class="font-mono font-semibold" [class.text-danger]="remaining() > 0.01" [class.text-success]="remaining() <= 0.01">{{ formatCurrency(remaining()) }}</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" [style.width.%]="transaction()!.amount > 0 ? Math.min(100, (totalAllocated() / transaction()!.amount) * 100) : 0"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="allocation-panel">
+        <div class="search-section card">
+          <div class="panel-header">
+            <h3>Search Account</h3>
+          </div>
+          <div class="panel-body">
+            <div class="search-input-wrapper">
+              <input type="text" class="form-input" placeholder="Search by account number, name, or ID..."
+                [ngModel]="searchQuery()" (ngModelChange)="onSearchInput($event)"
+                data-testid="input-account-search" />
+              @if (searching()) {
+                <span class="search-spinner spinner-sm"></span>
+              }
+            </div>
+
+            @if (dropdownOpen() && searchResults().length > 0) {
+              <div class="search-dropdown" data-testid="dropdown-search-results">
+                @for (result of searchResults(); track result.accountId) {
+                  <div class="search-result-item" (click)="selectSearchResult(result)" [attr.data-testid]="'result-' + result.accountId">
+                    <div class="result-main">
+                      <span class="font-mono font-semibold">{{ result.accountNo }}</span>
+                      <span class="result-name">{{ result.name }}</span>
+                    </div>
+                    <div class="result-meta">
+                      @if (result.outstandingAmount) {
+                        <span class="text-muted">Owing: {{ formatCurrency(result.outstandingAmount) }}</span>
+                      }
+                      <span class="badge badge-info">{{ result.type }}</span>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+
+            @if (selectedAccount()) {
+              <div class="selected-account card" data-testid="selected-account">
+                <div class="selected-header">
+                  <div>
+                    <span class="font-mono font-semibold">{{ selectedAccount()!.accountNo }}</span>
+                    <span class="selected-name">{{ selectedAccount()!.name }}</span>
+                  </div>
+                  <button class="btn-close-sm" (click)="selectedAccount.set(null)" data-testid="button-clear-account">✕</button>
+                </div>
+                <div class="amount-input-row">
+                  <label class="form-label">Amount</label>
+                  <div class="amount-input-group">
+                    <span class="currency-prefix">R</span>
+                    <input type="number" class="form-input amount-input" step="0.01" min="0"
+                      [ngModel]="newLineAmount()" (ngModelChange)="newLineAmount.set($event)"
+                      placeholder="0.00" data-testid="input-amount" />
+                  </div>
+                  <button class="btn-primary" (click)="addLine()" data-testid="button-add-line">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Add
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        @if (lines().length > 0) {
+          <div class="lines-section card">
+            <div class="panel-header">
+              <h3>Allocation Lines ({{ lines().length }})</h3>
+            </div>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Account</th>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th class="text-right">Amount</th>
+                    <th class="text-center" style="width:60px">Remove</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (line of lines(); track trackByIndex($index); let i = $index) {
+                    <tr [attr.data-testid]="'row-line-' + i">
+                      <td class="font-mono">{{ line.accountNo }}</td>
+                      <td>{{ line.name }}</td>
+                      <td><span class="badge badge-info">{{ line.allocationType }}</span></td>
+                      <td class="text-right font-mono font-semibold">{{ formatCurrency(line.amount) }}</td>
+                      <td class="text-center">
+                        <button class="btn-danger btn-sm icon-btn" (click)="removeLine(i)" [attr.data-testid]="'button-remove-' + i">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        </button>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        }
+
+        <div class="submit-bar">
+          <button class="btn-outline" (click)="goBack()" data-testid="button-cancel">Cancel</button>
+          <button class="btn-primary submit-btn" [disabled]="!canSubmit() || posting()" (click)="submitAllocation()" data-testid="button-submit">
+            @if (posting()) {
+              <span class="spinner-sm"></span>
+              {{ postingStatus() }}
+            } @else {
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              Submit Allocation
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

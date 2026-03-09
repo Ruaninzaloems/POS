@@ -1,0 +1,14 @@
+<div class="card stat-card" data-testid="stat-card">
+  <div class="stat-content">
+    <span class="stat-label" data-testid="text-stat-label">{{ label }}</span>
+    <span class="stat-value" data-testid="text-stat-value">{{ value }}</span>
+    @if (trend) {
+      <span class="stat-trend" [class]="'stat-trend trend-' + trendDirection" data-testid="text-stat-trend">
+        {{ trend }}
+      </span>
+    }
+  </div>
+  @if (icon) {
+    <div class="stat-icon">{{ icon }}</div>
+  }
+</div>

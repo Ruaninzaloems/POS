@@ -1,0 +1,361 @@
+<div class="page-container" data-testid="bulk-allocation-progress-page">
+  <div class="page-header-bar">
+    <div class="header-left">
+      <div class="header-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      </div>
+      <div>
+        <h1 class="page-title" data-testid="text-page-title">Bulk Allocation Progress</h1>
+        <p class="page-subtitle">Monitor and track bulk allocation jobs, progress, and errors</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="filters-bar card" data-testid="card-filters">
+    <div class="filters-title">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+      Search Filters
+    </div>
+    <div class="filters-grid">
+      <div class="filter-group">
+        <label class="form-label">Financial Year</label>
+        <select class="form-select" [ngModel]="selectedYear()" (ngModelChange)="selectedYear.set($event)" [disabled]="loadingFilters()" data-testid="select-financial-year">
+          <option value="">{{ loadingFilters() ? 'Loading...' : 'All Years' }}</option>
+          <option value="__all__">All Years</option>
+          @for (fy of financialYears(); track trackByIndex($index)) {
+            <option [value]="getOptionValue(fy)">{{ getOptionLabel(fy) }}</option>
+          }
+        </select>
+      </div>
+      <div class="filter-group">
+        <label class="form-label">Process</label>
+        <select class="form-select" [ngModel]="selectedProcess()" (ngModelChange)="selectedProcess.set($event)" [disabled]="loadingFilters()" data-testid="select-process">
+          <option value="">{{ loadingFilters() ? 'Loading...' : 'All Processes' }}</option>
+          <option value="__all__">All Processes</option>
+          @for (p of processList(); track trackByIndex($index)) {
+            <option [value]="getOptionValue(p)">{{ getOptionLabel(p) }}</option>
+          }
+        </select>
+      </div>
+      <div class="filter-group">
+        <label class="form-label">Billing Month</label>
+        <select class="form-select" [ngModel]="selectedMonth()" (ngModelChange)="selectedMonth.set($event)" [disabled]="loadingFilters()" data-testid="select-billing-month">
+          <option value="">{{ loadingFilters() ? 'Loading...' : 'All Months' }}</option>
+          <option value="__all__">All Months</option>
+          @for (m of monthList(); track trackByIndex($index)) {
+            <option [value]="getOptionValue(m)">{{ getOptionLabel(m) }}</option>
+          }
+        </select>
+      </div>
+      <div class="filter-group">
+        <label class="form-label">Page Size</label>
+        <select class="form-select" [ngModel]="pageSize()" (ngModelChange)="pageSize.set(+$event)" data-testid="select-page-size">
+          <option [value]="10">10</option>
+          <option [value]="20">20</option>
+          <option [value]="50">50</option>
+          <option [value]="100">100</option>
+        </select>
+      </div>
+    </div>
+    <div class="filter-actions">
+      <button class="btn-primary" (click)="page.set(1); searchAllocations(1)" [disabled]="loading() || loadingFilters()" data-testid="button-search">
+        @if (loading()) {
+          <span class="spinner-sm"></span>
+        } @else {
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        }
+        Search
+      </button>
+      <button class="btn-outline" (click)="resetFilters()" data-testid="button-reset">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+        Reset
+      </button>
+    </div>
+  </div>
+
+  <div class="main-content">
+    @if (hasSearched() && allocationData().length > 0) {
+      <div class="status-overview" data-testid="summary-cards">
+        <div class="overview-title">Status Overview</div>
+        <div class="status-cards-grid">
+          @for (card of statusCards(); track card.key) {
+            <div class="status-card" [ngClass]="getCardColorClass(card.color)"
+              [class.active]="(card.key === 'all' && statusFilter() === null) || statusFilter() === card.key"
+              (click)="toggleStatusFilter(card.key)"
+              [attr.data-testid]="'card-status-' + card.key">
+              <div class="status-card-label">{{ card.label }}</div>
+              <div class="status-card-count">{{ card.count }}</div>
+            </div>
+          }
+        </div>
+        @if (statusFilter()) {
+          <div class="filter-active-bar">
+            <span class="badge badge-default filter-badge">
+              Filtered: {{ statusFilter() }}
+              <button class="badge-clear" (click)="statusFilter.set(null)" data-testid="button-clear-status-filter">✕</button>
+            </span>
+            <span class="filter-info">Showing {{ filteredByStatus().length }} of {{ allocationData().length }} jobs</span>
+          </div>
+        }
+      </div>
+    }
+
+    <div class="results-card card" data-testid="card-results">
+      @if (loading()) {
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Searching bulk allocations...</p>
+        </div>
+      } @else if (!hasSearched()) {
+        <div class="empty-hero">
+          <div class="hero-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </div>
+          <h2>Bulk Allocation Progress</h2>
+          <p>Select filters and click Search to view allocation jobs</p>
+        </div>
+      } @else if (allocationData().length === 0) {
+        <div class="empty-hero">
+          <div class="hero-icon hero-icon-gray">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          </div>
+          <h2>No Results Found</h2>
+          <p>Try adjusting your filter criteria</p>
+        </div>
+      } @else if (filteredByStatus().length === 0) {
+        <div class="empty-hero">
+          <div class="hero-icon hero-icon-gray">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+          </div>
+          <h2>No Jobs Match This Status</h2>
+          <p>Click a different status card or clear the filter</p>
+          <button class="btn-outline btn-sm" (click)="statusFilter.set(null)">Show All Jobs</button>
+        </div>
+      } @else {
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th class="sortable-header" (click)="handleSort('directDepositJob_ID')" data-testid="header-sort-directDepositJob_ID">
+                  <span>Job ID</span>
+                  @if (sortField() === 'directDepositJob_ID') {
+                    <span class="sort-icon">{{ sortDirection() === 'asc' ? '▲' : '▼' }}</span>
+                  } @else {
+                    <span class="sort-icon sort-icon-muted">⇅</span>
+                  }
+                </th>
+                <th class="sortable-header" (click)="handleSort('process')" data-testid="header-sort-process">
+                  <span>Process</span>
+                  @if (sortField() === 'process') {
+                    <span class="sort-icon">{{ sortDirection() === 'asc' ? '▲' : '▼' }}</span>
+                  } @else {
+                    <span class="sort-icon sort-icon-muted">⇅</span>
+                  }
+                </th>
+                <th class="sortable-header" (click)="handleSort('paymentReference')" data-testid="header-sort-paymentReference">
+                  <span>Reference</span>
+                  @if (sortField() === 'paymentReference') {
+                    <span class="sort-icon">{{ sortDirection() === 'asc' ? '▲' : '▼' }}</span>
+                  } @else {
+                    <span class="sort-icon sort-icon-muted">⇅</span>
+                  }
+                </th>
+                <th class="sortable-header" (click)="handleSort('financialYear')" data-testid="header-sort-financialYear">
+                  <span>Fin Year</span>
+                  @if (sortField() === 'financialYear') {
+                    <span class="sort-icon">{{ sortDirection() === 'asc' ? '▲' : '▼' }}</span>
+                  } @else {
+                    <span class="sort-icon sort-icon-muted">⇅</span>
+                  }
+                </th>
+                <th class="sortable-header" (click)="handleSort('job_Status')" data-testid="header-sort-job_Status">
+                  <span>Status</span>
+                  @if (sortField() === 'job_Status') {
+                    <span class="sort-icon">{{ sortDirection() === 'asc' ? '▲' : '▼' }}</span>
+                  } @else {
+                    <span class="sort-icon sort-icon-muted">⇅</span>
+                  }
+                </th>
+                <th class="sortable-header" (click)="handleSort('dateCaptured')" data-testid="header-sort-dateCaptured">
+                  <span>Date Captured</span>
+                  @if (sortField() === 'dateCaptured') {
+                    <span class="sort-icon">{{ sortDirection() === 'asc' ? '▲' : '▼' }}</span>
+                  } @else {
+                    <span class="sort-icon sort-icon-muted">⇅</span>
+                  }
+                </th>
+                <th class="sortable-header" (click)="handleSort('fileName')" data-testid="header-sort-fileName">
+                  <span>File Name</span>
+                  @if (sortField() === 'fileName') {
+                    <span class="sort-icon">{{ sortDirection() === 'asc' ? '▲' : '▼' }}</span>
+                  } @else {
+                    <span class="sort-icon sort-icon-muted">⇅</span>
+                  }
+                </th>
+                <th class="sortable-header text-right" (click)="handleSort('records')" data-testid="header-sort-records">
+                  <span>Records</span>
+                  @if (sortField() === 'records') {
+                    <span class="sort-icon">{{ sortDirection() === 'asc' ? '▲' : '▼' }}</span>
+                  } @else {
+                    <span class="sort-icon sort-icon-muted">⇅</span>
+                  }
+                </th>
+                <th class="sortable-header text-right" (click)="handleSort('allocatedAmount')" data-testid="header-sort-allocatedAmount">
+                  <span>Amount</span>
+                  @if (sortField() === 'allocatedAmount') {
+                    <span class="sort-icon">{{ sortDirection() === 'asc' ? '▲' : '▼' }}</span>
+                  } @else {
+                    <span class="sort-icon sort-icon-muted">⇅</span>
+                  }
+                </th>
+                <th class="text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (job of filteredByStatus(); track trackByIndex($index)) {
+                <tr class="clickable-row" (click)="viewJobDetail(job)" [attr.data-testid]="'row-job-' + (job.directDepositJob_ID ?? job.jobId ?? job.id ?? $index)">
+                  <td class="font-mono font-medium" [attr.data-testid]="'text-job-id-' + (job.directDepositJob_ID ?? job.jobId ?? job.id ?? $index)">{{ job.directDepositJob_ID ?? job.jobId ?? job.id ?? '—' }}</td>
+                  <td [attr.data-testid]="'text-process-' + (job.directDepositJob_ID ?? $index)">{{ job.process ?? '—' }}</td>
+                  <td class="truncate-cell" [attr.data-testid]="'text-ref-' + (job.directDepositJob_ID ?? $index)" [title]="job.paymentReference ?? ''">{{ job.paymentReference ?? '—' }}</td>
+                  <td [attr.data-testid]="'text-year-' + (job.directDepositJob_ID ?? $index)">{{ job.financialYear ?? '—' }}</td>
+                  <td [attr.data-testid]="'badge-status-' + (job.directDepositJob_ID ?? $index)">
+                    <div class="status-cell">
+                      <span class="badge" [ngClass]="getStatusBadgeClass(job.job_Status ?? job.status)">{{ job.job_Status ?? job.status ?? '—' }}</span>
+                      @if (isJobStale(job)) {
+                        <span class="badge badge-warning badge-sm">Stuck</span>
+                      }
+                    </div>
+                  </td>
+                  <td class="text-muted nowrap">{{ formatDate(job.dateCaptured ?? job.fileDate) }}</td>
+                  <td class="truncate-cell" [title]="job.fileName ?? ''">{{ job.fileName ?? '—' }}</td>
+                  <td class="text-right font-medium">{{ formatNumber(job.records ?? job.totalRecords) }}</td>
+                  <td class="text-right font-medium">{{ job.allocatedAmount != null ? formatCurrency(job.allocatedAmount) : '—' }}</td>
+                  <td class="text-center" (click)="$event.stopPropagation()">
+                    <div class="action-buttons">
+                      <button class="btn-outline icon-btn-sm" (click)="viewJobDetail(job)" title="View Details" [attr.data-testid]="'button-view-' + (job.directDepositJob_ID ?? $index)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      </button>
+                      @if (canRetryJob(job)) {
+                        <button class="btn-outline icon-btn-sm btn-retry" (click)="handleRetryJob(job, $event)" [disabled]="retryingJobId() === (job.directDepositJob_ID ?? job.jobId ?? job.id)" title="Retry" [attr.data-testid]="'button-retry-' + (job.directDepositJob_ID ?? $index)">
+                          @if (retryingJobId() === (job.directDepositJob_ID ?? job.jobId ?? job.id)) {
+                            <span class="spinner-sm spinner-sm-dark"></span>
+                          } @else {
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+                          }
+                        </button>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pagination-bar" data-testid="pagination">
+          <span class="pagination-info">Page {{ page() }} of {{ totalPages() }} ({{ totalCount() }} total)</span>
+          <div class="pagination">
+            <button [disabled]="page() <= 1" (click)="changePage(1)" data-testid="button-first-page">«</button>
+            <button [disabled]="page() <= 1" (click)="changePage(page() - 1)" data-testid="button-prev-page">‹</button>
+            <button class="active">{{ page() }}</button>
+            <button [disabled]="page() >= totalPages()" (click)="changePage(page() + 1)" data-testid="button-next-page">›</button>
+            <button [disabled]="page() >= totalPages()" (click)="changePage(totalPages())" data-testid="button-last-page">»</button>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+
+  @if (detailOpen() && selectedJob()) {
+    <div class="dialog-overlay" (click)="closeDetail()">
+      <div class="dialog-content dialog-xl" (click)="$event.stopPropagation()">
+        <div class="dialog-header">
+          <h3>Job Details — #{{ detailData()?.directDepositJob_ID ?? detailData()?.jobId ?? detailData()?.id ?? '' }}</h3>
+          <button class="btn-close" (click)="closeDetail()" data-testid="button-close-detail">✕</button>
+        </div>
+        <div class="dialog-body">
+          @if (detailLoading()) {
+            <div class="loading-state" style="padding:2rem">
+              <div class="spinner"></div>
+              <p>Loading job details...</p>
+            </div>
+          } @else if (detailData()) {
+            <div class="detail-grid-2col">
+              @if (detailData().directDepositJob_ID || detailData().jobId || detailData().id) {
+                <div class="detail-row"><span class="detail-label">Job ID</span><span class="detail-value font-mono">{{ detailData().directDepositJob_ID ?? detailData().jobId ?? detailData().id }}</span></div>
+              }
+              @if (detailData().process) {
+                <div class="detail-row"><span class="detail-label">Process</span><span class="detail-value">{{ detailData().process }}</span></div>
+              }
+              @if (detailData().fileName) {
+                <div class="detail-row"><span class="detail-label">File Name</span><span class="detail-value">{{ detailData().fileName }}</span></div>
+              }
+              @if (detailData().fileDate) {
+                <div class="detail-row"><span class="detail-label">File Date</span><span class="detail-value">{{ formatDate(detailData().fileDate) }}</span></div>
+              }
+              @if (detailData().dateCaptured) {
+                <div class="detail-row"><span class="detail-label">Date Captured</span><span class="detail-value">{{ formatDate(detailData().dateCaptured) }}</span></div>
+              }
+              @if (detailData().paymentReference) {
+                <div class="detail-row"><span class="detail-label">Reference</span><span class="detail-value">{{ detailData().paymentReference }}</span></div>
+              }
+              @if (detailData().financialYear) {
+                <div class="detail-row"><span class="detail-label">Financial Year</span><span class="detail-value">{{ detailData().financialYear }}</span></div>
+              }
+              @if (detailData().allocatedAmount != null) {
+                <div class="detail-row"><span class="detail-label">Amount</span><span class="detail-value font-mono font-semibold">{{ formatCurrency(detailData().allocatedAmount) }}</span></div>
+              }
+              <div class="detail-row">
+                <span class="detail-label">Status</span>
+                <span class="detail-value">
+                  <span class="badge" [ngClass]="getStatusBadgeClass(detailData().job_Status ?? detailData().status)">{{ detailData().job_Status ?? detailData().status ?? '—' }}</span>
+                </span>
+              </div>
+              @if (detailData().records != null) {
+                <div class="detail-row"><span class="detail-label">Records</span><span class="detail-value">{{ formatNumber(detailData().records) }}</span></div>
+              }
+            </div>
+
+            @if (detailAccounts() && detailAccounts()!.length > 0) {
+              <h4 class="accounts-heading">Account Details ({{ detailAccounts()!.length }})</h4>
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Account No</th>
+                      <th>Name</th>
+                      <th class="text-right">Amount</th>
+                      <th>Status</th>
+                      <th>Receipt</th>
+                      <th>Error</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (acc of detailAccounts()!; track trackByIndex($index)) {
+                      <tr>
+                        <td class="font-mono">{{ acc.accountNo || acc.accountNumber || acc.account_No || '-' }}</td>
+                        <td>{{ acc.name || acc.accountName || acc.surname || '-' }}</td>
+                        <td class="text-right font-mono">{{ formatCurrency(acc.amount ?? acc.allocatedAmount) }}</td>
+                        <td>
+                          @if (acc.status === 'Error' || acc.isAllocated === false) {
+                            <span class="badge badge-danger">Error</span>
+                          } @else {
+                            <span class="badge badge-success">OK</span>
+                          }
+                        </td>
+                        <td class="font-mono">{{ acc.receiptNumber || acc.receiptNo || '-' }}</td>
+                        <td class="truncate-cell text-danger">{{ acc.errorMessage || '' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            } @else if (!detailLoading()) {
+              <p class="no-accounts-text">No account details available for this job.</p>
+            }
+          }
+        </div>
+      </div>
+    </div>
+  }
+</div>

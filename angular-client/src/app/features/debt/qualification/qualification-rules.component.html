@@ -1,0 +1,217 @@
+<div class="page-container">
+  <div class="breadcrumb" data-testid="text-breadcrumb">
+    <button class="breadcrumb-link" (click)="goBack()" data-testid="link-home">Home</button>
+    <span class="sep">&#8250;</span>
+    <span class="current">Smart Qualification Rules</span>
+  </div>
+
+  <div class="page-header">
+    <div class="header-left">
+      <span class="header-icon">&#9881;</span>
+      <h1 class="page-title" data-testid="text-page-title">Smart Qualification Rules</h1>
+    </div>
+    <button class="btn btn-primary btn-sm" (click)="openNew()" data-testid="button-add-rule">+ Add Rule</button>
+  </div>
+
+  @if (showEditor()) {
+    <div class="card card-accent">
+      <div class="card-body">
+        <div class="editor-header">
+          <h3 class="section-title">{{ editingId() ? 'Edit Rule' : 'New Qualification Rule' }}</h3>
+          <button class="btn btn-ghost btn-sm" (click)="showEditor.set(false)">&#10005;</button>
+        </div>
+
+        <div class="form-grid-3">
+          <div class="form-group">
+            <label class="form-label">Rule Name</label>
+            <input class="form-input" [ngModel]="ruleName()" (ngModelChange)="ruleName.set($event)" placeholder="e.g., High-value water debtors" data-testid="input-rule-name" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <input class="form-input" [ngModel]="ruleDescription()" (ngModelChange)="ruleDescription.set($event)" placeholder="Optional description..." data-testid="input-rule-desc" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Priority (higher = first)</label>
+            <input class="form-input" type="number" [ngModel]="rulePriority()" (ngModelChange)="rulePriority.set($event)" data-testid="input-rule-priority" />
+          </div>
+        </div>
+
+        <div class="conditions-section">
+          <label class="form-label uppercase">Conditions</label>
+          @for (cond of conditions(); track $index; let i = $index) {
+            <div class="condition-row" [attr.data-testid]="'condition-' + i">
+              @if (i === 0) {
+                <div class="logic-label">WHERE</div>
+              } @else {
+                <select class="form-select logic-select" [ngModel]="cond.logicOperator" (ngModelChange)="updateCondition(i, 'logicOperator', $event)">
+                  <option value="AND">AND</option>
+                  <option value="OR">OR</option>
+                </select>
+              }
+              <select class="form-select flex-1" [ngModel]="cond.field" (ngModelChange)="updateCondition(i, 'field', $event)">
+                @for (f of FIELD_OPTIONS; track f.value) {
+                  <option [value]="f.value">{{ f.label }}</option>
+                }
+              </select>
+              <select class="form-select operator-select" [ngModel]="cond.operator" (ngModelChange)="updateCondition(i, 'operator', $event)">
+                @for (o of OPERATOR_OPTIONS; track o.value) {
+                  <option [value]="o.value">{{ o.label }}</option>
+                }
+              </select>
+              <input class="form-input value-input" [ngModel]="cond.value" (ngModelChange)="updateCondition(i, 'value', $event)" placeholder="Value" />
+              <button class="btn btn-ghost btn-sm btn-danger-text" (click)="removeCondition(i)" [disabled]="conditions().length <= 1">&#10005;</button>
+            </div>
+          }
+          <button class="btn btn-ghost btn-sm btn-accent-text" (click)="addCondition()" data-testid="button-add-condition">+ Add Condition</button>
+        </div>
+
+        <div class="preview-box">
+          <pre class="preview-text">{{ previewText() }}</pre>
+        </div>
+
+        <div class="editor-actions">
+          <button class="btn btn-primary" (click)="handleSave()" [disabled]="saving()" data-testid="button-save-rule">
+            @if (saving()) { <span class="spinner-sm"></span> }
+            {{ editingId() ? 'Update Rule' : 'Create Rule' }}
+          </button>
+          <button class="btn btn-ghost" (click)="showEditor.set(false)">Cancel</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <div class="card">
+    <div class="card-body">
+      <h3 class="section-title">&#9881; Qualification Rules</h3>
+      @if (loading()) {
+        <div class="loading-state"><div class="spinner"></div></div>
+      } @else if (rules().length === 0) {
+        <div class="empty-state">No qualification rules defined. Click "Add Rule" to create one.</div>
+      } @else {
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Conditions</th>
+                <th>Priority</th>
+                <th>Active</th>
+                <th>Created</th>
+                <th class="text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (rule of rules(); track rule.id) {
+                <tr [attr.data-testid]="'row-rule-' + rule.id">
+                  <td>
+                    <div class="rule-name">{{ rule.name }}</div>
+                    @if (rule.description) {
+                      <div class="rule-desc">{{ rule.description }}</div>
+                    }
+                  </td>
+                  <td>
+                    @for (c of (rule.conditions || []).slice(0, 3); track $index; let ci = $index) {
+                      <div class="condition-preview">
+                        <span class="cond-logic">{{ ci === 0 ? '' : c.logicOperator + ' ' }}</span>
+                        <span class="cond-field">{{ getFieldLabel(c.field) }}</span>
+                        <span class="cond-op">{{ c.operator }}</span>
+                        <span class="cond-val">{{ c.value }}</span>
+                      </div>
+                    }
+                    @if ((rule.conditions || []).length > 3) {
+                      <div class="cond-more">+{{ (rule.conditions || []).length - 3 }} more</div>
+                    }
+                  </td>
+                  <td>{{ rule.priority }}</td>
+                  <td>
+                    <label class="toggle-switch">
+                      <input type="checkbox" [checked]="rule.isActive" (change)="handleToggle(rule)" [attr.data-testid]="'switch-active-' + rule.id" />
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </td>
+                  <td class="text-muted">{{ rule.createdAt ? (rule.createdAt | date:'shortDate') : '-' }}</td>
+                  <td class="text-right">
+                    <div class="action-btns">
+                      <button class="btn btn-ghost btn-sm btn-success-text" (click)="handleRun(rule.id)" [disabled]="runningRuleId() === rule.id" [attr.data-testid]="'button-run-' + rule.id">
+                        @if (runningRuleId() === rule.id) { <span class="spinner-sm-dark"></span> } @else { &#9654; }
+                      </button>
+                      <button class="btn btn-ghost btn-sm" (click)="openEdit(rule)" [attr.data-testid]="'button-edit-' + rule.id">&#9998;</button>
+                      <button class="btn btn-ghost btn-sm btn-danger-text" (click)="handleDelete(rule.id)" [attr.data-testid]="'button-delete-' + rule.id">&#128465;</button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <h3 class="section-title">&#9654; Test Accounts Data</h3>
+      <p class="help-text">Enter account data as CSV lines. Format: <span class="mono">accountNo, totalArrears, arrearDays, lastPaymentDays, propertyValue, waterArrears, electricityArrears</span></p>
+      <textarea class="form-input textarea-test" [ngModel]="testAccounts()" (ngModelChange)="testAccounts.set($event)" placeholder="ACC001, 15000, 120, 90, 800000, 5000, 3000&#10;ACC002, 3000, 30, 15, 250000, 1000, 500" data-testid="textarea-test-accounts"></textarea>
+    </div>
+  </div>
+
+  @if (runResults()) {
+    <div class="card card-results">
+      <div class="card-body">
+        <div class="editor-header">
+          <h3 class="section-title result-title">&#10004; Rule Execution Results — {{ runResults().rule?.name }}</h3>
+          <button class="btn btn-ghost btn-sm" (click)="runResults.set(null)">&#10005;</button>
+        </div>
+        <div class="stat-grid-3">
+          <div class="stat-card stat-neutral">
+            <div class="stat-value">{{ runResults().totalEvaluated }}</div>
+            <div class="stat-label">Evaluated</div>
+          </div>
+          <div class="stat-card stat-success">
+            <div class="stat-value">{{ runResults().matchedCount }}</div>
+            <div class="stat-label">Matched</div>
+          </div>
+          <div class="stat-card stat-neutral">
+            <div class="stat-value">{{ runResults().unmatchedCount }}</div>
+            <div class="stat-label">Unmatched</div>
+          </div>
+        </div>
+        @if (runResults().matched && runResults().matched.length > 0) {
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Account</th>
+                  <th>Total Arrears</th>
+                  <th>Arrear Days</th>
+                  <th>Last Payment</th>
+                  <th>Property Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (m of runResults().matched; track $index) {
+                  <tr [attr.data-testid]="'row-matched-' + $index">
+                    <td class="font-mono">{{ m.accountNo }}</td>
+                    <td>R {{ (m.totalArrears || 0).toLocaleString() }}</td>
+                    <td>{{ m.arrearDays || 0 }}</td>
+                    <td>{{ m.lastPaymentDays || 0 }} days ago</td>
+                    <td>R {{ (m.propertyValue || 0).toLocaleString() }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <div class="card card-info">
+    <div class="card-body">
+      <p class="info-text">
+        <strong>Tips:</strong> Rules evaluate account data against your conditions. Use "Test Accounts Data" to paste sample accounts, then click the play button on a rule to test it. Conditions support AND/OR logic for complex criteria like "totalArrears &gt; 10000 AND arrearDays &gt; 90".
+      </p>
+    </div>
+  </div>
+</div>

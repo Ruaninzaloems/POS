@@ -1,0 +1,182 @@
+<div class="page-container">
+  <div class="breadcrumb" data-testid="text-breadcrumb">
+    <button class="breadcrumb-link" (click)="goBack()" data-testid="link-home">Home</button>
+    <span class="sep">&#8250;</span>
+    <span class="current">Communication Timelines</span>
+  </div>
+
+  <div class="page-header">
+    <div class="header-left">
+      <span class="header-icon">&#128337;</span>
+      <h1 class="page-title" data-testid="text-page-title">Automated Communication Timelines</h1>
+    </div>
+    <button class="btn btn-primary btn-sm" (click)="showCreate.set(true)" data-testid="button-create-timeline">+ New Timeline</button>
+  </div>
+
+  @if (showCreate()) {
+    <div class="card card-accent">
+      <div class="card-body">
+        <h3 class="section-title">Create New Timeline</h3>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Name</label>
+            <input class="form-input" [ngModel]="newName()" (ngModelChange)="newName.set($event)" placeholder="e.g., Standard Debt Recovery" data-testid="input-timeline-name" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <input class="form-input" [ngModel]="newDesc()" (ngModelChange)="newDesc.set($event)" placeholder="Optional description..." data-testid="input-timeline-desc" />
+          </div>
+        </div>
+        <div class="create-actions">
+          <button class="btn btn-primary" (click)="handleCreate()" [disabled]="creating()" data-testid="button-save-timeline">
+            @if (creating()) { <span class="spinner-sm"></span> }
+            Create
+          </button>
+          <button class="btn btn-ghost" (click)="showCreate.set(false)">Cancel</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <div class="main-grid">
+    <div class="card sidebar-card">
+      <div class="card-body">
+        <h3 class="section-title">Timelines</h3>
+        @if (loading()) {
+          <div class="loading-state"><div class="spinner"></div></div>
+        } @else if (timelines().length === 0) {
+          <div class="empty-state-sm">No timelines yet. Create one to get started.</div>
+        } @else {
+          <div class="timeline-list">
+            @for (tl of timelines(); track tl.id) {
+              <div class="timeline-card" [class.active]="selectedTimeline()?.id === tl.id" (click)="loadTimelineDetail(tl.id)" [attr.data-testid]="'timeline-card-' + tl.id">
+                <div class="tl-card-header">
+                  <div class="tl-card-name">
+                    <span class="tl-icon">&#128337;</span>
+                    <span class="tl-name">{{ tl.name }}</span>
+                  </div>
+                  <div class="tl-card-actions">
+                    <span class="tl-status-dot" [class.active]="tl.isActive" [class.inactive]="!tl.isActive"></span>
+                    <button class="btn-icon btn-danger-text" (click)="$event.stopPropagation(); handleDelete(tl.id)">&#128465;</button>
+                  </div>
+                </div>
+                @if (tl.description) {
+                  <p class="tl-desc">{{ tl.description }}</p>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="card detail-card">
+      <div class="card-body">
+        @if (!selectedTimeline()) {
+          <div class="empty-state-centered">
+            <span class="empty-icon">&#128337;</span>
+            <p>Select a timeline to view and edit its escalation steps</p>
+          </div>
+        } @else {
+          <div class="detail-content">
+            <div class="detail-header">
+              <h3 class="section-title">{{ selectedTimeline()!.name }} — Steps</h3>
+              <div class="detail-actions">
+                <button class="btn btn-ghost btn-sm btn-accent-text" (click)="addStep()" data-testid="button-add-step">+ Add Step</button>
+                <button class="btn btn-primary btn-sm" (click)="handleSaveSteps()" [disabled]="saving()" data-testid="button-save-steps">
+                  @if (saving()) { <span class="spinner-sm"></span> }
+                  Save
+                </button>
+              </div>
+            </div>
+
+            @if (sortedSteps().length === 0) {
+              <div class="empty-state-sm">No steps configured. Add steps to define the escalation flow.</div>
+            } @else {
+              <div class="steps-list">
+                @for (step of sortedSteps(); track $index; let i = $index) {
+                  @if (i > 0) {
+                    <div class="step-connector">
+                      <span class="connector-arrow">&#8595;</span>
+                      <span class="connector-label">+{{ getDayGap(sortedSteps(), i) }} days</span>
+                    </div>
+                  }
+                  <div class="step-card" [attr.data-testid]="'step-' + i">
+                    <div class="step-header">
+                      <div class="step-badges">
+                        <span class="badge badge-day">Day {{ step.dayOffset }}</span>
+                        <span class="badge" [ngClass]="'badge-' + step.channel">{{ getChannelLabel(step.channel) }}</span>
+                        @if (step.isAutomated) {
+                          <span class="badge badge-auto">Auto</span>
+                        } @else {
+                          <span class="badge badge-manual">Manual</span>
+                        }
+                      </div>
+                      <button class="btn-icon btn-danger-text" (click)="removeStep(i)">&#10005;</button>
+                    </div>
+                    <div class="step-form-grid">
+                      <div class="form-group">
+                        <label class="form-label-xs">Day Offset</label>
+                        <input class="form-input form-input-sm" type="number" [ngModel]="step.dayOffset" (ngModelChange)="updateStep(i, 'dayOffset', +$event)" />
+                      </div>
+                      <div class="form-group">
+                        <label class="form-label-xs">Channel</label>
+                        <select class="form-select form-input-sm" [ngModel]="step.channel" (ngModelChange)="updateStep(i, 'channel', $event)">
+                          <option value="sms">SMS</option>
+                          <option value="email">Email</option>
+                          <option value="whatsapp">WhatsApp</option>
+                          <option value="letter">Printed Letter</option>
+                        </select>
+                      </div>
+                      <div class="form-group">
+                        <label class="form-label-xs">Template Name</label>
+                        <input class="form-input form-input-sm" [ngModel]="step.templateName" (ngModelChange)="updateStep(i, 'templateName', $event)" placeholder="e.g., Initial Reminder" />
+                      </div>
+                    </div>
+                    @if (step.channel === 'email' || step.channel === 'letter') {
+                      <div class="form-group">
+                        <label class="form-label-xs">Subject</label>
+                        <input class="form-input form-input-sm" [ngModel]="step.subject" (ngModelChange)="updateStep(i, 'subject', $event)" placeholder="Email/Letter subject..." />
+                      </div>
+                    }
+                    <div class="form-group">
+                      <label class="form-label-xs">Message Template</label>
+                      <textarea class="form-input textarea-msg" [ngModel]="step.templateBody" (ngModelChange)="updateStep(i, 'templateBody', $event)" placeholder="Use {accountNo} as placeholder..."></textarea>
+                    </div>
+                    <div class="step-toggle">
+                      <label class="toggle-switch">
+                        <input type="checkbox" [checked]="step.isAutomated" (change)="updateStep(i, 'isAutomated', !step.isAutomated)" />
+                        <span class="toggle-slider"></span>
+                      </label>
+                      <span class="toggle-label">{{ step.isAutomated ? 'Automated (sent automatically on schedule)' : 'Manual (requires user action)' }}</span>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+
+            <div class="enroll-card">
+              <h4 class="enroll-title">&#128101; Enroll Account</h4>
+              <div class="enroll-row">
+                <input class="form-input flex-1" [ngModel]="enrollAccount()" (ngModelChange)="enrollAccount.set($event)" placeholder="Enter account number..." data-testid="input-enroll-account" />
+                <button class="btn btn-primary" (click)="handleEnroll()" [disabled]="enrolling() || !enrollAccount().trim()" data-testid="button-enroll">
+                  @if (enrolling()) { <span class="spinner-sm"></span> }
+                  Enroll
+                </button>
+              </div>
+              <p class="enroll-help">Enrolling an account schedules all timeline steps automatically from today.</p>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="card card-info">
+    <div class="card-body">
+      <p class="info-text">
+        <strong>How it works:</strong> Create a timeline with escalation steps (e.g., Day 1 SMS &#8594; Day 3 Email &#8594; Day 7 WhatsApp &#8594; Day 14 Section 129 &#8594; Day 30 Handover). Enroll accounts to automatically schedule communications. Use the Communication Dashboard to monitor delivery status across all channels.
+      </p>
+    </div>
+  </div>
+</div>

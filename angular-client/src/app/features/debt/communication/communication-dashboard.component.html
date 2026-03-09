@@ -1,0 +1,242 @@
+<div class="page-container">
+  <div class="breadcrumb">
+    <span class="breadcrumb-link" (click)="goHome()" data-testid="link-home">Home</span>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-current">Communication Dashboard</span>
+  </div>
+
+  <div class="page-header-row">
+    <div class="header-left">
+      <div class="icon-box">✉</div>
+      <div>
+        <h1 class="page-title" data-testid="text-page-title">Omni-Channel Communication Dashboard</h1>
+        <p class="page-subtitle">Monitor delivery status across all communication channels</p>
+      </div>
+    </div>
+    <div class="tab-list">
+      <button class="tab-item" [class.active]="tab() === 'dashboard'" (click)="setTab('dashboard')" data-testid="tab-dashboard">Overview</button>
+      <button class="tab-item" [class.active]="tab() === 'log'" (click)="setTab('log')" data-testid="tab-log">Log</button>
+      <button class="tab-item" [class.active]="tab() === 'scheduled'" (click)="setTab('scheduled')" data-testid="tab-scheduled">Scheduled</button>
+      <button class="tab-item" [class.active]="tab() === 'send'" (click)="setTab('send')" data-testid="tab-send">Send</button>
+    </div>
+  </div>
+
+  <div class="content-area">
+    @if (tab() === 'dashboard') {
+      @if (statsLoading()) {
+        <div class="loading-state"><div class="spinner"></div></div>
+      } @else if (!stats()) {
+        <div class="empty-state">No communication data yet.</div>
+      } @else {
+        <div class="stat-grid stat-grid-4">
+          <div class="card stat-card">
+            <div class="stat-icon icon-accent">✉</div>
+            <div>
+              <div class="stat-value" data-testid="text-total-sent">{{ stats()!.totalSent }}</div>
+              <div class="stat-label">Total Sent</div>
+            </div>
+          </div>
+          <div class="card stat-card stat-success">
+            <div class="stat-value" data-testid="text-total-delivered">{{ stats()!.totalDelivered }}</div>
+            <div class="stat-label">Delivered</div>
+          </div>
+          <div class="card stat-card stat-danger">
+            <div class="stat-value" data-testid="text-total-failed">{{ stats()!.totalFailed }}</div>
+            <div class="stat-label">Failed</div>
+          </div>
+          <div class="card stat-card stat-warning">
+            <div class="stat-value" data-testid="text-total-pending">{{ stats()!.totalPending }}</div>
+            <div class="stat-label">Pending</div>
+          </div>
+        </div>
+
+        <div class="card" style="padding: 1rem;">
+          <h3 class="section-title">Delivery by Channel</h3>
+          @if (channelEntries().length === 0) {
+            <div class="empty-state">No channel data yet. Send communications to see delivery stats.</div>
+          } @else {
+            <div class="stat-grid stat-grid-4">
+              @for (entry of channelEntries(); track entry.ch) {
+                <div class="card channel-card">
+                  <div class="channel-header">
+                    <span class="badge" [ngClass]="getChannelClass(entry.ch)">{{ entry.cfg.label }}</span>
+                  </div>
+                  <div class="channel-stats">
+                    <div class="channel-stat"><div class="channel-stat-value">{{ entry.data.sent }}</div><div class="channel-stat-label">Sent</div></div>
+                    <div class="channel-stat"><div class="channel-stat-value text-success">{{ entry.data.delivered }}</div><div class="channel-stat-label">Delivered</div></div>
+                    <div class="channel-stat"><div class="channel-stat-value text-danger">{{ entry.data.failed }}</div><div class="channel-stat-label">Failed</div></div>
+                  </div>
+                  <div class="progress-bar"><div class="progress-fill" [style.width.%]="entry.deliveryRate"></div></div>
+                  <div class="channel-rate">{{ entry.deliveryRate }}% delivery rate</div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    }
+
+    @if (tab() === 'log') {
+      <div class="card" style="padding: 1rem;">
+        <div class="filter-row">
+          <h3 class="section-title">Communication Log</h3>
+          <div class="filter-controls">
+            <input class="form-input filter-input" [ngModel]="logAccount()" (ngModelChange)="logAccount.set($event); onLogFilterChange()" placeholder="Account..." data-testid="input-log-account" />
+            <select class="form-select filter-select" [ngModel]="logChannel()" (ngModelChange)="logChannel.set($event); onLogFilterChange()" data-testid="select-log-channel">
+              <option value="__all__">All Channels</option>
+              <option value="sms">SMS</option>
+              <option value="email">Email</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="letter">Letter</option>
+            </select>
+            <select class="form-select filter-select" [ngModel]="logStatus()" (ngModelChange)="logStatus.set($event); onLogFilterChange()" data-testid="select-log-status">
+              <option value="__all__">All Status</option>
+              <option value="SENT">Sent</option>
+              <option value="FAILED">Failed</option>
+              <option value="PENDING">Pending</option>
+            </select>
+          </div>
+        </div>
+        @if (logLoading()) {
+          <div class="loading-state"><div class="spinner"></div></div>
+        } @else if (logs().length === 0) {
+          <div class="empty-state">No communication records found.</div>
+        } @else {
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Account</th>
+                  <th>Channel</th>
+                  <th>Recipient</th>
+                  <th>Status</th>
+                  <th>Delivery</th>
+                  <th>Sent By</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (log of logs(); track $index) {
+                  <tr [attr.data-testid]="'row-log-' + $index  + ''">
+                    <td class="font-mono">{{ log.accountNo || log.account_no }}</td>
+                    <td><span class="badge" [ngClass]="getChannelClass(log.channel)">{{ getChannelLabel(log.channel) }}</span></td>
+                    <td>{{ log.recipient || '—' }}</td>
+                    <td><span class="badge" [ngClass]="getStatusClass(log.status)">{{ log.status }}</span></td>
+                    <td><span class="badge" [ngClass]="getStatusClass(log.deliveryStatus || log.delivery_status || 'PENDING')">{{ log.deliveryStatus || log.delivery_status || 'PENDING' }}</span></td>
+                    <td class="text-muted">{{ log.sentBy || log.sent_by || '—' }}</td>
+                    <td class="text-muted">{{ formatDate(log.sentAt || log.sent_at) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination-row">
+            <span>{{ logTotal() }} total records</span>
+            <div class="pagination">
+              <button [disabled]="logPage() <= 1" (click)="setLogPage(logPage() - 1)">‹</button>
+              <span>Page {{ logPage() }} of {{ logTotalPages() }}</span>
+              <button [disabled]="logPage() >= logTotalPages()" (click)="setLogPage(logPage() + 1)">›</button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    @if (tab() === 'scheduled') {
+      <div class="filter-row" style="margin-bottom: 1rem;">
+        <select class="form-select filter-select" [ngModel]="schedStatus()" (ngModelChange)="schedStatus.set($event); onSchedFilterChange()" data-testid="select-sched-status">
+          <option value="__all__">All Status</option>
+          <option value="PENDING">Pending</option>
+          <option value="COMPLETED">Completed</option>
+          <option value="FAILED">Failed</option>
+        </select>
+        <button class="btn-primary" [disabled]="processing()" (click)="handleProcess()" data-testid="button-process">
+          {{ processing() ? 'Processing...' : '▶ Process Due Communications' }}
+        </button>
+      </div>
+      <div class="card" style="padding: 1rem;">
+        @if (schedLoading()) {
+          <div class="loading-state"><div class="spinner"></div></div>
+        } @else if (scheduled().length === 0) {
+          <div class="empty-state">No scheduled communications found.</div>
+        } @else {
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Account</th>
+                  <th>Scheduled Date</th>
+                  <th>Status</th>
+                  <th>Processed</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (s of scheduled(); track $index) {
+                  <tr [attr.data-testid]="'row-sched-' + $index  + ''">
+                    <td class="font-mono">{{ s.accountNo || s.account_no }}</td>
+                    <td>{{ formatDate(s.scheduledDate || s.scheduled_date) }}</td>
+                    <td><span class="badge" [ngClass]="getStatusClass(s.status)">{{ s.status }}</span></td>
+                    <td class="text-muted">{{ formatDate(s.processedAt || s.processed_at) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination-row">
+            <span>{{ schedTotal() }} total</span>
+            <div class="pagination">
+              <button [disabled]="schedPage() <= 1" (click)="setSchedPage(schedPage() - 1)">‹</button>
+              <span>Page {{ schedPage() }} of {{ schedTotalPages() }}</span>
+              <button [disabled]="schedPage() >= schedTotalPages()" (click)="setSchedPage(schedPage() + 1)">›</button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    @if (tab() === 'send') {
+      <div class="card" style="padding: 1rem;">
+        <h3 class="section-title">Send Ad-Hoc Communication</h3>
+        <div class="form-grid">
+          <div class="form-group" style="position: relative;">
+            <label class="form-label">Account Number</label>
+            <input class="form-input" [ngModel]="sendAccount()" (ngModelChange)="handleAccountSearch($event)" (blur)="hideSuggestions()" placeholder="Search account..." data-testid="input-send-account" />
+            @if (showSuggestions() && accountSuggestions().length > 0) {
+              <div class="suggestions-dropdown">
+                @for (s of accountSuggestions(); track $index) {
+                  <button class="suggestion-item" (mousedown)="selectAccount(s.accountNo)">{{ s.accountNo }} — {{ s.name }}</button>
+                }
+              </div>
+            }
+          </div>
+          <div class="form-group">
+            <label class="form-label">Channel</label>
+            <select class="form-select" [ngModel]="sendChannel()" (ngModelChange)="sendChannel.set($event)" data-testid="select-send-channel">
+              <option value="sms">SMS</option>
+              <option value="email">Email</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="letter">Printed Letter</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Recipient ({{ recipientLabel() }})</label>
+            <input class="form-input" [ngModel]="sendRecipient()" (ngModelChange)="sendRecipient.set($event)" [placeholder]="recipientPlaceholder()" data-testid="input-send-recipient" />
+          </div>
+          @if (sendChannel() === 'email' || sendChannel() === 'letter') {
+            <div class="form-group">
+              <label class="form-label">Subject</label>
+              <input class="form-input" [ngModel]="sendSubject()" (ngModelChange)="sendSubject.set($event)" placeholder="Subject line..." data-testid="input-send-subject" />
+            </div>
+          }
+        </div>
+        <div class="form-group" style="margin-top: 0.75rem;">
+          <label class="form-label">Message</label>
+          <textarea class="form-input message-textarea" [ngModel]="sendMessage()" (ngModelChange)="sendMessage.set($event)" placeholder="Enter your message..." data-testid="textarea-send-message"></textarea>
+        </div>
+        <button class="btn-primary" style="margin-top: 0.75rem;" [disabled]="sending()" (click)="handleSend()" data-testid="button-send">
+          {{ sending() ? 'Sending...' : 'Send ' + getChannelLabel(sendChannel()) }}
+        </button>
+      </div>
+    }
+  </div>
+</div>

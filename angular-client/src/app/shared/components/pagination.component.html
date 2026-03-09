@@ -1,0 +1,29 @@
+@if (totalPages > 1) {
+  <div class="pagination-wrapper" data-testid="pagination">
+    <span class="pagination-info" data-testid="text-pagination-info">
+      Showing {{ startItem }}–{{ endItem }} of {{ totalItems }}
+    </span>
+    <div class="pagination">
+      <button
+        [disabled]="currentPage === 1"
+        (click)="goToPage(currentPage - 1)"
+        data-testid="button-prev-page">
+        ‹ Prev
+      </button>
+      @for (page of pages; track page) {
+        <button
+          [class.active]="page === currentPage"
+          (click)="goToPage(page)"
+          [attr.data-testid]="'button-page-' + page">
+          {{ page }}
+        </button>
+      }
+      <button
+        [disabled]="currentPage === totalPages"
+        (click)="goToPage(currentPage + 1)"
+        data-testid="button-next-page">
+        Next ›
+      </button>
+    </div>
+  </div>
+}

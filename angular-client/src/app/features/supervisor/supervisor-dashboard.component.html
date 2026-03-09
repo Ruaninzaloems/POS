@@ -1,0 +1,380 @@
+<div class="page-container">
+  <div class="page-header">
+    <div class="header-row">
+      <div>
+        <h1 class="page-title" data-testid="text-page-title">Supervisor Dashboard</h1>
+        <p class="page-subtitle">Review cashier day-end submissions and approve cancellations</p>
+      </div>
+      <button class="btn-primary" (click)="loadCashierList(); loadPendingCancelRequests()" data-testid="button-refresh">
+        ↻ Refresh
+      </button>
+    </div>
+  </div>
+
+  <div class="tab-list">
+    <button class="tab-item" [class.active]="activeTab() === 'day-end'" (click)="activeTab.set('day-end')" data-testid="tab-day-end">
+      Day-End Reconciliation
+      @if (pendingCount() > 0) {
+        <span class="tab-badge">{{ pendingCount() }}</span>
+      }
+    </button>
+    <button class="tab-item" [class.active]="activeTab() === 'cancellations'" (click)="activeTab.set('cancellations')" data-testid="tab-cancellations">
+      Cancellation Requests
+      @if (pendingCancelRequests().length > 0) {
+        <span class="tab-badge tab-badge-danger">{{ pendingCancelRequests().length }}</span>
+      }
+    </button>
+  </div>
+
+  @if (activeTab() === 'day-end') {
+    <div class="stats-row">
+      <div class="stat-card">
+        <span class="stat-label">Pending Approval</span>
+        <span class="stat-value" data-testid="text-pending-count">{{ pendingCount() }}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">With Variance</span>
+        <span class="stat-value stat-warning" data-testid="text-variance-count">{{ varianceCount() }}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Total Posted</span>
+        <span class="stat-value stat-success" data-testid="text-total-posted">{{ formatCurrency(totalPosted()) }}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">System Revenue</span>
+        <span class="stat-value" data-testid="text-total-revenue">{{ formatCurrency(totalSystemRevenue()) }}</span>
+      </div>
+    </div>
+
+    <div class="mode-toggle">
+      <button class="mode-btn" [class.active]="reconMode() === 'PER_CASHIER'" (click)="switchReconMode('PER_CASHIER')" data-testid="button-mode-per-cashier">
+        Per Cashier
+      </button>
+      <button class="mode-btn" [class.active]="reconMode() === 'CASH_OFFICE'" (click)="switchReconMode('CASH_OFFICE')" data-testid="button-mode-cash-office">
+        Cash Office
+      </button>
+    </div>
+
+    @if (reconMode() === 'PER_CASHIER') {
+      <div class="filter-bar card">
+        <div class="filter-row">
+          <div class="filter-group">
+            <label class="form-label">Office</label>
+            <select class="form-select" [ngModel]="filterOffice()" (ngModelChange)="filterOffice.set($event)" data-testid="select-filter-office">
+              <option value="All">All Offices</option>
+              @for (office of uniqueOffices(); track office) {
+                <option [value]="office">{{ office }}</option>
+              }
+            </select>
+          </div>
+          <div class="filter-group">
+            <label class="form-label">Status</label>
+            <select class="form-select" [ngModel]="filterStatus()" (ngModelChange)="filterStatus.set($event)" data-testid="select-filter-status">
+              <option value="All">All Statuses</option>
+              <option value="PENDING_APPROVAL">Pending Approval</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="RETURNED">Returned</option>
+              <option value="NOT_SUBMITTED">Not Submitted</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label class="form-label">Search</label>
+            <input class="form-input" placeholder="Search cashier name..." [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" data-testid="input-search" />
+          </div>
+        </div>
+      </div>
+
+      @if (isLoadingShifts()) {
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Loading cashier list...</p>
+        </div>
+      } @else if (filteredShifts().length === 0) {
+        <div class="empty-state card">
+          <p>No cashier shifts found matching your filters.</p>
+        </div>
+      } @else {
+        <div class="table-container card">
+          <table>
+            <thead>
+              <tr>
+                <th>Cashier</th>
+                <th>Office</th>
+                <th>Status</th>
+                <th>System Total</th>
+                <th>Declared</th>
+                <th>Variance</th>
+                <th>Receipts</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (shift of filteredShifts(); track shift.id) {
+                <tr [attr.data-testid]="'row-cashier-' + shift.id">
+                  <td>
+                    <span class="cashier-name">{{ shift.cashierName }}</span>
+                    <span class="cashier-date">{{ formatDate(shift.startTime) }}</span>
+                  </td>
+                  <td>{{ shift.cashOffice || '-' }}</td>
+                  <td><span class="badge" [ngClass]="getStatusBadgeClass(shift.status)">{{ getStatusLabel(shift.status) }}</span></td>
+                  <td class="amount-cell">{{ formatCurrency(shift.systemTotals.total) }}</td>
+                  <td class="amount-cell">{{ shift.declaredTotals ? formatCurrency(shift.declaredTotals.total) : '-' }}</td>
+                  <td class="amount-cell" [class.variance-negative]="(shift.variance?.total || 0) < 0" [class.variance-positive]="(shift.variance?.total || 0) > 0">
+                    {{ shift.variance ? formatCurrency(shift.variance.total) : '-' }}
+                  </td>
+                  <td>{{ shift.transactionCount }}</td>
+                  <td>
+                    @if (shift.status === 'PENDING_APPROVAL') {
+                      <button class="btn-primary btn-sm" (click)="handleReview(shift)" [attr.data-testid]="'button-review-' + shift.id">
+                        Review
+                      </button>
+                    } @else if (shift.status === 'COMPLETED') {
+                      <span class="text-muted">✓ Done</span>
+                    } @else if (shift.status === 'RETURNED') {
+                      <span class="badge badge-danger">Returned</span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+
+    @if (reconMode() === 'CASH_OFFICE') {
+      @if (perOfficeList().length === 0) {
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Loading cash offices...</p>
+        </div>
+      } @else {
+        <div class="office-grid">
+          @for (office of perOfficeList(); track office.cashOffice_ID || office.id) {
+            <div class="office-card card" (click)="handlePerOfficeSelect(office.cashOffice_ID || office.id)" [attr.data-testid]="'card-office-' + (office.cashOffice_ID || office.id)">
+              <h3>{{ office.cashOfficeDesc || office.name || 'Office' }}</h3>
+              <p class="text-muted">Click to manage</p>
+            </div>
+          }
+        </div>
+
+        @if (perOfficeLoading()) {
+          <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading office data...</p>
+          </div>
+        }
+
+        @if (perOfficeData()) {
+          <div class="card office-detail">
+            <h3>{{ perOfficeData().cashBookName || 'Cash Office' }}</h3>
+            @if (perOfficeData().cashierSummary?.length > 0) {
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Cashier</th>
+                      <th>Status</th>
+                      <th>Total</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (cs of perOfficeData().cashierSummary; track $index) {
+                      <tr>
+                        <td>{{ cs.cashierName || cs.name || 'Cashier' }}</td>
+                        <td>{{ cs.status || cs.reconcileStatus || '-' }}</td>
+                        <td class="amount-cell">{{ formatCurrency(cs.totalAmount || cs.total || 0) }}</td>
+                        <td>
+                          <button class="btn-outline btn-sm" (click)="handlePerOfficeSelect(perOfficeSelectedId()!)" data-testid="button-verify-cashier">
+                            Verify
+                          </button>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            } @else {
+              <p class="text-muted" style="padding:1rem">No cashier data available for this office.</p>
+            }
+          </div>
+        }
+      }
+    }
+  }
+
+  @if (activeTab() === 'cancellations') {
+    @if (cancelRequestsLoading()) {
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading cancellation requests...</p>
+      </div>
+    } @else if (pendingCancelRequests().length === 0) {
+      <div class="empty-state card">
+        <p>No pending cancellation requests.</p>
+      </div>
+    } @else {
+      <div class="table-container card">
+        <table>
+          <thead>
+            <tr>
+              <th>Receipt No</th>
+              <th>Account</th>
+              <th>Amount</th>
+              <th>Cashier</th>
+              <th>Reason</th>
+              <th>Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (req of pendingCancelRequests(); track req.id) {
+              <tr [attr.data-testid]="'row-cancel-' + req.id">
+                <td class="font-mono">{{ req.receiptNo || req.receiptId }}</td>
+                <td class="font-mono">{{ req.accountNumber || '-' }}</td>
+                <td class="amount-cell">{{ formatCurrency(req.amount) }}</td>
+                <td>{{ req.cashierName || '-' }}</td>
+                <td class="reason-cell">{{ req.reason || '-' }}</td>
+                <td>{{ formatDate(req.requestDate) }}</td>
+                <td>
+                  <div class="action-buttons">
+                    <button class="btn-success btn-sm" (click)="handleApproveCancelRequest(req)" [disabled]="cancelActionLoading() === req.id" [attr.data-testid]="'button-approve-cancel-' + req.id">
+                      @if (cancelActionLoading() === req.id) { <span class="spinner spinner-sm"></span> } @else { Approve }
+                    </button>
+                    <button class="btn-danger btn-sm" (click)="handleDeclineCancelRequest(req)" [disabled]="cancelActionLoading() === req.id" [attr.data-testid]="'button-decline-cancel-' + req.id">
+                      Decline
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+
+  @if (selectedShift()) {
+    <div class="dialog-overlay" (click)="closeReview()">
+      <div class="dialog-content dialog-xl" (click)="$event.stopPropagation()">
+        <div class="dialog-header">
+          <h2>Review: {{ selectedShift()!.cashierName }}</h2>
+          <button class="btn-close" (click)="closeReview()" data-testid="button-close-review">✕</button>
+        </div>
+
+        @if (reviewLoading()) {
+          <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading review data...</p>
+          </div>
+        } @else if (reviewData()) {
+          <div class="review-content">
+            <div class="review-summary">
+              <div class="summary-item">
+                <span class="summary-label">System Total</span>
+                <span class="summary-value">{{ formatCurrency(selectedShift()!.systemTotals.total) }}</span>
+              </div>
+              @if (selectedShift()!.declaredTotals) {
+                <div class="summary-item">
+                  <span class="summary-label">Declared Total</span>
+                  <span class="summary-value">{{ formatCurrency(selectedShift()!.declaredTotals!.total) }}</span>
+                </div>
+              }
+              @if (selectedShift()!.variance) {
+                <div class="summary-item">
+                  <span class="summary-label">Variance</span>
+                  <span class="summary-value" [class.variance-negative]="(selectedShift()!.variance!.total) < 0" [class.variance-positive]="(selectedShift()!.variance!.total) > 0">
+                    {{ formatCurrency(selectedShift()!.variance!.total) }}
+                  </span>
+                </div>
+              }
+            </div>
+
+            <div class="tab-list review-tabs">
+              <button class="tab-item" [class.active]="reviewTab() === 'cash'" (click)="reviewTab.set('cash')">Cash Receipts ({{ reviewData()!.cashReceipts.length }})</button>
+              <button class="tab-item" [class.active]="reviewTab() === 'card'" (click)="reviewTab.set('card')">Card Receipts ({{ reviewData()!.cardReceipts.length }})</button>
+            </div>
+
+            <div class="receipt-list">
+              @if (reviewTab() === 'cash') {
+                @if (reviewData()!.cashReceipts.length === 0) {
+                  <p class="text-muted" style="text-align:center;padding:1rem">No cash receipts</p>
+                } @else {
+                  <div class="table-container">
+                    <table>
+                      <thead><tr><th>#</th><th>Receipt No</th><th>Account</th><th>Amount</th><th>Date</th><th>Actions</th></tr></thead>
+                      <tbody>
+                        @for (r of reviewData()!.cashReceipts; track $index) {
+                          <tr>
+                            <td>{{ $index + 1 }}</td>
+                            <td class="font-mono">{{ r.receiptNo || r.receipt_no || '-' }}</td>
+                            <td class="font-mono">{{ r.accountNumber || r.accountId || '-' }}</td>
+                            <td class="amount-cell">{{ formatCurrency(r.amount || r.totalAmount || 0) }}</td>
+                            <td>{{ r.receiptDate || r.date || '-' }}</td>
+                            <td>
+                              @if (directCancelId() === (r.id || r.receiptId)) {
+                                <div class="cancel-inline">
+                                  <input class="form-input" placeholder="Cancel reason..." [ngModel]="directCancelReason()" (ngModelChange)="directCancelReason.set($event)" />
+                                  <button class="btn-danger btn-sm" (click)="handleDirectCancel(r.id || r.receiptId, directCancelReason())" [disabled]="!directCancelReason()">Confirm</button>
+                                  <button class="btn-outline btn-sm" (click)="directCancelId.set(null); directCancelReason.set('')">Cancel</button>
+                                </div>
+                              } @else if (!(r.isCancelled === 1 || r.isCancelled === true)) {
+                                <button class="btn-outline btn-sm btn-text-danger" (click)="directCancelId.set(r.id || r.receiptId); directCancelReason.set('')">Cancel Receipt</button>
+                              } @else {
+                                <span class="badge badge-danger">Voided</span>
+                              }
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
+              }
+              @if (reviewTab() === 'card') {
+                @if (reviewData()!.cardReceipts.length === 0) {
+                  <p class="text-muted" style="text-align:center;padding:1rem">No card receipts</p>
+                } @else {
+                  <div class="table-container">
+                    <table>
+                      <thead><tr><th>#</th><th>Receipt No</th><th>Account</th><th>Amount</th><th>Date</th></tr></thead>
+                      <tbody>
+                        @for (r of reviewData()!.cardReceipts; track $index) {
+                          <tr>
+                            <td>{{ $index + 1 }}</td>
+                            <td class="font-mono">{{ r.receiptNo || r.receipt_no || '-' }}</td>
+                            <td class="font-mono">{{ r.accountNumber || r.accountId || '-' }}</td>
+                            <td class="amount-cell">{{ formatCurrency(r.amount || r.totalAmount || 0) }}</td>
+                            <td>{{ r.receiptDate || r.date || '-' }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
+              }
+            </div>
+
+            <div class="review-actions">
+              <div class="return-section">
+                <label class="form-label">Return Reason</label>
+                <input class="form-input" placeholder="Enter reason for returning..." [ngModel]="returnReason()" (ngModelChange)="returnReason.set($event)" data-testid="input-return-reason" />
+              </div>
+              <div class="action-buttons">
+                <button class="btn-outline" (click)="handlePrintCashReport(selectedShift()!.id)" data-testid="button-print-cash-report">Print Cash Report</button>
+                <button class="btn-outline" (click)="handlePrintDepositSlip(selectedShift()!.id)" data-testid="button-print-deposit-slip">Print Deposit Slip</button>
+                <button class="btn-danger" (click)="handleReturn()" [disabled]="actionLoading() || !returnReason()" data-testid="button-return">
+                  @if (actionLoading()) { <span class="spinner spinner-sm"></span> } Return
+                </button>
+                <button class="btn-primary btn-approve" (click)="handleApprove(selectedShift()!.id)" [disabled]="actionLoading()" data-testid="button-approve">
+                  @if (actionLoading()) { <span class="spinner spinner-sm"></span> } Approve
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

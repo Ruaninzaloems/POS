@@ -1,0 +1,135 @@
+<div class="page-container">
+  <div class="page-header">
+    <button class="btn btn-ghost" (click)="goBack()" data-testid="button-back">← Back to Notices</button>
+    <div>
+      <h1 class="page-title" data-testid="text-page-title">Trial Run Review</h1>
+      <p class="page-subtitle">Review and select accounts for Section 129 notice processing</p>
+    </div>
+  </div>
+
+  <div class="card run-info-card">
+    <div class="card-body run-info">
+      <div class="info-item">
+        <span class="info-label">Run ID</span>
+        <span class="info-value" data-testid="text-run-id">{{ runId || '—' }}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Status</span>
+        <span class="badge" [class]="getStatusColor(runInfo()?.status || '')" data-testid="badge-run-status">{{ runInfo()?.status || 'Loading...' }}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Handover Option</span>
+        <span class="info-value" data-testid="text-handover-option">{{ runInfo()?.handoverOption || '—' }}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Created</span>
+        <span class="info-value" data-testid="text-date-created">{{ runInfo()?.dateCreated || '—' }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Total Accounts</div>
+      <div class="stat-value" data-testid="text-total-accounts">{{ accounts().length }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Selected</div>
+      <div class="stat-value stat-blue" data-testid="text-selected-count">{{ selectedIds.size }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Qualifying Amount</div>
+      <div class="stat-value stat-green" data-testid="text-qualifying-total">{{ formatCurrency(totalQualifyingAmount) }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Notice Fees</div>
+      <div class="stat-value stat-amber" data-testid="text-fees-total">{{ formatCurrency(totalNoticeFees) }}</div>
+    </div>
+  </div>
+
+  <div class="card">
+    @if (loading()) {
+      <div class="loading-center">
+        <span class="spinner spinner-lg"></span>
+        <p>Loading trial run accounts...</p>
+      </div>
+    } @else if (accounts().length === 0) {
+      <div class="loading-center">
+        <p class="text-muted">No accounts found for this trial run.</p>
+        <button class="btn btn-outline" (click)="goBack()" data-testid="button-back-empty">Back to Notices</button>
+      </div>
+    } @else {
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:2.5rem">
+                <input type="checkbox" [checked]="allOnPageSelected" (change)="toggleSelectAll()" data-testid="checkbox-select-all" />
+              </th>
+              <th>Account No</th>
+              <th>Address</th>
+              <th>Indigent</th>
+              <th>Rebate</th>
+              <th>SG Number</th>
+              <th class="text-right">Days O/S</th>
+              <th class="text-right">Qualifying Amt</th>
+              <th class="text-right">Notice Fees</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (account of paginatedAccounts; track account.accountId) {
+              <tr [class.selected-row]="isSelected(account.accountId)" class="clickable" (click)="toggleAccount(account.accountId)" [attr.data-testid]="'row-account-' + account.accountId">
+                <td (click)="$event.stopPropagation()">
+                  <input type="checkbox" [checked]="isSelected(account.accountId)" (change)="toggleAccount(account.accountId)" [attr.data-testid]="'checkbox-account-' + account.accountId" />
+                </td>
+                <td class="font-medium" [attr.data-testid]="'text-account-no-' + account.accountId">{{ account.accountNo }}</td>
+                <td class="text-muted truncate-cell" [title]="account.address">{{ account.address || '—' }}</td>
+                <td>
+                  <span class="badge" [class]="account.indigentStatus?.toLowerCase() === 'yes' ? 'badge-orange' : 'badge-slate'" [attr.data-testid]="'badge-indigent-' + account.accountId">{{ account.indigentStatus || 'No' }}</span>
+                </td>
+                <td>
+                  <span class="badge" [class]="account.rebateStatus?.toLowerCase() === 'yes' ? 'badge-purple' : 'badge-slate'" [attr.data-testid]="'badge-rebate-' + account.accountId">{{ account.rebateStatus || 'No' }}</span>
+                </td>
+                <td class="font-mono text-muted">{{ account.sgNumber || '—' }}</td>
+                <td class="text-right font-medium" [class]="getDaysClass(account.outstandingDays)" [attr.data-testid]="'text-days-' + account.accountId">{{ account.outstandingDays }}</td>
+                <td class="text-right font-medium" [attr.data-testid]="'text-amount-' + account.accountId">{{ formatCurrency(account.qualifyingAmount) }}</td>
+                <td class="text-right text-muted">{{ formatCurrency(account.noticeFees) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (totalPages > 1) {
+        <div class="pagination">
+          <span class="pagination-info" data-testid="text-pagination-info">Page {{ currentPage }} of {{ totalPages }} ({{ accounts().length }} accounts)</span>
+          <div class="pagination-buttons">
+            <button class="btn btn-outline btn-sm" (click)="prevPage()" [disabled]="currentPage <= 1" data-testid="button-prev-page">‹</button>
+            <button class="btn btn-outline btn-sm" (click)="nextPage()" [disabled]="currentPage >= totalPages" data-testid="button-next-page">›</button>
+          </div>
+        </div>
+      }
+    }
+  </div>
+
+  @if (!loading() && accounts().length > 0) {
+    <div class="card">
+      <div class="card-body review-footer">
+        <div class="toggle-item">
+          <input type="checkbox" id="final-review" [(ngModel)]="finalReviewComplete" data-testid="switch-final-review" />
+          <label for="final-review" class="font-medium">Final Review Complete</label>
+          @if (finalReviewComplete) {
+            <span class="check-icon">✓</span>
+          }
+        </div>
+        <div class="footer-buttons">
+          <button class="btn btn-outline" (click)="goBack()" data-testid="button-cancel">Cancel</button>
+          <button class="btn btn-primary" (click)="handleSubmit()" [disabled]="submitting() || selectedIds.size === 0" data-testid="button-submit">
+            @if (submitting()) { <span class="spinner"></span> }
+            Submit Review ({{ selectedIds.size }})
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

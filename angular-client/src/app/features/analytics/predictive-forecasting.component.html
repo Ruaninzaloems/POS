@@ -1,0 +1,230 @@
+<div class="page-wrapper">
+  <div class="page-bar">
+    <div class="breadcrumb">
+      <button class="breadcrumb-link" (click)="goHome()" data-testid="link-home">Home</button>
+      <span class="breadcrumb-sep">›</span>
+      <span class="breadcrumb-current">Predictive Recovery Forecasting</span>
+    </div>
+    <div class="bar-title-row">
+      <div class="header-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+      </div>
+      <h1 class="page-title" data-testid="text-page-title">Predictive Recovery Forecasting</h1>
+      <div class="spacer"></div>
+      <button class="btn-outline-sm" (click)="loadData()" [disabled]="loading()" data-testid="button-refresh">
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <div class="content-area">
+    @if (loading()) {
+      <div class="loading-state">
+        <div class="spinner-lg"></div>
+      </div>
+    } @else if (!data()) {
+      <div class="empty-hero">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" class="empty-icon"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+        <p>No forecasting data available. Ensure accounts have been scored and communications logged.</p>
+      </div>
+    } @else {
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+          <div>
+            <div class="stat-value" data-testid="text-predicted-rate">{{ predictedRate }}%</div>
+            <div class="stat-label">Predicted Recovery Rate</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><polyline points="9 12 11 14 15 10"/></svg></div>
+          <div>
+            <div class="stat-value" data-testid="text-confidence">{{ confidenceScore }}%</div>
+            <div class="stat-label">Confidence Score</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+          <div>
+            <div class="stat-value text-success" data-testid="text-forecast-30">{{ forecast30 }}%</div>
+            <div class="stat-label">30-Day Forecast</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+          <div>
+            <div class="stat-value text-amber" data-testid="text-forecast-90">{{ forecast90 }}%</div>
+            <div class="stat-label">90-Day Forecast</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-body">
+            <h3 class="card-title">Recovery Forecast Timeline</h3>
+            <div class="forecast-grid">
+              @for (fp of forecastPeriods; track fp.label) {
+                <div class="forecast-period" [attr.data-testid]="'forecast-period-' + fp.label.replace(' ', '-').toLowerCase()">
+                  <div [class]="'forecast-value ' + fp.colorClass">{{ fp.rate }}%</div>
+                  <div class="forecast-label">Next {{ fp.label }}</div>
+                  <div class="bar-track-sm" style="margin-top: 0.5rem;">
+                    <div class="bar-fill" [style.width]="fp.rate + '%'" [style.background]="fp.barColor"></div>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+            <h3 class="card-title">Model Confidence</h3>
+            <div class="confidence-center" data-testid="confidence-gauge">
+              <div class="gauge-wrapper">
+                <svg viewBox="0 0 120 120" class="gauge-svg">
+                  <circle cx="60" cy="60" r="52" fill="none" stroke="#E5E5E5" stroke-width="8" />
+                  <circle cx="60" cy="60" r="52" fill="none" [attr.stroke]="getConfidenceColor(confidenceScore)" stroke-width="8" [attr.stroke-dasharray]="getConfidenceDash(confidenceScore)" stroke-linecap="round" />
+                </svg>
+                <div class="gauge-text" [style.color]="getConfidenceColor(confidenceScore)">{{ confidenceScore }}%</div>
+              </div>
+              <span class="text-muted text-xs">{{ getConfidenceLabel(confidenceScore) }}</span>
+            </div>
+            <div class="text-muted text-xs text-center" style="padding: 0 1rem;">
+              Confidence is computed from delivery rate trends, scored account volume, communication velocity, and legal action history.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-body">
+            <h3 class="card-title">Delivery Rate Trend (Historical)</h3>
+            @if (deliveryTrend.length === 0) {
+              <div class="empty-state">No delivery trend data available.</div>
+            } @else {
+              <div class="bar-list">
+                @for (d of deliveryTrend; track $index) {
+                  <div class="trend-row" [attr.data-testid]="'trend-bar-' + d.period">
+                    <span class="trend-label">{{ d.period }}</span>
+                    <div class="trend-bar-track">
+                      <div class="bar-fill" [style.width]="getTrendBarWidth(d.rate)" [style.background]="getBarColor(d.rate)"></div>
+                      <span class="trend-bar-text">{{ d.rate }}%</span>
+                    </div>
+                  </div>
+                }
+              </div>
+              <div class="text-xs text-muted text-center" style="margin-top: 0.5rem;">Compares actual vs predicted delivery effectiveness over time</div>
+            }
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+            <h3 class="card-title">Channel Recovery Effectiveness</h3>
+            @if (channelKeys.length === 0) {
+              <div class="empty-state">No channel data available. Log communications to see effectiveness.</div>
+            } @else {
+              <div class="bar-list">
+                @for (ch of channelKeys; track ch) {
+                  @let stats = getChannelStats(ch);
+                  <div class="channel-card" [attr.data-testid]="'channel-' + ch">
+                    <div class="channel-header">
+                      <span class="channel-name">{{ ch }}</span>
+                      <span [class]="getTextColorClass(stats.rate) + ' font-bold'">{{ stats.rate }}%</span>
+                    </div>
+                    <div class="bar-track-xs">
+                      <div class="bar-fill" [style.width]="(stats.rate > 2 ? stats.rate : 2) + '%'" [style.background]="getBarColor(stats.rate)"></div>
+                    </div>
+                    <div class="channel-footer">
+                      <span>{{ stats.sent }} sent</span>
+                      <span>{{ stats.delivered }} delivered</span>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-body">
+            <h3 class="card-title">Risk-Based Recovery Predictions</h3>
+            @if (!riskBreakdown) {
+              <div class="empty-state">No risk data available.</div>
+            } @else {
+              <div class="bar-list">
+                @for (tier of riskTiers; track tier.key) {
+                  @let td = getRiskTierData(tier.key);
+                  <div [class]="'tier-card ' + tier.bgClass" [attr.data-testid]="'risk-tier-' + tier.key">
+                    <div class="tier-header">
+                      <span [class]="tier.textClass + ' font-medium'">{{ tier.label }}</span>
+                      <span [class]="tier.textClass" class="text-xs">{{ td.count }} accounts</span>
+                    </div>
+                    <div class="tier-stats">
+                      <div>
+                        <div class="tier-stat-label">Avg Score</div>
+                        <div [class]="'tier-stat-value ' + tier.textClass">{{ td.avgScore }}</div>
+                      </div>
+                      <div>
+                        <div class="tier-stat-label">Expected Recovery</div>
+                        <div [class]="'tier-stat-value ' + tier.textClass">{{ td.expectedRecovery }}%</div>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+            <h3 class="card-title">Key Prediction Drivers</h3>
+            @if (keyDrivers.length === 0) {
+              <div class="empty-state">No driver data available.</div>
+            } @else {
+              <div class="bar-list">
+                @for (driver of keyDrivers; track $index; let i = $index) {
+                  <div class="driver-card" [attr.data-testid]="'driver-' + i">
+                    <div class="driver-header">
+                      <span class="driver-factor">{{ driver.factor }}</span>
+                      <span [class]="'badge ' + getImpactBadgeClass(driver.impact)">{{ driver.impact }}</span>
+                    </div>
+                    <p class="driver-detail">{{ driver.detail }}</p>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <h3 class="card-title">Forecast Summary</h3>
+          <div class="summary-grid">
+            <div class="summary-item">
+              <div class="summary-label">Predicted Recovery Rate</div>
+              <div class="summary-value text-violet" data-testid="text-summary-rate">{{ predictedRate }}%</div>
+              <div class="summary-sub">Based on weighted risk distribution</div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-label">Model Confidence</div>
+              <div class="summary-value text-cyan" data-testid="text-summary-confidence">{{ confidenceScore }}%</div>
+              <div class="summary-sub">Higher with more data points</div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-label">90-Day Outlook</div>
+              <div class="summary-value text-success" data-testid="text-summary-outlook">{{ forecast90 }}%</div>
+              <div class="summary-sub">Projected recovery improvement</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</div>

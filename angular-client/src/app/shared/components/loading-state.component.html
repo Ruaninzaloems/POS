@@ -1,0 +1,13 @@
+@if (loading) {
+  <div class="loading-state" data-testid="loading-state">
+    <app-spinner />
+    <p>{{ loadingText }}</p>
+  </div>
+} @else if (error) {
+  <div class="error-state card" data-testid="error-state">
+    <p class="error-message" data-testid="text-error">{{ error }}</p>
+    <button class="btn-primary" (click)="retry.emit()" data-testid="button-retry">Retry</button>
+  </div>
+} @else {
+  <ng-content />
+}

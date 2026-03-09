@@ -1,0 +1,361 @@
+<div class="page-container">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title" data-testid="text-page-title">Section 129 — Letter of Demand</h1>
+      <p class="page-subtitle">Generate and manage Section 129 notices for debt recovery</p>
+    </div>
+  </div>
+
+  <div class="top-selects">
+    <div class="field-group">
+      <span class="field-label">Financial Year</span>
+      <select class="field-select" [(ngModel)]="finYear" data-testid="select-fin-year">
+        @for (fy of finYears; track fy) {
+          <option [value]="fy">{{ fy }}</option>
+        }
+      </select>
+    </div>
+    <div class="field-group">
+      <span class="field-label">Month</span>
+      <select class="field-select" [(ngModel)]="finMonth" data-testid="select-fin-month">
+        @for (m of months; track m.value) {
+          <option [value]="m.value">{{ m.label }}</option>
+        }
+      </select>
+    </div>
+    <div class="field-group">
+      <span class="field-label">Run Type</span>
+      <select class="field-select" [(ngModel)]="runType" data-testid="select-run-type">
+        <option value="trial-review">Trial Review</option>
+        <option value="trial-run">Trial Run</option>
+      </select>
+    </div>
+    <div class="field-group">
+      <span class="field-label">Handover Option</span>
+      <select class="field-select" [(ngModel)]="handoverOption" data-testid="select-handover-option">
+        <option value="account">Account</option>
+        <option value="bulk">Bulk</option>
+        <option value="rotation">Rotation</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="content-area">
+    <div class="card">
+      <div class="card-body">
+        <div class="card-title-row">
+          <h2 class="card-title">Section 129 Configuration</h2>
+        </div>
+        @if (configLoading()) {
+          <div class="loading-inline">
+            <span class="spinner"></span>
+            Loading configuration...
+          </div>
+        } @else if (config()) {
+          <div class="config-grid">
+            <div class="config-value">
+              <div class="config-value-label">Demand Letter Template</div>
+              <div class="config-value-text" data-testid="text-config-demand-letter">{{ config()!.demandLetterTemplate || '—' }}</div>
+            </div>
+            <div class="config-value">
+              <div class="config-value-label">SMS Template</div>
+              <div class="config-value-text" data-testid="text-config-sms-template">{{ config()!.smsTemplate || '—' }}</div>
+            </div>
+            <div class="config-value">
+              <div class="config-value-label">Admin Fees</div>
+              <div class="config-value-text" data-testid="text-config-admin-fees">R {{ config()!.adminFees.toFixed(2) }}</div>
+            </div>
+            <div class="config-value">
+              <div class="config-value-label">Lapse Days</div>
+              <div class="config-value-text" data-testid="text-config-lapse-days">{{ config()!.lapseDays }}</div>
+            </div>
+            <div class="config-value">
+              <div class="config-value-label">Interest Rate</div>
+              <div class="config-value-text" data-testid="text-config-interest-rate">{{ config()!.interestRate }}%</div>
+            </div>
+            <div class="config-value">
+              <div class="config-value-label">Minimum Amount</div>
+              <div class="config-value-text" data-testid="text-config-min-amount">R {{ config()!.minimumAmount.toFixed(2) }}</div>
+            </div>
+          </div>
+        } @else {
+          <p class="text-muted" data-testid="text-config-error">Configuration could not be loaded from the API.</p>
+        }
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <div class="card-title-row">
+          <h2 class="card-title">Filter Parameters</h2>
+        </div>
+        <div class="filter-grid">
+          <div class="field-group">
+            <span class="field-label">Billing Cycle</span>
+            <select class="field-select" [(ngModel)]="billingCycle" data-testid="select-billing-cycle">
+              <option value="">Select cycle</option>
+              @for (c of billingCycles; track c.id) {
+                <option [value]="c.id">{{ c.name }}</option>
+              }
+            </select>
+          </div>
+          <div class="field-group">
+            <span class="field-label">Town</span>
+            <select class="field-select" [(ngModel)]="town" data-testid="select-town">
+              <option value="__all__">All Towns</option>
+              @for (t of towns; track t.id) {
+                <option [value]="t.id">{{ t.name }}</option>
+              }
+            </select>
+          </div>
+          <div class="field-group">
+            <span class="field-label">Suburb</span>
+            <input class="field-input" [(ngModel)]="suburb" placeholder="Enter suburb" data-testid="input-suburb" />
+          </div>
+          <div class="field-group">
+            <span class="field-label">Property Category</span>
+            <select class="field-select" [(ngModel)]="propertyCategory" data-testid="select-property-category">
+              <option value="__all__">All Categories</option>
+              @for (pc of propertyCategories; track pc.id) {
+                <option [value]="pc.id">{{ pc.name }}</option>
+              }
+            </select>
+          </div>
+          <div class="field-group">
+            <span class="field-label">Account Type</span>
+            <select class="field-select" [(ngModel)]="accountType" data-testid="select-account-type">
+              <option value="__all__">All Types</option>
+              @for (at of accountTypes; track at.id) {
+                <option [value]="at.id">{{ at.name }}</option>
+              }
+            </select>
+          </div>
+          <div class="field-group">
+            <span class="field-label">Type of Person</span>
+            <select class="field-select" [(ngModel)]="typeOfPerson" data-testid="select-type-of-person">
+              <option value="__all__">All</option>
+              @for (pt of personTypes; track pt.id) {
+                <option [value]="pt.id">{{ pt.name }}</option>
+              }
+            </select>
+          </div>
+          <div class="field-group">
+            <span class="field-label">Service Group Code</span>
+            <input class="field-input" [(ngModel)]="serviceGroupCode" placeholder="Enter code" data-testid="input-service-group" />
+          </div>
+          <div class="field-group">
+            <span class="field-label">Ageing</span>
+            <select class="field-select" [(ngModel)]="ageing" data-testid="select-ageing">
+              <option value="__all__">All</option>
+              @for (a of ageingRanges; track a.id) {
+                <option [value]="a.id">{{ a.name }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-item">
+            <input type="checkbox" id="includeIndigents" [(ngModel)]="includeIndigents" data-testid="checkbox-include-indigents" />
+            <label for="includeIndigents">Include Indigents</label>
+          </div>
+          <div class="toggle-item">
+            <input type="checkbox" id="includePensioners" [(ngModel)]="includePensioners" data-testid="checkbox-include-pensioners" />
+            <label for="includePensioners">Include Pensioners</label>
+          </div>
+          <div class="toggle-item">
+            <input type="checkbox" id="excludeDeposits" [(ngModel)]="excludeDepositBalances" data-testid="checkbox-exclude-deposits" />
+            <label for="excludeDeposits">Exclude Deposit Balances</label>
+          </div>
+          <div class="field-group" style="min-width:10rem">
+            <span class="field-label">Amount Greater Than</span>
+            <input type="number" class="field-input" [(ngModel)]="amountGreaterThan" placeholder="0.00" data-testid="input-amount-greater" />
+          </div>
+        </div>
+
+        <div class="contact-grid">
+          <div class="field-group">
+            <span class="field-label">Contact Person</span>
+            <input class="field-input" [(ngModel)]="contactPerson" placeholder="Name" data-testid="input-contact-person" />
+          </div>
+          <div class="field-group">
+            <span class="field-label">Contact Phone</span>
+            <input class="field-input" [(ngModel)]="contactPhone" placeholder="Phone" data-testid="input-contact-phone" />
+          </div>
+          <div class="field-group">
+            <span class="field-label">Contact Email</span>
+            <input class="field-input" [(ngModel)]="contactEmail" placeholder="Email" data-testid="input-contact-email" />
+          </div>
+        </div>
+
+        <div class="distribution-section">
+          <div class="field-group">
+            <span class="field-label">Distribution Type</span>
+            <select class="field-select" [(ngModel)]="distributionType" data-testid="select-distribution-type">
+              <option value="email">Email</option>
+              <option value="sms">SMS</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="print">Print</option>
+              <option value="all">All</option>
+            </select>
+          </div>
+          @if (distributionType === 'email') {
+            <div class="toggle-item">
+              <input type="checkbox" id="mustEmailBePrinted" [(ngModel)]="mustEmailBePrinted" data-testid="checkbox-email-print" />
+              <label for="mustEmailBePrinted">Must Email be Printed?</label>
+            </div>
+          }
+        </div>
+
+        <div class="action-bar">
+          <button class="btn btn-primary" (click)="handleSubmit()" [disabled]="submitting()" data-testid="button-submit">
+            @if (submitting()) { <span class="spinner"></span> }
+            Submit Run
+          </button>
+          <button class="btn btn-outline" (click)="handleClear()" data-testid="button-clear">Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body" style="padding:0">
+        @if (runsLoading()) {
+          <div class="loading-center">
+            <span class="spinner spinner-lg"></span>
+            <p>Loading runs...</p>
+          </div>
+        } @else if (runs().length === 0) {
+          <div class="loading-center">
+            <p class="text-muted">No Section 129 runs found.</p>
+          </div>
+        } @else {
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Run ID</th>
+                  <th>Status</th>
+                  <th>Run Type</th>
+                  <th>Distribution</th>
+                  <th>Handover</th>
+                  <th>Actioned By</th>
+                  <th>Date Created</th>
+                  <th>Billing Cycle</th>
+                  <th class="text-right">Accounts</th>
+                  <th class="text-right">Amount</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (run of paginatedRuns; track run.runId) {
+                  <tr class="clickable" (click)="handleRowClick(run)" [attr.data-testid]="'row-run-' + run.runId">
+                    <td class="font-mono" [attr.data-testid]="'text-runid-' + run.runId">{{ run.runId }}</td>
+                    <td>
+                      <span class="badge" [class]="getStatusColor(run.status)" [attr.data-testid]="'badge-status-' + run.runId">{{ run.status }}</span>
+                    </td>
+                    <td>{{ run.runType }}</td>
+                    <td>{{ run.distributionType || '—' }}</td>
+                    <td>{{ run.handoverOption || '—' }}</td>
+                    <td>{{ run.actionedBy || '—' }}</td>
+                    <td>{{ run.dateCreated || '—' }}</td>
+                    <td>{{ run.billingCycle || '—' }}</td>
+                    <td class="text-right font-mono">{{ run.totalAccounts }}</td>
+                    <td class="text-right font-mono">R {{ run.totalAmount.toLocaleString('en-ZA', {minimumFractionDigits: 2}) }}</td>
+                    <td (click)="$event.stopPropagation()">
+                      <div class="actions-cell">
+                        <button class="btn btn-ghost btn-sm btn-icon" (click)="openFileModal(run.runId)" title="View Files" [attr.data-testid]="'button-files-' + run.runId">📄</button>
+                        @if (run.status === 'Trial Run' || run.status === 'Approved') {
+                          <button class="btn btn-ghost btn-sm btn-icon" (click)="handleFinalRun(run.runId)" [disabled]="finalRunningId === run.runId" title="Final Run" [attr.data-testid]="'button-final-' + run.runId">
+                            @if (finalRunningId === run.runId) { <span class="spinner"></span> } @else { ▶ }
+                          </button>
+                        }
+                        @if (canDeleteRun(run)) {
+                          <button class="btn btn-ghost btn-sm btn-icon" style="color:#ef4444" (click)="confirmDelete(run.runId)" title="Delete" [attr.data-testid]="'button-delete-' + run.runId">🗑</button>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          @if (totalGridPages > 1) {
+            <div class="pagination">
+              <span class="pagination-info" data-testid="text-pagination-info">Page {{ gridPage }} of {{ totalGridPages }} ({{ runs().length }} runs)</span>
+              <div class="pagination-buttons">
+                <button class="btn btn-outline btn-sm" (click)="prevPage()" [disabled]="gridPage <= 1" data-testid="button-prev-page">‹</button>
+                <button class="btn btn-outline btn-sm" (click)="nextPage()" [disabled]="gridPage >= totalGridPages" data-testid="button-next-page">›</button>
+              </div>
+            </div>
+          }
+        }
+      </div>
+    </div>
+  </div>
+
+  @if (fileModalOpen) {
+    <div class="modal-overlay" (click)="closeFileModal()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3 class="modal-title">Run #{{ fileModalRunId }} — Files</h3>
+          <button class="btn btn-ghost btn-icon" (click)="closeFileModal()" data-testid="button-close-file-modal">✕</button>
+        </div>
+        <div class="modal-body">
+          @if (filesLoading) {
+            <div class="loading-inline"><span class="spinner"></span> Loading files...</div>
+          } @else if (runFiles.length === 0) {
+            <p class="text-muted">No files found for this run.</p>
+          } @else {
+            <table>
+              <thead>
+                <tr>
+                  <th>File Name</th>
+                  <th>Type</th>
+                  <th class="text-right">Size</th>
+                  <th>Date</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (file of runFiles; track file.fileId) {
+                  <tr>
+                    <td>{{ file.fileName }}</td>
+                    <td>{{ file.fileType }}</td>
+                    <td class="text-right">{{ formatFileSize(file.fileSize) }}</td>
+                    <td>{{ file.dateCreated }}</td>
+                    <td>
+                      <button class="btn btn-outline btn-sm" (click)="handleDownloadFile(file.fileId)" [disabled]="downloadingFileId === file.fileId" [attr.data-testid]="'button-download-' + file.fileId">
+                        @if (downloadingFileId === file.fileId) { <span class="spinner"></span> } @else { Download }
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (deleteConfirmRunId !== null) {
+    <div class="modal-overlay" (click)="cancelDelete()">
+      <div class="modal-content" style="max-width:28rem" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3 class="modal-title">Confirm Delete</h3>
+        </div>
+        <div class="modal-body">
+          <p class="confirm-text">Are you sure you want to delete Section 129 run #{{ deleteConfirmRunId }}?</p>
+          <p class="confirm-warning">This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline" (click)="cancelDelete()" data-testid="button-cancel-delete">Cancel</button>
+          <button class="btn btn-danger" (click)="handleDeleteRun()" [disabled]="isDeleting" data-testid="button-confirm-delete">
+            @if (isDeleting) { <span class="spinner"></span> Deleting... } @else { Delete Run }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

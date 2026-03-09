@@ -1,0 +1,41 @@
+:host { display: contents; }
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--pos-card-border);
+}
+
+.dialog-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.dialog-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--pos-text-muted);
+  line-height: 1;
+  padding: 0;
+}
+.dialog-close:hover {
+  color: var(--pos-text);
+}
+
+.dialog-body {
+  padding: 1.5rem;
+}
+
+.dialog-footer:empty {
+  display: none;
+}
+.dialog-footer {
+  padding: 0 1.5rem 1.5rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}

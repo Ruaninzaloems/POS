@@ -1,0 +1,68 @@
+<div class="layout-container">
+  <header class="layout-header" [class.site02]="isSite02()">
+    <div class="header-left">
+      <a routerLink="/" class="logo-link" data-testid="link-home-logo">
+        <img [src]="headerLogo()" alt="Logo" class="logo-img" />
+        <span class="logo-text">{{ siteName() }}</span>
+      </a>
+
+      <button class="nav-trigger" (click)="toggleMenu()" data-testid="button-nav-menu">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+        <span class="nav-trigger-label">Menu</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="chevron">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="header-right">
+      <div class="user-info" data-testid="text-user-info">
+        <div class="user-avatar">{{ getUserInitial() }}</div>
+        <span class="user-name">{{ getUserDisplayName() }}</span>
+      </div>
+      <button class="sign-out-btn" (click)="signOut()" title="Sign out" data-testid="button-sign-out">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  @if (menuOpen()) {
+    <div class="menu-overlay" (click)="toggleMenu()"></div>
+    <nav class="nav-dropdown" data-testid="nav-dropdown">
+      @for (item of navItems; track item.label) {
+        @if (item.children) {
+          <div class="nav-group">
+            <button class="nav-group-header" (click)="toggleGroup(item.label)">
+              <span>{{ item.label }}</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                   [class.rotated]="isGroupExpanded(item.label)">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            @if (isGroupExpanded(item.label)) {
+              @for (child of item.children; track child.label) {
+                <a class="nav-item nav-child" [class.active]="isActive(child.href!)"
+                   (click)="navigateTo(child.href!)" [attr.data-testid]="'link-' + child.label">
+                  {{ child.label }}
+                </a>
+              }
+            }
+          </div>
+        } @else {
+          <a class="nav-item" [class.active]="isActive(item.href!)"
+             (click)="navigateTo(item.href!)" [attr.data-testid]="'link-' + item.label">
+            {{ item.label }}
+          </a>
+        }
+      }
+    </nav>
+  }
+
+  <main class="layout-main">
+    <router-outlet />
+  </main>
+</div>

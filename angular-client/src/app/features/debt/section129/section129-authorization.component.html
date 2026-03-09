@@ -1,0 +1,97 @@
+<div class="page-container">
+  <div class="page-header">
+    <div class="header-left">
+      <div class="header-icon">🛡</div>
+      <div>
+        <h1 class="page-title" data-testid="text-page-title">Section 129 Authorization</h1>
+        <p class="page-subtitle">Review and authorize trial runs for final notice generation</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-outline btn-sm" (click)="loadRuns()" [disabled]="loading()" data-testid="button-refresh">
+        @if (loading()) { <span class="spinner"></span> }
+        Refresh
+      </button>
+      <button class="btn btn-outline btn-sm" (click)="handleCancel()" data-testid="button-back">← Back</button>
+    </div>
+  </div>
+
+  <div class="card">
+    @if (loading()) {
+      <div class="loading-center">
+        <span class="spinner spinner-lg"></span>
+        <p>Loading pending authorizations...</p>
+      </div>
+    } @else if (rows.length === 0) {
+      <div class="empty-state">
+        <div class="empty-icon">✓</div>
+        <p class="empty-title" data-testid="text-no-pending">No Pending Authorizations</p>
+        <p class="empty-desc">There are no Section 129 trial runs awaiting authorization. All runs have been processed.</p>
+      </div>
+    } @else {
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:9rem">Review</th>
+              <th style="width:12.5rem">Notes</th>
+              <th>Run ID</th>
+              <th>Status</th>
+              <th>Distribution</th>
+              <th>Actioned By</th>
+              <th>Date Created</th>
+              <th>Billing Cycle</th>
+              <th class="text-right">Accounts</th>
+              <th class="text-right">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows; track row.run.runId; let idx = $index) {
+              <tr [class]="getRowClass(row.review)" [attr.data-testid]="'row-authorization-' + row.run.runId">
+                <td>
+                  <select class="field-select-sm" [ngModel]="row.review || '__none__'" (ngModelChange)="updateReview(idx, $event === '__none__' ? '' : $event)" [attr.data-testid]="'select-review-' + row.run.runId">
+                    <option value="__none__">Select...</option>
+                    <option value="Approve">✓ Approve</option>
+                    <option value="Decline">✕ Decline</option>
+                  </select>
+                </td>
+                <td>
+                  <input class="field-input-sm" [ngModel]="row.notes" (ngModelChange)="updateNotes(idx, $event)" placeholder="Authorization notes..." maxlength="250" [attr.data-testid]="'input-notes-' + row.run.runId" />
+                </td>
+                <td>
+                  <span class="font-mono font-medium" [attr.data-testid]="'text-runid-' + row.run.runId">{{ row.run.runId }}</span>
+                </td>
+                <td>
+                  <span class="badge badge-amber" [attr.data-testid]="'badge-status-' + row.run.runId">⚠ {{ row.run.status }}</span>
+                </td>
+                <td class="text-muted">{{ row.run.distributionType || '—' }}</td>
+                <td class="text-muted">{{ row.run.actionedBy || '—' }}</td>
+                <td class="text-muted">{{ formatDate(row.run.dateCreated) }}</td>
+                <td class="text-muted">{{ row.run.billingCycle || '—' }}</td>
+                <td class="text-right font-medium">{{ row.run.totalAccounts?.toLocaleString() || '—' }}</td>
+                <td class="text-right font-medium">{{ formatAmount(row.run.totalAmount) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+
+  @if (rows.length > 0) {
+    <div class="footer-bar">
+      <div class="footer-info">
+        <span class="text-muted" data-testid="text-pending-count">{{ rows.length }} pending authorization(s)</span>
+        @if (decisionsCount > 0) {
+          <span class="badge badge-secondary" data-testid="badge-decisions-count">{{ decisionsCount }} decision(s) made</span>
+        }
+      </div>
+      <div class="footer-buttons">
+        <button class="btn btn-outline btn-sm" (click)="handleCancel()" [disabled]="submitting()" data-testid="button-cancel">Cancel</button>
+        <button class="btn btn-primary btn-sm" (click)="handleSubmit()" [disabled]="submitting() || decisionsCount === 0" data-testid="button-submit">
+          @if (submitting()) { <span class="spinner"></span> Submitting... } @else { Submit Authorization }
+        </button>
+      </div>
+    </div>
+  }
+</div>

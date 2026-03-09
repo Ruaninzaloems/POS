@@ -1,0 +1,190 @@
+<div class="page-container">
+  <div class="page-header">
+    <div class="header-left">
+      <span class="header-icon">&#127919;</span>
+      <div>
+        <h1 class="page-title" data-testid="text-page-title">Intelligent Debt Risk Scoring</h1>
+        <p class="page-subtitle">Score debtor accounts based on payment history, arrear age, debt size, and other risk factors</p>
+      </div>
+    </div>
+    <div class="tab-bar">
+      @for (t of ['score', 'dashboard', 'weights']; track t) {
+        <button class="tab-btn" [class.active]="tab() === t" (click)="onTabChange($any(t))" [attr.data-testid]="'tab-' + t">
+          @if (t === 'score') { &#127919; Score Account }
+          @if (t === 'dashboard') { &#128202; Dashboard }
+          @if (t === 'weights') { &#9881; Weights }
+        </button>
+      }
+    </div>
+  </div>
+
+  @if (tab() === 'score') {
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-body">
+          <h3 class="section-title" data-testid="text-score-title">Score Single Account</h3>
+          <div class="form-group">
+            <label class="form-label">Account Number</label>
+            <input class="form-input" [ngModel]="accountNo()" (ngModelChange)="accountNo.set($event)" placeholder="Enter account number..." data-testid="input-account-no" />
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group"><label class="form-label">Payment History Score (0-100)</label><input class="form-input" type="number" [ngModel]="paymentHistory()" (ngModelChange)="paymentHistory.set($event)" data-testid="input-payment-history" /></div>
+            <div class="form-group"><label class="form-label">Arrear Age (days)</label><input class="form-input" type="number" [ngModel]="arrearDays()" (ngModelChange)="arrearDays.set($event)" data-testid="input-arrear-days" /></div>
+            <div class="form-group"><label class="form-label">Days Since Last Payment</label><input class="form-input" type="number" [ngModel]="lastPaymentDays()" (ngModelChange)="lastPaymentDays.set($event)" data-testid="input-last-payment" /></div>
+            <div class="form-group"><label class="form-label">Total Arrears (R)</label><input class="form-input" type="number" [ngModel]="totalArrears()" (ngModelChange)="totalArrears.set($event)" data-testid="input-total-arrears" /></div>
+            <div class="form-group"><label class="form-label">Water Arrears (R)</label><input class="form-input" type="number" [ngModel]="waterArrears()" (ngModelChange)="waterArrears.set($event)" data-testid="input-water-arrears" /></div>
+            <div class="form-group"><label class="form-label">Electricity Arrears (R)</label><input class="form-input" type="number" [ngModel]="electricityArrears()" (ngModelChange)="electricityArrears.set($event)" data-testid="input-electricity-arrears" /></div>
+            <div class="form-group"><label class="form-label">Indigent Status</label>
+              <select class="form-select" [ngModel]="indigentStatus()" (ngModelChange)="indigentStatus.set($event)" data-testid="select-indigent"><option value="false">No</option><option value="true">Yes</option></select>
+            </div>
+            <div class="form-group"><label class="form-label">Previous Legal Actions</label><input class="form-input" type="number" [ngModel]="previousLegalActions()" (ngModelChange)="previousLegalActions.set($event)" data-testid="input-legal-actions" /></div>
+            <div class="form-group"><label class="form-label">Location Risk (0-100)</label><input class="form-input" type="number" [ngModel]="locationRisk()" (ngModelChange)="locationRisk.set($event)" data-testid="input-location-risk" /></div>
+          </div>
+          <button class="btn btn-primary full-width" (click)="handleScore()" [disabled]="scoring()" data-testid="button-score">
+            @if (scoring()) { <span class="spinner-sm"></span> Scoring... } @else { &#127919; Calculate Risk Score }
+          </button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          @if (scoreResult()) {
+            <h3 class="section-title">Risk Score Result</h3>
+            <div class="gauge-container" data-testid="score-gauge">
+              <svg viewBox="0 0 120 120" class="gauge-svg">
+                <circle cx="60" cy="60" r="52" fill="none" stroke="#E5E5E5" stroke-width="8" />
+                <circle cx="60" cy="60" r="52" fill="none" stroke-width="8"
+                  [attr.stroke-dasharray]="getGaugeStroke(getScoreValue())"
+                  stroke-linecap="round"
+                  [class]="'gauge-arc ' + getRiskColorClass(getScoreCategory(), 'text')" />
+              </svg>
+              <div class="gauge-text">
+                <span class="gauge-score">{{ getScoreValue() }}</span>
+                <span class="gauge-label">/ 100</span>
+              </div>
+            </div>
+            <div class="score-account">Account: <strong>{{ scoreResult().accountNo || scoreResult().account_no }}</strong></div>
+            <div class="section-label">Factor Breakdown</div>
+            @for (f of factors(); track $index) {
+              <div class="factor-row" [attr.data-testid]="'factor-' + f.key">
+                <div class="factor-header">
+                  <span>{{ f.label }}</span>
+                  <span>{{ (f.weightedScore || f.weighted_score || 0).toFixed(1) }} pts (weight: {{ (f.weight || 0).toFixed(0) }}%)</span>
+                </div>
+                <div class="progress-bar">
+                  <div class="progress-fill" [class]="getFactorBarClass(f.normalizedScore || f.normalized_score || 0)" [style.width.%]="getFactorPct(f)"></div>
+                </div>
+              </div>
+            }
+          } @else {
+            <div class="empty-state-centered">
+              <span class="empty-icon">&#127919;</span>
+              <p>Enter account details and click Score to see risk analysis</p>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <h3 class="section-title">&#9889; Bulk Score Accounts</h3>
+        <p class="help-text">Enter one account number per line. Default risk factors will be applied.</p>
+        <textarea class="form-input textarea-bulk" [ngModel]="bulkInput()" (ngModelChange)="bulkInput.set($event)" placeholder="ACC001&#10;ACC002&#10;ACC003" data-testid="textarea-bulk"></textarea>
+        <button class="btn btn-primary" (click)="handleBulkScore()" [disabled]="scoring()" data-testid="button-bulk-score">
+          @if (scoring()) { <span class="spinner-sm"></span> Scoring... } @else { &#9889; Score All }
+        </button>
+      </div>
+    </div>
+
+    <div class="risk-legend">
+      <div class="legend-card legend-low"><div class="legend-range">0-30</div><div class="legend-label">LOW RISK</div><div class="legend-desc">Monitor only</div></div>
+      <div class="legend-card legend-medium"><div class="legend-range">30-60</div><div class="legend-label">MEDIUM RISK</div><div class="legend-desc">Consider handover</div></div>
+      <div class="legend-card legend-high"><div class="legend-range">60-100</div><div class="legend-label">HIGH RISK</div><div class="legend-desc">Priority escalation</div></div>
+    </div>
+  }
+
+  @if (tab() === 'dashboard') {
+    <div class="stat-grid-3">
+      <div class="stat-card stat-low"><span class="stat-value" data-testid="text-low-count">{{ lowCount() }}</span><span class="stat-label">Low Risk</span></div>
+      <div class="stat-card stat-medium"><span class="stat-value" data-testid="text-med-count">{{ medCount() }}</span><span class="stat-label">Medium Risk</span></div>
+      <div class="stat-card stat-high"><span class="stat-value" data-testid="text-high-count">{{ highCount() }}</span><span class="stat-label">High Risk</span></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3 class="section-title">Scored Accounts</h3>
+        <select class="form-select filter-select" [ngModel]="dashFilter()" (ngModelChange)="onDashFilterChange($event)" data-testid="select-risk-filter">
+          <option value="__all__">All Categories</option>
+          <option value="LOW">Low Risk</option>
+          <option value="MEDIUM">Medium Risk</option>
+          <option value="HIGH">High Risk</option>
+        </select>
+      </div>
+      <div class="card-body no-pad">
+        @if (dashLoading()) {
+          <div class="loading-state"><div class="spinner"></div></div>
+        } @else if (dashScores().length === 0) {
+          <div class="empty-state">No scored accounts found. Use the Score Account tab to score accounts.</div>
+        } @else {
+          <div class="table-container">
+            <table class="data-table">
+              <thead><tr><th>Account</th><th>Score</th><th>Category</th><th>Scored At</th></tr></thead>
+              <tbody>
+                @for (s of dashScores(); track $index) {
+                  <tr [attr.data-testid]="'row-score-' + $index">
+                    <td class="font-mono">{{ s.accountNo || s.account_no }}</td>
+                    <td class="font-medium">{{ s.overallScore || s.overall_score || 0 }}</td>
+                    <td><span class="badge" [ngClass]="getRiskColorClass(s.riskCategory || s.risk_category || 'MEDIUM', 'bg')">{{ s.riskCategory || s.risk_category }}</span></td>
+                    <td>{{ s.scoredAt || s.scored_at || '—' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          @if (dashTotalPages() > 1) {
+            <div class="pagination-bar">
+              <span class="page-info">{{ dashTotal() }} total</span>
+              <div class="pagination">
+                <button class="btn btn-sm btn-ghost" (click)="dashPrevPage()" [disabled]="dashPage() <= 1">&#8249;</button>
+                <span class="page-info">{{ dashPage() }} / {{ dashTotalPages() }}</span>
+                <button class="btn btn-sm btn-ghost" (click)="dashNextPage()" [disabled]="dashPage() >= dashTotalPages()">&#8250;</button>
+              </div>
+            </div>
+          }
+        }
+      </div>
+    </div>
+  }
+
+  @if (tab() === 'weights') {
+    <div class="card">
+      <div class="card-header">
+        <h3 class="section-title">&#9881; Scoring Weights Configuration</h3>
+        <button class="btn btn-primary btn-sm" (click)="handleSaveWeights()" [disabled]="weightsSaving()" data-testid="button-save-weights">
+          @if (weightsSaving()) { <span class="spinner-sm"></span> } Save Weights
+        </button>
+      </div>
+      <div class="card-body">
+        @if (weightsLoading()) {
+          <div class="loading-state"><div class="spinner"></div></div>
+        } @else if (weightEntries().length === 0) {
+          <div class="empty-state">No scoring weights configured.</div>
+        } @else {
+          @for (entry of weightEntries(); track entry[0]) {
+            <div class="weight-row" [attr.data-testid]="'weight-' + entry[0]">
+              <div class="weight-info">
+                <span class="weight-label">{{ entry[1].label }}</span>
+                <span class="weight-desc">{{ entry[1].description }}</span>
+              </div>
+              <div class="weight-control">
+                <input type="range" min="0" max="100" [ngModel]="editWeights()[entry[0]]" (ngModelChange)="updateEditWeight(entry[0], $event)" class="weight-slider" />
+                <span class="weight-value">{{ editWeights()[entry[0]] || 0 }}%</span>
+              </div>
+            </div>
+          }
+        }
+      </div>
+    </div>
+  }
+</div>

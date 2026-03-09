@@ -1,0 +1,281 @@
+<div class="pos-container">
+  <div class="pos-search-bar">
+    <div class="search-wrapper">
+      <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+      </svg>
+      <input
+        class="search-input"
+        type="text"
+        placeholder="Search account number, name, meter number..."
+        [ngModel]="searchQuery()"
+        (ngModelChange)="searchQuery.set($event)"
+        (keydown)="onSearchKeydown($event)"
+        data-testid="input-search"
+      />
+      @if (searchQuery()) {
+        <button class="search-clear" (click)="clearSearch()" data-testid="button-clear-search">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+          </svg>
+        </button>
+      }
+      <button class="search-btn" (click)="search()" [disabled]="searchLoading()" data-testid="button-search">
+        @if (searchLoading()) {
+          <div class="spinner spinner-sm"></div>
+        } @else {
+          Search
+        }
+      </button>
+    </div>
+  </div>
+
+  @if (searchActive() && searchResults().length > 0) {
+    <div class="search-results-overlay" (click)="clearSearch()"></div>
+    <div class="search-results" data-testid="search-results">
+      @for (result of searchResults(); track result.accountNo) {
+        <div class="search-result-item" (click)="selectAccount(result)" [attr.data-testid]="'result-' + result.accountNo">
+          <div class="result-main">
+            <span class="result-name">{{ result.name }}</span>
+            <span class="result-account">{{ result.accountNo }}</span>
+          </div>
+          <div class="result-details">
+            @if (result.address) {
+              <span class="result-address">{{ result.address }}</span>
+            }
+            <span class="result-balance" [class.negative]="result.outstandingAmount > 0">
+              R {{ result.outstandingAmount.toFixed(2) }}
+            </span>
+          </div>
+          <div class="result-meta">
+            <span class="badge" [class.badge-success]="result.status === 'Active'" [class.badge-warning]="result.status !== 'Active'">
+              {{ result.status }}
+            </span>
+            @if (result.accountType) {
+              <span class="badge badge-info">{{ result.accountType }}</span>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  } @else if (searchActive() && !searchLoading() && searchResults().length === 0) {
+    <div class="search-results" data-testid="search-no-results">
+      <div class="empty-state" style="padding: 1.5rem">No accounts found matching your search.</div>
+    </div>
+  }
+
+  <div class="pos-content">
+    <div class="transaction-area">
+      @if (!hasItems()) {
+        <div class="empty-transaction" data-testid="empty-transaction">
+          <div class="empty-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--pos-text-light)">
+              <rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/>
+            </svg>
+          </div>
+          <h3 class="empty-title">No Items in Transaction</h3>
+          <p class="empty-text">Search for an account above to start processing a payment</p>
+        </div>
+      } @else {
+        <div class="transaction-header">
+          <h3 class="transaction-title" data-testid="text-transaction-title">
+            Transaction Items ({{ transactionItems().length }})
+          </h3>
+          <button class="btn-outline btn-sm" (click)="clearTransaction()" data-testid="button-clear-transaction">
+            Clear All
+          </button>
+        </div>
+
+        <div class="transaction-items">
+          @for (item of transactionItems(); track item.id) {
+            <div class="transaction-item card" [attr.data-testid]="'item-' + item.id">
+              <div class="item-header">
+                <div class="item-info">
+                  <span class="item-type badge" [class.badge-info]="item.type === 'CONSUMER_SERVICES'" [class.badge-warning]="item.type === 'PREPAID'" [class.badge-default]="item.type === 'DIRECT_INCOME'">
+                    {{ item.type === 'CONSUMER_SERVICES' ? 'Consumer' : item.type === 'PREPAID' ? 'Prepaid' : 'Direct' }}
+                  </span>
+                  <span class="item-description">{{ item.description }}</span>
+                </div>
+                <button class="item-remove" (click)="removeItem(item.id)" [attr.data-testid]="'button-remove-' + item.id">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+                  </svg>
+                </button>
+              </div>
+              <div class="item-amounts">
+                <div class="amount-due">
+                  <span class="amount-label">Amount Due</span>
+                  <span class="amount-value" [attr.data-testid]="'text-due-' + item.id">{{ formatCurrency(item.amountDue) }}</span>
+                </div>
+                <div class="amount-pay">
+                  <label class="amount-label">Amount to Pay</label>
+                  <div class="amount-input-group">
+                    <span class="currency-prefix">R</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      class="form-input amount-input"
+                      [value]="item.amountToPay"
+                      (input)="updateItemAmount(item.id, $any($event.target).valueAsNumber || 0)"
+                      [attr.data-testid]="'input-amount-' + item.id"
+                    />
+                    <button class="btn-pay-full" (click)="payFullAmount(item.id)" title="Pay full amount" [attr.data-testid]="'button-full-' + item.id">
+                      Full
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="transaction-summary card">
+          <div class="summary-row">
+            <span>Total Due</span>
+            <span class="summary-amount" data-testid="text-total-due">{{ formatCurrency(totalDue()) }}</span>
+          </div>
+          <div class="summary-row summary-total">
+            <span>Total to Pay</span>
+            <span class="summary-amount" data-testid="text-total-pay">{{ formatCurrency(totalToPay()) }}</span>
+          </div>
+          <button class="btn-primary btn-pay" (click)="openPaymentDrawer()" [disabled]="totalToPay() <= 0" data-testid="button-open-payment">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
+            </svg>
+            Process Payment
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+
+  @if (showPaymentDrawer()) {
+    <div class="dialog-overlay" (click)="closePaymentDrawer()">
+      <div class="dialog-content dialog-md" (click)="$event.stopPropagation()" data-testid="payment-drawer">
+        <div class="drawer-header">
+          <h2 class="drawer-title">Payment</h2>
+          <button class="item-remove" (click)="closePaymentDrawer()" data-testid="button-close-payment">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div class="drawer-body">
+          <div class="payment-total">
+            <span>Amount Due</span>
+            <span class="payment-total-amount" data-testid="text-payment-total">{{ formatCurrency(totalToPay()) }}</span>
+          </div>
+
+          <div class="payment-field">
+            <label class="form-label">Cash Amount (R)</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              class="form-input"
+              [ngModel]="cashAmount()"
+              (ngModelChange)="cashAmount.set($event)"
+              data-testid="input-cash"
+            />
+          </div>
+
+          <div class="payment-field">
+            <label class="form-label">Card Amount (R)</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              class="form-input"
+              [ngModel]="cardAmount()"
+              (ngModelChange)="cardAmount.set($event)"
+              data-testid="input-card"
+            />
+          </div>
+
+          @if (cardAmount() > 0) {
+            <div class="payment-field">
+              <label class="form-label">Card Reference</label>
+              <input
+                type="text"
+                class="form-input"
+                [ngModel]="cardReference()"
+                (ngModelChange)="cardReference.set($event)"
+                placeholder="Card reference number"
+                data-testid="input-card-ref"
+              />
+            </div>
+          }
+
+          <div class="payment-summary">
+            <div class="payment-summary-row">
+              <span>Total Payment</span>
+              <span data-testid="text-total-payment">{{ formatCurrency(totalPayment()) }}</span>
+            </div>
+            @if (changeAmount() > 0) {
+              <div class="payment-summary-row change-row">
+                <span>Change</span>
+                <span data-testid="text-change">{{ formatCurrency(changeAmount()) }}</span>
+              </div>
+            }
+          </div>
+
+          <button
+            class="btn-primary btn-process"
+            (click)="processPayment()"
+            [disabled]="processingPayment() || totalPayment() < totalToPay()"
+            data-testid="button-process-payment"
+          >
+            @if (processingPayment()) {
+              <div class="spinner spinner-sm"></div>
+              Processing...
+            } @else {
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 6 9 17l-5-5"/>
+              </svg>
+              Complete Payment
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (showReceipt() && receiptData()) {
+    <div class="dialog-overlay" (click)="closeReceipt()">
+      <div class="dialog-content dialog-md" (click)="$event.stopPropagation()" data-testid="receipt-modal">
+        <div class="drawer-header">
+          <h2 class="drawer-title">Receipt</h2>
+          <button class="item-remove" (click)="closeReceipt()" data-testid="button-close-receipt">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div class="drawer-body receipt-content">
+          <div class="receipt-success">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--pos-success)" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/>
+            </svg>
+            <h3>Payment Successful</h3>
+            <p>Receipt #{{ receiptData()?.receiptNumber || receiptData()?.receipt_no || 'N/A' }}</p>
+          </div>
+          <button class="btn-outline" style="width:100%;margin-top:1rem" (click)="closeReceipt()" data-testid="button-done">
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (error()) {
+    <div class="pos-error" data-testid="text-error">
+      {{ error() }}
+      <button class="error-dismiss" (click)="error.set('')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+        </svg>
+      </button>
+    </div>
+  }
+</div>

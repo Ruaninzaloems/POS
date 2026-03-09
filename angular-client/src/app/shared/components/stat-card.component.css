@@ -1,0 +1,40 @@
+:host { display: block; }
+
+.stat-card {
+  padding: 1.25rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.stat-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.stat-label {
+  font-size: 0.8125rem;
+  color: var(--pos-text-muted);
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--pos-text);
+}
+
+.stat-trend {
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.trend-up { color: var(--pos-success); }
+.trend-down { color: var(--pos-danger); }
+.trend-neutral { color: var(--pos-text-muted); }
+
+.stat-icon {
+  font-size: 1.75rem;
+  opacity: 0.8;
+}

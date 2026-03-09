@@ -1,0 +1,157 @@
+<div class="page-wrapper">
+  <div class="page-bar">
+    <div class="breadcrumb">
+      <button class="breadcrumb-link" (click)="goHome()" data-testid="link-home">Home</button>
+      <span class="breadcrumb-sep">›</span>
+      <span class="breadcrumb-current">Geographic Debt Mapping</span>
+    </div>
+    <div class="bar-title-row">
+      <div class="header-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+      </div>
+      <h1 class="page-title" data-testid="text-page-title">Geographic Debt Mapping</h1>
+      <div class="spacer"></div>
+      <div class="tab-buttons">
+        @for (t of tabKeys; track t) {
+          <button
+            [class]="tab() === t ? 'tab-btn active' : 'tab-btn'"
+            (click)="setTab(t)"
+            [attr.data-testid]="'tab-' + t"
+          >{{ tabConfig[t].label }}</button>
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="content-area">
+    @if (loading()) {
+      <div class="loading-state">
+        <div class="spinner-lg"></div>
+      </div>
+    } @else if (!data()) {
+      <div class="empty-state" data-testid="text-no-data">No geographic data available.</div>
+    } @else {
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></div>
+          <div>
+            <div class="stat-value" data-testid="text-total-areas">{{ currentItems.length }}</div>
+            <div class="stat-label">{{ tabConfig[tab()].shortLabel }} Areas</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+          <div>
+            <div class="stat-value" data-testid="text-total-debt">{{ fmtCurrency(totalDebtAll) }}</div>
+            <div class="stat-label">Total Debt</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+          <div>
+            <div class="stat-value" data-testid="text-total-accounts">{{ totalAccountsAll }}</div>
+            <div class="stat-label">Total Accounts</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+          <div>
+            <div class="stat-value text-danger" data-testid="text-high-risk-areas">{{ highRiskCount }}</div>
+            <div class="stat-label">High Risk Areas</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <div class="table-header">
+            <h3 class="card-title" data-testid="text-table-title">{{ tabConfig[tab()].label }} Breakdown</h3>
+            <span class="text-muted text-xs">{{ currentItems.length }} entries</span>
+          </div>
+
+          @if (currentItems.length === 0) {
+            <div class="empty-state" data-testid="text-empty-table">No data available for this view. Score accounts with geographic metadata to populate this breakdown.</div>
+          } @else {
+            <div class="table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>
+                      <button class="sort-btn" (click)="handleSort('name')" data-testid="sort-name">Name {{ getSortIcon('name') }}</button>
+                    </th>
+                    <th>
+                      <button class="sort-btn" (click)="handleSort('totalDebt')" data-testid="sort-totalDebt">Total Debt {{ getSortIcon('totalDebt') }}</button>
+                    </th>
+                    <th>
+                      <button class="sort-btn" (click)="handleSort('accountCount')" data-testid="sort-accountCount">Accounts {{ getSortIcon('accountCount') }}</button>
+                    </th>
+                    <th>
+                      <button class="sort-btn" (click)="handleSort('avgDebt')" data-testid="sort-avgDebt">Avg Debt {{ getSortIcon('avgDebt') }}</button>
+                    </th>
+                    <th>
+                      <button class="sort-btn" (click)="handleSort('avgRiskScore')" data-testid="sort-avgRiskScore">Risk Score {{ getSortIcon('avgRiskScore') }}</button>
+                    </th>
+                    <th>Risk Level</th>
+                    <th>Risk Breakdown</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of currentItems; track item.name; let idx = $index) {
+                    <tr [attr.data-testid]="'row-geo-' + idx">
+                      <td class="font-medium">{{ item.name }}</td>
+                      <td class="font-mono">{{ fmtCurrency(item.totalDebt) }}</td>
+                      <td>{{ item.accountCount }}</td>
+                      <td class="font-mono">{{ fmtCurrency(item.avgDebt) }}</td>
+                      <td>
+                        <div class="heat-bar-row">
+                          <div class="heat-bar-track">
+                            <div class="heat-bar-fill" [style.width]="getHeatBarWidth(item.avgRiskScore)" [style.background]="getHeatBarColorForScore(item.avgRiskScore)"></div>
+                          </div>
+                          <span class="text-muted text-xs">{{ item.avgRiskScore | number:'1.1-1' }}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <span [class]="'badge ' + getRiskBadgeClass(item.dominantRisk)" [attr.data-testid]="'badge-risk-' + item.dominantRisk">{{ item.dominantRisk }}</span>
+                      </td>
+                      <td>
+                        <div class="risk-counts">
+                          @for (risk of getRiskCountKeys(item); track risk) {
+                            <span class="risk-count-tag" [class.risk-low]="risk === 'LOW'" [class.risk-medium]="risk === 'MEDIUM'" [class.risk-high]="risk === 'HIGH'" [attr.data-testid]="'risk-count-' + risk + '-' + idx">
+                              {{ risk }}: {{ item.riskCounts[risk] }}
+                            </span>
+                          }
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </div>
+      </div>
+
+      @if (currentItems.length > 0) {
+        <div class="card">
+          <div class="card-body">
+            <h3 class="card-title" data-testid="text-heat-title">Debt Concentration</h3>
+            <div class="heat-list">
+              @for (item of heatItems; track item.name; let idx = $index) {
+                @let pct = getHeatPct(item);
+                <div [attr.data-testid]="'heat-row-' + idx">
+                  <div class="heat-header">
+                    <span>{{ item.name }}</span>
+                    <span class="text-muted">{{ fmtCurrency(item.totalDebt) }} ({{ pct | number:'1.1-1' }}%)</span>
+                  </div>
+                  <div class="heat-track">
+                    <div class="heat-fill" [style.width]="(pct > 100 ? 100 : pct) + '%'" [style.background]="getHeatBarColor(item)"></div>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+    }
+  </div>
+</div>

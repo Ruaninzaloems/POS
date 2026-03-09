@@ -1,0 +1,116 @@
+<div class="page-container">
+  <div class="breadcrumb" data-testid="text-breadcrumb">
+    <span>Billing</span> <span class="sep">&#8250;</span>
+    <span>Reports</span> <span class="sep">&#8250;</span>
+    <span>Debt Recovery</span> <span class="sep">&#8250;</span>
+    <span class="current">Handover Report</span>
+  </div>
+
+  <div class="page-header">
+    <div class="header-left">
+      <span class="header-icon">&#128202;</span>
+      <div>
+        <h1 class="page-title" data-testid="text-page-title">Handover Report</h1>
+        <p class="page-subtitle">Generate and view handover reports for debt recovery</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <div class="filter-grid">
+        <div class="form-group">
+          <label class="form-label">Financial Year</label>
+          <select class="form-select" [ngModel]="finYear()" (ngModelChange)="finYear.set($event)" data-testid="select-fin-year">
+            @for (fy of finYears; track fy) { <option [value]="fy">{{ fy }}</option> }
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Billing Month</label>
+          <select class="form-select" [ngModel]="finMonth()" (ngModelChange)="finMonth.set($event)" data-testid="select-fin-month">
+            <option value="__all__">All</option>
+            @for (m of billingMonths; track m.value) { <option [value]="m.value">{{ m.label }}</option> }
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Billing Cycle</label>
+          <select class="form-select" [ngModel]="billingCycle()" (ngModelChange)="billingCycle.set($event)" data-testid="select-billing-cycle">
+            <option value="__all__">All</option>
+            @for (bc of billingCycles(); track bc.id) { <option [value]="bc.id">{{ bc.name }}</option> }
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Attorney</label>
+          <select class="form-select" [ngModel]="selectedAttorneyId()" (ngModelChange)="selectedAttorneyId.set($event)" data-testid="select-attorney">
+            <option value="__all__">All</option>
+            @for (a of attorneys(); track a.attorneyId) {
+              @if (a.isActive) { <option [value]="a.attorneyId">{{ a.attorneyName }} — {{ a.firmName }}</option> }
+            }
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Account Number</label>
+          <input class="form-input" [ngModel]="accountNo()" (ngModelChange)="accountNo.set($event)" placeholder="Enter account number" data-testid="input-account-no" />
+        </div>
+      </div>
+      <div class="action-bar">
+        <button class="btn btn-primary" (click)="handleSubmit()" [disabled]="loading() || loadingRef()" data-testid="button-submit">
+          @if (loading()) { <span class="spinner-sm"></span> } Submit
+        </button>
+        <button class="btn btn-outline" (click)="handleClear()" data-testid="button-clear">Clear</button>
+        <button class="btn btn-outline" (click)="goBack()" data-testid="button-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="loading-state"><div class="spinner"></div><p>Loading report data...</p></div>
+  }
+
+  @if (!loading() && hasSearched()) {
+    <div class="card">
+      <div class="card-header">
+        <h2 class="section-title" data-testid="text-results-title">Results ({{ results().length }} record{{ results().length !== 1 ? 's' : '' }})</h2>
+        @if (totalPages() > 1) {
+          <div class="pagination">
+            <button class="btn btn-sm btn-ghost" (click)="prevPage()" [disabled]="currentPage() <= 1" data-testid="button-prev-page">&#8249;</button>
+            <span class="page-info" data-testid="text-page-info">{{ currentPage() }} / {{ totalPages() }}</span>
+            <button class="btn btn-sm btn-ghost" (click)="nextPage()" [disabled]="currentPage() >= totalPages()" data-testid="button-next-page">&#8250;</button>
+          </div>
+        }
+      </div>
+      <div class="card-body no-pad">
+        @if (results().length === 0) {
+          <div class="empty-state" data-testid="text-no-results">No handover records found for the selected criteria.</div>
+        } @else {
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  @for (col of resultColumns(); track col) {
+                    <th>{{ formatColumnHeader(col) }}</th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of paginatedResults(); track $index) {
+                  <tr [attr.data-testid]="'row-result-' + $index">
+                    @for (col of resultColumns(); track col) {
+                      <td>
+                        @if (isStatusColumn(col)) {
+                          <span class="badge" [ngClass]="getStatusClass(row[col] || '')">{{ row[col] || '—' }}</span>
+                        } @else {
+                          {{ formatCellValue(row, col) }}
+                        }
+                      </td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

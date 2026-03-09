@@ -1,0 +1,169 @@
+<div class="page-container">
+  <div class="page-header">
+    <div class="header-row">
+      <div>
+        <h1 class="page-title" data-testid="text-page-title">Client Communications</h1>
+        <p class="page-subtitle">Send custom emails and SMS to account holders</p>
+      </div>
+      <div class="mode-toggle">
+        <button class="mode-btn" [class.active]="mode() === 'email'" (click)="mode.set('email')" data-testid="button-mode-email">
+          ✉ Email
+        </button>
+        <button class="mode-btn mode-sms" [class.active]="mode() === 'sms'" (click)="mode.set('sms')" data-testid="button-mode-sms">
+          💬 SMS
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="comm-layout">
+    <div class="recipients-panel card">
+      <div class="panel-header">
+        <h2>
+          Recipients
+          @if (recipients().length > 0) {
+            <span class="count-badge">{{ recipients().length }}</span>
+          }
+        </h2>
+        <div class="panel-actions">
+          <button class="btn-outline btn-sm" (click)="downloadTemplate()" data-testid="button-download-template">Template</button>
+          <label class="btn-outline btn-sm btn-file">
+            Import CSV
+            <input type="file" accept=".csv,.txt" (change)="handleCsvImport($event)" style="display:none" data-testid="input-csv-import" />
+          </label>
+        </div>
+      </div>
+
+      <div class="search-container">
+        <input class="form-input" placeholder="Search by account number or name..." [ngModel]="searchQuery()" (ngModelChange)="onSearchInput($event)" data-testid="input-search-account" />
+        @if (searching()) { <span class="search-spinner"><span class="spinner spinner-sm"></span></span> }
+        @if (searchDropdownOpen() && searchResults().length > 0) {
+          <div class="search-dropdown">
+            @for (item of searchResults(); track $index) {
+              <button class="dropdown-item" (click)="addRecipient(item)" [attr.data-testid]="'btn-add-recipient-' + $index">
+                <span class="dropdown-name">{{ item.initials }} {{ item.lastName || item.name || 'Unknown' }}</span>
+                <span class="dropdown-account">{{ item.accountNumber || item.accountNo || item.account_ID }}</span>
+              </button>
+            }
+          </div>
+        }
+      </div>
+
+      @if (importing()) {
+        <div class="import-progress">
+          <span>Importing: {{ importProgress().current }}/{{ importProgress().total }} ({{ importProgress().added }} added)</span>
+          <div class="progress-bar">
+            <div class="progress-fill" [style.width.%]="importProgress().total > 0 ? (importProgress().current / importProgress().total) * 100 : 0"></div>
+          </div>
+        </div>
+      }
+
+      @if (recipients().length > 0) {
+        <div class="recipient-controls">
+          <button class="btn-link" (click)="selectAll()" data-testid="button-select-all">Select All</button>
+          <button class="btn-link" (click)="deselectAll()">Deselect All</button>
+          <button class="btn-link btn-link-danger" (click)="clearAll()">Clear All</button>
+        </div>
+      }
+
+      <div class="recipient-list">
+        @for (r of recipients(); track r.id) {
+          <div class="recipient-card" [class.deselected]="!r.selected" [attr.data-testid]="'card-recipient-' + r.accountId">
+            <div class="recipient-top">
+              <label class="checkbox-label">
+                <input type="checkbox" [checked]="r.selected" (change)="toggleRecipient(r.id)" />
+                <span class="recipient-name">{{ r.name }}</span>
+              </label>
+              <button class="btn-remove" (click)="removeRecipient(r.id)">✕</button>
+            </div>
+            <div class="recipient-meta">
+              <span class="font-mono">{{ r.accountNo }}</span>
+              @if (r.outstanding > 0) {
+                <span class="outstanding">R {{ r.outstanding.toFixed(2) }}</span>
+              }
+            </div>
+            @if (r.contactLoading) {
+              <div class="contact-loading"><span class="spinner spinner-sm"></span> Loading contact info...</div>
+            } @else {
+              <div class="contact-fields">
+                @if (mode() === 'email') {
+                  <div class="contact-field">
+                    <label class="field-label">Email</label>
+                    <input class="form-input form-input-sm" [value]="r.email" (input)="updateRecipientField(r.id, 'email', $any($event.target).value)" placeholder="email@example.com" />
+                  </div>
+                } @else {
+                  <div class="contact-field">
+                    <label class="field-label">Mobile</label>
+                    <input class="form-input form-input-sm" [value]="r.mobile" (input)="updateRecipientField(r.id, 'mobile', $any($event.target).value)" placeholder="0821234567" />
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+        @if (recipients().length === 0) {
+          <div class="empty-recipients">
+            <p>No recipients added yet.</p>
+            <p class="text-muted">Search by account number or name, or import a CSV file.</p>
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="compose-panel card">
+      <div class="panel-header">
+        <h2>Compose {{ mode() === 'email' ? 'Email' : 'SMS' }}</h2>
+      </div>
+
+      <div class="compose-form">
+        @if (mode() === 'email') {
+          <div class="form-group">
+            <label class="form-label">Subject <span class="required">*</span></label>
+            <input class="form-input" [ngModel]="subject()" (ngModelChange)="subject.set($event)" placeholder="Enter email subject..." data-testid="input-subject" />
+          </div>
+        }
+
+        <div class="form-group">
+          <label class="form-label">Message <span class="required">*</span></label>
+          <textarea class="form-input message-textarea" [ngModel]="messageBody()" (ngModelChange)="messageBody.set($event)" placeholder="Type your message here..." rows="8" data-testid="input-message"></textarea>
+          @if (mode() === 'sms') {
+            <span class="char-count">{{ messageBody().length }}/160 characters</span>
+          }
+        </div>
+
+        @if (mode() === 'email') {
+          <div class="form-group">
+            <label class="form-label">Attachments</label>
+            <label class="btn-outline btn-file">
+              📎 Add Files
+              <input type="file" multiple (change)="onFileUpload($event)" style="display:none" data-testid="input-file-upload" />
+            </label>
+            @if (attachments().length > 0) {
+              <div class="attachment-list">
+                @for (att of attachments(); track att.id) {
+                  <div class="attachment-item">
+                    <span>📄 {{ att.name }} ({{ formatFileSize(att.size) }})</span>
+                    <button class="btn-remove" (click)="removeAttachment(att.id)">✕</button>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+
+        <div class="compose-footer">
+          <div class="send-summary">
+            @if (mode() === 'email') {
+              <span>{{ validEmailRecipients().length }} recipient{{ validEmailRecipients().length !== 1 ? 's' : '' }} with email ({{ totalEmailAddresses() }} address{{ totalEmailAddresses() !== 1 ? 'es' : '' }})</span>
+            } @else {
+              <span>{{ validSmsRecipients().length }} recipient{{ validSmsRecipients().length !== 1 ? 's' : '' }} with mobile number</span>
+            }
+          </div>
+          <button class="btn-primary btn-send" (click)="handleSend()" data-testid="button-send">
+            {{ mode() === 'email' ? '📧 Send Email' : '📱 Send SMS' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

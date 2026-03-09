@@ -1,0 +1,201 @@
+<div class="page-container">
+  <div class="breadcrumb" data-testid="text-breadcrumb">
+    <span>Compliance</span>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-current">Audit Trail</span>
+  </div>
+
+  <div class="page-header">
+    <div class="header-left">
+      <div class="header-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+      </div>
+      <div>
+        <h1 class="page-title" data-testid="text-page-title">Compliance Audit Trail</h1>
+        <p class="page-subtitle">Court-ready audit log of all compliance actions with full traceability</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <div class="filter-grid">
+        <div class="form-group">
+          <label class="form-label">Action Type</label>
+          <select [ngModel]="actionType()" (ngModelChange)="actionType.set($event)" class="form-select" data-testid="select-action-type">
+            @for (t of actionTypes; track t.value) {
+              <option [value]="t.value">{{ t.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Account Number</label>
+          <input type="text" [ngModel]="accountNo()" (ngModelChange)="accountNo.set($event)" placeholder="Enter account number" class="form-input" data-testid="input-account-no" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">User</label>
+          <input type="text" [ngModel]="userFilter()" (ngModelChange)="userFilter.set($event)" placeholder="Enter user name" class="form-input" data-testid="input-user" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date From</label>
+          <input type="date" [ngModel]="dateFrom()" (ngModelChange)="dateFrom.set($event)" class="form-input" data-testid="input-date-from" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date To</label>
+          <input type="date" [ngModel]="dateTo()" (ngModelChange)="dateTo.set($event)" class="form-input" data-testid="input-date-to" />
+        </div>
+      </div>
+      <div class="button-row">
+        <button class="btn-primary" (click)="handleSubmit()" [disabled]="loading()" data-testid="button-search">
+          @if (loading()) { <div class="spinner-small"></div> }
+          Search
+        </button>
+        <button class="btn-outline" (click)="handleClear()" data-testid="button-clear">Clear</button>
+        <button class="btn-outline" (click)="handleCancel()" data-testid="button-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  @if (searched()) {
+    <div class="card" style="margin-top: 1rem;">
+      <div class="card-body">
+        <div class="results-header">
+          <h2 class="results-title" data-testid="text-results-title">
+            Audit Trail ({{ results().length }} record{{ results().length !== 1 ? 's' : '' }})
+          </h2>
+        </div>
+
+        @if (loading()) {
+          <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading compliance logs...</p>
+          </div>
+        } @else if (results().length === 0) {
+          <p class="empty-state" data-testid="text-no-results">No compliance logs found matching the selected criteria.</p>
+        } @else {
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th class="w-8"></th>
+                  <th>Status</th>
+                  <th>Timestamp</th>
+                  <th>Action Type</th>
+                  <th>Entity</th>
+                  <th>User</th>
+                  <th>IP Address</th>
+                  <th>API Call ID</th>
+                  <th>Legislation</th>
+                  <th>Process Stage</th>
+                  <th>Proof of Delivery</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of paginatedResults(); track $index; let idx = $index) {
+                  @let globalIdx = getGlobalIndex(idx);
+                  <tr
+                    class="clickable-row"
+                    (click)="toggleRow(globalIdx)"
+                    [attr.data-testid]="'row-audit-' + globalIdx"
+                  >
+                    <td class="w-8">
+                      @if (isExpanded(globalIdx)) {
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+                      } @else {
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                      }
+                    </td>
+                    <td>
+                      @if (isCourtReady(row)) {
+                        <span class="badge badge-success" [attr.data-testid]="'badge-court-ready-' + globalIdx">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                          Court Ready
+                        </span>
+                      } @else {
+                        <span class="badge badge-warning" [attr.data-testid]="'badge-incomplete-' + globalIdx">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                          Incomplete
+                        </span>
+                      }
+                    </td>
+                    <td class="nowrap">{{ formatTs(row.timestamp) }}</td>
+                    <td><span class="code-badge">{{ row.actionType || '—' }}</span></td>
+                    <td class="nowrap">
+                      <span class="text-muted text-xs">{{ row.entityType || '' }}</span>
+                      {{ row.entityType && row.entityId ? ' / ' : '' }}
+                      <span class="font-medium">{{ row.entityId || '—' }}</span>
+                    </td>
+                    <td class="nowrap">{{ row.userName || row.userId || '—' }}</td>
+                    <td class="font-mono nowrap">{{ row.ipAddress || '—' }}</td>
+                    <td class="font-mono nowrap truncate-cell" [title]="row.apiCallId || ''">{{ truncateId(row.apiCallId) }}</td>
+                    <td class="nowrap truncate-cell" [title]="row.legislationRef || ''">{{ row.legislationRef || '—' }}</td>
+                    <td class="nowrap">{{ row.processStage || '—' }}</td>
+                    <td class="nowrap">{{ row.proofOfDelivery || '—' }}</td>
+                  </tr>
+                  @if (isExpanded(globalIdx)) {
+                    <tr class="detail-row" [attr.data-testid]="'row-audit-detail-' + globalIdx">
+                      <td colspan="11" class="detail-cell">
+                        <div class="detail-grid">
+                          <div class="detail-section">
+                            <h4 class="detail-heading">Full Details</h4>
+                            <div class="detail-fields">
+                              <div class="detail-field"><span class="field-label">ID:</span><span>{{ row.id }}</span></div>
+                              <div class="detail-field"><span class="field-label">Action Type:</span><span>{{ row.actionType }}</span></div>
+                              <div class="detail-field"><span class="field-label">Entity Type:</span><span>{{ row.entityType }}</span></div>
+                              <div class="detail-field"><span class="field-label">Entity ID:</span><span>{{ row.entityId }}</span></div>
+                              <div class="detail-field"><span class="field-label">Rule Version ID:</span><span>{{ row.ruleVersionId ?? '—' }}</span></div>
+                              <div class="detail-field"><span class="field-label">Legislation:</span><span>{{ row.legislationRef || '—' }}</span></div>
+                              <div class="detail-field"><span class="field-label">Process Stage:</span><span>{{ row.processStage || '—' }}</span></div>
+                              <div class="detail-field"><span class="field-label">Proof of Delivery:</span><span>{{ row.proofOfDelivery || '—' }}</span></div>
+                              <div class="detail-field"><span class="field-label">User ID:</span><span>{{ row.userId || '—' }}</span></div>
+                              <div class="detail-field"><span class="field-label">User Name:</span><span>{{ row.userName || '—' }}</span></div>
+                              <div class="detail-field"><span class="field-label">IP Address:</span><span class="font-mono">{{ row.ipAddress || '—' }}</span></div>
+                              <div class="detail-field"><span class="field-label">API Call ID:</span><span class="font-mono text-xs break-all">{{ row.apiCallId || '—' }}</span></div>
+                              <div class="detail-field"><span class="field-label">Document Ver:</span><span>{{ row.documentVersion || '—' }}</span></div>
+                              <div class="detail-field"><span class="field-label">Timestamp:</span><span>{{ formatTs(row.timestamp) }}</span></div>
+                            </div>
+                          </div>
+                          <div class="detail-section">
+                            @if (row.communicationProof) {
+                              <div>
+                                <h4 class="detail-heading">Communication Proof</h4>
+                                <pre class="json-block" [attr.data-testid]="'text-comm-proof-' + globalIdx">{{ formatJson(row.communicationProof) }}</pre>
+                              </div>
+                            }
+                            @if (row.metadata) {
+                              <div>
+                                <h4 class="detail-heading">Metadata</h4>
+                                <pre class="json-block" [attr.data-testid]="'text-metadata-' + globalIdx">{{ formatJson(row.metadata) }}</pre>
+                              </div>
+                            }
+                            @if (!row.communicationProof && !row.metadata) {
+                              <p class="text-muted italic">No additional metadata or communication proof recorded.</p>
+                            }
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
+
+          @if (totalGridPages() > 1) {
+            <div class="pagination">
+              <span class="pagination-info">Page {{ gridPage() }} of {{ totalGridPages() }}</span>
+              <div class="pagination-buttons">
+                <button class="icon-btn" (click)="prevPage()" [disabled]="gridPage() <= 1" data-testid="button-prev-page">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <button class="icon-btn" (click)="nextPage()" [disabled]="gridPage() >= totalGridPages()" data-testid="button-next-page">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+              </div>
+            </div>
+          }
+        }
+      </div>
+    </div>
+  }
+</div>

@@ -1,0 +1,1227 @@
+@if (selectedAccount()) {
+  <!-- ACCOUNT DETAIL VIEW -->
+  <div class="enquiry-detail-view">
+    <!-- Header -->
+    <div class="detail-header">
+      <div class="detail-header-inner">
+        <button class="back-btn" (click)="backToResults()" data-testid="button-back-to-results">
+          ← <span class="back-text">Back</span>
+        </button>
+        <div class="header-divider"></div>
+        <div class="account-avatar">
+          {{ getAccountName(selectedAccount())!.charAt(0).toUpperCase() }}
+        </div>
+        <div class="account-header-info">
+          <div class="account-header-top">
+            <h2 class="account-name" data-testid="text-selected-account-name">{{ getAccountName(selectedAccount()) }}</h2>
+            <span class="status-badge" [class.active]="isAccountActive(selectedAccount())" [class.inactive]="!isAccountActive(selectedAccount())">
+              <span class="status-dot"></span>
+              {{ selectedAccount()!.accountStatus || selectedAccount()!.statusDesc || 'Unknown' }}
+            </span>
+          </div>
+          <div class="account-header-sub">
+            Acc: {{ getAccountNum(selectedAccount()) }}
+            @if (selectedAccount()!.oldAccountCode) {
+              <span class="old-code"> | Old: {{ selectedAccount()!.oldAccountCode }}</span>
+            }
+          </div>
+        </div>
+        <div class="header-balance" data-testid="header-balance-section">
+          <div class="balance-label">Balance</div>
+          @if (headerBalance() !== null) {
+            <div class="balance-value" [class.positive]="headerBalance()! > 0" [class.negative]="headerBalance()! < 0" data-testid="text-header-balance">
+              R {{ formatCurrency(headerBalance()) }}
+            </div>
+          } @else {
+            <div class="balance-skeleton"></div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Risk Flags Banner -->
+    @if (riskFlagsLoading()) {
+      <div class="risk-flags-loading">
+        <div class="skeleton-pill"></div>
+        <div class="skeleton-pill"></div>
+        <div class="skeleton-pill"></div>
+      </div>
+    } @else if (riskFlags().length > 0) {
+      <div class="risk-flags-banner" [class.has-critical]="hasCriticalFlags()" data-testid="risk-flags-banner">
+        <div class="risk-flags-header">
+          <span class="risk-flags-icon">⚠️</span>
+          <span class="risk-flags-title" [class.critical-text]="hasCriticalFlags()">
+            Account Alerts ({{ riskFlags().length }})
+          </span>
+        </div>
+        <div class="risk-flags-list">
+          @for (flag of riskFlags(); track flag.id) {
+            <div class="risk-flag" [class.severity-critical]="flag.severity === 'critical'" [class.severity-warning]="flag.severity === 'warning'" [class.severity-info]="flag.severity === 'info'" [title]="flag.detail" [attr.data-testid]="'risk-flag-' +  flag.id  + ''">
+              @if (flag.severity === 'critical') {
+                <span class="pulse-dot"></span>
+              }
+              <span class="flag-icon">{{ flag.icon }}</span>
+              <span class="flag-label">{{ flag.label }}</span>
+              <span class="flag-detail">— {{ flag.detail }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Tab Navigation -->
+    <div class="tab-navigation">
+      <div class="tab-nav-inner">
+        <!-- Desktop tabs -->
+        <div class="desktop-tabs">
+          @for (group of tabGroups; track group.heading) {
+            <div class="tab-group">
+              <div class="tab-group-heading">{{ group.heading }}</div>
+              <div class="tab-group-tabs">
+                @for (tab of group.tabs; track tab.value) {
+                  <button class="tab-btn" [class.active]="activeTab() === tab.value" (click)="setActiveTab(tab.value)" [attr.data-testid]="'tab-' +  tab.value  + ''">
+                    <span class="tab-icon" [class.active-icon]="activeTab() === tab.value">{{ tab.icon }}</span>
+                    {{ tab.label }}
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        </div>
+        <!-- Mobile tab selector -->
+        <div class="mobile-tab-selector">
+          <button class="mobile-tab-trigger" (click)="toggleMobileTabMenu()" data-testid="button-mobile-tab-selector">
+            <div class="mobile-tab-current">
+              <span class="tab-icon active-icon">{{ currentTabIcon }}</span>
+              <div>
+                <div class="mobile-tab-label">{{ currentTabLabel }}</div>
+                <div class="mobile-tab-group">{{ currentTabGroup }}</div>
+              </div>
+            </div>
+            <span class="chevron" [class.open]="mobileTabMenuOpen()">▼</span>
+          </button>
+          @if (mobileTabMenuOpen()) {
+            <div class="mobile-tab-overlay" (click)="closeMobileTabMenu()"></div>
+            <div class="mobile-tab-menu">
+              @for (group of tabGroups; track group.heading) {
+                <div class="mobile-tab-menu-group">
+                  <div class="mobile-tab-menu-heading">{{ group.heading }}</div>
+                  <div class="mobile-tab-menu-grid">
+                    @for (tab of group.tabs; track tab.value) {
+                      <button class="mobile-tab-menu-btn" [class.active]="activeTab() === tab.value" (click)="setActiveTab(tab.value)" [attr.data-testid]="'tab-mobile-' +  tab.value  + ''">
+                        <span class="tab-icon-lg">{{ tab.icon }}</span>
+                        <span class="mobile-tab-btn-label">{{ tab.label }}</span>
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content-area">
+      @if (tabLoading()) {
+        <div class="tab-loading">
+          <div class="spinner"></div>
+          <p>Loading {{ currentTabLabel }}...</p>
+        </div>
+      } @else if (tabError()) {
+        <div class="tab-error card">
+          <p class="error-message" data-testid="text-tab-error">{{ tabError() }}</p>
+          <button class="btn-primary" (click)="loadTabData(activeTab(), getAccountId(selectedAccount()))" data-testid="button-retry-tab">Retry</button>
+        </div>
+      } @else if (tabData()) {
+        <!-- Account Info Tab -->
+        @if (activeTab() === 'account') {
+          <div class="tab-panel" data-testid="account-info-panel">
+            <div class="account-hero">
+              <div class="hero-content">
+                <div class="hero-avatar">👤</div>
+                <div class="hero-info">
+                  <h2 class="hero-name" data-testid="text-account-name">{{ safeStr(getAccountBasic()['fullNAME'] || getAccountAir()['name'] || getAccountName(selectedAccount())) }}</h2>
+                  <div class="hero-meta">
+                    <span class="hero-meta-item">💳 <strong data-testid="text-account-number">{{ safeStr(getAccountBasic()['accountNumber'] || selectedAccount()!.accountNumber) }}</strong></span>
+                    @if (safeStr(getAccountBasic()['accountDesc'] || getAccountAir()['accountDesc']) !== '-') {
+                      <span class="hero-meta-item">📋 {{ safeStr(getAccountBasic()['accountDesc'] || getAccountAir()['accountDesc']) }}</span>
+                    }
+                  </div>
+                </div>
+              </div>
+              <div class="hero-footer">
+                @if (safeStr(getAccountBasic()['contactNo'] || getAccountBasic()['contactNumber']) !== '-') {
+                  <span class="hero-footer-item">📞 {{ safeStr(getAccountBasic()['contactNo'] || getAccountBasic()['contactNumber']) }}</span>
+                }
+                @if (safeStr(getAccountBasic()['emailId'] || getAccountBasic()['email']) !== '-') {
+                  <span class="hero-footer-item">✉️ {{ safeStr(getAccountBasic()['emailId'] || getAccountBasic()['email']) }}</span>
+                }
+              </div>
+            </div>
+
+            <div class="detail-section">
+              <div class="section-header-bar">💳 Account Details</div>
+              <div class="detail-grid">
+                <div class="detail-item" data-testid="field-account-number"><div class="detail-label">Account Number</div><div class="detail-value mono accent">{{ safeStr(getAccountBasic()['accountNumber'] || selectedAccount()!.accountNumber) }}</div></div>
+                <div class="detail-item" data-testid="field-name"><div class="detail-label">Name</div><div class="detail-value">{{ safeStr(getAccountBasic()['fullNAME'] || getAccountAir()['name'] || getAccountName(selectedAccount())) }}</div></div>
+                <div class="detail-item" data-testid="field-account-group"><div class="detail-label">Account Group</div><div class="detail-value">{{ safeStr(getAccountBasic()['institutionDesc'] || getAccountAir()['institutionDesc']) }}</div></div>
+                <div class="detail-item" data-testid="field-payment-group"><div class="detail-label">Payment Group</div><div class="detail-value">{{ safeStr(getAccountBasic()['paymentGroupDesc']) }}</div></div>
+                <div class="detail-item" data-testid="field-account-type"><div class="detail-label">Account Type</div><div class="detail-value">{{ safeStr(getAccountBasic()['accountDesc'] || getAccountAir()['accountDesc']) }}</div></div>
+                <div class="detail-item" data-testid="field-contact"><div class="detail-label">Contact Number</div><div class="detail-value">{{ safeStr(getAccountBasic()['contactNo'] || getAccountBasic()['contactNumber']) }}</div></div>
+                <div class="detail-item" data-testid="field-email"><div class="detail-label">Email</div><div class="detail-value">{{ safeStr(getAccountBasic()['emailId'] || getAccountBasic()['email'] || getAccountBasic()['emailAddress']) }}</div></div>
+                <div class="detail-item" data-testid="field-status"><div class="detail-label">Account Status</div><div class="detail-value">{{ safeStr(getAccountBasic()['accountStatus'] || selectedAccount()!.accountStatus || selectedAccount()!.statusDesc) }}</div></div>
+                <div class="detail-item" data-testid="field-delivery-address"><div class="detail-label">Delivery Address</div><div class="detail-value">{{ safeStr(getAccountBasic()['deliveryAddress']) }}</div></div>
+              </div>
+            </div>
+
+            @if (getAccountProp()) {
+              <div class="detail-section">
+                <div class="section-header-bar">🏠 Property Details</div>
+                <div class="detail-grid">
+                  <div class="detail-item"><div class="detail-label">SG Number</div><div class="detail-value mono">{{ safeStr(getAccountProp()['sgNumber']) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Street Address</div><div class="detail-value">{{ safeStr(getAccountProp()['streetNumber'] ? getAccountProp()['streetNumber'] + ' ' + getAccountProp()['streetName'] : getAccountProp()['streetName']) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Town</div><div class="detail-value">{{ safeStr(getAccountProp()['town']) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Market Value</div><div class="detail-value mono accent">R {{ formatCurrency(getAccountProp()['marketValue']) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Property Type</div><div class="detail-value">{{ safeStr(getAccountProp()['typeOfUse'] || getAccountProp()['typeofUse'] || getAccountProp()['townPlanningZoneType']) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Ward</div><div class="detail-value">{{ safeStr(getAccountProp()['ward']) }}</div></div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Balance / Debt Tab -->
+        @if (activeTab() === 'balance') {
+          <div class="tab-panel" data-testid="balance-debt-panel">
+            @if (getBalanceItems().length > 0) {
+              <div class="balance-overview">
+                @for (item of getBalanceItems(); track $index) {
+                  <div class="balance-card">
+                    <div class="balance-card-header">
+                      <span class="balance-service-name">{{ item.serviceDescription || item.serviceDesc || 'Service' }}</span>
+                    </div>
+                    <div class="balance-card-body">
+                      <div class="balance-row"><span>Current</span><span class="mono">R {{ formatCurrency(item.current || 0) }}</span></div>
+                      <div class="balance-row"><span>30 Days</span><span class="mono">R {{ formatCurrency(item.days30 || item['30days'] || 0) }}</span></div>
+                      <div class="balance-row"><span>60 Days</span><span class="mono">R {{ formatCurrency(item.days60 || item['60days'] || 0) }}</span></div>
+                      <div class="balance-row"><span>90 Days</span><span class="mono">R {{ formatCurrency(item.days90 || item['90days'] || 0) }}</span></div>
+                      <div class="balance-row"><span>120+ Days</span><span class="mono">R {{ formatCurrency(item.days120 || item['120days'] || 0) }}</span></div>
+                      <div class="balance-row total"><span>Total Outstanding</span><span class="mono bold">R {{ formatCurrency(item.totalOutStanding || item.totalOutstandingAmount || item.totalBalance || 0) }}</span></div>
+                    </div>
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="empty-state">
+                <div class="empty-icon">💳</div>
+                <p class="empty-text">No balance data available</p>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Services Tab -->
+        @if (activeTab() === 'services') {
+          <div class="tab-panel" data-testid="services-panel">
+            @if (getServicesList().length > 0) {
+              <div class="services-grid">
+                @for (svc of getServicesList(); track $index) {
+                  <div class="service-card" [attr.data-testid]="'service-card-' +  $index  + ''">
+                    <div class="service-card-header">
+                      <span class="service-name">{{ svc.tariff || svc.tariffDesc || svc.serviceDesc || svc.serviceDescription || 'Service' }}</span>
+                      <span class="service-status" [class.active]="(svc.serviceStatus || svc.statusDesc || svc.status || '').toLowerCase() === 'active'">
+                        {{ svc.serviceStatus || svc.statusDesc || svc.status || '-' }}
+                      </span>
+                    </div>
+                    <div class="service-card-body">
+                      <div class="service-row"><span>Meter</span><span class="mono">{{ svc.meterNo || svc.meterNumber || svc.physicalMeterNo || 'No Meter' }}</span></div>
+                      <div class="service-row"><span>Frequency</span><span>{{ svc.frequency || '-' }}</span></div>
+                      @if (svc.meterConnectionSize) {
+                        <div class="service-row"><span>Connection</span><span>{{ svc.meterConnectionSize }}</span></div>
+                      }
+                      <div class="service-row"><span>Factor/Qty</span><span class="mono">{{ svc.factorQuantity ?? svc.tarifffactor ?? '-' }}</span></div>
+                      <div class="service-row"><span>Commencement</span><span>{{ formatDate(svc.serviceCommencementDate || svc.commencementDate || svc.startDate) }}</span></div>
+                    </div>
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="empty-state">
+                <div class="empty-icon">📊</div>
+                <p class="empty-text">No services found for this account</p>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Property Tab -->
+        @if (activeTab() === 'property') {
+          <div class="tab-panel" data-testid="property-details-tab">
+            @if (tabData()?.property) {
+              <div class="detail-section">
+                <div class="section-header-bar">🏢 Property Information</div>
+                <div class="detail-grid">
+                  <div class="detail-item"><div class="detail-label">Property ID</div><div class="detail-value mono">{{ safeStr(tabData()?.property?.propertyId || tabData()?.property?.property_ID || tabData()?.consUnit?.unit_ID) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">SG Number</div><div class="detail-value mono">{{ safeStr(tabData()?.property?.sgNumber || tabData()?.consUnit?.sgNumber) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Street Address</div><div class="detail-value">{{ safeStr(tabData()?.property?.streetNumber ? tabData()?.property?.streetNumber + ' ' + tabData()?.property?.streetName : tabData()?.property?.streetName) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Suburb</div><div class="detail-value">{{ safeStr(tabData()?.property?.subSuburb || tabData()?.property?.suburb) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Town</div><div class="detail-value">{{ safeStr(tabData()?.property?.town) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Property Type / Zoning</div><div class="detail-value">{{ safeStr(tabData()?.property?.typeOfUse || tabData()?.property?.typeofUse || tabData()?.property?.townPlanningZoneType) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Market Value</div><div class="detail-value mono accent">R {{ formatCurrency(tabData()?.property?.marketValue) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Stand Size (m²)</div><div class="detail-value">{{ safeStr(tabData()?.property?.standSize) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Owner</div><div class="detail-value">{{ safeStr(tabData()?.property?.name) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Ward</div><div class="detail-value">{{ safeStr(tabData()?.property?.ward) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Roll Number</div><div class="detail-value">{{ safeStr(tabData()?.property?.rollNumber) }}</div></div>
+                </div>
+              </div>
+              @if ((tabData()?.meters || []).length > 0) {
+                <div class="detail-section">
+                  <div class="section-header-bar">⏱️ Meters on Property</div>
+                  <div class="data-table-wrapper">
+                    <table class="data-table" data-testid="table-property-meters">
+                      <thead>
+                        <tr>
+                          <th>Service</th>
+                          <th>Meter Number</th>
+                          <th>Status</th>
+                          <th>Connection Size</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (m of tabData()?.meters || []; track $index) {
+                          <tr [attr.data-testid]="'row-meter-' +  $index  + ''">
+                            <td>{{ m.serviceDesc || m.serviceDescription || '-' }}</td>
+                            <td class="mono">{{ m.physicalMeterNo || m.meterNo || '-' }}</td>
+                            <td><span class="inline-badge" [class.active]="(m.serviceStatus || m.meterStatus || '').toLowerCase() === 'active'">{{ m.serviceStatus || m.meterStatus || '-' }}</span></td>
+                            <td>{{ m.meterConnectionSize || '-' }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              }
+            } @else {
+              <div class="empty-state">
+                <div class="empty-icon">🏠</div>
+                <p class="empty-text">No property details available</p>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Contact Tab -->
+        @if (activeTab() === 'contact') {
+          <div class="tab-panel" data-testid="contact-info-tab">
+            @if (tabData()?.contact) {
+              <div class="detail-section">
+                <div class="section-header-bar">📞 Contact Details</div>
+                <div class="detail-grid">
+                  <div class="detail-item"><div class="detail-label">Home Phone</div><div class="detail-value">{{ safeStr(tabData()?.contact?.homePhone || tabData()?.contact?.tel_Home) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Work Phone</div><div class="detail-value">{{ safeStr(tabData()?.contact?.workPhone || tabData()?.contact?.tel_Work) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Mobile</div><div class="detail-value">{{ safeStr(tabData()?.contact?.mobileNumber || tabData()?.contact?.tel_Mobile || tabData()?.contact?.cellphone) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Email</div><div class="detail-value">{{ safeStr(tabData()?.contact?.emailAddress || tabData()?.contact?.email || tabData()?.contact?.emailId) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Fax</div><div class="detail-value">{{ safeStr(tabData()?.contact?.faxNumber || tabData()?.contact?.fax) }}</div></div>
+                </div>
+              </div>
+              @if ((tabData()?.history || []).length > 0) {
+                <div class="detail-section">
+                  <div class="section-header-bar">📋 Contact History</div>
+                  <div class="data-table-wrapper">
+                    <table class="data-table" data-testid="table-contact-history">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Type</th>
+                          <th>Old Value</th>
+                          <th>New Value</th>
+                          <th>Changed By</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (h of tabData()?.history || []; track $index) {
+                          <tr [attr.data-testid]="'row-contact-' +  $index  + ''">
+                            <td>{{ formatDate(h.changeDate || h.date || h.modifiedDate) }}</td>
+                            <td>{{ h.changeType || h.type || h.fieldName || '-' }}</td>
+                            <td>{{ h.oldValue || h.previousValue || '-' }}</td>
+                            <td>{{ h.newValue || h.currentValue || '-' }}</td>
+                            <td>{{ h.changedBy || h.modifiedBy || h.user || '-' }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              }
+            } @else {
+              <div class="empty-state">
+                <div class="empty-icon">📞</div>
+                <p class="empty-text">No contact information available</p>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Handover Tab -->
+        @if (activeTab() === 'handover') {
+          <div class="tab-panel" data-testid="handover-tab">
+            @if (tabData()?.info) {
+              <div class="detail-section">
+                <div class="section-header-bar">➡️ Handover Information</div>
+                @for (item of normalizeArray(tabData()?.info); track $index) {
+                  <div class="detail-grid" style="margin-bottom:1rem">
+                    <div class="detail-item"><div class="detail-label">Status</div><div class="detail-value">{{ safeStr(item.handoverStatus || item.status || item.handoverStatusDesc) }}</div></div>
+                    <div class="detail-item"><div class="detail-label">Attorney</div><div class="detail-value">{{ safeStr(item.attorneyName || item.attorney) }}</div></div>
+                    <div class="detail-item"><div class="detail-label">Handover Date</div><div class="detail-value">{{ formatDate(item.handoverDate || item.date) }}</div></div>
+                    <div class="detail-item"><div class="detail-label">Amount</div><div class="detail-value mono">R {{ formatCurrency(item.handoverAmount || item.amount || 0) }}</div></div>
+                    <div class="detail-item"><div class="detail-label">Reference</div><div class="detail-value">{{ safeStr(item.referenceNumber || item.reference) }}</div></div>
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="empty-state">
+                <div class="empty-icon">➡️</div>
+                <p class="empty-text">No handover information available</p>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Name Tab -->
+        @if (activeTab() === 'name') {
+          <div class="tab-panel" data-testid="name-tab">
+            @if (tabData()?.name) {
+              <div class="detail-section">
+                <div class="section-header-bar">👥 Name Details</div>
+                <div class="detail-grid">
+                  @for (key of ['title', 'initials', 'firstName', 'firstNames', 'surname', 'lastName', 'fullName', 'companyName', 'tradingName', 'idNo_RegistrationNo', 'passportNumber', 'dateOfBirth', 'gender', 'maritalStatus', 'nationality', 'language']; track key) {
+                    @if (safeStr(tabData()?.name?.[key]) !== '-') {
+                      <div class="detail-item"><div class="detail-label">{{ key }}</div><div class="detail-value">{{ safeStr(tabData()?.name?.[key]) }}</div></div>
+                    }
+                  }
+                </div>
+              </div>
+            } @else {
+              <div class="empty-state">
+                <div class="empty-icon">👥</div>
+                <p class="empty-text">No name information available</p>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Generic data table tabs -->
+        @if (activeTab() === 'transactions') {
+          <div class="tab-panel" data-testid="transactions-tab">
+            @if ((tabData()?.transactions || []).length > 0) {
+              <div class="detail-section">
+                <div class="section-header-bar">🧾 Transaction / Receipt History</div>
+                <div class="data-table-wrapper">
+                  <table class="data-table" data-testid="table-transactions">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Description</th>
+                        <th>Receipt No</th>
+                        <th class="text-right">Amount</th>
+                        <th>Type</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (txn of tabData()?.transactions || []; track $index) {
+                        <tr [attr.data-testid]="'row-txn-' +  $index  + ''">
+                          <td>{{ formatDate(txn.transactionDate || txn.receiptDate || txn.date) }}</td>
+                          <td>{{ txn.description || txn.transactionDescription || '-' }}</td>
+                          <td class="mono">{{ txn.receiptNo || txn.receiptNumber || txn.docNumber || '-' }}</td>
+                          <td class="text-right mono">R {{ formatCurrency(txn.amount || txn.transactionAmount || 0) }}</td>
+                          <td>{{ txn.transactionType || txn.paymentType || '-' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            } @else {
+              <div class="empty-state">
+                <div class="empty-icon">🧾</div>
+                <p class="empty-text">No transaction records found</p>
+              </div>
+            }
+          </div>
+        }
+
+        @if (activeTab() === 'deposits') {
+          <div class="tab-panel" data-testid="deposits-tab">
+            @if ((tabData()?.deposits || []).length > 0) {
+              <div class="detail-section">
+                <div class="section-header-bar">💵 Deposits</div>
+                <div class="data-table-wrapper">
+                  <table class="data-table" data-testid="table-deposits">
+                    <thead>
+                      <tr>
+                        <th>Service Type</th>
+                        <th>Receipt No</th>
+                        <th>Receipt Date</th>
+                        <th>Payment Type</th>
+                        <th class="text-right">Deposit Amount</th>
+                        <th>Cashier</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (dep of tabData()?.deposits || []; track $index) {
+                        <tr [attr.data-testid]="'row-deposit-' +  $index  + ''">
+                          <td>{{ dep.serviceDesc || dep.serviceDescription || dep.description || '-' }}</td>
+                          <td class="mono">{{ dep.receiptNo || dep.docNumber || '-' }}</td>
+                          <td>{{ formatDate(dep.receiptDate || dep.dateCaptured || dep.depositDate) }}</td>
+                          <td>{{ dep.paymentType || dep.paymentMethod || '-' }}</td>
+                          <td class="text-right mono bold">R {{ formatCurrency(dep.deposit ?? dep.depositAmount ?? dep.amount ?? 0) }}</td>
+                          <td>{{ dep.cashierName || dep.cashier || dep.capturedBy || '-' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            } @else {
+              <div class="empty-state">
+                <div class="empty-icon">💵</div>
+                <p class="empty-text">No deposit records found</p>
+              </div>
+            }
+          </div>
+        }
+
+        @if (activeTab() === 'payment-plans') {
+          <div class="tab-panel" data-testid="payment-plans-tab">
+            @if ((tabData()?.plans || []).length > 0) {
+              <div class="detail-section">
+                <div class="section-header-bar">📅 Payment Plans - Capital Cost</div>
+                <div class="data-table-wrapper">
+                  <table class="data-table" data-testid="table-payment-plans">
+                    <thead>
+                      <tr>
+                        <th>Status</th>
+                        <th>Capital Cost Type</th>
+                        <th>Service Type</th>
+                        <th class="text-right">Original Amount</th>
+                        <th class="text-right">Balance</th>
+                        <th class="text-right">Instalment</th>
+                        <th>Start Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (p of tabData()?.plans || []; track $index) {
+                        <tr [attr.data-testid]="'row-plan-' +  $index  + ''">
+                          <td><span class="inline-badge" [class.active]="p.status === 'Active' || p.isActive">{{ p.status || (p.isActive ? 'Active' : 'Inactive') }}</span></td>
+                          <td>{{ p.capitalCostType || p.planType || p.description || '-' }}</td>
+                          <td>{{ p.serviceType || p.billingType || '-' }}</td>
+                          <td class="text-right mono">R {{ formatCurrency(p.originalAmount || p.capitalAmount || 0) }}</td>
+                          <td class="text-right mono bold">R {{ formatCurrency(p.balance || p.outstandingBalance || 0) }}</td>
+                          <td class="text-right mono">R {{ formatCurrency(p.instalment || p.monthlyInstalment || 0) }}</td>
+                          <td>{{ formatDate(p.startDate || p.commencementDate) }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            } @else {
+              <div class="empty-state">
+                <div class="empty-icon">📅</div>
+                <p class="empty-text">No payment plans found</p>
+              </div>
+            }
+          </div>
+        }
+
+        @if (activeTab() === 'incentives') {
+          <div class="tab-panel" data-testid="incentives-tab">
+            @if ((tabData()?.incentives || []).length > 0) {
+              @for (item of tabData()?.incentives || []; track $index) {
+                <div class="detail-section">
+                  <div class="section-header-bar">🎁 Payment Incentive</div>
+                  <div class="detail-grid">
+                    <div class="detail-item"><div class="detail-label">Description</div><div class="detail-value">{{ safeStr(item.description) }}</div></div>
+                    <div class="detail-item"><div class="detail-label">Type</div><div class="detail-value">{{ safeStr(item.incentiveType || item.code) }}</div></div>
+                    <div class="detail-item"><div class="detail-label">Amount</div><div class="detail-value mono">R {{ formatCurrency(item.incentiveAmount ?? item.incentive ?? 0) }}</div></div>
+                    <div class="detail-item"><div class="detail-label">Financial Year</div><div class="detail-value">{{ safeStr(item.financialYear) }}</div></div>
+                    <div class="detail-item"><div class="detail-label">Enabled</div><div class="detail-value">{{ item.enable ? 'Yes' : 'No' }}</div></div>
+                  </div>
+                </div>
+              }
+            } @else {
+              <div class="empty-state">
+                <div class="empty-icon">🎁</div>
+                <p class="empty-text">No payment incentives found</p>
+              </div>
+            }
+          </div>
+        }
+
+        @if (activeTab() === 'notifications') {
+          <div class="tab-panel" data-testid="notifications-tab">
+            @if ((tabData()?.accountNotifications || []).length > 0 || (tabData()?.propertyNotifications || []).length > 0) {
+              <div class="detail-section">
+                <div class="section-header-bar">🔔 Account Notifications</div>
+                <div class="data-table-wrapper">
+                  <table class="data-table" data-testid="table-notifications">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (n of (tabData()?.accountNotifications || []).concat(tabData()?.propertyNotifications || []); track $index) {
+                        <tr [attr.data-testid]="'row-notification-' +  $index  + ''">
+                          <td>{{ formatDate(n.notificationDate || n.date || n.createdDate) }}</td>
+                          <td>{{ n.notificationType || n.type || '-' }}</td>
+                          <td>{{ n.description || n.notificationDescription || n.message || '-' }}</td>
+                          <td><span class="inline-badge">{{ n.status || n.notificationStatus || '-' }}</span></td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            } @else {
+              <div class="empty-state">
+                <div class="empty-icon">🔔</div>
+                <p class="empty-text">No notifications found</p>
+              </div>
+            }
+          </div>
+        }
+
+        @if (activeTab() === 'statements') {
+          <div class="tab-panel" data-testid="statements-tab">
+            @if ((tabData()?.statements || []).length > 0) {
+              <div class="detail-section">
+                <div class="section-header-bar">📄 Generated Statements</div>
+                <div class="data-table-wrapper">
+                  <table class="data-table" data-testid="table-statements">
+                    <thead>
+                      <tr>
+                        <th>Period</th>
+                        <th>Generated Date</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (s of tabData()?.statements || []; track $index) {
+                        <tr [attr.data-testid]="'row-statement-' +  $index  + ''">
+                          <td>{{ s.billingPeriod || s.period || s.financialYear || '-' }}</td>
+                          <td>{{ formatDate(s.generatedDate || s.dateGenerated || s.date) }}</td>
+                          <td>{{ s.statementType || s.type || '-' }}</td>
+                          <td><span class="inline-badge">{{ s.status || '-' }}</span></td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            } @else {
+              <div class="empty-state">
+                <div class="empty-icon">📄</div>
+                <p class="empty-text">No statements found</p>
+              </div>
+            }
+          </div>
+        }
+
+        @if (activeTab() === 'clearance') {
+          <div class="tab-panel" data-testid="clearance-tab">
+            @if ((tabData()?.clearances || []).length > 0) {
+              <div class="detail-section">
+                <div class="section-header-bar">🛡️ Clearance Certificates</div>
+                <div class="data-table-wrapper">
+                  <table class="data-table" data-testid="table-clearance">
+                    <thead>
+                      <tr>
+                        <th>Certificate No</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Expiry Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (c of tabData()?.clearances || []; track $index) {
+                        <tr [attr.data-testid]="'row-clearance-' +  $index  + ''">
+                          <td class="mono">{{ c.certificateNumber || c.certificateNo || '-' }}</td>
+                          <td>{{ formatDate(c.applicationDate || c.date || c.createdDate) }}</td>
+                          <td><span class="inline-badge" [class.active]="(c.status || '').toLowerCase() === 'issued'">{{ c.status || '-' }}</span></td>
+                          <td>{{ formatDate(c.expiryDate || c.validTo) }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            } @else {
+              <div class="empty-state">
+                <div class="empty-icon">🛡️</div>
+                <p class="empty-text">No clearance certificates found</p>
+              </div>
+            }
+          </div>
+        }
+
+        @if (activeTab() === 'debtor-notes') {
+          <div class="tab-panel" data-testid="debtor-notes-tab">
+            @if ((tabData()?.notes || []).length > 0) {
+              <div class="detail-section">
+                <div class="section-header-bar">📝 Debtor Notes</div>
+                <div class="data-table-wrapper">
+                  <table class="data-table" data-testid="table-debtor-notes">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Note</th>
+                        <th>Created By</th>
+                        <th>Type</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (n of tabData()?.notes || []; track $index) {
+                        <tr [attr.data-testid]="'row-note-' +  $index  + ''">
+                          <td>{{ formatDate(n.noteDate || n.date || n.createdDate) }}</td>
+                          <td>{{ n.note || n.noteDescription || n.description || '-' }}</td>
+                          <td>{{ n.createdBy || n.capturedBy || n.user || '-' }}</td>
+                          <td>{{ n.noteType || n.type || '-' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            } @else {
+              <div class="empty-state">
+                <div class="empty-icon">📝</div>
+                <p class="empty-text">No debtor notes found</p>
+              </div>
+            }
+          </div>
+        }
+
+        @if (activeTab() === 'section129') {
+          <div class="tab-panel" data-testid="section129-tab">
+            @if ((tabData()?.section129 || []).length > 0) {
+              <div class="detail-section">
+                <div class="section-header-bar">⚠️ Section 129 History</div>
+                <div class="data-table-wrapper">
+                  <table class="data-table" data-testid="table-section129">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Description</th>
+                        <th class="text-right">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (s of tabData()?.section129 || []; track $index) {
+                        <tr [attr.data-testid]="'row-s129-' +  $index  + ''">
+                          <td>{{ formatDate(s.noticeDate || s.date || s.createdDate) }}</td>
+                          <td><span class="inline-badge">{{ s.status || s.noticeStatus || '-' }}</span></td>
+                          <td>{{ s.description || s.noticeDescription || '-' }}</td>
+                          <td class="text-right mono">R {{ formatCurrency(s.amount || s.noticeAmount || 0) }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            } @else {
+              <div class="empty-state">
+                <div class="empty-icon">⚠️</div>
+                <p class="empty-text">No Section 129 records found</p>
+              </div>
+            }
+          </div>
+        }
+
+        @if (activeTab() === 'linked-accounts') {
+          <div class="tab-panel" data-testid="linked-accounts-tab">
+            @if ((tabData()?.linkedAccounts || []).length > 0) {
+              <div class="detail-section">
+                <div class="section-header-bar">🏢 Linked Accounts</div>
+                <div class="data-table-wrapper">
+                  <table class="data-table" data-testid="table-linked-accounts">
+                    <thead>
+                      <tr>
+                        <th>Account Number</th>
+                        <th>Name</th>
+                        <th>Status</th>
+                        <th class="text-right">Outstanding</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (a of tabData()?.linkedAccounts || []; track $index) {
+                        <tr class="clickable" (click)="selectAccount(a)" [attr.data-testid]="'row-linked-' +  $index  + ''">
+                          <td class="mono accent">{{ a.accountNumber || a.accountNo || '-' }}</td>
+                          <td>{{ a.name || a.surname_Company || a.accountName || '-' }}</td>
+                          <td><span class="inline-badge" [class.active]="(a.accountStatus || a.statusDesc || '').toLowerCase() === 'active'">{{ a.accountStatus || a.statusDesc || '-' }}</span></td>
+                          <td class="text-right mono">R {{ formatCurrency(a.outStandingAmount || a.outStandingAmt || 0) }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            } @else {
+              <div class="empty-state">
+                <div class="empty-icon">🏢</div>
+                <p class="empty-text">No linked accounts found</p>
+              </div>
+            }
+          </div>
+        }
+
+        @if (activeTab() === 'debit-orders') {
+          <div class="tab-panel" data-testid="debit-orders-tab">
+            @if ((tabData()?.debitOrders || []).length > 0) {
+              <div class="detail-section">
+                <div class="section-header-bar">🏦 Debit Orders</div>
+                <div class="data-table-wrapper">
+                  <table class="data-table" data-testid="table-debit-orders">
+                    <thead>
+                      <tr>
+                        <th>Bank</th>
+                        <th>Account Number</th>
+                        <th>Branch Code</th>
+                        <th class="text-right">Amount</th>
+                        <th>Status</th>
+                        <th>Debit Day</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (d of tabData()?.debitOrders || []; track $index) {
+                        <tr [attr.data-testid]="'row-do-' +  $index  + ''">
+                          <td>{{ d.bankName || d.bank || '-' }}</td>
+                          <td class="mono">{{ d.bankAccountNumber || d.accountNo || '-' }}</td>
+                          <td>{{ d.branchCode || d.branch || '-' }}</td>
+                          <td class="text-right mono bold">R {{ formatCurrency(d.debitOrderAmount || d.amount || 0) }}</td>
+                          <td><span class="inline-badge" [class.active]="(d.status || '').toLowerCase() === 'active'">{{ d.status || d.debitOrderStatus || '-' }}</span></td>
+                          <td>{{ d.debitDay || d.paymentDay || '-' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            } @else {
+              <div class="empty-state">
+                <div class="empty-icon">🏦</div>
+                <p class="empty-text">No debit order records found</p>
+              </div>
+            }
+          </div>
+        }
+
+        @if (activeTab() === 'rates') {
+          <div class="tab-panel" data-testid="rates-tab">
+            @if (tabData()?.ratesDetails) {
+              <div class="detail-section">
+                <div class="section-header-bar">⚖️ Rates & Valuations</div>
+                <div class="detail-grid">
+                  @for (key of ['marketValue', 'siteValue', 'improvementValue', 'ratesCentAmount', 'ratesRebate', 'ratesTariff', 'categoryDescription', 'valuationDate']; track key) {
+                    @if (safeStr(tabData()?.ratesDetails?.[key]) !== '-') {
+                      <div class="detail-item"><div class="detail-label">{{ key }}</div><div class="detail-value" [class.mono]="key.includes('Value') || key.includes('Amount')">{{ key.includes('Value') || key.includes('Amount') ? 'R ' + formatCurrency(tabData()?.ratesDetails?.[key]) : safeStr(tabData()?.ratesDetails?.[key]) }}</div></div>
+                    }
+                  }
+                </div>
+              </div>
+            } @else {
+              <div class="empty-state">
+                <div class="empty-icon">⚖️</div>
+                <p class="empty-text">No rates data available</p>
+              </div>
+            }
+          </div>
+        }
+
+        @if (activeTab() === 'indigent') {
+          <div class="tab-panel" data-testid="indigent-tab">
+            @if ((tabData()?.indigentHistory || []).length > 0) {
+              <div class="detail-section">
+                <div class="section-header-bar">🛡️ Indigent Subsidy History</div>
+                <div class="data-table-wrapper">
+                  <table class="data-table" data-testid="table-indigent">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Type</th>
+                        <th>Expiry Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (r of tabData()?.indigentHistory || []; track $index) {
+                        <tr [attr.data-testid]="'row-indigent-' +  $index  + ''">
+                          <td>{{ formatDate(r.applicationDate || r.date) }}</td>
+                          <td><span class="inline-badge" [class.active]="(r.attpStatus || r.status || '').toLowerCase().includes('active')">{{ r.attpStatus || r.status || '-' }}</span></td>
+                          <td>{{ r.indigentType || r.attpType || r.type || '-' }}</td>
+                          <td>{{ formatDate(r.expiryDate || r.validTo) }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            } @else {
+              <div class="empty-state">
+                <div class="empty-icon">🛡️</div>
+                <p class="empty-text">No indigent subsidy records found</p>
+              </div>
+            }
+          </div>
+        }
+
+        @if (activeTab() === 'services-meters') {
+          <div class="tab-panel" data-testid="meters-tab">
+            @if ((tabData()?.meters || []).length > 0) {
+              <div class="services-grid">
+                @for (m of tabData()?.meters || []; track $index) {
+                  <div class="service-card" [attr.data-testid]="'meter-card-' +  $index  + ''">
+                    <div class="service-card-header">
+                      <span class="service-name">{{ m.serviceDesc || m.serviceDescription || 'Meter' }}</span>
+                      <span class="service-status" [class.active]="(m.serviceStatus || m.meterStatus || '').toLowerCase() === 'active'">
+                        {{ m.serviceStatus || m.meterStatus || '-' }}
+                      </span>
+                    </div>
+                    <div class="service-card-body">
+                      <div class="service-row"><span>Physical Meter No</span><span class="mono">{{ m.physicalMeterNo || m.physicalMeterNumber || '-' }}</span></div>
+                      <div class="service-row"><span>Meter No</span><span class="mono">{{ m.meterNo || m.meterNumber || '-' }}</span></div>
+                      <div class="service-row"><span>Connection Size</span><span>{{ m.meterConnectionSize || '-' }}</span></div>
+                      <div class="service-row"><span>Last Reading</span><span class="mono">{{ m.lastReading || m.previousReading || '-' }}</span></div>
+                      <div class="service-row"><span>Reading Date</span><span>{{ formatDate(m.lastReadingDate || m.readingDate) }}</span></div>
+                    </div>
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="empty-state">
+                <div class="empty-icon">⏱️</div>
+                <p class="empty-text">No meter records found</p>
+              </div>
+            }
+          </div>
+        }
+
+        @if (activeTab() === 'consumption') {
+          <div class="tab-panel" data-testid="consumption-tab">
+            @if ((tabData()?.meters || []).length > 0) {
+              <div class="detail-section">
+                <div class="section-header-bar">💧 Consumption Overview</div>
+                <div class="services-grid">
+                  @for (m of tabData()?.meters || []; track $index) {
+                    <div class="service-card" [attr.data-testid]="'consumption-card-' +  $index  + ''">
+                      <div class="service-card-header">
+                        <span class="service-name">{{ m.serviceDesc || m.serviceDescription || 'Service' }}</span>
+                      </div>
+                      <div class="service-card-body">
+                        <div class="service-row"><span>Meter</span><span class="mono">{{ m.physicalMeterNo || m.meterNo || '-' }}</span></div>
+                        <div class="service-row"><span>Previous Reading</span><span class="mono">{{ m.previousReading || m.lastReading || '-' }}</span></div>
+                        <div class="service-row"><span>Current Reading</span><span class="mono">{{ m.currentReading || '-' }}</span></div>
+                        <div class="service-row"><span>Consumption</span><span class="mono bold">{{ m.consumption || m.units || '-' }}</span></div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            } @else {
+              <div class="empty-state">
+                <div class="empty-icon">💧</div>
+                <p class="empty-text">No consumption data available</p>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Fallback for tabs without specific templates -->
+        @if (['txn-summary', 'txn-detailed', 'billed-vs-paid', 'send-statements', 'occupiers'].includes(activeTab())) {
+          <div class="tab-panel" [attr.data-testid]="'tab-' +  activeTab()  + ''">
+            <div class="detail-section">
+              <div class="section-header-bar">{{ currentTabIcon }} {{ currentTabLabel }}</div>
+              @if (tabData()?.message) {
+                <div class="empty-state">
+                  <p class="empty-text">{{ tabData()?.message }}</p>
+                </div>
+              } @else {
+                <div class="empty-state">
+                  <div class="empty-icon">{{ currentTabIcon }}</div>
+                  <p class="empty-text">{{ currentTabLabel }} data will be displayed here</p>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      }
+    </div>
+  </div>
+} @else {
+  <!-- SEARCH VIEW -->
+  <div class="page-container">
+    <div class="page-header">
+      <h1 class="page-title" data-testid="text-page-title">General Enquiries</h1>
+      <p class="page-subtitle">Search and view account information from Platinum API</p>
+    </div>
+
+    <!-- Quick Search -->
+    <div class="search-section card">
+      <div class="quick-search-row" #dropdownContainer>
+        <div class="search-input-wrapper">
+          <span class="search-icon">🔍</span>
+          <input
+            #searchInput
+            type="text"
+            class="search-input"
+            [value]="quickQuery()"
+            (input)="onQuickQueryChange($any($event.target).value)"
+            (keydown)="onQuickKeyDown($event)"
+            (focus)="dropdownResults().length > 0 ? showDropdown.set(true) : null"
+            placeholder="Search by account number, name, ID number, email, phone..."
+            data-testid="input-quick-search"
+          />
+          @if (quickQuery()) {
+            <button class="clear-btn" (click)="clearSearch()" data-testid="button-clear-search">✕</button>
+          }
+          @if (dropdownSearching()) {
+            <div class="search-spinner"></div>
+          }
+        </div>
+        <button class="btn-primary search-btn" (click)="handleFullSearch()" [disabled]="searching()" data-testid="button-search">
+          @if (searching()) {
+            <div class="btn-spinner"></div>
+          }
+          Search
+        </button>
+        <button class="btn-outline" (click)="toggleAdvanced()" data-testid="button-toggle-advanced">
+          {{ showAdvanced() ? 'Simple' : 'Advanced' }}
+        </button>
+
+        <!-- Smart Search Dropdown -->
+        @if (showDropdown() && (dropdownResults().length > 0 || dropdownSearching())) {
+          <div class="search-dropdown" data-testid="smart-search-dropdown" (click)="$event.stopPropagation()">
+            @if (dropdownSearching() && dropdownResults().length === 0) {
+              <div class="dropdown-loading">
+                <div class="search-spinner"></div>
+                <span>Searching accounts...</span>
+              </div>
+            }
+            @if (!dropdownSearching() && quickQuery().length >= 2 && dropdownResults().length === 0) {
+              <div class="dropdown-empty">
+                <div class="dropdown-empty-icon">🔍</div>
+                <p class="dropdown-empty-title">No results found</p>
+                <p class="dropdown-empty-hint">Check spelling or try fewer characters</p>
+              </div>
+            }
+            @if (dropdownResults().length > 0) {
+              <div class="dropdown-header">
+                <span>{{ dropdownResults().length }} account{{ dropdownResults().length !== 1 ? 's' : '' }}</span>
+              </div>
+              <div class="dropdown-list">
+                @for (account of dropdownResults().slice(0, 20); track getAccountId(account); let i = $index) {
+                  <div
+                    class="dropdown-item"
+                    [class.highlighted]="highlightIdx() === i"
+                    (click)="selectAccount(account)"
+                    [attr.data-testid]="'dropdown-account-' +  getAccountId(account)  + ''"
+                  >
+                    <div class="dropdown-avatar" [class.active-avatar]="isAccountActive(account)">
+                      {{ getAccountName(account).charAt(0).toUpperCase() }}
+                    </div>
+                    <div class="dropdown-info">
+                      <div class="dropdown-info-top">
+                        <span class="dropdown-acct-num">{{ getAccountNum(account) }}</span>
+                        <span class="dropdown-name">{{ getAccountName(account) }}</span>
+                      </div>
+                      @if (account.locationAddress || account.address || account.deliveryAddress) {
+                        <div class="dropdown-address">{{ (account.locationAddress || account.address || account.deliveryAddress || '').replace('\r\n', ', ') }}</div>
+                      }
+                    </div>
+                    <div class="dropdown-balance" [class.positive]="getOutstanding(account) > 0" [class.negative]="getOutstanding(account) <= 0">
+                      R {{ formatCurrency(getOutstanding(account)) }}
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      @if (quickQuery().length >= 2) {
+        <div class="search-type-hint" data-testid="text-search-type">
+          Detected: <strong>{{ detectedSearchType.label }}</strong>
+        </div>
+      }
+
+      <!-- Advanced Search -->
+      @if (showAdvanced()) {
+        <div class="advanced-search" data-testid="advanced-search-panel">
+          <div class="advanced-grid">
+            @for (field of searchFields; track field.key) {
+              <div class="advanced-field">
+                <label class="field-label">{{ field.icon }} {{ field.label }}</label>
+                <input
+                  type="text"
+                  class="field-input"
+                  [placeholder]="field.placeholder"
+                  [value]="(criteria()[field.key] || '')"
+                  (input)="updateCriteria(field.key, $any($event.target).value)"
+                  (keydown.enter)="handleFullSearch()"
+                  [attr.data-testid]="'input-field-' +  field.key  + ''"
+                />
+              </div>
+            }
+          </div>
+          <div class="advanced-actions">
+            <button class="btn-primary" (click)="handleFullSearch()" [disabled]="searching()" data-testid="button-advanced-search">Search</button>
+            <button class="btn-outline" (click)="clearSearch()" data-testid="button-clear-all">Clear All</button>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Search Results -->
+    @if (searching()) {
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Searching accounts...</p>
+      </div>
+    } @else if (searchError()) {
+      <div class="error-state card">
+        <p class="error-message" data-testid="text-error">{{ searchError() }}</p>
+        <button class="btn-primary" (click)="handleFullSearch()" data-testid="button-retry">Retry</button>
+      </div>
+    } @else if (hasSearched() && results().length === 0) {
+      <div class="empty-state card">
+        <div class="empty-icon">🔍</div>
+        <p class="empty-text">No accounts found</p>
+        <p class="empty-hint">Try a different search term or use advanced search filters</p>
+      </div>
+    } @else if (results().length > 0) {
+      <div class="results-section">
+        <div class="results-header">
+          <span class="results-count" data-testid="text-results-count">{{ results().length }} result{{ results().length !== 1 ? 's' : '' }}</span>
+        </div>
+
+        <!-- Mobile Results Cards -->
+        <div class="mobile-results">
+          @for (account of results(); track getAccountId(account); let i = $index) {
+            <div class="result-card" (click)="selectAccount(account)" [attr.data-testid]="'result-card-' +  getAccountId(account)  + ''">
+              <div class="result-card-top">
+                <div class="result-avatar" [class.active-avatar]="isAccountActive(account)">
+                  {{ getAccountName(account).charAt(0).toUpperCase() }}
+                </div>
+                <div class="result-info">
+                  <div class="result-name">{{ getAccountName(account) }}</div>
+                  <div class="result-acct-num">{{ getAccountNum(account) }}</div>
+                </div>
+                <div class="result-balance" [class.positive]="getOutstanding(account) > 0">
+                  R {{ formatCurrency(getOutstanding(account)) }}
+                </div>
+              </div>
+              <div class="result-card-bottom">
+                <span class="inline-badge" [class.active]="isAccountActive(account)">{{ account.accountStatus || account.statusDesc || '-' }}</span>
+                <span class="result-address">{{ (account.locationAddress || account.address || '-').replace('\r\n', ', ') }}</span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Desktop Results Table -->
+        <div class="desktop-results">
+          <div class="data-table-wrapper">
+            <table class="data-table" data-testid="table-search-results">
+              <thead>
+                <tr>
+                  <th style="width:40px"></th>
+                  <th>Account No</th>
+                  <th>Name</th>
+                  <th>Address</th>
+                  <th>Status</th>
+                  <th>Type</th>
+                  <th class="text-right">Outstanding</th>
+                  <th>Old Code</th>
+                  <th>SG Number</th>
+                  <th style="width:80px"></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (account of results(); track getAccountId(account); let i = $index) {
+                  <tr class="result-row" [attr.data-testid]="'expandable-row-' +  getAccountId(account)  + ''">
+                    <td class="text-center">
+                      <button class="expand-btn" (click)="toggleExpandRow(getAccountId(account)); $event.stopPropagation()" [attr.data-testid]="'btn-expand-' +  getAccountId(account)  + ''">
+                        <span class="expand-chevron" [class.expanded]="expandedRowId() === getAccountId(account)">▶</span>
+                      </button>
+                    </td>
+                    <td>
+                      <button class="link-btn" (click)="selectAccount(account)" [attr.data-testid]="'btn-account-' +  getAccountId(account)  + ''">
+                        {{ getAccountNum(account) }}
+                      </button>
+                    </td>
+                    <td [attr.data-testid]="'text-name-' +  getAccountId(account)  + ''">{{ getAccountName(account) }}</td>
+                    <td class="address-cell" [attr.data-testid]="'text-address-' +  getAccountId(account)  + ''">{{ (account.locationAddress || account.address || account.deliveryAddress || '-').replace('\r\n', ', ') }}</td>
+                    <td><span class="inline-badge" [class.active]="isAccountActive(account)" [attr.data-testid]="'badge-status-' +  getAccountId(account)  + ''">{{ account.accountStatus || account.statusDesc || '-' }}</span></td>
+                    <td><span class="inline-badge outline" [attr.data-testid]="'badge-type-' +  getAccountId(account)  + ''">{{ account.accountType || account.accountDesc || '-' }}</span></td>
+                    <td class="text-right" [attr.data-testid]="'text-outstanding-' +  getAccountId(account)  + ''">
+                      <span class="mono bold" [class.positive]="getOutstanding(account) > 0" [class.negative]="getOutstanding(account) <= 0">
+                        R {{ formatCurrency(getOutstanding(account)) }}
+                      </span>
+                    </td>
+                    <td class="mono muted">{{ account.oldAccountCode || '-' }}</td>
+                    <td class="mono muted address-cell">{{ account.sgNumber || '-' }}</td>
+                    <td class="text-center">
+                      <button class="btn-sm btn-outline" (click)="selectAccount(account)" [attr.data-testid]="'btn-open-' +  getAccountId(account)  + ''">Open</button>
+                    </td>
+                  </tr>
+                  @if (expandedRowId() === getAccountId(account)) {
+                    <tr>
+                      <td colspan="10" class="expanded-content">
+                        <div class="expanded-panels">
+                          <div class="expanded-panel">
+                            <div class="expanded-panel-header">👤 Account Details</div>
+                            <div class="expanded-panel-body">
+                              <div class="expanded-field"><span>Account No:</span> <strong>{{ account.accountNumber || '-' }}</strong></div>
+                              <div class="expanded-field"><span>Old Code:</span> <strong>{{ account.oldAccountCode || '-' }}</strong></div>
+                              <div class="expanded-field"><span>Name:</span> <strong>{{ getAccountName(account) }}</strong></div>
+                              <div class="expanded-field"><span>ID:</span> <strong>{{ account.addName || account.idRegistrationNumber || '-' }}</strong></div>
+                            </div>
+                          </div>
+                          <div class="expanded-panel">
+                            <div class="expanded-panel-header">🏠 Property</div>
+                            <div class="expanded-panel-body">
+                              <div class="expanded-field"><span>SG Number:</span> <strong class="mono">{{ account.sgNumber || '-' }}</strong></div>
+                              <div class="expanded-field"><span>Address:</span> <strong>{{ (account.locationAddress || account.address || '-').replace('\r\n', ', ') }}</strong></div>
+                            </div>
+                          </div>
+                          <div class="expanded-panel">
+                            <div class="expanded-panel-header">💳 Financial</div>
+                            <div class="expanded-panel-body">
+                              <div class="expanded-field"><span>Outstanding:</span> <strong class="mono" [class.positive]="getOutstanding(account) > 0">R {{ formatCurrency(getOutstanding(account)) }}</strong></div>
+                              <div class="expanded-field"><span>Status:</span> <strong>{{ account.accountStatus || account.statusDesc || '-' }}</strong></div>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="expanded-actions">
+                          <button class="btn-primary btn-sm" (click)="selectAccount(account)" [attr.data-testid]="'btn-view-details-' +  getAccountId(account)  + ''">View Full Details</button>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+}

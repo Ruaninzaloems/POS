@@ -1,0 +1,7 @@
+:host { display: contents; }
+
+.confirm-message {
+  font-size: 0.875rem;
+  color: var(--pos-text-muted);
+  line-height: 1.5;
+}

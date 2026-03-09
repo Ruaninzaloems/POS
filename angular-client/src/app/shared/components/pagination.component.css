@@ -1,0 +1,13 @@
+:host { display: block; }
+
+.pagination-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+}
+
+.pagination-info {
+  font-size: 0.8125rem;
+  color: var(--pos-text-muted);
+}

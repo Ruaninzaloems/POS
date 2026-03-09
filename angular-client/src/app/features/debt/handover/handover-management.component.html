@@ -1,0 +1,207 @@
+<div class="page-container">
+  <div class="page-header">
+    <div class="header-left">
+      <span class="header-icon">📋</span>
+      <div>
+        <h1 class="page-title" data-testid="text-page-title">Handover Management</h1>
+        <p class="page-subtitle">Manage attorney handovers for debt recovery</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <div class="section-label">Handover Option</div>
+      <div class="option-grid" data-testid="selector-handover-option">
+        @for (opt of [
+          { value: 'account', label: 'Single Account', desc: 'Handover one account to an attorney', icon: '👤' },
+          { value: 'bulk', label: 'Bulk Handover', desc: 'Handover all qualifying accounts', icon: '👥' },
+          { value: 'rotation', label: 'Rotation', desc: 'Auto-distribute by percentage', icon: '🔄' }
+        ]; track opt.value) {
+          <button class="option-btn" [class.active]="handoverOption() === opt.value"
+            (click)="setOption($any(opt.value))" [attr.data-testid]="'button-option-' + opt.value">
+            <span class="option-icon">{{ opt.icon }}</span>
+            <span class="option-label">{{ opt.label }}</span>
+            <span class="option-desc">{{ opt.desc }}</span>
+          </button>
+        }
+      </div>
+
+      <div class="divider"></div>
+
+      @if (handoverOption() === 'account') {
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Account Number</label>
+            <input type="text" class="form-input" [ngModel]="accountSearch()" (ngModelChange)="accountSearch.set($event)" placeholder="Enter account number..." data-testid="input-account-search" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Attorney</label>
+            <select class="form-select" [ngModel]="selectedAttorneyId()" (ngModelChange)="selectedAttorneyId.set($event)" data-testid="select-attorney">
+              <option value="">Select attorney...</option>
+              @for (att of activeAttorneys(); track att.attorneyId) {
+                <option [value]="att.attorneyId">{{ att.attorneyName }} — {{ att.firmName }}</option>
+              }
+            </select>
+          </div>
+        </div>
+      }
+
+      @if (handoverOption() === 'bulk') {
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Attorney</label>
+            <select class="form-select" [ngModel]="selectedAttorneyId()" (ngModelChange)="selectedAttorneyId.set($event)" data-testid="select-attorney-bulk">
+              <option value="">Select attorney...</option>
+              @for (att of activeAttorneys(); track att.attorneyId) {
+                <option [value]="att.attorneyId">{{ att.attorneyName }} — {{ att.firmName }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Billing Cycle</label>
+            <select class="form-select" [ngModel]="billingCycle()" (ngModelChange)="billingCycle.set($event)" data-testid="select-billing-cycle">
+              <option value="">All Cycles</option>
+              @for (bc of billingCycles(); track bc.id) { <option [value]="bc.id">{{ bc.name }}</option> }
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Town</label>
+            <select class="form-select" [ngModel]="town()" (ngModelChange)="town.set($event)" data-testid="select-town">
+              <option value="">All Towns</option>
+              @for (t of towns(); track t.id) { <option [value]="t.id">{{ t.name }}</option> }
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ageing</label>
+            <select class="form-select" [ngModel]="ageing()" (ngModelChange)="ageing.set($event)" data-testid="select-ageing">
+              <option value="">Select ageing...</option>
+              @for (a of ageingRanges(); track a.id) { <option [value]="a.id">{{ a.name }}</option> }
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Amount Greater Than</label>
+            <input type="number" class="form-input" [ngModel]="amountGreaterThan()" (ngModelChange)="amountGreaterThan.set($event)" placeholder="0.00" data-testid="input-amount-threshold" />
+          </div>
+        </div>
+      }
+
+      @if (handoverOption() === 'rotation') {
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Billing Cycle</label>
+            <select class="form-select" [ngModel]="billingCycle()" (ngModelChange)="billingCycle.set($event)" data-testid="select-billing-cycle-rot">
+              <option value="">All Cycles</option>
+              @for (bc of billingCycles(); track bc.id) { <option [value]="bc.id">{{ bc.name }}</option> }
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Town</label>
+            <select class="form-select" [ngModel]="town()" (ngModelChange)="town.set($event)" data-testid="select-town-rot">
+              <option value="">All Towns</option>
+              @for (t of towns(); track t.id) { <option [value]="t.id">{{ t.name }}</option> }
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ageing</label>
+            <select class="form-select" [ngModel]="ageing()" (ngModelChange)="ageing.set($event)" data-testid="select-ageing-rot">
+              <option value="">Select ageing...</option>
+              @for (a of ageingRanges(); track a.id) { <option [value]="a.id">{{ a.name }}</option> }
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Amount Greater Than</label>
+            <input type="number" class="form-input" [ngModel]="amountGreaterThan()" (ngModelChange)="amountGreaterThan.set($event)" placeholder="0.00" data-testid="input-amount-rot" />
+          </div>
+        </div>
+
+        <div class="rotation-panel">
+          <div class="rotation-header">
+            <span class="rotation-title">🔄 Attorney Rotation Allocation</span>
+            <div class="rotation-actions">
+              <span class="badge" [class.badge-success]="totalAllocation() >= 99.99 && totalAllocation() <= 100.01"
+                [class.badge-warning]="totalAllocation() < 99.99 || totalAllocation() > 100.01" data-testid="badge-total-allocation">
+                Total: {{ totalAllocation().toFixed(1) }}%
+              </span>
+              <button class="btn btn-sm btn-outline" (click)="addRotationAttorney()" data-testid="button-add-rotation">+ Add</button>
+            </div>
+          </div>
+          @if (rotationAllocations().length === 0) {
+            <div class="empty-state-sm">No attorneys added. Click "+ Add" to begin.</div>
+          } @else {
+            @for (alloc of rotationAllocations(); track $index; let idx = $index) {
+              <div class="rotation-row">
+                <select class="form-select flex-1" [ngModel]="alloc.attorneyId || ''" (ngModelChange)="updateRotationAttorneyId(idx, $event)" [attr.data-testid]="'select-rot-att-' + idx">
+                  <option value="">Select attorney...</option>
+                  @for (att of activeAttorneys(); track att.attorneyId) {
+                    <option [value]="att.attorneyId">{{ att.attorneyName }}</option>
+                  }
+                </select>
+                <div class="pct-input-group">
+                  <input type="number" class="form-input w-20" [ngModel]="alloc.percentage" (ngModelChange)="updateRotationPercentage(idx, '' + $event)" min="0" max="100" step="0.1" [attr.data-testid]="'input-rot-pct-' + idx" />
+                  <span class="pct-label">%</span>
+                </div>
+                <button class="btn btn-sm btn-danger-ghost" (click)="removeRotationAttorney(idx)" [attr.data-testid]="'button-rem-rot-' + idx">✕</button>
+              </div>
+            }
+          }
+        </div>
+      }
+
+      <div class="action-bar">
+        <button class="btn btn-primary" (click)="handleSubmit()" [disabled]="submitting()" data-testid="button-submit">
+          @if (submitting()) { <span class="spinner-sm"></span> }
+          Submit Handover
+        </button>
+        <button class="btn btn-outline" (click)="handleClear()" data-testid="button-clear">Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2 class="section-title">Handover Records</h2>
+      @if (totalPages() > 1) {
+        <div class="pagination">
+          <button class="btn btn-sm btn-ghost" (click)="prevPage()" [disabled]="currentPage() <= 1">&#8249;</button>
+          <span class="page-info" data-testid="text-page-info">{{ currentPage() }} / {{ totalPages() }}</span>
+          <button class="btn btn-sm btn-ghost" (click)="nextPage()" [disabled]="currentPage() >= totalPages()">&#8250;</button>
+        </div>
+      }
+    </div>
+    <div class="card-body no-pad">
+      @if (loadingHandovers()) {
+        <div class="loading-state"><div class="spinner"></div></div>
+      } @else if (handovers().length === 0) {
+        <div class="empty-state">No handover records found.</div>
+      } @else {
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Account No</th>
+                <th>Account Name</th>
+                <th>Attorney</th>
+                <th>Date</th>
+                <th class="text-right">Amount</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (h of paginatedHandovers(); track h.handoverId; let idx = $index) {
+                <tr [attr.data-testid]="'row-handover-' + idx">
+                  <td class="font-mono">{{ h.accountNo }}</td>
+                  <td>{{ h.accountName }}</td>
+                  <td>{{ h.attorney }}</td>
+                  <td>{{ h.handoverDate }}</td>
+                  <td class="text-right font-medium">{{ formatCurrency(h.handedOverAmount) }}</td>
+                  <td><span class="badge" [ngClass]="getStatusClass(h.status)">{{ h.status }}</span></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  </div>
+</div>

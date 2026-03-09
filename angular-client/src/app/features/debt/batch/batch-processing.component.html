@@ -1,0 +1,166 @@
+<div class="page-container">
+  <div class="breadcrumb">
+    <span class="breadcrumb-link" (click)="goHome()" data-testid="link-home">Home</span>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-link" (click)="goDebt()" data-testid="link-debt">Debt Management</span>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-current">Batch Processing</span>
+  </div>
+
+  <div class="page-header-row">
+    <div class="header-left">
+      <div class="icon-box">⚙</div>
+      <div>
+        <h1 class="page-title" data-testid="text-page-title">Batch Processing Engine</h1>
+        <p class="page-subtitle">Manage scheduled batch jobs for debt recovery operations</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="content-area">
+    <div class="stat-grid stat-grid-4">
+      <div class="card stat-card">
+        <div class="stat-row">
+          <div>
+            <div class="stat-label-upper">Active</div>
+            <div class="stat-value stat-blue" data-testid="text-active-count">{{ activeCount() }}</div>
+          </div>
+          <div class="stat-icon-box stat-icon-blue">⟳</div>
+        </div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-row">
+          <div>
+            <div class="stat-label-upper">Pending</div>
+            <div class="stat-value stat-indigo" data-testid="text-pending-count">{{ pendingCount() }}</div>
+          </div>
+          <div class="stat-icon-box stat-icon-indigo">⏲</div>
+        </div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-row">
+          <div>
+            <div class="stat-label-upper">Completed</div>
+            <div class="stat-value stat-emerald" data-testid="text-completed-count">{{ completedCount() }}</div>
+          </div>
+          <div class="stat-icon-box stat-icon-emerald">✓</div>
+        </div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-row">
+          <div>
+            <div class="stat-label-upper">Failed</div>
+            <div class="stat-value stat-red" data-testid="text-failed-count">{{ failedCount() }}</div>
+          </div>
+          <div class="stat-icon-box stat-icon-red">✗</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="padding: 1rem;">
+      <h2 class="section-title">Trigger Job</h2>
+      <div class="trigger-buttons">
+        @for (entry of jobTypeEntries; track entry[0]) {
+          <button class="btn-outline" [disabled]="triggeringType() !== null" (click)="handleTrigger(entry[0])" [attr.data-testid]="'button-trigger-' + entry[0]  + ''">
+            {{ triggeringType() === entry[0] ? '⟳ ' : '' }}{{ entry[1].label }}
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="card" style="padding: 1rem;">
+      <h2 class="section-title">Scheduled Jobs</h2>
+      @if (schedules().length === 0) {
+        <div class="empty-state">No scheduled jobs configured</div>
+      } @else {
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Job Type</th>
+                <th>Schedule</th>
+                <th>Next Run</th>
+                <th>Last Run</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (s of schedules(); track $index) {
+                <tr [attr.data-testid]="'row-schedule-' + $index  + ''">
+                  <td><span class="badge" [ngClass]="getJobTypeClass(s.jobType)">{{ getJobTypeLabel(s.jobType) }}</span></td>
+                  <td>{{ s.cronExpression || s.schedule || '—' }}</td>
+                  <td>{{ fmtDateShort(s.nextRunAt) }}</td>
+                  <td>{{ fmtDateShort(s.lastRunAt) }}</td>
+                  <td><span class="badge" [ngClass]="getStatusClass(s.status || (s.enabled ? 'SCHEDULED' : 'CANCELLED'))">{{ getStatusLabel(s.status || (s.enabled ? 'SCHEDULED' : 'CANCELLED')) }}</span></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+
+    <div class="card" style="padding: 1rem;">
+      <div class="filter-row">
+        <h2 class="section-title">Job History</h2>
+        <div class="filter-controls">
+          <select class="form-select filter-select" [ngModel]="filterType()" (ngModelChange)="filterType.set($event)" data-testid="select-filter-type">
+            <option value="ALL">All Types</option>
+            @for (entry of jobTypeEntries; track entry[0]) {
+              <option [value]="entry[0]">{{ entry[1].label }}</option>
+            }
+          </select>
+          <select class="form-select filter-select" [ngModel]="filterStatus()" (ngModelChange)="filterStatus.set($event)" data-testid="select-filter-status">
+            <option value="ALL">All Statuses</option>
+            @for (entry of statusEntries; track entry[0]) {
+              <option [value]="entry[0]">{{ entry[1].label }}</option>
+            }
+          </select>
+          <button class="btn-outline" [disabled]="loading()" (click)="loadData()" data-testid="button-refresh-jobs">↻</button>
+        </div>
+      </div>
+      @if (loading() && jobs().length === 0) {
+        <div class="loading-state"><div class="spinner"></div></div>
+      } @else if (filteredJobs().length === 0) {
+        <div class="empty-state">No batch jobs found</div>
+      } @else {
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Job Type</th>
+                <th>Status</th>
+                <th>Started</th>
+                <th>Duration</th>
+                <th class="text-right">Processed</th>
+                <th class="text-right">Succeeded</th>
+                <th class="text-right">Failed</th>
+                <th>Triggered By</th>
+                <th class="text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (job of filteredJobs(); track $index) {
+                <tr [attr.data-testid]="'row-job-' + $index  + ''">
+                  <td><span class="badge" [ngClass]="getJobTypeClass(job.jobType)">{{ getJobTypeLabel(job.jobType) }}</span></td>
+                  <td><span class="badge" [ngClass]="getStatusClass(job.status)">{{ getStatusLabel(job.status) }}</span></td>
+                  <td>{{ fmtDateShort(job.startedAt) }}</td>
+                  <td>{{ fmtDuration(job.startedAt, job.completedAt) }}</td>
+                  <td class="text-right font-medium">{{ job.totalProcessed ?? '—' }}</td>
+                  <td class="text-right text-success font-medium">{{ job.totalSucceeded ?? '—' }}</td>
+                  <td class="text-right text-danger font-medium">{{ job.totalFailed ?? '—' }}</td>
+                  <td>{{ job.triggeredBy || '—' }}</td>
+                  <td class="text-center">
+                    @if (job.status === 'RUNNING' || job.status === 'PENDING') {
+                      <button class="btn-icon btn-icon-danger" [disabled]="cancellingId() === job.id" (click)="handleCancel(job.id)" [attr.data-testid]="'button-cancel-job-' + $index  + ''">✗</button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  </div>
+</div>
