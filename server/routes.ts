@@ -2139,8 +2139,8 @@ export async function registerRoutes(
       if (!miscBody.scoaItem && miscBody.scoaItem !== 0) {
         return res.status(400).json({ message: "scoaItem is required" });
       }
-      if (miscBody.totalAmount === undefined || miscBody.totalAmount === null || miscBody.totalAmount <= 0) {
-        return res.status(400).json({ message: "totalAmount must be greater than 0" });
+      if (miscBody.totalAmount === undefined || miscBody.totalAmount === null || miscBody.totalAmount < 0) {
+        return res.status(400).json({ message: "totalAmount must be 0 or greater" });
       }
 
       const sanitizedPayload = {

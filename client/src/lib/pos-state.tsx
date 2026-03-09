@@ -2341,8 +2341,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
                 continue;
             }
 
-            if (item.amountToPay <= 0) {
-                console.warn(`[Priority 2] Skipping misc payment for "${item.description}" — amount is R${item.amountToPay.toFixed(2)} (must be > 0)`);
+            if (item.amountToPay < 0) {
+                console.warn(`[Priority 2] Skipping misc payment for "${item.description}" — amount is R${item.amountToPay.toFixed(2)} (must be >= 0)`);
                 continue;
             }
 
@@ -2576,8 +2576,18 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
                     }
                 } else {
                     const miscPaymentTypeId = record.payment.card > 0 && record.payment.cash === 0 ? 3 : 1;
-                    const singleTender = miscPaymentTypeId === 1 ? incGroupTender : item.amountToPay;
-                    const singleChange = miscPaymentTypeId === 1 ? incGroupChange : 0;
+                    let singleTender: number;
+                    let singleChange: number;
+                    if (directIncomeItems.length === 1) {
+                        singleTender = miscPaymentTypeId === 1 ? incGroupTender : item.amountToPay;
+                        singleChange = miscPaymentTypeId === 1 ? incGroupChange : 0;
+                    } else if (idx === 0) {
+                        singleTender = miscPaymentTypeId === 1 ? incGroupTender : item.amountToPay;
+                        singleChange = miscPaymentTypeId === 1 ? incGroupChange : 0;
+                    } else {
+                        singleTender = item.amountToPay;
+                        singleChange = 0;
+                    }
                     await submitOneMisc(miscPaymentTypeId, item.amountToPay, singleTender, singleChange, 'SINGLE', record.payment.card > 0 ? 'card' : 'cash');
                 }
             } catch (e: any) {
