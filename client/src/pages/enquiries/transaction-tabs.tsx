@@ -1260,13 +1260,18 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
     }
     const blob = await res.blob();
     const pdfUrl = URL.createObjectURL(blob);
-    const pdfTab = window.open(pdfUrl, '_blank');
-    if (!pdfTab) {
-      const link = document.createElement('a');
-      link.href = pdfUrl;
-      link.download = `Receipt_${label || serialNo}.pdf`;
-      link.click();
-    }
+    const printFrame = document.createElement('iframe');
+    printFrame.style.position = 'fixed';
+    printFrame.style.top = '-10000px';
+    printFrame.style.left = '-10000px';
+    printFrame.style.width = '0';
+    printFrame.style.height = '0';
+    printFrame.src = pdfUrl;
+    document.body.appendChild(printFrame);
+    printFrame.onload = () => {
+      try { printFrame.contentWindow?.print(); } catch { window.open(pdfUrl, '_blank'); }
+      setTimeout(() => { document.body.removeChild(printFrame); URL.revokeObjectURL(pdfUrl); }, 60000);
+    };
   };
 
   const handlePrintReceipt = async (item: any) => {

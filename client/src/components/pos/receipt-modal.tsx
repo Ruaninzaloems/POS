@@ -195,13 +195,25 @@ export function ReceiptModal() {
         }
       }
       const pdfUrl = URL.createObjectURL(finalBlob);
-      const pdfTab = window.open(pdfUrl, '_blank');
-      if (!pdfTab) {
-        const link = document.createElement('a');
-        link.href = pdfUrl;
-        link.download = `Receipt_${currentTransaction.receiptNumber || 'print'}.pdf`;
-        link.click();
-      }
+      const printFrame = document.createElement('iframe');
+      printFrame.style.position = 'fixed';
+      printFrame.style.top = '-10000px';
+      printFrame.style.left = '-10000px';
+      printFrame.style.width = '0';
+      printFrame.style.height = '0';
+      printFrame.src = pdfUrl;
+      document.body.appendChild(printFrame);
+      printFrame.onload = () => {
+        try {
+          printFrame.contentWindow?.print();
+        } catch {
+          window.open(pdfUrl, '_blank');
+        }
+        setTimeout(() => {
+          document.body.removeChild(printFrame);
+          URL.revokeObjectURL(pdfUrl);
+        }, 60000);
+      };
       closeReceiptModal();
     } catch (err: any) {
       console.error('[ReceiptModal] PDF print error:', err);

@@ -478,14 +478,19 @@ export default function ViewReceipts() {
                 return;
             }
             const pdfUrl = URL.createObjectURL(blob);
-            const pdfTab = window.open(pdfUrl, '_blank');
-            if (!pdfTab) {
-                const link = document.createElement('a');
-                link.href = pdfUrl;
-                link.download = `Receipt_EFT_${receiptNo}.pdf`;
-                link.click();
-            }
-            toast({ title: "Receipt Ready", description: `EFT receipt ${receiptNo} opened for printing.` });
+            const printFrame = document.createElement('iframe');
+            printFrame.style.position = 'fixed';
+            printFrame.style.top = '-10000px';
+            printFrame.style.left = '-10000px';
+            printFrame.style.width = '0';
+            printFrame.style.height = '0';
+            printFrame.src = pdfUrl;
+            document.body.appendChild(printFrame);
+            printFrame.onload = () => {
+                try { printFrame.contentWindow?.print(); } catch { window.open(pdfUrl, '_blank'); }
+                setTimeout(() => { document.body.removeChild(printFrame); URL.revokeObjectURL(pdfUrl); }, 60000);
+            };
+            toast({ title: "Receipt Ready", description: `EFT receipt ${receiptNo} sent to printer.` });
         } catch (e: any) {
             console.error('EFT receipt fetch failed:', e);
             toast({ title: "Print Failed", description: `Could not retrieve receipt PDF: ${e.message || 'Unknown error'}`, variant: "destructive" });
@@ -593,14 +598,19 @@ export default function ViewReceipts() {
                 return;
             }
             const pdfUrl = URL.createObjectURL(blob);
-            const pdfTab = window.open(pdfUrl, '_blank');
-            if (!pdfTab) {
-                const link = document.createElement('a');
-                link.href = pdfUrl;
-                link.download = `Receipt_${receiptNo || serialNo}.pdf`;
-                link.click();
-            }
-            toast({ title: "Receipt Ready", description: `Receipt ${receiptNo || serialNo} opened for printing.` });
+            const printFrame = document.createElement('iframe');
+            printFrame.style.position = 'fixed';
+            printFrame.style.top = '-10000px';
+            printFrame.style.left = '-10000px';
+            printFrame.style.width = '0';
+            printFrame.style.height = '0';
+            printFrame.src = pdfUrl;
+            document.body.appendChild(printFrame);
+            printFrame.onload = () => {
+                try { printFrame.contentWindow?.print(); } catch { window.open(pdfUrl, '_blank'); }
+                setTimeout(() => { document.body.removeChild(printFrame); URL.revokeObjectURL(pdfUrl); }, 60000);
+            };
+            toast({ title: "Receipt Ready", description: `Receipt ${receiptNo || serialNo} sent to printer.` });
         } catch (e: any) {
             console.error('[ViewReceipts] Receipt print failed:', e);
             toast({ title: "Print Failed", description: `Failed to fetch receipt PDF: ${e.message || 'Unknown error'}`, variant: "destructive" });

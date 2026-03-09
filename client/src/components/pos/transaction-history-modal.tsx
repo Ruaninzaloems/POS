@@ -128,14 +128,26 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
         return;
       }
       const pdfUrl = URL.createObjectURL(blob);
-      const pdfTab = window.open(pdfUrl, '_blank');
-      if (!pdfTab) {
-        const link = document.createElement('a');
-        link.href = pdfUrl;
-        link.download = `Receipt_${tx.receiptNumber || receiptId}.pdf`;
-        link.click();
-      }
-      toast({ title: "Receipt Ready", description: `Receipt ${tx.receiptNumber || receiptId} opened for reprinting.` });
+      const printFrame = document.createElement('iframe');
+      printFrame.style.position = 'fixed';
+      printFrame.style.top = '-10000px';
+      printFrame.style.left = '-10000px';
+      printFrame.style.width = '0';
+      printFrame.style.height = '0';
+      printFrame.src = pdfUrl;
+      document.body.appendChild(printFrame);
+      printFrame.onload = () => {
+        try {
+          printFrame.contentWindow?.print();
+        } catch {
+          window.open(pdfUrl, '_blank');
+        }
+        setTimeout(() => {
+          document.body.removeChild(printFrame);
+          URL.revokeObjectURL(pdfUrl);
+        }, 60000);
+      };
+      toast({ title: "Receipt Ready", description: `Receipt ${tx.receiptNumber || receiptId} sent to printer.` });
     } catch (err: any) {
       toast({ title: "Print Failed", description: `Could not retrieve receipt PDF: ${err.message || 'Unknown error'}`, variant: "destructive" });
     } finally {
