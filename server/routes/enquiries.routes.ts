@@ -387,6 +387,7 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
       const session = requireAuth(req, res); if (!session) return;
       const { endpoint, accountId } = req.params;
       const mappedEndpoint = enquiryPathParamMap[endpoint] || endpoint;
+      console.log(`[billing-enquiry] endpoint="${endpoint}" mapped="${mappedEndpoint}" accountId=${accountId}`);
 
       const queryParams: Record<string, string> = {
         ...req.query as Record<string, string>,
@@ -403,11 +404,18 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
         "cons-unit-by-account": "ConsUnitByAccount",
         "payment-incentive-by-account": "PaymentIncentiveByAccount",
         "linked-accounts-on-property": "LinkedAccountsOnProperty",
-        "service-type-balance": "ServiceTypeBalance",
+        "service-type-balance": "ServiceTypeBalanceDetails",
       };
 
       if (supervisorRoutes[mappedEndpoint]) {
         const data = await platinumGet(session, `/api/BillingEnquiry/${supervisorRoutes[mappedEndpoint]}`, queryParams);
+        return handlePlatinumResult(res, data);
+      }
+
+      if (mappedEndpoint === "detailed-transaction-results") {
+        const finYear = queryParams['finYear'] || session.userData?.finYear || '';
+        if (finYear) queryParams['finYear'] = finYear;
+        const data = await platinumGet(session, `/api/BillingEnquiry/DetailedTransactionResults`, queryParams);
         return handlePlatinumResult(res, data);
       }
 
