@@ -3504,3 +3504,51 @@ export async function fetchCommunicationStats(): Promise<any> {
     if (!res.ok) throw new Error(`Failed to fetch communication stats (status ${res.status})`);
     return res.json();
 }
+
+export async function fetchDebtOverview(): Promise<any> {
+    const res = await apiFetch('/api/analytics/debt-overview');
+    if (!res.ok) throw new Error(`Failed to fetch debt overview (status ${res.status})`);
+    return res.json();
+}
+
+export async function fetchAgingAnalysis(): Promise<any> {
+    const res = await apiFetch('/api/analytics/aging-analysis');
+    if (!res.ok) throw new Error(`Failed to fetch aging analysis (status ${res.status})`);
+    return res.json();
+}
+
+export async function fetchRecoveryStats(): Promise<any> {
+    const res = await apiFetch('/api/analytics/recovery-stats');
+    if (!res.ok) throw new Error(`Failed to fetch recovery stats (status ${res.status})`);
+    return res.json();
+}
+
+export async function fetchLegalPipeline(): Promise<any> {
+    const res = await apiFetch('/api/analytics/legal-pipeline');
+    if (!res.ok) throw new Error(`Failed to fetch legal pipeline (status ${res.status})`);
+    return res.json();
+}
+
+export async function fetchAttorneyPerformance(): Promise<any> {
+    const res = await apiFetch('/api/analytics/attorney-performance');
+    if (!res.ok) throw new Error(`Failed to fetch attorney performance (status ${res.status})`);
+    return res.json();
+}
+
+export async function fetchRiskDistribution(): Promise<any> {
+    const res = await apiFetch('/api/analytics/risk-distribution');
+    if (!res.ok) throw new Error(`Failed to fetch risk distribution (status ${res.status})`);
+    return res.json();
+}
+
+export async function fetchPredictiveForecasting(): Promise<any> {
+    const res = await apiFetch('/api/analytics/predictive-forecasting');
+    if (!res.ok) throw new Error(`Failed to fetch predictive forecasting (status ${res.status})`);
+    return res.json();
+}
+
+export async function fetchGeographicDistribution(): Promise<any> {
+    const res = await apiFetch('/api/analytics/geographic-distribution');
+    if (!res.ok) throw new Error(`Failed to fetch geographic distribution (status ${res.status})`);
+    return res.json();
+}

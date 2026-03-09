@@ -43,6 +43,9 @@ import CommunicationDashboard from "@/pages/debt/communication-dashboard";
 import ComplianceAuditTrail from "@/pages/legal/audit-trail";
 import LegalRulesPage from "@/pages/legal/rules";
 import EvidenceBundlePage from "@/pages/legal/evidence-bundle";
+import ExecutiveDashboard from "@/pages/analytics/executive-dashboard";
+import PredictiveForecasting from "@/pages/analytics/predictive-forecasting";
+import GeographicMapping from "@/pages/analytics/geographic-mapping";
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   constructor(props: { children: ReactNode }) {
@@ -133,6 +136,11 @@ function Router() {
       <Route path="/legal/rules" component={LegalRulesPage} />
       <Route path="/legal/audit-trail" component={ComplianceAuditTrail} />
       <Route path="/legal/evidence-bundle" component={EvidenceBundlePage} />
+
+      {/* Intelligence & Analytics */}
+      <Route path="/analytics/executive-dashboard" component={ExecutiveDashboard} />
+      <Route path="/analytics/predictive-forecasting" component={PredictiveForecasting} />
+      <Route path="/analytics/geographic-mapping" component={GeographicMapping} />
 
       <Route component={NotFound} />
     </Switch>

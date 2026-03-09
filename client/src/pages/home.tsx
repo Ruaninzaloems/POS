@@ -34,6 +34,9 @@ import {
   Filter,
   Send,
   Clock,
+  TrendingUp,
+  MapPin,
+  LineChart,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HelpTip } from '@/components/ui/help-tip';
@@ -77,10 +80,17 @@ const complianceChildren: MenuItem[] = [
   { label: 'Evidence Bundles', href: '/legal/evidence-bundle', icon: FileStack, description: 'Generate and manage litigation evidence bundles', helpTip: 'Generate court-ready evidence bundles containing notice history, communication logs, and proof of service for account litigation' },
 ];
 
+const analyticsChildren: MenuItem[] = [
+  { label: 'Executive Dashboard', href: '/analytics/executive-dashboard', icon: BarChart3, description: 'Total debt, aging, recovery, legal pipeline', helpTip: 'Executive-level view of total municipal debt, debt aging trends, recovery rates, legal pipeline status, attorney performance, and risk distribution' },
+  { label: 'Predictive Forecasting', href: '/analytics/predictive-forecasting', icon: TrendingUp, description: 'Predict recovery using historical patterns', helpTip: 'Predict how much debt will be recovered using historical recovery patterns, communication effectiveness, and risk scoring data' },
+  { label: 'Geographic Mapping', href: '/analytics/geographic-mapping', icon: MapPin, description: 'Debt by ward, suburb, town, property type', helpTip: 'Map debt by ward, suburb, town, and property type for council planning and targeted intervention' },
+];
+
 const menuEntries: MenuEntry[] = [
   { label: 'Point of Sale', icon: CreditCard, helpTip: 'All POS receipting, payments, deposits, and supervisor functions', children: posChildren },
   { label: 'Debt', icon: Landmark, helpTip: 'Debt management, arrangements, and collections', children: debtChildren },
   { label: 'Compliance', icon: Scale, helpTip: 'Legal compliance, audit trails, and evidence management', children: complianceChildren },
+  { label: 'Intelligence & Analytics', icon: LineChart, helpTip: 'Executive dashboards, predictive forecasting, and geographic debt mapping', children: analyticsChildren },
   { label: 'Billing Dashboard', href: '/billing-dashboard', icon: BarChart3, description: 'Billing statistics and notifications', helpTip: 'View billing notifications, alerts, and system status across all municipal services' },
   { label: 'General Enquiries', href: '/enquiries/general', icon: Search, description: 'Search and view account details', helpTip: 'Look up account balances, transaction history, and billing details' },
   { label: 'Client Communications', href: '/communications', icon: MessageSquareMore, description: 'Send custom emails and SMS to account holders', helpTip: 'Send emails and SMS messages to account holders' },

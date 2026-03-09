@@ -8,6 +8,7 @@ import OpenAI from "openai";
 import { legalEngine, getClientIp, seedDefaultRules } from "./legal-compliance";
 import { debtScoringEngine, seedDefaultWeights } from "./debt-scoring";
 import { communicationEngine, seedDefaultTimeline } from "./communication-engine";
+import { analyticsEngine } from "./analytics-engine";
 
 function getSession(req: Request): UserSession {
   if (!req.session.platinumAuth) {
@@ -7814,6 +7815,98 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
       res.json(stats);
     } catch (e: any) {
       res.status(500).json({ message: "Failed to fetch delivery stats", detail: e.message });
+    }
+  });
+
+  // =====================================================
+  // INTELLIGENCE & ANALYTICS ROUTES
+  // =====================================================
+
+  app.get("/api/analytics/debt-overview", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const data = await analyticsEngine.getDebtOverview(session);
+      res.json(data);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to fetch debt overview", detail: e.message });
+    }
+  });
+
+  app.get("/api/analytics/aging-analysis", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const data = await analyticsEngine.getAgingAnalysis(session);
+      res.json(data);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to fetch aging analysis", detail: e.message });
+    }
+  });
+
+  app.get("/api/analytics/recovery-stats", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const data = await analyticsEngine.getRecoveryStats();
+      res.json(data);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to fetch recovery stats", detail: e.message });
+    }
+  });
+
+  app.get("/api/analytics/legal-pipeline", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const data = await analyticsEngine.getLegalPipeline();
+      res.json(data);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to fetch legal pipeline", detail: e.message });
+    }
+  });
+
+  app.get("/api/analytics/attorney-performance", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const data = await analyticsEngine.getAttorneyPerformance(session);
+      res.json(data);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to fetch attorney performance", detail: e.message });
+    }
+  });
+
+  app.get("/api/analytics/risk-distribution", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const data = await analyticsEngine.getRiskDistribution();
+      res.json(data);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to fetch risk distribution", detail: e.message });
+    }
+  });
+
+  app.get("/api/analytics/predictive-forecasting", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const data = await analyticsEngine.getPredictiveForecasting();
+      res.json(data);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to fetch predictive forecasting", detail: e.message });
+    }
+  });
+
+  app.get("/api/analytics/geographic-distribution", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const data = await analyticsEngine.getGeographicDistribution(session);
+      res.json(data);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to fetch geographic distribution", detail: e.message });
     }
   });
 
