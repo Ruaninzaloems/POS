@@ -1025,7 +1025,7 @@ async function searchForSuggestions(note: string, reference: string, transaction
     return terms;
   };
 
-  const timedFetchAccounts = (criteria: any, timeoutMs = 20000): Promise<any[]> =>
+  const timedFetchAccounts = (criteria: any, timeoutMs = 40000): Promise<any[]> =>
     Promise.race([
       fetchAccounts(criteria),
       new Promise<any[]>(resolve => setTimeout(() => resolve([]), timeoutMs)),
@@ -1156,6 +1156,69 @@ async function searchForSuggestions(note: string, reference: string, transaction
               `Parsed "${erfLabel}" from description`,
               `Searched DD account autocomplete with padded ERF`,
               hasAreaMatch ? `Area confirmed` : `Verify area`,
+            ]
+          );
+        }
+      })
+    );
+
+    if (erf.erf !== erf.erf.padStart(8, '0')) {
+      searchPromises.push(
+        safe(() => platinumBillingAutocomplete(erf.erf, 'erfNumber')).then((items: any[]) => {
+          for (const item of items.slice(0, 10)) {
+            if (item.displayItem && !item.sgNumber) item.sgNumber = item.displayItem;
+            if (item.displayItem) {
+              const sgParts = parseSgNumber(item.displayItem);
+              if (sgParts.erf) item.erfNumber = sgParts.erf;
+              if (sgParts.portion) item.portion = sgParts.portion;
+            }
+            const hasAreaMatch = checkAreaMatch(item, erf.area);
+            addResult(item, 'erf_number',
+              `${erfLabel}${areaLabel} — ERF autocomplete (raw)${hasAreaMatch ? ' (area confirmed)' : ''}`,
+              hasAreaMatch ? 92 : 86,
+              [
+                `Parsed "${erfLabel}" from description`,
+                `Searched billing ERF autocomplete with raw ERF number`,
+                item.displayItem ? `SG code: ${item.displayItem}` : `ERF matched`,
+                hasAreaMatch ? `Area confirmed` : `Verify area`,
+              ]
+            );
+          }
+        })
+      );
+
+      searchPromises.push(
+        safe(() => platinumDDAccountAutocomplete(erf.erf)).then((rawData: any) => {
+          const items = unwrap(rawData);
+          for (const item of items.slice(0, 10)) {
+            if (item.displayItem && !item.sgNumber) item.sgNumber = item.displayItem;
+            const hasAreaMatch = checkAreaMatch(item, erf.area);
+            addResult(item, 'erf_number',
+              `${erfLabel}${areaLabel} — DD autocomplete (raw)${hasAreaMatch ? ' (area confirmed)' : ''}`,
+              hasAreaMatch ? 91 : 85,
+              [
+                `Parsed "${erfLabel}" from description`,
+                `Searched DD autocomplete with raw ERF number`,
+                hasAreaMatch ? `Area confirmed` : `Verify area`,
+              ]
+            );
+          }
+        })
+      );
+    }
+
+    const erfAsAccNo = erf.erf.padStart(12, '0');
+    searchPromises.push(
+      safe(() => platinumBillingAutocomplete(erfAsAccNo, 'accountNumber')).then((items: any[]) => {
+        for (const item of items.slice(0, 5)) {
+          const hasAreaMatch = checkAreaMatch(item, erf.area);
+          addResult(item, 'erf_number',
+            `${erfLabel} — tried as account number${hasAreaMatch ? ' (area confirmed)' : ''}`,
+            hasAreaMatch ? 80 : 65,
+            [
+              `Parsed "${erfLabel}" from description`,
+              `ERF number also searched as account number "${erfAsAccNo}"`,
+              hasAreaMatch ? `Area confirmed` : `Verify area manually`,
             ]
           );
         }
