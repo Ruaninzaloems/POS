@@ -241,7 +241,7 @@ function parseDescriptionForClues(note: string, reference: string): ParsedClues 
     /ERF\s*(?:NUMBER|NR|NO\.?)?\s*:?\s*(\d+)\s*\/\s*(\d+)\s+(\w+)(?:\s+(\w+))?/gi,
     /ERF\s*(?:NUMBER|NR|NO\.?)?\s*:?\s*(\d+)\s*\/\s*(\d+)/gi,
     /ERF\s*(?:NUMBER|NR|NO\.?)?\s*:?\s*(\d+)\s+(\w+)(?:\s+(\w+))?/gi,
-    /ERF\s*(\d+)/gi,
+    /ERF\s*(?:NUMBER|NR|NO\.?)?\s*:?\s*(\d+)/gi,
   ];
   for (const pattern of erfPatterns) {
     let match;
@@ -334,8 +334,20 @@ function parseDescriptionForClues(note: string, reference: string): ParsedClues 
     }
   }
 
+  const slashSurnames: string[] = [];
+  const numSlashNamePattern = /\b(\d{3,12})\s*[\/\\]\s*([A-Z][A-Za-z'-]{2,})\b/gi;
+  let nsMatch;
+  while ((nsMatch = numSlashNamePattern.exec(text)) !== null) {
+    const num = nsMatch[1];
+    const surname = nsMatch[2];
+    if (!accountNumbers.includes(num)) accountNumbers.push(num);
+    if (num.length >= 3 && !oldAccountCodes.includes(num)) oldAccountCodes.push(num);
+    if (surname.length >= 3 && !slashSurnames.includes(surname.toLowerCase())) {
+      slashSurnames.push(surname.toLowerCase());
+    }
+  }
 
-  const nameSearchTerms: string[] = [];
+  const nameSearchTerms: string[] = [...slashSurnames];
   const NOISE_WORDS = new Set(['FNB', 'OB', 'PMT', 'ABSA', 'STD', 'STANDARD', 'NEDBANK', 'CAPITEC', 'EFT', 'INT', 'CREDIT',
     'DEBIT', 'REF', 'INV', 'USER', 'MAGTAPE', 'GENERAL', 'DOM', 'INTERNET', 'PAYMENT', 'DEPOSIT',
     'ONTEC', 'FIXES', 'ACC', 'ACCOUNT', 'MTR', 'METER', 'ERF', 'SEQ', 'NO', 'NR', 'THE', 'AND', 'OF',
@@ -689,36 +701,12 @@ async function searchForSuggestions(note: string, reference: string, transaction
           const dateStr = latestDate ? new Date(latestDate).toLocaleDateString('en-GB') : 'unknown';
           const conf = Math.min(95, 80 + (recs.length * 5));
           const rawAccountNo = String(recs[0].accountNumber || recs[0].accountNo || '');
-
-          let enrichedItem: any = null;
           const idStr = String(accId);
           const padded12 = idStr.padStart(12, '0');
-          const enrichCandidates = [padded12];
-          if (rawAccountNo && rawAccountNo !== '0' && rawAccountNo !== idStr && rawAccountNo !== padded12) {
-            enrichCandidates.unshift(rawAccountNo);
-          }
-          if (idStr !== padded12) enrichCandidates.push(idStr);
-          const enrichResults = await Promise.allSettled(
-            enrichCandidates.map(accNo => safe(() => billingEnquirySearch({ accountNo: accNo })))
-          );
-          for (const r of enrichResults) {
-            if (r.status === 'fulfilled' && r.value && r.value.length > 0) {
-              enrichedItem = r.value[0];
-              break;
-            }
-          }
-
-          const accountNo = enrichedItem?.accountNumber || enrichedItem?.accountNo || rawAccountNo || String(accId);
-          const displayName = enrichedItem
-            ? [enrichedItem.name, enrichedItem.lastName, enrichedItem.firstName].filter(Boolean).join(' ').trim() || enrichedItem.companyName || ''
-            : '';
-
-          const baseItem = enrichedItem
-            ? { ...enrichedItem, account_ID: accId, _bankStatementPrior: priorEntries }
-            : { account_ID: accId, accountNumber: accountNo, name: displayName, lastName: '', _bankStatementPrior: priorEntries };
+          const accountNo = rawAccountNo && rawAccountNo !== '0' ? rawAccountNo : padded12;
 
           addResult(
-            baseItem,
+            { account_ID: accId, accountNumber: accountNo, name: '', lastName: '', _bankStatementPrior: priorEntries },
             'history',
             `Previously allocated via EFT (${recs.length}x) — account ${accountNo}`,
             conf,
@@ -728,9 +716,41 @@ async function searchForSuggestions(note: string, reference: string, transaction
               latestDate ? `Receipt: ${priorEntries[0].receiptNo}` : '',
               `This is the same API used on the View Receipts → Bank Statement tab`,
               `High confidence — same bank note was previously processed`,
-              enrichedItem ? `Account details verified from billing enquiry` : '',
             ].filter(Boolean),
           );
+
+          const enrichTimeout = new Promise<null>(resolve => setTimeout(() => resolve(null), 5000));
+          const enrichCandidates = [padded12];
+          if (rawAccountNo && rawAccountNo !== '0' && rawAccountNo !== idStr && rawAccountNo !== padded12) {
+            enrichCandidates.unshift(rawAccountNo);
+          }
+          if (idStr !== padded12) enrichCandidates.push(idStr);
+          const enrichAttempt = (async () => {
+            for (const accNoTry of enrichCandidates) {
+              try {
+                const items = await billingEnquirySearch({ accountNo: accNoTry });
+                if (items && items.length > 0) return items[0];
+              } catch {}
+            }
+            return null;
+          })();
+          const enrichedItem = await Promise.race([enrichAttempt, enrichTimeout]);
+          if (enrichedItem) {
+            const existing = suggestions.find(s => s.accountId === accId);
+            if (existing) {
+              const enrichName = [enrichedItem.initials, enrichedItem.lastName].filter(Boolean).join(' ') || enrichedItem.name || enrichedItem.companyName || '';
+              if (enrichName && (!existing.name || existing.name === '')) existing.name = enrichName;
+              if (!existing.address && (enrichedItem.deliveryAddress || enrichedItem.locationAddress)) {
+                existing.address = (enrichedItem.deliveryAddress || enrichedItem.locationAddress || '').split(/[\r\n]+/).filter(Boolean)[0] || '';
+              }
+              if (!existing.erfNumber && enrichedItem.erfNumber) existing.erfNumber = enrichedItem.erfNumber;
+              if (!existing.sgNumber && enrichedItem.sgNumber) existing.sgNumber = enrichedItem.sgNumber;
+              if (!existing.statusDesc && enrichedItem.statusDesc) existing.statusDesc = enrichedItem.statusDesc;
+              if (!existing.typeOfUseDesc && enrichedItem.typeOfUseDesc) existing.typeOfUseDesc = enrichedItem.typeOfUseDesc;
+              if (!existing.suburb && (enrichedItem.suburb || enrichedItem.town)) existing.suburb = enrichedItem.suburb || enrichedItem.town;
+              existing.matchReasoning = [...(existing.matchReasoning || []), 'Account details verified from billing enquiry'];
+            }
+          }
         }
       })
     );
@@ -928,13 +948,19 @@ async function searchForSuggestions(note: string, reference: string, transaction
     return terms;
   };
 
+  const timedFetchAccounts = (criteria: any, timeoutMs = 10000): Promise<any[]> =>
+    Promise.race([
+      fetchAccounts(criteria),
+      new Promise<any[]>(resolve => setTimeout(() => resolve([]), timeoutMs)),
+    ]);
+
   for (const erf of clues.erfNumbers.slice(0, 2)) {
     const sgSearchTerms = buildSgSearchTerms(erf);
     const erfLabel = erf.portion ? `ERF ${erf.erf}/${erf.portion}` : `ERF ${erf.erf}`;
     const areaLabel = erf.area ? ` ${erf.area}` : '';
 
     searchPromises.push(
-      safe(() => fetchAccounts({ erfNumber: erf.erf })).then((items: any[]) => {
+      safe(() => timedFetchAccounts({ erfNumber: erf.erf })).then((items: any[]) => {
         for (const item of items.slice(0, 10)) {
           const hasAreaMatch = checkAreaMatch(item, erf.area);
           const conf = hasAreaMatch ? 93 : (erf.portion ? 85 : 75);
@@ -951,9 +977,27 @@ async function searchForSuggestions(note: string, reference: string, transaction
       })
     );
 
+    searchPromises.push(
+      safe(() => platinumSearchAccountsPayment({ erfNumber: erf.erf })).then((rawData: any) => {
+        const items = unwrap(rawData);
+        for (const item of items.slice(0, 10)) {
+          const hasAreaMatch = checkAreaMatch(item, erf.area);
+          addResult(item, 'erf_number',
+            `${erfLabel}${areaLabel} — payment accounts${hasAreaMatch ? ' (area confirmed)' : ''}`,
+            hasAreaMatch ? 90 : 73,
+            [
+              `Parsed "${erfLabel}" from description`,
+              `Searched payment accounts with erfNumber="${erf.erf}"`,
+              hasAreaMatch ? `Area "${erf.area}" confirmed in result` : `Area not verified`,
+            ]
+          );
+        }
+      })
+    );
+
     if (erf.area) {
       searchPromises.push(
-        safe(() => fetchAccounts({ erfNumber: erf.erf, allotmentArea: erf.area })).then((items: any[]) => {
+        safe(() => timedFetchAccounts({ erfNumber: erf.erf, allotmentArea: erf.area })).then((items: any[]) => {
           for (const item of items.slice(0, 10)) {
             addResult(item, 'erf_number',
               `${erfLabel} in ${erf.area} (area confirmed)`,
@@ -1457,7 +1501,7 @@ async function searchForSuggestions(note: string, reference: string, transaction
         if (regexErfNorm.has(n) || aiSearchedIds.has(`erf:${n}`)) continue;
         aiSearchedIds.add(`erf:${n}`);
         aiSearches.push(
-          safe(() => fetchAccounts({ erfNumber: erfNum })).then((items: any[]) => {
+          safe(() => timedFetchAccounts({ erfNumber: erfNum })).then((items: any[]) => {
             for (const item of items.slice(0, 10)) {
               const hasAreaMatch = aiAreaCheck(item);
               addResult(item, 'erf_number', `AI: ERF ${erfNum}${hasAreaMatch ? ' (area confirmed)' : ''}`,
@@ -1469,7 +1513,7 @@ async function searchForSuggestions(note: string, reference: string, transaction
         if (aiAreas.length > 0) {
           for (const area of aiAreas.slice(0, 2)) {
             aiSearches.push(
-              safe(() => fetchAccounts({ erfNumber: erfNum, allotmentArea: area })).then((items: any[]) => {
+              safe(() => timedFetchAccounts({ erfNumber: erfNum, allotmentArea: area })).then((items: any[]) => {
                 for (const item of items.slice(0, 10)) {
                   addResult(item, 'erf_number', `AI: ERF ${erfNum} in ${area} (area confirmed)`, 94,
                     [`AI identified "${erfNum}" as ERF number + "${area}" as area`, `Searched with erfNumber + allotmentArea filter`]);
