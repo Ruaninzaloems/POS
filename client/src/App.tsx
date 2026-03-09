@@ -42,6 +42,8 @@ import CommunicationTimeline from "@/pages/debt/communication-timeline";
 import CommunicationDashboard from "@/pages/debt/communication-dashboard";
 import BatchProcessing from "@/pages/debt/batch-processing";
 import ProcessMonitoring from "@/pages/debt/process-monitoring";
+import DocumentTemplates from "@/pages/debt/document-templates";
+import DigitalSignatures from "@/pages/debt/digital-signatures";
 import ComplianceAuditTrail from "@/pages/legal/audit-trail";
 import LegalRulesPage from "@/pages/legal/rules";
 import EvidenceBundlePage from "@/pages/legal/evidence-bundle";
@@ -135,6 +137,8 @@ function Router() {
       <Route path="/debt/communication-dashboard" component={CommunicationDashboard} />
       <Route path="/debt/batch-processing" component={BatchProcessing} />
       <Route path="/debt/process-monitoring" component={ProcessMonitoring} />
+      <Route path="/debt/document-templates" component={DocumentTemplates} />
+      <Route path="/debt/digital-signatures" component={DigitalSignatures} />
 
       {/* Legal Compliance Module */}
       <Route path="/legal/rules" component={LegalRulesPage} />

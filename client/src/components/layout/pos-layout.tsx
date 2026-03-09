@@ -30,6 +30,8 @@ import {
   XCircle,
   Cog,
   Activity,
+  FileText,
+  PenLine,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HelpTip } from '@/components/ui/help-tip';
@@ -246,6 +248,8 @@ export function PosLayout({ children }: PosLayoutProps) {
             { label: 'Handover Termination', href: '/debt/handover/terminate', icon: XCircle },
             { label: 'Batch Processing', href: '/debt/batch-processing', icon: Cog },
             { label: 'Process Monitoring', href: '/debt/process-monitoring', icon: Activity },
+            { label: 'Document Templates', href: '/debt/document-templates', icon: FileText },
+            { label: 'Digital Signatures', href: '/debt/digital-signatures', icon: PenLine },
         ]
     },
   ];

@@ -7885,5 +7885,109 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
     }
   });
 
+  app.get("/api/document-templates", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/BillingDebt/document-templates", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/document-templates/:templateId/versions", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, `/api/BillingDebt/document-templates/${req.params.templateId}/versions`, req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/document-templates", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const data = await platinumPost(session, "/api/BillingDebt/document-templates", injectAuditFields(session, req.body));
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.put("/api/document-templates/:templateId", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const data = await platinumPost(session, `/api/BillingDebt/document-templates/${req.params.templateId}`, injectAuditFields(session, req.body));
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/document-templates/:templateId/upload", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const data = await platinumPost(session, `/api/BillingDebt/document-templates/${req.params.templateId}/upload`, injectAuditFields(session, req.body));
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/document-templates/:templateId/download", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, `/api/BillingDebt/document-templates/${req.params.templateId}/download`, req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/digital-signatures", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/BillingDebt/digital-signatures", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/digital-signatures/audit-log", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/BillingDebt/digital-signatures/audit-log", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/digital-signatures/:requestId", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, `/api/BillingDebt/digital-signatures/${req.params.requestId}`, req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/digital-signatures", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const data = await platinumPost(session, "/api/BillingDebt/digital-signatures", injectAuditFields(session, req.body));
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   return httpServer;
 }

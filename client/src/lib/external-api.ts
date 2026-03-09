@@ -3648,3 +3648,64 @@ export async function fetchTerminationQueues(): Promise<any> {
     if (!res.ok) throw new Error(`Failed to fetch termination queues (status ${res.status})`);
     return res.json();
 }
+
+export async function fetchDocumentTemplates(): Promise<any> {
+    const res = await apiFetch('/api/document-templates');
+    if (!res.ok) throw new Error(`Failed to fetch document templates (status ${res.status})`);
+    return res.json();
+}
+
+export async function fetchTemplateVersions(templateId: string): Promise<any> {
+    const res = await apiFetch(`/api/document-templates/${templateId}/versions`);
+    if (!res.ok) throw new Error(`Failed to fetch template versions (status ${res.status})`);
+    return res.json();
+}
+
+export async function createDocumentTemplate(data: { name: string; templateCode: string; category: string; description?: string; isActive?: boolean }): Promise<any> {
+    const res = await apiFetch('/api/document-templates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    if (!res.ok) throw new Error(`Failed to create template (status ${res.status})`);
+    return res.json();
+}
+
+export async function updateDocumentTemplate(templateId: string, data: { name?: string; templateCode?: string; category?: string; description?: string; isActive?: boolean }): Promise<any> {
+    const res = await apiFetch(`/api/document-templates/${templateId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    if (!res.ok) throw new Error(`Failed to update template (status ${res.status})`);
+    return res.json();
+}
+
+export async function uploadTemplateFile(templateId: string, data: { version: string; changeNotes?: string; fileName?: string }): Promise<any> {
+    const res = await apiFetch(`/api/document-templates/${templateId}/upload`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    if (!res.ok) throw new Error(`Failed to upload template version (status ${res.status})`);
+    return res.json();
+}
+
+export async function downloadTemplateFile(templateId: string, versionId?: string): Promise<any> {
+    const url = versionId ? `/api/document-templates/${templateId}/download?versionId=${versionId}` : `/api/document-templates/${templateId}/download`;
+    const res = await apiFetch(url);
+    if (!res.ok) throw new Error(`Failed to download template (status ${res.status})`);
+    return res.json();
+}
+
+export async function fetchSignatureRequests(): Promise<any> {
+    const res = await apiFetch('/api/digital-signatures');
+    if (!res.ok) throw new Error(`Failed to fetch signature requests (status ${res.status})`);
+    return res.json();
+}
+
+export async function fetchSignatureRequest(requestId: string): Promise<any> {
+    const res = await apiFetch(`/api/digital-signatures/${requestId}`);
+    if (!res.ok) throw new Error(`Failed to fetch signature request (status ${res.status})`);
+    return res.json();
+}
+
+export async function createSignatureRequest(data: { accountNo: string; documentType: string; signerName: string; signerEmail: string; signerMobile?: string; amount?: number; notes?: string; expiryDays?: number }): Promise<any> {
+    const res = await apiFetch('/api/digital-signatures', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    if (!res.ok) throw new Error(`Failed to create signature request (status ${res.status})`);
+    return res.json();
+}
+
+export async function fetchSignatureAuditLog(): Promise<any> {
+    const res = await apiFetch('/api/digital-signatures/audit-log');
+    if (!res.ok) throw new Error(`Failed to fetch signature audit log (status ${res.status})`);
+    return res.json();
+}

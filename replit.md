@@ -47,6 +47,11 @@ Batch processing for scheduled debt recovery jobs proxies to Platinum API (`/api
 #### Process Monitoring (Platinum API Proxy)
 Real-time process monitoring proxies to Platinum API (`/api/BillingDebt/process-monitoring-overview`, `/api/BillingDebt/process-active-runs`, `/api/BillingDebt/process-failed-runs`, `/api/BillingDebt/process-pending-approvals`, `/api/BillingDebt/process-handover-queues`, `/api/BillingDebt/process-termination-queues`). Process Monitoring page (`/debt/process-monitoring`) with tabbed interface: Overview (summary cards with drill-down), Active Runs, Failed Runs, Pending Approvals, Handover Queue, Termination Queue. All require `requireAuth`.
 
+#### Digital Document Management (Platinum API Proxy)
+Two sub-features:
+1. **Document Templates** (`/debt/document-templates`): Version-controlled template management proxying to Platinum API (`/api/BillingDebt/document-templates`, `/api/BillingDebt/document-templates/:id/versions`, `/api/BillingDebt/document-templates/:id/upload`, `/api/BillingDebt/document-templates/:id/download`). CRUD for templates with category filter (SECTION_129, HANDOVER, AOD, FINAL_DEMAND, SUMMONS, ARRANGEMENT, CLEARANCE, GENERAL), version history dialog, upload new versions with change notes, download current/archived versions. Write operations require `requireLegalAdmin`.
+2. **Digital Signatures** (`/debt/digital-signatures`): Electronic signature management for AOD agreements proxying to Platinum API (`/api/BillingDebt/digital-signatures`, `/api/BillingDebt/digital-signatures/:id`, `/api/BillingDebt/digital-signatures/audit-log`). Send signature requests with signer info, expiry, amount; track status (PENDING/SENT/VIEWED/SIGNED/DECLINED/EXPIRED/CANCELLED); view request details with timeline and signature hash verification; full audit log tab. KPI summary cards. Write operations require `requireLegalAdmin`.
+
 ## External Dependencies
 
 ### External APIs
