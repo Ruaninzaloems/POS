@@ -1,13 +1,25 @@
 import { Component, signal, computed, inject } from '@angular/core';
-import { Router, RouterOutlet, RouterLink } from '@angular/router';
+import { Router, RouterOutlet, RouterLink, NavigationEnd } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
+import { filter } from 'rxjs/operators';
 
-interface NavItem {
+interface NavChild {
   label: string;
-  href?: string;
+  href: string;
   icon: string;
-  children?: NavItem[];
+}
+
+interface NavGroup {
+  label: string;
+  icon: string;
+  children: NavChild[];
+}
+
+type NavItem = NavChild | NavGroup;
+
+function isGroup(item: NavItem): item is NavGroup {
+  return 'children' in item;
 }
 
 @Component({
@@ -21,100 +33,155 @@ export class PosLayoutComponent {
   private auth = inject(AuthService);
   private router = inject(Router);
 
-  menuOpen = signal(false);
-  expandedGroups = signal<Set<string>>(new Set());
+  sidebarCollapsed = signal(false);
+  mobileSidebarOpen = signal(false);
+  expandedGroups = signal<Set<string>>(new Set(['Cashier Operations', 'Billing & Payments']));
 
   isSite02 = this.auth.isSite02;
   user = this.auth.user;
   site = this.auth.site;
 
-  headerLogo = computed(() => this.site()?.logo || '/images/platinum-logo.png');
-  siteName = computed(() => this.isSite02() ? 'Inzalo EMS' : 'SAMRAS Platinum');
+  isGroup = isGroup;
+
+  currentUrl = signal(this.router.url);
+
+  breadcrumbs = computed(() => {
+    const url = this.currentUrl();
+    const segments = url.split('/').filter(s => s);
+    const crumbs: { label: string; href?: string }[] = [];
+    for (const nav of this.navItems) {
+      if (isGroup(nav)) {
+        for (const child of nav.children) {
+          if (this.matchesUrl(child.href, url)) {
+            crumbs.push({ label: nav.label });
+            crumbs.push({ label: child.label });
+            return crumbs;
+          }
+        }
+      } else {
+        if (this.matchesUrl(nav.href, url)) {
+          crumbs.push({ label: nav.label });
+          return crumbs;
+        }
+      }
+    }
+    if (segments.length > 0) {
+      crumbs.push({ label: segments[segments.length - 1].replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) });
+    }
+    return crumbs;
+  });
 
   navItems: NavItem[] = [
-    { label: 'Home', href: '/', icon: 'home' },
-    { label: 'POS', href: '/pos', icon: 'layers' },
-    { label: 'Billing Dashboard', href: '/billing-dashboard', icon: 'bar-chart' },
-    { label: 'Direct Deposits Manual', href: '/direct-deposits/manual', icon: 'banknote' },
-    { label: 'Direct Deposits Auto', href: '/direct-deposits/auto', icon: 'refresh-cw' },
+    { label: 'Dashboard', href: '/', icon: 'dashboard' },
     {
-      label: 'Third Party Payments', icon: 'users',
+      label: 'Cashier Operations', icon: 'point_of_sale',
       children: [
-        { label: 'Payment Processing', href: '/third-party/processing', icon: 'users' },
-        { label: 'Utilipay Reconciliation', href: '/third-party', icon: 'zap' },
-      ]
-    },
-    { label: 'Bulk Allocation', href: '/bulk-allocation', icon: 'file-bar-chart' },
-    { label: 'View Receipts', href: '/view-receipts', icon: 'file-search' },
-    {
-      label: 'Enquiries', icon: 'search',
-      children: [
-        { label: 'General Enquiries', href: '/enquiries/general', icon: 'file-search' },
-      ]
-    },
-    { label: 'Communications', href: '/communications', icon: 'message-square' },
-    { label: 'Supervisor', href: '/supervisor', icon: 'shield-check' },
-    {
-      label: 'Debt Management', icon: 'landmark',
-      children: [
-        { label: 'Section 129 Notices', href: '/debt/section129', icon: 'file-warning' },
-        { label: 'Section 129 Authorization', href: '/debt/section129/authorize', icon: 'shield-check' },
-        { label: 'Handover Management', href: '/debt/handover', icon: 'briefcase' },
-        { label: 'Handover Termination', href: '/debt/handover/terminate', icon: 'x-circle' },
-        { label: 'Batch Processing', href: '/debt/batch-processing', icon: 'cog' },
-        { label: 'Process Monitoring', href: '/debt/process-monitoring', icon: 'activity' },
-        { label: 'Document Templates', href: '/debt/document-templates', icon: 'file-text' },
-        { label: 'Digital Signatures', href: '/debt/digital-signatures', icon: 'pen-line' },
-        { label: 'Process Engine', href: '/debt/process-engine', icon: 'workflow' },
+        { label: 'POS Receipting', href: '/pos', icon: 'receipt_long' },
+        { label: 'Cashier Setup', href: '/cashier-setup', icon: 'login' },
+        { label: 'Day-End Reconciliation', href: '/cashier-day-end', icon: 'event_available' },
       ]
     },
     {
-      label: 'Reports', icon: 'bar-chart',
+      label: 'Billing & Payments', icon: 'payments',
       children: [
-        { label: 'Section 129 Config', href: '/debt/section129/config', icon: 'cog' },
-        { label: 'Section 129 Report', href: '/debt/section129-report', icon: 'file-text' },
-        { label: 'Handover Report', href: '/debt/handover-report', icon: 'file-text' },
-        { label: 'SMS Log Report', href: '/debt/sms-log-report', icon: 'message-square' },
-        { label: 'Risk Scoring', href: '/debt/risk-scoring', icon: 'activity' },
-        { label: 'Qualification Rules', href: '/debt/qualification-rules', icon: 'file-text' },
-        { label: 'Communication Timelines', href: '/debt/communication-timelines', icon: 'message-square' },
-        { label: 'Communication Dashboard', href: '/debt/communication-dashboard', icon: 'bar-chart' },
+        { label: 'Billing Dashboard', href: '/billing-dashboard', icon: 'bar_chart' },
+        { label: 'Direct Deposits', href: '/direct-deposits/manual', icon: 'account_balance' },
+        { label: 'Auto Allocation', href: '/direct-deposits/auto', icon: 'auto_fix_high' },
+        { label: 'Third Party Payments', href: '/third-party/processing', icon: 'groups' },
+        { label: 'Bulk Allocation', href: '/bulk-allocation', icon: 'upload_file' },
       ]
     },
     {
-      label: 'Legal Compliance', icon: 'shield-check',
+      label: 'Enquiries & Receipts', icon: 'search',
       children: [
-        { label: 'Legal Rules', href: '/legal/rules', icon: 'file-text' },
-        { label: 'Audit Trail', href: '/legal/audit-trail', icon: 'file-search' },
-        { label: 'Evidence Bundle', href: '/legal/evidence-bundle', icon: 'briefcase' },
+        { label: 'General Enquiries', href: '/enquiries/general', icon: 'manage_search' },
+        { label: 'View Receipts', href: '/view-receipts', icon: 'description' },
+      ]
+    },
+    { label: 'Communications', href: '/communications', icon: 'forum' },
+    { label: 'Supervisor', href: '/supervisor', icon: 'admin_panel_settings' },
+    {
+      label: 'Debt Management', icon: 'gavel',
+      children: [
+        { label: 'Section 129 Notices', href: '/debt/section129', icon: 'warning' },
+        { label: 'Authorization', href: '/debt/section129/authorize', icon: 'verified' },
+        { label: 'Configuration', href: '/debt/section129/config', icon: 'settings' },
+        { label: 'Handover Management', href: '/debt/handover', icon: 'assignment_ind' },
+        { label: 'Handover Termination', href: '/debt/handover/terminate', icon: 'cancel' },
+        { label: 'Batch Processing', href: '/debt/batch-processing', icon: 'batch_prediction' },
+        { label: 'Process Monitoring', href: '/debt/process-monitoring', icon: 'monitor_heart' },
+        { label: 'Document Templates', href: '/debt/document-templates', icon: 'article' },
+        { label: 'Digital Signatures', href: '/debt/digital-signatures', icon: 'draw' },
+        { label: 'Process Engine', href: '/debt/process-engine', icon: 'engineering' },
       ]
     },
     {
-      label: 'Analytics', icon: 'bar-chart',
+      label: 'Reports', icon: 'assessment',
       children: [
-        { label: 'Executive Dashboard', href: '/analytics/executive-dashboard', icon: 'bar-chart' },
-        { label: 'Predictive Forecasting', href: '/analytics/predictive-forecasting', icon: 'activity' },
+        { label: 'Section 129 Report', href: '/debt/section129-report', icon: 'summarize' },
+        { label: 'Handover Report', href: '/debt/handover-report', icon: 'summarize' },
+        { label: 'SMS Log Report', href: '/debt/sms-log-report', icon: 'sms' },
+        { label: 'Risk Scoring', href: '/debt/risk-scoring', icon: 'trending_up' },
+        { label: 'Qualification Rules', href: '/debt/qualification-rules', icon: 'rule' },
+        { label: 'Communication Timeline', href: '/debt/communication-timelines', icon: 'timeline' },
+        { label: 'Comms Dashboard', href: '/debt/communication-dashboard', icon: 'dashboard' },
+      ]
+    },
+    {
+      label: 'Legal Compliance', icon: 'policy',
+      children: [
+        { label: 'Legal Rules', href: '/legal/rules', icon: 'gavel' },
+        { label: 'Audit Trail', href: '/legal/audit-trail', icon: 'history' },
+        { label: 'Evidence Bundle', href: '/legal/evidence-bundle', icon: 'folder_special' },
+      ]
+    },
+    {
+      label: 'Analytics', icon: 'insights',
+      children: [
+        { label: 'Executive Dashboard', href: '/analytics/executive-dashboard', icon: 'leaderboard' },
+        { label: 'Predictive Forecasting', href: '/analytics/predictive-forecasting', icon: 'auto_graph' },
         { label: 'Geographic Mapping', href: '/analytics/geographic-mapping', icon: 'map' },
       ]
     },
   ];
 
-  constructor() {}
+  constructor() {
+    this.router.events.pipe(
+      filter((e): e is NavigationEnd => e instanceof NavigationEnd)
+    ).subscribe(e => {
+      this.currentUrl.set(e.urlAfterRedirects || e.url);
+      this.mobileSidebarOpen.set(false);
+    });
+  }
 
-  toggleMenu(): void {
-    this.menuOpen.update(v => !v);
+  toggleSidebar(): void {
+    this.sidebarCollapsed.update(v => !v);
+  }
+
+  toggleMobileSidebar(): void {
+    this.mobileSidebarOpen.update(v => !v);
   }
 
   toggleGroup(label: string): void {
     this.expandedGroups.update(groups => {
-      const newGroups = new Set(groups);
-      if (newGroups.has(label)) {
-        newGroups.delete(label);
-      } else {
-        newGroups.add(label);
-      }
-      return newGroups;
+      const next = new Set(groups);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
     });
+  }
+
+  onGroupClick(label: string): void {
+    if (this.sidebarCollapsed()) {
+      this.sidebarCollapsed.set(false);
+      this.expandedGroups.update(groups => {
+        const next = new Set(groups);
+        next.add(label);
+        return next;
+      });
+    } else {
+      this.toggleGroup(label);
+    }
   }
 
   isGroupExpanded(label: string): boolean {
@@ -122,14 +189,21 @@ export class PosLayoutComponent {
   }
 
   navigateTo(href: string): void {
-    this.menuOpen.set(false);
     this.router.navigate([href]);
   }
 
+  matchesUrl(href: string, url?: string): boolean {
+    const current = url || this.currentUrl();
+    if (href === '/') return current === '/' || current === '';
+    return current === href || current.startsWith(href + '/');
+  }
+
   isActive(href: string): boolean {
-    const url = this.router.url;
-    if (href === '/') return url === '/';
-    return url === href || url.startsWith(href + '/');
+    return this.matchesUrl(href);
+  }
+
+  isGroupActive(group: NavGroup): boolean {
+    return group.children.some(c => this.matchesUrl(c.href));
   }
 
   async signOut(): Promise<void> {
@@ -138,12 +212,21 @@ export class PosLayoutComponent {
 
   getUserInitial(): string {
     const u = this.user();
-    return u?.firstName?.charAt(0) || u?.userName?.charAt(0) || 'U';
+    return u?.firstName?.charAt(0)?.toUpperCase() || u?.userName?.charAt(0)?.toUpperCase() || 'U';
   }
 
   getUserDisplayName(): string {
     const u = this.user();
     if (u?.firstName && u?.lastName) return `${u.firstName} ${u.lastName}`;
     return u?.userName || 'User';
+  }
+
+  getMunicipalityName(): string {
+    return this.isSite02() ? 'Inzalo EMS Site02' : 'George Municipality';
+  }
+
+  getFinancialPeriod(): string {
+    const u = this.user();
+    return u?.finYear || '2025/2026';
   }
 }

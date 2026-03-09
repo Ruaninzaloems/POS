@@ -18,17 +18,17 @@ export class HomeComponent {
   site = this.auth.site;
 
   quickLinks = [
-    { label: 'POS Receipting', route: '/pos', icon: 'layers', desc: 'Process payments and issue receipts' },
-    { label: 'Cashier Setup', route: '/cashier-setup', icon: 'settings', desc: 'Start or manage your cashier session' },
-    { label: 'View Receipts', route: '/view-receipts', icon: 'file-search', desc: 'Search and reprint receipts' },
-    { label: 'Billing Dashboard', route: '/billing-dashboard', icon: 'bar-chart', desc: 'View billing statistics' },
-    { label: 'General Enquiries', route: '/enquiries/general', icon: 'search', desc: 'Look up account details' },
-    { label: 'Direct Deposits', route: '/direct-deposits/manual', icon: 'banknote', desc: 'Allocate EFT payments' },
-    { label: 'Supervisor', route: '/supervisor', icon: 'shield', desc: 'Review cashier submissions' },
-    { label: 'Debt Management', route: '/debt/section129', icon: 'landmark', desc: 'Section 129 and debt recovery' },
+    { label: 'POS Receipting', route: '/pos', icon: 'receipt_long', desc: 'Process payments and issue receipts', color: 'blue' },
+    { label: 'Cashier Setup', route: '/cashier-setup', icon: 'login', desc: 'Start or manage your cashier session', color: 'teal' },
+    { label: 'Day-End', route: '/cashier-day-end', icon: 'event_available', desc: 'Day-end reconciliation', color: 'green' },
+    { label: 'View Receipts', route: '/view-receipts', icon: 'description', desc: 'Search and reprint receipts', color: 'purple' },
+    { label: 'Billing Dashboard', route: '/billing-dashboard', icon: 'bar_chart', desc: 'View billing statistics & alerts', color: 'amber' },
+    { label: 'General Enquiries', route: '/enquiries/general', icon: 'manage_search', desc: 'Look up account details', color: 'indigo' },
+    { label: 'Direct Deposits', route: '/direct-deposits/manual', icon: 'account_balance', desc: 'Allocate EFT payments', color: 'teal' },
+    { label: 'Communications', route: '/communications', icon: 'forum', desc: 'Client communications', color: 'blue' },
+    { label: 'Supervisor', route: '/supervisor', icon: 'admin_panel_settings', desc: 'Review cashier submissions', color: 'red' },
+    { label: 'Debt Management', route: '/debt/section129', icon: 'gavel', desc: 'Section 129 and debt recovery', color: 'purple' },
   ];
-
-  constructor() {}
 
   navigate(route: string): void {
     this.router.navigate([route]);
@@ -39,5 +39,21 @@ export class HomeComponent {
     if (hour < 12) return 'Good morning';
     if (hour < 17) return 'Good afternoon';
     return 'Good evening';
+  }
+
+  getIconBg(color: string): string {
+    const map: Record<string, string> = {
+      blue: '#e3f2fd', teal: '#e0f2f1', green: '#e8f5e9', purple: '#ede7f6',
+      amber: '#fff8e1', indigo: '#e8eaf6', red: '#ffebee'
+    };
+    return map[color] || '#e3f2fd';
+  }
+
+  getIconColor(color: string): string {
+    const map: Record<string, string> = {
+      blue: '#42a5f5', teal: '#26a69a', green: '#4caf50', purple: '#7e57c2',
+      amber: '#f59e0b', indigo: '#5c6bc0', red: '#ef5350'
+    };
+    return map[color] || '#42a5f5';
   }
 }

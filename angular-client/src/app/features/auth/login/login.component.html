@@ -1,47 +1,92 @@
-<div class="login-page">
-  <div class="login-card card">
-    <div class="login-header">
-      <img src="/images/platinum-logo.png" alt="Logo" class="login-logo" />
-      <h1 class="login-title">Municipal POS</h1>
-      <p class="login-subtitle">Sign in to your account</p>
+<div class="login-container">
+  <div class="login-left">
+    <div class="login-brand">
+      <div class="logo-icon">
+        <span class="material-icons shield-icon">account_balance</span>
+      </div>
+      <h1 class="brand-title">PLATINUM</h1>
+      <p class="tagline">Municipal POS System</p>
+      <div class="divider"></div>
     </div>
+    <div class="feature-list">
+      <div class="feature-item">
+        <span class="material-icons">receipt_long</span>
+        <span>POS Receipting & Payment Processing</span>
+      </div>
+      <div class="feature-item">
+        <span class="material-icons">account_balance</span>
+        <span>Direct Deposit Allocation</span>
+      </div>
+      <div class="feature-item">
+        <span class="material-icons">search</span>
+        <span>Account Enquiries & Billing</span>
+      </div>
+      <div class="feature-item">
+        <span class="material-icons">admin_panel_settings</span>
+        <span>Supervisor Dashboard & Day-End</span>
+      </div>
+      <div class="feature-item">
+        <span class="material-icons">gavel</span>
+        <span>Debt Management & Legal Compliance</span>
+      </div>
+      <div class="feature-item">
+        <span class="material-icons">insights</span>
+        <span>Analytics & Reporting</span>
+      </div>
+    </div>
+  </div>
 
-    <form (ngSubmit)="onSubmit()" class="login-form">
-      @if (error()) {
-        <div class="login-error" data-testid="text-login-error">{{ error() }}</div>
-      }
-
-      @if (sites().length > 1) {
-        <div class="form-group">
-          <label class="form-label" for="site">Site</label>
-          <select id="site" class="form-select" [(ngModel)]="selectedSite" name="site" data-testid="select-site">
-            @for (site of sites(); track site.id) {
-              <option [value]="site.id">{{ site.name }}</option>
-            }
-          </select>
-        </div>
-      }
-
-      <div class="form-group">
-        <label class="form-label" for="username">Username</label>
-        <input id="username" type="text" class="form-input" [(ngModel)]="username" name="username"
-               placeholder="Enter username" autocomplete="username" data-testid="input-username" />
+  <div class="login-right">
+    <div class="login-form-card">
+      <div class="login-header">
+        <h2 class="login-title">Welcome Back</h2>
+        <p class="login-subtitle">Sign in to your account to continue</p>
       </div>
 
-      <div class="form-group">
-        <label class="form-label" for="password">Password</label>
-        <input id="password" type="password" class="form-input" [(ngModel)]="password" name="password"
-               placeholder="Enter password" autocomplete="current-password" data-testid="input-password" />
-      </div>
-
-      <button type="submit" class="btn-primary login-btn" [disabled]="loading()" data-testid="button-login">
-        @if (loading()) {
-          <span class="spinner" style="width:1rem;height:1rem;border-width:2px"></span>
-          Signing in...
-        } @else {
-          Sign In
+      <form (ngSubmit)="onSubmit()" class="login-form">
+        @if (error()) {
+          <div class="login-error" data-testid="text-login-error">
+            <span class="material-icons" style="font-size: 16px;">error_outline</span>
+            {{ error() }}
+          </div>
         }
-      </button>
-    </form>
+
+        @if (sites().length > 1) {
+          <div class="form-group">
+            <label class="form-label" for="site">Site</label>
+            <select id="site" class="form-select" [(ngModel)]="selectedSite" name="site" data-testid="select-site">
+              @for (site of sites(); track site.id) {
+                <option [value]="site.id">{{ site.name }}</option>
+              }
+            </select>
+          </div>
+        }
+
+        <div class="form-group">
+          <label class="form-label" for="username">Username</label>
+          <input id="username" type="text" class="form-input" [(ngModel)]="username" name="username"
+                 placeholder="Enter your username" autocomplete="username" data-testid="input-username" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Password</label>
+          <input id="password" type="password" class="form-input" [(ngModel)]="password" name="password"
+                 placeholder="Enter your password" autocomplete="current-password" data-testid="input-password" />
+        </div>
+
+        <button type="submit" class="login-button" [disabled]="loading()" data-testid="button-login">
+          @if (loading()) {
+            <span class="spinner" style="width:1rem;height:1rem;border-width:2px"></span>
+            Signing in...
+          } @else {
+            Sign In
+          }
+        </button>
+      </form>
+
+      <div class="login-footer">
+        <span>Powered by Platinum Inzalo EMS</span>
+      </div>
+    </div>
   </div>
 </div>

@@ -1,14 +1,22 @@
-<div class="home-page">
-  <div class="page-header">
-    <h1 class="page-title" data-testid="text-greeting">{{ getGreeting() }}, {{ user()?.firstName || 'User' }}</h1>
-    <p class="page-subtitle">Welcome to the Municipal POS System</p>
+<div class="dashboard-page">
+  <div class="dash-header">
+    <div>
+      <h1 class="dash-title" data-testid="text-greeting">{{ getGreeting() }}, {{ user()?.firstName || 'User' }}</h1>
+      <p class="dash-subtitle">Welcome to the Municipal POS System. Select a module to get started.</p>
+    </div>
   </div>
 
-  <div class="quick-links-grid">
+  <div class="modules-grid">
     @for (link of quickLinks; track link.route) {
-      <div class="quick-link-card card" (click)="navigate(link.route)" [attr.data-testid]="'card-' + link.label">
-        <h3 class="link-title">{{ link.label }}</h3>
-        <p class="link-desc">{{ link.desc }}</p>
+      <div class="module-card" (click)="navigate(link.route)" [attr.data-testid]="'card-' + link.label">
+        <div class="module-icon" [style.background]="getIconBg(link.color)">
+          <span class="material-icons" [style.color]="getIconColor(link.color)">{{ link.icon }}</span>
+        </div>
+        <div class="module-info">
+          <h3 class="module-title">{{ link.label }}</h3>
+          <p class="module-desc">{{ link.desc }}</p>
+        </div>
+        <span class="material-icons module-arrow">chevron_right</span>
       </div>
     }
   </div>

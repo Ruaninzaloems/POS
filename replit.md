@@ -5,7 +5,7 @@ This project is an Angular 19/Express/PostgreSQL web application for a Municipal
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
-Theme: SAMRAS warm/light theme — `bg-[#F2F4F7]` background, `bg-white` cards with `border-[#D6D6D6] shadow-sm`, `bg-[#F7F7F7]` inputs with `border-[#D6D6D6]`, accent via `var(--pos-accent)` orange. NO dark slate themes. All pages must use this consistent light theme.
+Theme: Platinum SCM Design System — navy primary (`--platinum-primary: #0f2b46`), gold accent (`--platinum-accent: #c9a84c`), white surfaces, Inter font. Layout: sidebar (250px collapsible to 64px) + toolbar (56px) shell with grouped navigation. NO dark slate themes. All pages must use this consistent light theme with CSS variables from `styles.css`.
 
 ## Permanent Project Standards (NON-NEGOTIABLE)
 Full details in **`PROJECT_IMPLEMENTATION_RULES.md`** and **`POST_CHANGE_CHECKLIST.md`** (both in repo root). These rules apply to EVERY development task — no exceptions.

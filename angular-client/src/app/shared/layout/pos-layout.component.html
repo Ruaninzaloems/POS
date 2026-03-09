@@ -1,68 +1,111 @@
-<div class="layout-container">
-  <header class="layout-header" [class.site02]="isSite02()">
-    <div class="header-left">
-      <a routerLink="/" class="logo-link" data-testid="link-home-logo">
-        <img [src]="headerLogo()" alt="Logo" class="logo-img" />
-        <span class="logo-text">{{ siteName() }}</span>
+<div class="app-shell">
+  <aside class="app-sidenav" [class.collapsed]="sidebarCollapsed()" [class.mobile-open]="mobileSidebarOpen()">
+    <div class="sidenav-header">
+      <a routerLink="/" class="brand" data-testid="link-home-logo">
+        <div class="brand-icon">
+          <span class="material-icons">account_balance</span>
+        </div>
+        <div class="brand-text" [class.hidden]="sidebarCollapsed()">
+          <span class="brand-name">PLATINUM</span>
+          <span class="brand-sub">Municipal POS</span>
+        </div>
       </a>
-
-      <button class="nav-trigger" (click)="toggleMenu()" data-testid="button-nav-menu">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
-        </svg>
-        <span class="nav-trigger-label">Menu</span>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="chevron">
-          <polyline points="6 9 12 15 18 9"/>
-        </svg>
-      </button>
     </div>
 
-    <div class="header-right">
-      <div class="user-info" data-testid="text-user-info">
-        <div class="user-avatar">{{ getUserInitial() }}</div>
-        <span class="user-name">{{ getUserDisplayName() }}</span>
-      </div>
-      <button class="sign-out-btn" (click)="signOut()" title="Sign out" data-testid="button-sign-out">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-        </svg>
-      </button>
-    </div>
-  </header>
-
-  @if (menuOpen()) {
-    <div class="menu-overlay" (click)="toggleMenu()"></div>
-    <nav class="nav-dropdown" data-testid="nav-dropdown">
+    <nav class="sidenav-nav">
       @for (item of navItems; track item.label) {
-        @if (item.children) {
+        @if (isGroup(item)) {
           <div class="nav-group">
-            <button class="nav-group-header" (click)="toggleGroup(item.label)">
-              <span>{{ item.label }}</span>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                   [class.rotated]="isGroupExpanded(item.label)">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
+            <button class="group-header" (click)="onGroupClick(item.label)"
+                    [class.group-active]="isGroupActive($any(item))"
+                    [attr.data-testid]="'nav-group-' + item.label">
+              <span class="material-icons group-icon">{{ item.icon }}</span>
+              <span class="group-label" [class.hidden]="sidebarCollapsed()">{{ item.label }}</span>
+              <span class="material-icons group-chevron" [class.hidden]="sidebarCollapsed()"
+                    [class.rotated]="isGroupExpanded(item.label)">expand_more</span>
             </button>
-            @if (isGroupExpanded(item.label)) {
-              @for (child of item.children; track child.label) {
-                <a class="nav-item nav-child" [class.active]="isActive(child.href!)"
-                   (click)="navigateTo(child.href!)" [attr.data-testid]="'link-' + child.label">
-                  {{ child.label }}
-                </a>
-              }
+            @if (isGroupExpanded(item.label) && !sidebarCollapsed()) {
+              <div class="group-children">
+                @for (child of $any(item).children; track child.label) {
+                  <a class="nav-link sub-item" [class.active-link]="isActive(child.href)"
+                     (click)="navigateTo(child.href)" [attr.data-testid]="'link-' + child.label">
+                    <span class="material-icons nav-icon">{{ child.icon }}</span>
+                    <span class="nav-label">{{ child.label }}</span>
+                  </a>
+                }
+              </div>
             }
           </div>
         } @else {
-          <a class="nav-item" [class.active]="isActive(item.href!)"
-             (click)="navigateTo(item.href!)" [attr.data-testid]="'link-' + item.label">
-            {{ item.label }}
+          <a class="nav-link" [class.active-link]="isActive($any(item).href)"
+             (click)="navigateTo($any(item).href)" [attr.data-testid]="'link-' + item.label">
+            <span class="material-icons nav-icon">{{ item.icon }}</span>
+            <span class="nav-label" [class.hidden]="sidebarCollapsed()">{{ item.label }}</span>
           </a>
         }
       }
     </nav>
+
+    <div class="sidenav-footer" [class.hidden]="sidebarCollapsed()">
+      <span class="footer-version">v2.0 Municipal POS</span>
+    </div>
+  </aside>
+
+  @if (mobileSidebarOpen()) {
+    <div class="sidebar-overlay" (click)="toggleMobileSidebar()"></div>
   }
 
-  <main class="layout-main">
-    <router-outlet />
-  </main>
+  <div class="app-main">
+    <header class="app-toolbar" data-testid="app-toolbar">
+      <div class="toolbar-left">
+        <button class="toolbar-menu-btn" (click)="toggleMobileSidebar()" data-testid="button-mobile-menu">
+          <span class="material-icons">menu</span>
+        </button>
+        <button class="toolbar-collapse-btn" (click)="toggleSidebar()" data-testid="button-collapse-sidebar">
+          <span class="material-icons">{{ sidebarCollapsed() ? 'chevron_right' : 'chevron_left' }}</span>
+        </button>
+        <span class="municipality-name">{{ getMunicipalityName() }}</span>
+      </div>
+
+      <div class="toolbar-center">
+        <span class="period-badge">
+          <span class="material-icons" style="font-size: 14px; margin-right: 4px;">date_range</span>
+          FY {{ getFinancialPeriod() }}
+        </span>
+      </div>
+
+      <div class="toolbar-right">
+        <button class="toolbar-icon-btn" title="Settings" (click)="navigateTo('/settings')" data-testid="button-settings">
+          <span class="material-icons">settings</span>
+        </button>
+        <div class="user-section" data-testid="text-user-info">
+          <div class="user-avatar">{{ getUserInitial() }}</div>
+          <span class="user-name-toolbar">{{ getUserDisplayName() }}</span>
+        </div>
+        <button class="toolbar-icon-btn sign-out" (click)="signOut()" title="Sign out" data-testid="button-sign-out">
+          <span class="material-icons">logout</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="breadcrumb-bar">
+      <div class="breadcrumb-trail">
+        <a class="breadcrumb-home" (click)="navigateTo('/')">
+          <span class="material-icons" style="font-size: 16px;">home</span>
+        </a>
+        @for (crumb of breadcrumbs(); track crumb.label; let last = $last) {
+          <span class="material-icons breadcrumb-separator">chevron_right</span>
+          @if (last) {
+            <span class="breadcrumb-current">{{ crumb.label }}</span>
+          } @else {
+            <span class="breadcrumb-group">{{ crumb.label }}</span>
+          }
+        }
+      </div>
+    </div>
+
+    <main class="content-area">
+      <router-outlet />
+    </main>
+  </div>
 </div>

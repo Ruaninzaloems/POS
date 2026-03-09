@@ -20,7 +20,7 @@
   width: 2.75rem;
   height: 2.75rem;
   border-radius: 0.75rem;
-  background: linear-gradient(to bottom right, var(--pos-accent), var(--pos-accent-hover));
+  background: linear-gradient(135deg, var(--pos-accent), var(--pos-accent-hover));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -92,7 +92,7 @@
 }
 
 .section-banner {
-  background: linear-gradient(to right, var(--pos-accent), var(--pos-accent-hover));
+  background: linear-gradient(135deg, var(--pos-accent), var(--pos-accent-hover));
   color: white;
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
@@ -134,7 +134,7 @@
 }
 
 .table-header-accent th {
-  background: linear-gradient(to bottom, var(--pos-accent), var(--pos-accent-hover)) !important;
+  background: linear-gradient(135deg, #0f2b46, #1a3a5c) !important;
   color: white !important;
   font-weight: 700 !important;
   font-size: 0.75rem !important;
@@ -161,7 +161,7 @@
   padding: 0 0.5rem;
 }
 .total-badge {
-  background: linear-gradient(to right, var(--pos-accent), var(--pos-accent-hover));
+  background: linear-gradient(135deg, var(--pos-accent), var(--pos-accent-hover));
   color: white;
   padding: 0.25rem 1rem;
   border-radius: 0.25rem;

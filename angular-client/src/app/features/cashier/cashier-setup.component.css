@@ -86,7 +86,7 @@
 }
 
 .setup-header {
-  background: linear-gradient(180deg, #8C8C8C 0%, #6F6F6F 100%);
+  background: linear-gradient(135deg, var(--pos-accent), var(--pos-accent-hover));
   color: white;
   padding: 1rem 1.5rem;
 }
