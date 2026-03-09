@@ -1336,34 +1336,130 @@
                   @if (expandedRowId() === getAccountId(account)) {
                     <tr>
                       <td colspan="10" class="expanded-content">
-                        <div class="expanded-panels">
-                          <div class="expanded-panel">
-                            <div class="expanded-panel-header">👤 Account Details</div>
-                            <div class="expanded-panel-body">
-                              <div class="expanded-field"><span>Account No:</span> <strong>{{ account.accountNumber || '-' }}</strong></div>
-                              <div class="expanded-field"><span>Old Code:</span> <strong>{{ account.oldAccountCode || '-' }}</strong></div>
-                              <div class="expanded-field"><span>Name:</span> <strong>{{ getAccountName(account) }}</strong></div>
-                              <div class="expanded-field"><span>ID:</span> <strong>{{ account.addName || account.idRegistrationNumber || '-' }}</strong></div>
+                        @if (expandedRowLoading()) {
+                          <div class="qv-loading">
+                            <div class="search-spinner"></div>
+                            <span>Loading account snapshot...</span>
+                          </div>
+                        } @else if (expandedRowData()?.error) {
+                          <div class="qv-error">
+                            <span>Unable to load account details</span>
+                            <button class="btn-sm btn-outline" (click)="loadExpandedRowData(getAccountId(account))">Retry</button>
+                          </div>
+                        } @else if (expandedRowData()) {
+                          <div class="qv-container">
+                            <div class="qv-top-bar">
+                              <div class="qv-account-id">
+                                <span class="qv-avatar" [class.active-avatar]="isAccountActive(account)">{{ getAccountName(account).charAt(0).toUpperCase() }}</span>
+                                <div>
+                                  <div class="qv-name">{{ getAccountName(account) }}</div>
+                                  <div class="qv-acct-num">{{ getAccountNum(account) }} <span class="qv-separator">|</span> {{ account.accountStatus || account.statusDesc || '-' }}</div>
+                                </div>
+                              </div>
+                              <div class="qv-summary-badges">
+                                <div class="qv-badge qv-badge-total" [class.positive]="expandedRowData().totalOutstanding > 0">
+                                  <span class="qv-badge-label">Total Due</span>
+                                  <span class="qv-badge-value">R {{ formatCurrency(expandedRowData().totalOutstanding) }}</span>
+                                </div>
+                                <div class="qv-badge qv-badge-current">
+                                  <span class="qv-badge-label">Current</span>
+                                  <span class="qv-badge-value">R {{ formatCurrency(expandedRowData().totalCurrent) }}</span>
+                                </div>
+                                <div class="qv-badge qv-badge-arrears" [class.has-arrears]="expandedRowData().totalArrears > 0">
+                                  <span class="qv-badge-label">Arrears</span>
+                                  <span class="qv-badge-value">R {{ formatCurrency(expandedRowData().totalArrears) }}</span>
+                                </div>
+                                <div class="qv-badge qv-badge-services">
+                                  <span class="qv-badge-label">Services</span>
+                                  <span class="qv-badge-value">{{ expandedRowData().activeServices }}/{{ expandedRowData().totalServices }}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="qv-panels">
+                              <div class="qv-panel">
+                                <div class="qv-panel-header">💳 Balance Aging</div>
+                                <div class="qv-panel-body">
+                                  @if (expandedRowData().balanceFailed) {
+                                    <div class="qv-fetch-error">Failed to load balance data</div>
+                                  } @else if (expandedRowData().balance?.length > 0) {
+                                    @for (b of expandedRowData().balance; track $index) {
+                                      <div class="qv-balance-row">
+                                        <span class="qv-svc-name">{{ b.serviceDescription || b.serviceDesc || 'Service' }}</span>
+                                        <div class="qv-aging-bar">
+                                          <span class="qv-aging-segment current" [title]="'Current: R ' + formatCurrency(b.current || 0)">{{ formatCurrency(b.current || 0) }}</span>
+                                          <span class="qv-aging-segment days30" [title]="'30d: R ' + formatCurrency(b.days30 || 0)">{{ formatCurrency(b.days30 || 0) }}</span>
+                                          <span class="qv-aging-segment days60" [title]="'60d: R ' + formatCurrency(b.days60 || 0)">{{ formatCurrency(b.days60 || 0) }}</span>
+                                          <span class="qv-aging-segment days90" [title]="'90+d: R ' + formatCurrency((b.days90 || 0) + (b.days120 || 0) + (b.days150 || 0))">{{ formatCurrency((b.days90 || 0) + (b.days120 || 0) + (b.days150 || 0)) }}</span>
+                                          <span class="qv-aging-segment total">{{ formatCurrency(b.totalOutStanding || b.totalOutstandingAmount || 0) }}</span>
+                                        </div>
+                                      </div>
+                                    }
+                                  } @else {
+                                    <div class="qv-no-data">No balance data</div>
+                                  }
+                                </div>
+                              </div>
+                              <div class="qv-panel">
+                                <div class="qv-panel-header">📊 Active Services</div>
+                                <div class="qv-panel-body">
+                                  @if (expandedRowData().servicesFailed) {
+                                    <div class="qv-fetch-error">Failed to load services</div>
+                                  } @else if (expandedRowData().services?.length > 0) {
+                                    <div class="qv-services-list">
+                                      @for (svc of expandedRowData().services; track $index) {
+                                        <div class="qv-service-chip" [class.active]="(svc.serviceStatus || svc.statusDesc || svc.status || '').toLowerCase() === 'active'">
+                                          <span class="qv-svc-label">{{ svc.tariff || svc.tariffDesc || svc.serviceDesc || svc.serviceDescription || 'Service' }}</span>
+                                          @if (svc.meterNo || svc.meterNumber || svc.physicalMeterNo) {
+                                            <span class="qv-svc-meter">{{ svc.meterNo || svc.meterNumber || svc.physicalMeterNo }}</span>
+                                          }
+                                        </div>
+                                      }
+                                    </div>
+                                  } @else {
+                                    <div class="qv-no-data">No services found</div>
+                                  }
+                                </div>
+                              </div>
+                              <div class="qv-panel">
+                                <div class="qv-panel-header">📞 Contact</div>
+                                <div class="qv-panel-body">
+                                  @if (expandedRowData().contactFailed) {
+                                    <div class="qv-fetch-error">Failed to load contact</div>
+                                  } @else if (expandedRowData().contact) {
+                                    <div class="qv-contact-grid">
+                                      @if (expandedRowData().contact.mobileNumber || expandedRowData().contact.tel_Mobile || expandedRowData().contact.cellphone) {
+                                        <div class="qv-contact-item"><span class="qv-contact-icon">📱</span> {{ expandedRowData().contact.mobileNumber || expandedRowData().contact.tel_Mobile || expandedRowData().contact.cellphone }}</div>
+                                      }
+                                      @if (expandedRowData().contact.emailAddress || expandedRowData().contact.email || expandedRowData().contact.emailId) {
+                                        <div class="qv-contact-item"><span class="qv-contact-icon">✉️</span> {{ expandedRowData().contact.emailAddress || expandedRowData().contact.email || expandedRowData().contact.emailId }}</div>
+                                      }
+                                      @if (expandedRowData().contact.homePhone || expandedRowData().contact.tel_Home) {
+                                        <div class="qv-contact-item"><span class="qv-contact-icon">🏠</span> {{ expandedRowData().contact.homePhone || expandedRowData().contact.tel_Home }}</div>
+                                      }
+                                      @if (expandedRowData().contact.workPhone || expandedRowData().contact.tel_Work) {
+                                        <div class="qv-contact-item"><span class="qv-contact-icon">💼</span> {{ expandedRowData().contact.workPhone || expandedRowData().contact.tel_Work }}</div>
+                                      }
+                                      @if (!expandedRowData().contact.mobileNumber && !expandedRowData().contact.tel_Mobile && !expandedRowData().contact.cellphone && !expandedRowData().contact.emailAddress && !expandedRowData().contact.email && !expandedRowData().contact.homePhone && !expandedRowData().contact.tel_Home) {
+                                        <div class="qv-no-data">No contact details on file</div>
+                                      }
+                                    </div>
+                                  } @else {
+                                    <div class="qv-no-data">No contact details</div>
+                                  }
+                                </div>
+                              </div>
+                            </div>
+                            <div class="qv-actions">
+                              <button class="btn-primary btn-sm" (click)="selectAccount(account)" [attr.data-testid]="'btn-view-details-' +  getAccountId(account)  + ''">View Full Details</button>
+                              <span class="qv-address">{{ (account.locationAddress || account.address || account.deliveryAddress || '').replace('\r\n', ', ') }}</span>
                             </div>
                           </div>
-                          <div class="expanded-panel">
-                            <div class="expanded-panel-header">🏠 Property</div>
-                            <div class="expanded-panel-body">
-                              <div class="expanded-field"><span>SG Number:</span> <strong class="mono">{{ account.sgNumber || '-' }}</strong></div>
-                              <div class="expanded-field"><span>Address:</span> <strong>{{ (account.locationAddress || account.address || '-').replace('\r\n', ', ') }}</strong></div>
-                            </div>
+                        } @else {
+                          <div class="qv-loading">
+                            <div class="search-spinner"></div>
+                            <span>Loading...</span>
                           </div>
-                          <div class="expanded-panel">
-                            <div class="expanded-panel-header">💳 Financial</div>
-                            <div class="expanded-panel-body">
-                              <div class="expanded-field"><span>Outstanding:</span> <strong class="mono" [class.positive]="getOutstanding(account) > 0">R {{ formatCurrency(getOutstanding(account)) }}</strong></div>
-                              <div class="expanded-field"><span>Status:</span> <strong>{{ account.accountStatus || account.statusDesc || '-' }}</strong></div>
-                            </div>
-                          </div>
-                        </div>
-                        <div class="expanded-actions">
-                          <button class="btn-primary btn-sm" (click)="selectAccount(account)" [attr.data-testid]="'btn-view-details-' +  getAccountId(account)  + ''">View Full Details</button>
-                        </div>
+                        }
                       </td>
                     </tr>
                   }

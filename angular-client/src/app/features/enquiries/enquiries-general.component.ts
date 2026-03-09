@@ -101,6 +101,8 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   riskFlags = signal<RiskFlag[]>([]);
   riskFlagsLoading = signal(false);
   expandedRowId = signal<number | null>(null);
+  expandedRowData = signal<any>(null);
+  expandedRowLoading = signal(false);
 
   tabData = signal<any>(null);
   tabLoading = signal(false);
@@ -633,7 +635,71 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   }
 
   toggleExpandRow(id: number): void {
-    this.expandedRowId.update(prev => prev === id ? null : id);
+    if (this.expandedRowId() === id) {
+      this.expandedRowId.set(null);
+      this.expandedRowData.set(null);
+    } else {
+      this.expandedRowId.set(id);
+      this.expandedRowData.set(null);
+      this.loadExpandedRowData(id);
+    }
+  }
+
+  async loadExpandedRowData(accountId: number): Promise<void> {
+    this.expandedRowLoading.set(true);
+    try {
+      const [balanceRes, contactRes, servicesRes] = await Promise.allSettled([
+        this.withTimeout(firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-balance/${accountId}`)), 12000),
+        this.withTimeout(firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/contact-details/${accountId}`)), 12000),
+        this.withTimeout(firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/all-services/${accountId}`)), 12000),
+      ]);
+
+      if (this.expandedRowId() !== accountId) return;
+
+      const allFailed = balanceRes.status === 'rejected' && contactRes.status === 'rejected' && servicesRes.status === 'rejected';
+      if (allFailed) {
+        this.expandedRowData.set({ error: true });
+        return;
+      }
+
+      const balance = balanceRes.status === 'fulfilled'
+        ? (Array.isArray(balanceRes.value) ? balanceRes.value : balanceRes.value ? [balanceRes.value] : [])
+        : [];
+      const contact = contactRes.status === 'fulfilled' ? contactRes.value : null;
+      const services = servicesRes.status === 'fulfilled' ? this.normalizeArray(servicesRes.value) : [];
+      const balanceFailed = balanceRes.status === 'rejected';
+
+      let totalOutstanding = 0;
+      let totalCurrent = 0;
+      let totalArrears = 0;
+      for (const b of balance) {
+        totalOutstanding += b.totalOutStanding ?? b.totalOutstandingAmount ?? 0;
+        totalCurrent += b.current ?? 0;
+        totalArrears += (b.days30 ?? 0) + (b.days60 ?? 0) + (b.days90 ?? 0) + (b.days120 ?? 0) + (b.days150 ?? 0);
+      }
+
+      this.expandedRowData.set({
+        balance,
+        contact,
+        services: services.slice(0, 6),
+        totalOutstanding,
+        totalCurrent,
+        totalArrears,
+        activeServices: services.filter((s: any) => (s.serviceStatus || s.statusDesc || s.status || '').toLowerCase() === 'active').length,
+        totalServices: services.length,
+        balanceFailed,
+        contactFailed: contactRes.status === 'rejected',
+        servicesFailed: servicesRes.status === 'rejected',
+      });
+    } catch {
+      if (this.expandedRowId() === accountId) {
+        this.expandedRowData.set({ error: true });
+      }
+    } finally {
+      if (this.expandedRowId() === accountId) {
+        this.expandedRowLoading.set(false);
+      }
+    }
   }
 
   getOutstanding(account: SearchResult): number {
