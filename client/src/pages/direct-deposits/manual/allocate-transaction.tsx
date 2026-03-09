@@ -96,6 +96,7 @@ export default function AllocateTransaction({ dialogMode, dialogPosItemId, onDia
   const ddSearchRef = useRef<HTMLDivElement>(null);
   const ddSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ddSearchVersionRef = useRef(0);
+  const ddSearchAbortRef = useRef<AbortController | null>(null);
   
   const [miscGroups, setMiscGroups] = useState<any[]>([]);
   const [miscGroupsLoaded, setMiscGroupsLoaded] = useState(false);
@@ -144,8 +145,12 @@ export default function AllocateTransaction({ dialogMode, dialogPosItemId, onDia
       setDdSearchResults([]);
       return;
     }
+    if (ddSearchAbortRef.current) ddSearchAbortRef.current.abort();
+    const abortCtrl = new AbortController();
+    ddSearchAbortRef.current = abortCtrl;
     const searchVersion = ++ddSearchVersionRef.current;
     setDdSearching(true);
+    const isAborted = () => abortCtrl.signal.aborted || searchVersion !== ddSearchVersionRef.current;
     try {
       const results: DDSearchResult[] = [];
       const seen = new Set<number>();
@@ -158,9 +163,8 @@ export default function AllocateTransaction({ dialogMode, dialogPosItemId, onDia
 
       const primaryResults: DDSearchResult[] = [];
       const secondaryResults: DDSearchResult[] = [];
-
       const pushResults = () => {
-        if (searchVersion !== ddSearchVersionRef.current) return;
+        if (isAborted()) return;
         const combined = [...primaryResults, ...secondaryResults].slice(0, 15);
         setDdSearchResults(combined);
         if (combined.length > 0) setDdDropdownOpen(true);
@@ -211,14 +215,17 @@ export default function AllocateTransaction({ dialogMode, dialogPosItemId, onDia
 
           try {
             const items = await searchAccounts(primaryBody);
+            if (isAborted()) return;
             for (const item of items.slice(0, 15)) addAccountHit(item, detected.field !== 'accountNo' && detected.field !== 'name' ? `Found via ${detected.label}` : undefined);
             pushResults();
-          } catch (err) { console.error('[AllocateTransaction] Primary search failed:', err); }
+          } catch (err) { if (isAborted()) return; console.error('[AllocateTransaction] Primary search failed:', err); }
 
+          if (isAborted()) return;
           const secondarySearches: Promise<void>[] = [];
 
           secondarySearches.push(
             searchAccounts({ oldAccountCode: query }).then(items => {
+              if (isAborted()) return;
               for (const item of items.slice(0, 5)) addAccountHit(item, `Found via old account code`);
               pushResults();
             }).catch(() => {})
@@ -227,6 +234,7 @@ export default function AllocateTransaction({ dialogMode, dialogPosItemId, onDia
           if (isNumeric) {
             secondarySearches.push(
               searchAccounts({ erfNumber: query }).then(items => {
+                if (isAborted()) return;
                 for (const item of items.slice(0, 5)) addAccountHit(item, `Found via ERF number`);
                 pushResults();
               }).catch(() => {})
@@ -234,6 +242,7 @@ export default function AllocateTransaction({ dialogMode, dialogPosItemId, onDia
 
             secondarySearches.push(
               searchAccounts({ physicalMeterNumber: query }).then(items => {
+                if (isAborted()) return;
                 for (const item of items.slice(0, 5)) addAccountHit(item, `Found via meter number`);
                 pushResults();
               }).catch(() => {})
@@ -243,6 +252,7 @@ export default function AllocateTransaction({ dialogMode, dialogPosItemId, onDia
           if (!isNumeric && detected.field === 'name') {
             secondarySearches.push(
               searchAccounts({ locationAddress: query }).then(items => {
+                if (isAborted()) return;
                 for (const item of items.slice(0, 3)) addAccountHit(item, `Found via location/address`);
                 pushResults();
               }).catch(() => {})
@@ -274,8 +284,10 @@ export default function AllocateTransaction({ dialogMode, dialogPosItemId, onDia
 
       const makeClearanceTask = () => async () => {
         try {
+          if (isAborted()) return;
           if (isNumeric) {
             const clearanceIds = await platinumSearchClearanceIds(query);
+            if (isAborted()) return;
             if (Array.isArray(clearanceIds)) {
               for (const formattedId of clearanceIds) {
                 secondaryResults.push({
@@ -291,6 +303,7 @@ export default function AllocateTransaction({ dialogMode, dialogPosItemId, onDia
             }
           }
           const clearanceResults = await platinumDDClearanceAutocomplete(query);
+          if (isAborted()) return;
           if (Array.isArray(clearanceResults)) {
             for (const item of clearanceResults) {
               secondaryResults.push({
@@ -310,7 +323,9 @@ export default function AllocateTransaction({ dialogMode, dialogPosItemId, onDia
 
       const makeGroupTask = () => async () => {
         try {
+          if (isAborted()) return;
           const groupResults = await platinumGetGroupPaymentDetails({ searchTerm: query });
+          if (isAborted()) return;
           const groupArr = Array.isArray(groupResults) ? groupResults : (groupResults?.value || []);
           for (const g of groupArr.slice(0, 5)) {
             const gId = g.groupId || g.id || g.group_ID || 0;
@@ -334,7 +349,9 @@ export default function AllocateTransaction({ dialogMode, dialogPosItemId, onDia
 
       const makeInstitutionTask = () => async () => {
         try {
+          if (isAborted()) return;
           const institutionResults = await searchInstitutions(query);
+          if (isAborted()) return;
           for (const inst of institutionResults.slice(0, 10)) {
             const instId = inst.institutionID || 0;
             if (instId && !seen.has(instId + 200000)) {
@@ -382,16 +399,17 @@ export default function AllocateTransaction({ dialogMode, dialogPosItemId, onDia
       }
 
       await Promise.all(primaryTasks);
+      if (isAborted()) return;
       pushResults();
 
-      if (secondaryFactories.length > 0 && searchVersion === ddSearchVersionRef.current) {
-        Promise.all(secondaryFactories.map(f => f())).then(() => pushResults()).catch(() => {});
+      if (secondaryFactories.length > 0 && !isAborted()) {
+        Promise.all(secondaryFactories.map(f => f())).then(() => { if (!isAborted()) pushResults(); }).catch(() => {});
       }
     } catch (err) {
       console.error('DD search error:', err);
-      if (searchVersion === ddSearchVersionRef.current) setDdSearchResults([]);
+      if (!isAborted()) setDdSearchResults([]);
     } finally {
-      if (searchVersion === ddSearchVersionRef.current) setDdSearching(false);
+      if (!isAborted()) setDdSearching(false);
     }
   }, [searchScope, miscGroups, miscGroupsLoaded, toast]);
 
@@ -585,7 +603,15 @@ export default function AllocateTransaction({ dialogMode, dialogPosItemId, onDia
     }
   };
 
+  const cancelDDSearch = useCallback(() => {
+    ddSearchVersionRef.current++;
+    if (ddSearchTimerRef.current) { clearTimeout(ddSearchTimerRef.current); ddSearchTimerRef.current = null; }
+    if (ddSearchAbortRef.current) { ddSearchAbortRef.current.abort(); ddSearchAbortRef.current = null; }
+    setDdSearching(false);
+  }, []);
+
   const handleSelectDDResult = (result: DDSearchResult) => {
+    cancelDDSearch();
     setDdDropdownOpen(false);
     setDdSearchQuery('');
     setDdSearchResults([]);
