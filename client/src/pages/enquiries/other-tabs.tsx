@@ -1929,6 +1929,9 @@ export function Section129Tab({ accountId }: { accountId: number }) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedYear, setSelectedYear] = useState(getFinYearOptions()[0]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(50);
   const loaded = useRef(false);
 
   const load = useCallback(async () => {
@@ -1946,23 +1949,135 @@ export function Section129Tab({ accountId }: { accountId: number }) {
   }, [accountId]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { setCurrentPage(1); }, [accountId]);
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
-  if (!data) return <EmptyState message="No Section 129 data available" />;
+  if (!data) return <EmptyState message="No Section 129 notice data available for this account" />;
 
   const items = Array.isArray(data) ? data : [data];
+
+  const fmtDate = (v: any) => v ? new Date(v).toLocaleDateString('en-GB') : '-';
+  const fmt = (v: any) => {
+    const n = typeof v === 'number' ? v : parseFloat(v) || 0;
+    return n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const [yearStart] = selectedYear.split('/').map(Number);
+  const filtered = items.filter((item: any) => {
+    const dateStr = item.noticeDate ?? item.dateCreated ?? item.createdDate ?? item.runDate;
+    if (!dateStr) return true;
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return true;
+    const fy = d.getMonth() >= 6 ? d.getFullYear() : d.getFullYear() - 1;
+    return fy === (yearStart < 100 ? 2000 + yearStart : yearStart);
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
+  const safePage = Math.min(currentPage, totalPages);
+  const pageItems = filtered.slice((safePage - 1) * itemsPerPage, safePage * itemsPerPage);
+
+  const getStatusBadge = (status: string) => {
+    if (!status) return <span className="text-slate-400">—</span>;
+    const s = status.toLowerCase();
+    if (s.includes('final') || s.includes('expired')) return <Badge className="bg-red-100 text-red-700 border-red-200">{status}</Badge>;
+    if (s.includes('trial') || s.includes('pending')) return <Badge className="bg-amber-100 text-amber-700 border-amber-200">{status}</Badge>;
+    if (s.includes('active') || s.includes('issued')) return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">{status}</Badge>;
+    return <Badge variant="outline">{status}</Badge>;
+  };
+
+  const thCls = "text-left py-2.5 px-3 text-[11px] font-semibold text-slate-600 whitespace-nowrap border-r border-[#D6D6D6] last:border-r-0";
+
   return (
-    <div className="p-3 sm:p-5 space-y-4 sm:space-y-5">
-      {items.map((item: any, i: number) => (
-        <Card key={i}>
-          <CardContent className="pt-4 space-y-0">
-            {Object.entries(item).filter(([k]) => !k.startsWith('_')).map(([key, val]) => (
-              <FieldRow key={key} label={key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())} value={val as any} />
-            ))}
-          </CardContent>
-        </Card>
-      ))}
+    <div className="p-3 sm:p-4 space-y-4" data-testid="section129-panel">
+      <div className="bg-white rounded-lg border border-[#D6D6D6] shadow-sm overflow-hidden">
+        <div className="px-3 sm:px-4 py-2.5 bg-[#F2F4F7] border-b border-[#D6D6D6]">
+          <h3 className="text-xs sm:text-sm font-semibold text-slate-800" data-testid="text-section129-title">Section 129 Notices per Billing Period</h3>
+        </div>
+
+        <div className="flex justify-center py-3 border-b border-[#D6D6D6] bg-white">
+          <select
+            value={selectedYear}
+            onChange={(e) => { setSelectedYear(e.target.value); setCurrentPage(1); }}
+            className="text-sm border border-[#BFBFBF] rounded px-4 py-1.5 bg-white focus:ring-2 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] outline-none min-w-[160px] text-center"
+            data-testid="select-section129-year"
+          >
+            {getFinYearOptions().map(yr => <option key={yr} value={yr}>{yr}</option>)}
+          </select>
+        </div>
+
+        <div className="sm:hidden p-2 space-y-2">
+          {pageItems.length === 0 ? (
+            <div className="py-6 text-center text-slate-400 text-sm">No Section 129 notices found for this period.</div>
+          ) : pageItems.map((item: any, i: number) => (
+            <div key={i} className="border border-[#D6D6D6] rounded-lg p-3 space-y-1.5" data-testid={`card-section129-${i}`}>
+              <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Notice Date</span><span className="text-slate-800 font-semibold">{fmtDate(item.noticeDate ?? item.dateCreated ?? item.runDate)}</span></div>
+              <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Run Type</span><span className="text-slate-800 font-semibold">{item.runType ?? item.type ?? '-'}</span></div>
+              <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Amount</span><span className="text-slate-800 font-semibold font-mono">{fmt(item.amount ?? item.noticeAmount ?? 0)}</span></div>
+              <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Status</span><span>{getStatusBadge(item.status ?? item.noticeStatus ?? '')}</span></div>
+              <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Lapse Date</span><span className="text-slate-800 font-semibold">{fmtDate(item.lapseDate ?? item.expiryDate)}</span></div>
+            </div>
+          ))}
+        </div>
+
+        <div className="hidden sm:block overflow-x-auto">
+          <table className="w-full text-sm border-collapse" data-testid="table-section129-list">
+            <thead>
+              <tr className="bg-[#F7F7F7] border-b border-[#D6D6D6]">
+                <th className={thCls} style={{ minWidth: 110 }}>Notice Date</th>
+                <th className={thCls} style={{ minWidth: 100 }}>Run Type</th>
+                <th className={thCls} style={{ minWidth: 120 }}>Billing Cycle</th>
+                <th className={`${thCls} text-right`} style={{ minWidth: 120 }}>Amount</th>
+                <th className={thCls} style={{ minWidth: 120 }}>Status</th>
+                <th className={thCls} style={{ minWidth: 110 }}>Lapse Date</th>
+                <th className={thCls} style={{ minWidth: 130 }}>Days Outstanding</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pageItems.length === 0 ? (
+                <tr><td colSpan={7} className="text-center text-slate-400 py-6 italic">No Section 129 notices found for this period.</td></tr>
+              ) : pageItems.map((item: any, i: number) => (
+                <tr key={i} className="border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)] transition-colors" data-testid={`row-section129-${i}`}>
+                  <td className="py-2 px-3 text-xs">{fmtDate(item.noticeDate ?? item.dateCreated ?? item.runDate)}</td>
+                  <td className="py-2 px-3 text-xs">{item.runType ?? item.type ?? '-'}</td>
+                  <td className="py-2 px-3 text-xs">{item.billingCycle ?? item.cycle ?? '-'}</td>
+                  <td className="py-2 px-3 text-xs text-right font-mono">{fmt(item.amount ?? item.noticeAmount ?? 0)}</td>
+                  <td className="py-2 px-3 text-xs">{getStatusBadge(item.status ?? item.noticeStatus ?? '')}</td>
+                  <td className="py-2 px-3 text-xs">{fmtDate(item.lapseDate ?? item.expiryDate)}</td>
+                  <td className="py-2 px-3 text-xs font-mono">{item.daysOutstanding ?? item.outstandingDays ?? '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex items-center justify-between px-3 py-2 border-t border-[#D6D6D6]">
+          <span className="text-xs text-slate-500">{filtered.length === 0 ? '0 of 0' : `${(safePage - 1) * itemsPerPage + 1} - ${Math.min(safePage * itemsPerPage, filtered.length)} of ${filtered.length}`}</span>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={safePage <= 1}
+                className="px-2 py-1 text-xs border border-[#BFBFBF] rounded hover:bg-[#F2F4F7] disabled:opacity-40 disabled:cursor-not-allowed"
+                data-testid="button-section129-prev-page"
+              >
+                Prev
+              </button>
+              <span className="text-xs text-slate-600 px-2" data-testid="text-section129-page-info">
+                {safePage} / {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={safePage >= totalPages}
+                className="px-2 py-1 text-xs border border-[#BFBFBF] rounded hover:bg-[#F2F4F7] disabled:opacity-40 disabled:cursor-not-allowed"
+                data-testid="button-section129-next-page"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

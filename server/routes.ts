@@ -5930,6 +5930,7 @@ export async function registerRoutes(
         '/api/BillingDashboard/get-repayment-plan-awaiting-authorisation',
         '/api/BillingDashboard/get-repayment-plan-declined',
         '/api/BillingDashboard/get-repayment-plans-awaiting-termination-authorisation',
+        '/api/BillingDashboard/get-section129-process-handovers',
         '/api/BillingDashboard/get-unpaid-transactions',
         '/api/BillingDashboard/get-valuation-expired',
       ].includes(endpoint);

@@ -12,12 +12,10 @@ import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
 import {
   FileBarChart,
-  Search,
   Loader2,
   Send,
   XCircle,
   RotateCcw,
-  Filter,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -155,231 +153,241 @@ export default function HandoverReport() {
 
   return (
     <PosLayout>
-      <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/20 flex items-center justify-center">
-              <FileBarChart className="h-5 w-5 text-blue-400" />
+      <div className="flex-1 overflow-y-auto bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 min-h-0">
+        <div className="max-w-7xl mx-auto p-3 sm:p-4 lg:p-6 space-y-4">
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-1" data-testid="text-breadcrumb">
+            <span>Billing</span>
+            <ChevronRight className="w-3 h-3" />
+            <span>Reports</span>
+            <ChevronRight className="w-3 h-3" />
+            <span>Debt Recovery</span>
+            <ChevronRight className="w-3 h-3" />
+            <span className="text-slate-300">Handover Report</span>
+          </div>
+
+          <div className="flex items-center gap-3 mb-1">
+            <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
+              <FileBarChart className="w-5 h-5 text-blue-400" />
             </div>
             <div>
-              <h1 className="text-lg sm:text-xl font-bold text-foreground tracking-tight" data-testid="text-page-title">
+              <h1 className="text-lg sm:text-xl font-bold text-white tracking-tight" data-testid="text-page-title">
                 Handover Report
               </h1>
-              <p className="text-xs text-muted-foreground">Billing &gt; Reports &gt; Debt Recovery &gt; Handover Report</p>
+              <p className="text-xs text-slate-400">Generate and view handover reports for debt recovery</p>
             </div>
           </div>
-          <HelpTip text="Generate handover reports filtered by financial year, billing month, billing cycle, attorney, and account number." />
-        </div>
 
-        <Card className="border-border/50 bg-card/80 backdrop-blur-sm shadow-[0_1px_3px_rgba(0,0,0,0.12)]">
-          <CardContent className="p-4 space-y-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-semibold text-foreground">Report Filters</span>
-            </div>
+          <Card className="bg-slate-800/40 border-slate-700/40 backdrop-blur-sm">
+            <CardContent className="p-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-slate-400 flex items-center gap-1">
+                    Financial Year
+                    <HelpTip text="Select the financial year for the report" side="right" />
+                  </Label>
+                  <Select value={finYear} onValueChange={setFinYear}>
+                    <SelectTrigger className="bg-slate-900/60 border-slate-600/50 text-white h-9" data-testid="select-fin-year">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {finYears.map(fy => (
+                        <SelectItem key={fy} value={fy}>{fy}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-muted-foreground">Financial Year</Label>
-                <Select value={finYear} onValueChange={setFinYear}>
-                  <SelectTrigger className="h-9 text-sm bg-background/50 border-border/50" data-testid="select-fin-year">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {finYears.map(fy => (
-                      <SelectItem key={fy} value={fy}>{fy}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-slate-400 flex items-center gap-1">
+                    Billing Month
+                    <HelpTip text="Filter by billing month (July-June financial year)" side="right" />
+                  </Label>
+                  <Select value={finMonth} onValueChange={setFinMonth}>
+                    <SelectTrigger className="bg-slate-900/60 border-slate-600/50 text-white h-9" data-testid="select-fin-month">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all__">All</SelectItem>
+                      {billingMonths.map(m => (
+                        <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-muted-foreground">Billing Month</Label>
-                <Select value={finMonth} onValueChange={setFinMonth}>
-                  <SelectTrigger className="h-9 text-sm bg-background/50 border-border/50" data-testid="select-fin-month">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__">All</SelectItem>
-                    {billingMonths.map(m => (
-                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-slate-400 flex items-center gap-1">
+                    Billing Cycle
+                    <HelpTip text="Filter by billing cycle" side="right" />
+                  </Label>
+                  <Select value={billingCycle} onValueChange={setBillingCycle}>
+                    <SelectTrigger className="bg-slate-900/60 border-slate-600/50 text-white h-9" data-testid="select-billing-cycle">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all__">All</SelectItem>
+                      {billingCycles.map(bc => (
+                        <SelectItem key={bc.id} value={bc.id}>{bc.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-muted-foreground">Billing Cycle</Label>
-                <Select value={billingCycle} onValueChange={setBillingCycle}>
-                  <SelectTrigger className="h-9 text-sm bg-background/50 border-border/50" data-testid="select-billing-cycle">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__">All</SelectItem>
-                    {billingCycles.map(bc => (
-                      <SelectItem key={bc.id} value={bc.id}>{bc.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-slate-400 flex items-center gap-1">
+                    Attorney
+                    <HelpTip text="Filter by assigned attorney" side="right" />
+                  </Label>
+                  <Select value={selectedAttorneyId} onValueChange={setSelectedAttorneyId}>
+                    <SelectTrigger className="bg-slate-900/60 border-slate-600/50 text-white h-9" data-testid="select-attorney">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all__">All</SelectItem>
+                      {attorneys.filter(a => a.isActive).map(att => (
+                        <SelectItem key={att.attorneyId} value={String(att.attorneyId)}>
+                          {att.attorneyName} — {att.firmName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-muted-foreground">Attorney</Label>
-                <Select value={selectedAttorneyId} onValueChange={setSelectedAttorneyId}>
-                  <SelectTrigger className="h-9 text-sm bg-background/50 border-border/50" data-testid="select-attorney">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__">All</SelectItem>
-                    {attorneys.filter(a => a.isActive).map(att => (
-                      <SelectItem key={att.attorneyId} value={String(att.attorneyId)}>
-                        {att.attorneyName} — {att.firmName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-muted-foreground">Account Number</Label>
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-slate-400 flex items-center gap-1">
+                    Account Number
+                    <HelpTip text="Filter by specific account number" side="right" />
+                  </Label>
                   <Input
                     value={accountNo}
                     onChange={(e) => setAccountNo(e.target.value)}
-                    placeholder="Enter account number..."
-                    className="pl-8 h-9 text-sm bg-background/50 border-border/50"
+                    placeholder="Enter account number"
+                    className="bg-slate-900/60 border-slate-600/50 text-white h-9"
                     data-testid="input-account-no"
                   />
                 </div>
               </div>
-            </div>
 
-            <div className="flex items-center gap-2 pt-2 border-t border-border/30">
-              <Button
-                onClick={handleSubmit}
-                disabled={loadingResults || loadingRef}
-                className="gap-1.5 h-9 text-sm"
-                data-testid="button-submit"
-              >
-                {loadingResults ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                Submit
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleClear}
-                disabled={loadingResults}
-                className="gap-1.5 h-9 text-sm border-border/50"
-                data-testid="button-clear"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                Clear
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleCancel}
-                disabled={loadingResults}
-                className="gap-1.5 h-9 text-sm border-border/50"
-                data-testid="button-cancel"
-              >
-                <XCircle className="h-3.5 w-3.5" />
-                Cancel
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {loadingResults && (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-blue-400" />
-            <span className="ml-2 text-sm text-muted-foreground">Loading report data...</span>
-          </div>
-        )}
-
-        {!loadingResults && hasSearched && (
-          <Card className="border-border/50 bg-card/80 backdrop-blur-sm shadow-[0_1px_3px_rgba(0,0,0,0.12)]">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <FileBarChart className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-semibold text-foreground">Results</span>
-                  <Badge variant="outline" className="text-xs" data-testid="badge-result-count">
-                    {results.length} record{results.length !== 1 ? 's' : ''}
-                  </Badge>
-                </div>
-                {totalPages > 1 && (
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                      disabled={currentPage <= 1}
-                      className="h-7 w-7 p-0"
-                      data-testid="button-prev-page"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="text-xs text-muted-foreground px-2" data-testid="text-page-info">
-                      {currentPage} / {totalPages}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                      disabled={currentPage >= totalPages}
-                      className="h-7 w-7 p-0"
-                      data-testid="button-next-page"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
+              <div className="flex items-center gap-2 mt-4">
+                <Button
+                  onClick={handleSubmit}
+                  disabled={loadingResults || loadingRef}
+                  className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                  data-testid="button-submit"
+                >
+                  {loadingResults ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Send className="w-4 h-4 mr-1" />}
+                  Submit
+                </Button>
+                <Button
+                  onClick={handleClear}
+                  variant="outline"
+                  className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                  data-testid="button-clear"
+                >
+                  <RotateCcw className="w-4 h-4 mr-1" />
+                  Clear
+                </Button>
+                <Button
+                  onClick={handleCancel}
+                  variant="outline"
+                  className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                  data-testid="button-cancel"
+                >
+                  <XCircle className="w-4 h-4 mr-1" />
+                  Cancel
+                </Button>
               </div>
-
-              {results.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground text-sm" data-testid="text-no-results">
-                  No handover records found for the selected criteria.
-                </div>
-              ) : (
-                <div className="overflow-x-auto rounded-lg border border-border/30">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/30">
-                        {resultColumns.map(col => (
-                          <TableHead key={col} className="text-xs font-semibold whitespace-nowrap">
-                            {col.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim()}
-                          </TableHead>
-                        ))}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {paginatedResults.map((row, idx) => (
-                        <TableRow
-                          key={idx}
-                          className="hover:bg-muted/20 transition-colors"
-                          data-testid={`row-result-${idx}`}
-                        >
-                          {resultColumns.map(col => (
-                            <TableCell key={col} className="text-xs whitespace-nowrap">
-                              {col.toLowerCase().includes('status')
-                                ? getStatusBadge(String(row[col] || ''))
-                                : col.toLowerCase().includes('amount') || col.toLowerCase().includes('balance')
-                                  ? typeof row[col] === 'number'
-                                    ? `R ${row[col].toFixed(2)}`
-                                    : row[col] ?? '—'
-                                  : row[col] ?? '—'
-                              }
-                            </TableCell>
-                          ))}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
             </CardContent>
           </Card>
-        )}
+
+          {loadingResults && (
+            <div className="flex items-center gap-2 text-slate-400 text-sm py-8 justify-center">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Loading report data...
+            </div>
+          )}
+
+          {!loadingResults && hasSearched && (
+            <Card className="bg-slate-800/40 border-slate-700/40 backdrop-blur-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-sm font-semibold text-white" data-testid="text-results-title">
+                    Results ({results.length} record{results.length !== 1 ? 's' : ''})
+                  </h2>
+                  {totalPages > 1 && (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage <= 1}
+                        className="h-7 px-2 text-slate-400"
+                        data-testid="button-prev-page"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </Button>
+                      <span className="text-xs text-slate-500 px-2" data-testid="text-page-info">
+                        {currentPage} / {totalPages}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPage >= totalPages}
+                        className="h-7 px-2 text-slate-400"
+                        data-testid="button-next-page"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {results.length === 0 ? (
+                  <p className="text-slate-500 text-sm text-center py-8" data-testid="text-no-results">
+                    No handover records found for the selected criteria.
+                  </p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-slate-700/50 hover:bg-transparent">
+                          {resultColumns.map(col => (
+                            <TableHead key={col} className="text-xs text-slate-400 font-medium whitespace-nowrap">
+                              {col.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim()}
+                            </TableHead>
+                          ))}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedResults.map((row, idx) => (
+                          <TableRow
+                            key={idx}
+                            className="border-slate-700/30 hover:bg-slate-700/20 transition-colors"
+                            data-testid={`row-result-${idx}`}
+                          >
+                            {resultColumns.map(col => (
+                              <TableCell key={col} className="text-xs text-slate-300 whitespace-nowrap">
+                                {col.toLowerCase().includes('status')
+                                  ? getStatusBadge(String(row[col] || ''))
+                                  : col.toLowerCase().includes('amount') || col.toLowerCase().includes('balance')
+                                    ? typeof row[col] === 'number'
+                                      ? `R ${row[col].toFixed(2)}`
+                                      : row[col] ?? '—'
+                                    : row[col] ?? '—'
+                                }
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
     </PosLayout>
   );

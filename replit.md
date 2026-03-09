@@ -45,9 +45,13 @@ A full debt recovery workflow under the "Debt" sidebar group covers Section 129 
 
 **Section 129 Configuration** (`/debt/section129/config`): Admin page for configuring Section 129 notice parameters per financial year. Supports templates (letter + SMS), lapse days (14-99 workdays), notices per file, additional billing cost grid, and attorney rotation with percentage allocation (debtor count or handover amount, must sum to 100%). Landing page with search grid + detail page for add/view.
 
-**Debt Reports**: Two report pages under the Debt sidebar group:
+**Debt Reports**: Two report pages under the Debt sidebar group (dark slate theme):
 - Section 129 Notices Report (`/debt/section129-report`): Filter by FY, month, billing cycle, account, ageing (30-180+ days), amount threshold
 - Handover Report (`/debt/handover-report`): Filter by FY, month, billing cycle, attorney, account
+
+**General Enquiries – Debt Tabs**: Account Enquiry Dialog has Section 129 and Handover tabs in the OTHER group. Section 129 tab shows notices per billing period with FY filter, status badges, and paginated table. Handover tab shows handover list with FY filter and transaction detail.
+
+**Dashboard Debt Notification**: "Section 129 – Process Handovers" alert added to billing dashboard under Debt category. Uses `get-section129-process-handovers` endpoint. Severity classified as 'warning'.
 
 **API Gap Analysis**: Comprehensive mapping of all spec operations to Platinum API endpoints completed. 24 operations fully covered, 11 need new Platinum endpoints (config save/update, templates, file management, S129 report), 10 need backend processing rules, 4 need database schema changes. Gap analysis documented in `.local/session_plan.md`.
 

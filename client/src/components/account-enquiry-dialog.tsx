@@ -62,6 +62,7 @@ const tabGroups: TabGroup[] = [
   {
     heading: 'OTHER',
     tabs: [
+      { value: 'section129', label: 'Section 129', icon: <Scale className="w-3.5 h-3.5" />, color: 'amber' },
       { value: 'handover', label: 'Handover', icon: <ArrowRight className="w-3.5 h-3.5" />, color: 'orange' },
       { value: 'clearance', label: 'Clearance', icon: <Shield className="w-3.5 h-3.5" />, color: 'emerald' },
       { value: 'statements', label: 'Statements', icon: <FileText className="w-3.5 h-3.5" />, color: 'blue' },
@@ -317,6 +318,7 @@ export function AccountEnquiryDialog({ open, onClose, accountId }: AccountEnquir
                 <TabsContent value="payment-plans" className="m-0"><TabErrorBoundary tabName="Payment Plans"><PaymentPlansTab accountId={numericAccountId} /></TabErrorBoundary></TabsContent>
                 <TabsContent value="linked-accounts" className="m-0"><TabErrorBoundary tabName="Linked Accounts"><LinkedAccountsTab accountId={numericAccountId} onSelectAccount={() => {}} /></TabErrorBoundary></TabsContent>
                 <TabsContent value="clearance" className="m-0"><TabErrorBoundary tabName="Clearance"><ClearanceTab accountId={numericAccountId} /></TabErrorBoundary></TabsContent>
+                <TabsContent value="section129" className="m-0"><TabErrorBoundary tabName="Section 129"><Section129Tab accountId={numericAccountId} /></TabErrorBoundary></TabsContent>
                 <TabsContent value="statements" className="m-0"><TabErrorBoundary tabName="Statements"><StatementsTab accountId={numericAccountId} /></TabErrorBoundary></TabsContent>
               </div>
             </Tabs>

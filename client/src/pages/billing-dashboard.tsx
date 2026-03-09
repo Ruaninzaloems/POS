@@ -130,6 +130,7 @@ const FRIENDLY_LABELS: Record<string, string> = {
     repaymentPlansAwaitingAuthorisation: 'Repayment Plans Awaiting Authorisation',
     repaymentPlansAwaitingTerminationAuthorisation: 'Repayment Plans Awaiting Termination Authorisation',
     cutoffHistory: 'Cut-Off History',
+    section129ProcessHandovers: 'Section 129 – Process Handovers',
     declinedJournals: 'Declined Journals',
     journalsPendingReview: 'Journals Pending Review',
     notLinkedService: 'Not Linked Service',
@@ -187,6 +188,7 @@ const SUB_ITEM_ENDPOINT_MAP: Record<string, string> = {
     repaymentPlansAwaitingAuthorisation: '/api/BillingDashboard/get-repayment-plan-awaiting-authorisation',
     repaymentPlansAwaitingTerminationAuthorisation: '/api/BillingDashboard/get-repayment-plans-awaiting-termination-authorisation',
     cutoffHistory: '/api/BillingDashboard/get-cutoff-history',
+    section129ProcessHandovers: '/api/BillingDashboard/get-section129-process-handovers',
     // Billing sub-items
     billingCyclePreparation: '/api/BillingDashboard/get-billing-cycle-preparation-alerts-table-data',
     consumerBillingRunApprovalPending: '/api/BillingDashboard/get-billing-run-progress-table-data',
@@ -237,7 +239,7 @@ function getSeverity(key: string, count: number): 'critical' | 'warning' | 'info
     if (count === 0) return 'neutral';
     const lower = key.toLowerCase();
     if (lower.includes('declined') || lower.includes('exception') || lower.includes('outstanding') || lower.includes('notsequenced')) return 'critical';
-    if (lower.includes('awaiting') || lower.includes('pending') || lower.includes('notlinked') || lower.includes('notprocessed') || lower.includes('expired')) return 'warning';
+    if (lower.includes('awaiting') || lower.includes('pending') || lower.includes('notlinked') || lower.includes('notprocessed') || lower.includes('expired') || lower.includes('processhandovers')) return 'warning';
     return 'info';
 }
 
