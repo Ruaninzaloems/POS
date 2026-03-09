@@ -455,6 +455,9 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
         "linked-accounts-on-property": "LinkedAccountsOnProperty",
         "deposit-amount": "DepositAmount",
         "deposits-by-account-id": "DepositsByAccountId",
+        "payment-amount-by-account-ids": "PaymentAmountByAccountIds",
+        "billed-vs-paid-amounts": "BilledVsPaidAmounts",
+        "risk-flags": "RiskFlags",
       };
 
       const platinumPath = billingEnquiryPlatinumMap[mappedEndpoint];

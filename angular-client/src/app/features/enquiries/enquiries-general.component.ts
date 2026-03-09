@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { ToastService } from '../../core/services/toast.service';
+import { AuthService } from '../../core/services/auth.service';
 import { firstValueFrom } from 'rxjs';
 
 interface SearchCriteria {
@@ -192,9 +193,12 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
   mobileTabMenuOpen = signal(false);
 
+  private userFinYear = computed(() => this.auth.user()?.finYear || '');
+
   constructor(
     private api: ApiService,
     private toast: ToastService,
+    private auth: AuthService,
   ) {}
 
   ngOnInit(): void {}
@@ -984,10 +988,10 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           break;
 
         case 'transactions':
-          const txnResult = await firstValueFrom(
-            this.api.get<any>(`/api/platinum/billing-enquiry/transaction-history/${accountId}`)
+          const receiptResult = await firstValueFrom(
+            this.api.get<any>(`/api/platinum/billing-enquiry/payment-amount-by-account-ids/${accountId}`)
           );
-          data = { transactions: this.normalizeArray(txnResult) };
+          data = { transactions: this.normalizeArray(receiptResult) };
           break;
 
         case 'payment-plans':
@@ -1110,22 +1114,24 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           break;
 
         case 'txn-detailed':
+          const finYearForDetail = this.userFinYear();
           const txnDetailResult = await firstValueFrom(
-            this.api.get<any>(`/api/platinum/billing-enquiry/transaction-history/${accountId}`)
+            this.api.get<any>(`/api/platinum/billing-enquiry/transaction-history/${accountId}`, finYearForDetail ? { finYear: finYearForDetail } : undefined)
           );
           data = { transactions: this.normalizeArray(txnDetailResult) };
           break;
 
         case 'txn-summary':
+          const finYearForSummary = this.userFinYear();
           const txnSummaryResult = await firstValueFrom(
-            this.api.get<any>(`/api/platinum/billing-enquiry/service-type-balance/${accountId}`)
+            this.api.get<any>(`/api/platinum/billing-enquiry/service-type-balance/${accountId}`, finYearForSummary ? { financialYear: finYearForSummary } : undefined)
           );
           data = { summary: this.normalizeArray(txnSummaryResult) };
           break;
 
         case 'billed-vs-paid':
           const [billedVsPaid, billedBalance2] = await Promise.allSettled([
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/billed-vs-paid-amounts`, { accountId: String(accountId) })),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/billed-vs-paid-amounts/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-balance/${accountId}`)),
           ]);
           data = {

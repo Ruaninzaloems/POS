@@ -423,20 +423,24 @@
                     <thead>
                       <tr>
                         <th>Date</th>
-                        <th>Description</th>
                         <th>Receipt No</th>
+                        <th>Payment Type</th>
+                        <th>Payment Option</th>
                         <th class="text-right">Amount</th>
-                        <th>Type</th>
+                        <th>Cashier</th>
+                        <th>Cash Book</th>
                       </tr>
                     </thead>
                     <tbody>
                       @for (txn of tabData()?.transactions || []; track $index) {
-                        <tr [attr.data-testid]="'row-txn-' +  $index  + ''">
-                          <td>{{ formatDate(txn.transactionDate || txn.receiptDate || txn.date) }}</td>
-                          <td>{{ txn.description || txn.transactionDescription || '-' }}</td>
-                          <td class="mono">{{ txn.receiptNo || txn.receiptNumber || txn.docNumber || '-' }}</td>
-                          <td class="text-right mono">R {{ formatCurrency(txn.amount || txn.transactionAmount || 0) }}</td>
-                          <td>{{ txn.transactionType || txn.paymentType || '-' }}</td>
+                        <tr [attr.data-testid]="'row-txn-' + $index" [class.cancelled-row]="txn.isCancelled || txn.cancelReson || txn.cancelReason">
+                          <td>{{ formatDate(txn.receiptDate || txn.transactionDate || txn.date) }}</td>
+                          <td class="mono">{{ txn.receiptNo || txn.receiptNumber || txn.receipt_No || '-' }}</td>
+                          <td>{{ txn.paymentType || txn.transactionType || '-' }}</td>
+                          <td>{{ txn.paymentOption || '-' }}</td>
+                          <td class="text-right mono">R {{ formatCurrency(txn.amount || txn.tenderAmount || txn.transactionAmount || 0) }}</td>
+                          <td>{{ txn.cashier || txn.cashierName || '-' }}</td>
+                          <td>{{ txn.cashBook || '-' }}</td>
                         </tr>
                       }
                     </tbody>
@@ -446,7 +450,7 @@
             } @else {
               <div class="empty-state">
                 <div class="empty-icon">🧾</div>
-                <p class="empty-text">No transaction records found</p>
+                <p class="empty-text">No receipt / transaction records found</p>
               </div>
             }
           </div>
