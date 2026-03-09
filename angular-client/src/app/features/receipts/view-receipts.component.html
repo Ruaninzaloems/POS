@@ -1,281 +1,305 @@
 <div class="page-container">
-  <div class="page-header">
-    <h1 class="page-title" data-testid="text-page-title">View Receipts</h1>
-    <p class="page-subtitle">Search and reprint previously issued receipts</p>
-  </div>
-
-  <div class="card search-card">
-    <div class="tab-list">
-      <button class="tab-item" [class.active]="activeTab() === 'receipt-search'" (click)="activeTab.set('receipt-search')" data-testid="tab-receipt-search">
-        Receipt Search
-      </button>
-      <button class="tab-item" [class.active]="activeTab() === 'cashbook-trace'" (click)="activeTab.set('cashbook-trace')" data-testid="tab-cashbook-trace">
-        Cashbook Trace
-      </button>
-      <button class="tab-item" [class.active]="activeTab() === 'bank-statement'" (click)="activeTab.set('bank-statement')" data-testid="tab-bank-statement">
-        Bank Statement
-      </button>
-      <button class="tab-item" [class.active]="activeTab() === 'eft-account'" (click)="activeTab.set('eft-account')" data-testid="tab-eft-account">
-        EFT by Account
-      </button>
-    </div>
-
-    <div class="tab-content">
-      @if (activeTab() === 'receipt-search') {
-        <div class="search-form">
-          <div class="form-grid-3">
-            <div class="form-group">
-              <label class="form-label">Cashier</label>
-              <select class="form-select" [ngModel]="cashierFilter()" (ngModelChange)="cashierFilter.set($event)" data-testid="select-cashier-filter">
-                <option value="0">All Cashiers</option>
-                @for (c of cashiers(); track c.id) {
-                  <option [value]="c.cashierId || c.id">{{ c.name }}</option>
-                }
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">From Date <span class="required">*</span></label>
-              <input type="date" class="form-input" [ngModel]="fromDate()" (ngModelChange)="fromDate.set($event)" data-testid="input-from-date" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">To Date <span class="required">*</span></label>
-              <input type="date" class="form-input" [ngModel]="toDate()" (ngModelChange)="toDate.set($event)" data-testid="input-to-date" />
-            </div>
-          </div>
-          <div class="form-grid-2">
-            <div class="form-group">
-              <label class="form-label">Account Number</label>
-              <input class="form-input" placeholder="Type to search account..." [ngModel]="accountFilter()" (ngModelChange)="accountFilter.set($event)" data-testid="input-account-filter" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">Receipt Number</label>
-              <input class="form-input" placeholder="Type to search receipt..." [ngModel]="receiptFilter()" (ngModelChange)="receiptFilter.set($event)" data-testid="input-receipt-filter" />
-            </div>
-          </div>
-          <div class="form-actions">
-            <button class="btn-outline" (click)="handleClear()" data-testid="button-clear">&#10005; Clear</button>
-            <button class="btn-primary" (click)="handleSearch(1)" [disabled]="isLoading()" data-testid="button-load">
-              @if (isLoading()) { <span class="spinner spinner-sm"></span> } Load
-            </button>
-          </div>
-        </div>
-      }
-
-      @if (activeTab() === 'cashbook-trace') {
-        <div class="search-form">
-          <div class="form-grid-3">
-            <div class="form-group">
-              <label class="form-label">Bank Reference / Receipt No</label>
-              <input class="form-input" placeholder="Search bank reference..." [ngModel]="cashbookSearchText()" (ngModelChange)="cashbookSearchText.set($event)" data-testid="input-cashbook-search" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">Financial Year</label>
-              <input class="form-input" placeholder="e.g. 2024/2025" [ngModel]="cashbookFinYear()" (ngModelChange)="cashbookFinYear.set($event)" data-testid="input-cashbook-fin-year" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">Month</label>
-              <select class="form-select" [ngModel]="cashbookMonth()" (ngModelChange)="cashbookMonth.set($event)" data-testid="select-cashbook-month">
-                @for (m of months; track m.value) {
-                  <option [value]="m.value">{{ m.label }}</option>
-                }
-              </select>
-            </div>
-          </div>
-          <div class="form-actions">
-            <button class="btn-primary" (click)="handleCashbookSearch()" [disabled]="cashbookSearching()" data-testid="button-cashbook-search">
-              @if (cashbookSearching()) { <span class="spinner spinner-sm"></span> } Search Cashbook
-            </button>
-          </div>
-          @if (cashbookResults() && cashbookResults()!.length > 0) {
-            <div class="sub-results">
-              <h4>Cashbook Results ({{ cashbookResults()!.length }})</h4>
-              <div class="table-container">
-                <table>
-                  <thead><tr><th>Receipt No</th><th>Account</th><th>Amount</th><th>Date</th><th>Description</th><th>Actions</th></tr></thead>
-                  <tbody>
-                    @for (item of cashbookResults()!; track $index) {
-                      <tr [attr.data-testid]="'row-cashbook-' + $index">
-                        <td class="font-mono">{{ item.receiptNo || item.receipt_No || '-' }}</td>
-                        <td class="font-mono">{{ item.accountNumber || item.account_Number || '-' }}</td>
-                        <td class="amount-cell">{{ formatCurrency(item.amount || 0) }}</td>
-                        <td>{{ item.transactionDate || item.date || '-' }}</td>
-                        <td>{{ item.description || item.narration || '-' }}</td>
-                        <td><button class="btn-outline btn-sm" (click)="loadFromCashbookResult(item)" [attr.data-testid]="'button-load-cashbook-' + $index">Load Receipt</button></td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          }
-        </div>
-      }
-
-      @if (activeTab() === 'bank-statement') {
-        <div class="search-form">
-          <div class="form-group">
-            <label class="form-label">Bank Statement Reference</label>
-            <div class="input-with-button">
-              <input class="form-input" placeholder="Search bank statement notes..." [ngModel]="bankNoteSearchText()" (ngModelChange)="bankNoteSearchText.set($event)" data-testid="input-bank-note-search" />
-              <button class="btn-primary" (click)="handleBankNoteSearch()" [disabled]="bankNoteSearching()" data-testid="button-bank-note-search">
-                @if (bankNoteSearching()) { <span class="spinner spinner-sm"></span> } Search
-              </button>
-            </div>
-          </div>
-          @if (bankNoteResults() && bankNoteResults()!.length > 0) {
-            <div class="sub-results">
-              <h4>Bank Statement Results ({{ bankNoteResults()!.length }})</h4>
-              <div class="table-container">
-                <table>
-                  <thead><tr><th>Reference</th><th>Amount</th><th>Date</th><th>Receipt No</th><th>Actions</th></tr></thead>
-                  <tbody>
-                    @for (item of bankNoteResults()!; track $index) {
-                      <tr [attr.data-testid]="'row-banknote-' + $index">
-                        <td class="font-mono">{{ item.reference || item.bankReference || '-' }}</td>
-                        <td class="amount-cell">{{ formatCurrency(item.amount || 0) }}</td>
-                        <td>{{ item.date || item.transactionDate || '-' }}</td>
-                        <td class="font-mono">{{ item.receiptNo || '-' }}</td>
-                        <td><button class="btn-outline btn-sm" (click)="loadFromBankNote(item)">Load Receipt</button></td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          }
-        </div>
-      }
-
-      @if (activeTab() === 'eft-account') {
-        <div class="search-form">
-          <div class="form-group">
-            <label class="form-label">Account ID</label>
-            <div class="input-with-button">
-              <input class="form-input" placeholder="Enter account ID..." [ngModel]="eftAccountSearch()" (ngModelChange)="eftAccountSearch.set($event)" data-testid="input-eft-search" />
-              <button class="btn-primary" (click)="handleEftSearch()" [disabled]="eftSearching()" data-testid="button-eft-search">
-                @if (eftSearching()) { <span class="spinner spinner-sm"></span> } Search
-              </button>
-            </div>
-          </div>
-          @if (eftResults() && eftResults()!.length > 0) {
-            <div class="sub-results">
-              <h4>EFT Results ({{ eftResults()!.length }})</h4>
-              <div class="table-container">
-                <table>
-                  <thead><tr><th>Reference</th><th>Amount</th><th>Date</th><th>Receipt No</th><th>Actions</th></tr></thead>
-                  <tbody>
-                    @for (item of eftResults()!; track $index) {
-                      <tr [attr.data-testid]="'row-eft-' + $index">
-                        <td class="font-mono">{{ item.reference || item.bankReference || '-' }}</td>
-                        <td class="amount-cell">{{ formatCurrency(item.amount || 0) }}</td>
-                        <td>{{ item.date || item.transactionDate || '-' }}</td>
-                        <td class="font-mono">{{ item.receiptNo || '-' }}</td>
-                        <td><button class="btn-outline btn-sm" (click)="loadFromEft(item)">Load Receipt</button></td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          }
-        </div>
-      }
+  <div class="page-header-bar">
+    <div class="header-left">
+      <div class="header-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      </div>
+      <div>
+        <h1 class="page-title" data-testid="text-page-title">View Receipts</h1>
+        <p class="page-subtitle">Search and reprint previously issued receipts</p>
+      </div>
     </div>
   </div>
 
-  @if (receipts().length > 0) {
-    <div class="results-header">
-      <div class="results-info">
-        <span class="results-count" data-testid="text-results-count">{{ filteredReceipts().length }} of {{ totalCount() }} receipts</span>
-        <span class="results-total" data-testid="text-results-total">Total: {{ formatCurrency(filteredTotal()) }}</span>
-      </div>
-      <div class="results-filters">
-        <input class="form-input search-inline" placeholder="Quick filter..." [ngModel]="quickSearch()" (ngModelChange)="quickSearch.set($event)" data-testid="input-quick-search" />
-        <select class="form-select filter-inline" [ngModel]="filterPaymentMethod()" (ngModelChange)="filterPaymentMethod.set($event)" data-testid="select-payment-method">
-          <option value="__all__">All Methods</option>
-          @for (m of uniquePaymentMethods(); track m) {
-            <option [value]="m">{{ m }}</option>
-          }
-        </select>
-        <select class="form-select filter-inline" [ngModel]="filterStatus()" (ngModelChange)="filterStatus.set($event)" data-testid="select-status">
-          <option value="all">All Status</option>
-          <option value="active">Active</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
-      </div>
-    </div>
+  <div class="tab-bar">
+    <button class="tab-item" [class.active]="activeTab() === 'receipt-search'" (click)="activeTab.set('receipt-search')" data-testid="tab-receipt-search">
+      Receipt Search
+    </button>
+    <button class="tab-item" [class.active]="activeTab() === 'cashbook-trace'" (click)="activeTab.set('cashbook-trace')" data-testid="tab-cashbook-trace">
+      Cashbook Trace
+    </button>
+    <button class="tab-item" [class.active]="activeTab() === 'bank-statement'" (click)="activeTab.set('bank-statement')" data-testid="tab-bank-statement">
+      Bank Statement
+    </button>
+    <button class="tab-item" [class.active]="activeTab() === 'eft-account'" (click)="activeTab.set('eft-account')" data-testid="tab-eft-account">
+      EFT by Account
+    </button>
+  </div>
 
-    <div class="table-container card">
-      <table>
-        <thead>
-          <tr>
-            <th class="sortable" (click)="handleSort('receiptNo')" data-testid="th-receipt-no">
-              Receipt No @if (sortField() === 'receiptNo') { <span>{{ sortDir() === 'asc' ? '&#8593;' : '&#8595;' }}</span> }
-            </th>
-            <th class="sortable" (click)="handleSort('accountNumber')" data-testid="th-account">
-              Account @if (sortField() === 'accountNumber') { <span>{{ sortDir() === 'asc' ? '&#8593;' : '&#8595;' }}</span> }
-            </th>
-            <th class="sortable" (click)="handleSort('amount')" data-testid="th-amount">
-              Amount @if (sortField() === 'amount') { <span>{{ sortDir() === 'asc' ? '&#8593;' : '&#8595;' }}</span> }
-            </th>
-            <th>Method</th>
-            <th>Payment Option</th>
-            <th class="sortable" (click)="handleSort('receiptDate')" data-testid="th-date">
-              Date @if (sortField() === 'receiptDate') { <span>{{ sortDir() === 'asc' ? '&#8593;' : '&#8595;' }}</span> }
-            </th>
-            <th class="sortable" (click)="handleSort('cashierName')" data-testid="th-cashier">
-              Cashier @if (sortField() === 'cashierName') { <span>{{ sortDir() === 'asc' ? '&#8593;' : '&#8595;' }}</span> }
-            </th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (r of filteredReceipts(); track $index) {
-            <tr [class.cancelled-row]="getField(r, 'isCancelled')" [attr.data-testid]="'row-receipt-' + $index">
-              <td class="font-mono">{{ r.receiptNo || '-' }}</td>
-              <td class="font-mono">{{ r.accountNumber || r['accountNo'] || '-' }}</td>
-              <td class="amount-cell">{{ formatCurrency(r.amount || 0) }}</td>
-              <td>{{ inferPaymentMethod(r) }}</td>
-              <td>{{ r.paymentOption || '-' }}</td>
-              <td>{{ formatReceiptDate(r.receiptDate || '') }}</td>
-              <td>{{ r.cashierName || '-' }}</td>
-              <td>
-                @if (getField(r, 'isCancelled')) {
-                  <span class="badge badge-danger">Cancelled</span>
-                } @else {
-                  <span class="badge badge-success">Active</span>
-                }
-              </td>
-              <td>
-                <button class="btn-outline btn-sm" (click)="handlePrintReceipt(r)" [disabled]="printingReceiptId() === (r.receiptId || r['id'])" [attr.data-testid]="'button-print-' + $index">
-                  @if (printingReceiptId() === (r.receiptId || r['id'])) { <span class="spinner spinner-sm"></span> } Print
-                </button>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-
-    @if (totalPages() > 1) {
-      <div class="pagination-bar">
-        <span class="pagination-info" data-testid="text-page-info">Page {{ currentPage() }} of {{ totalPages() }}</span>
-        <div class="pagination">
-          <button [disabled]="currentPage() <= 1" (click)="handleSearch(1)" data-testid="button-first-page">&#171;</button>
-          <button [disabled]="currentPage() <= 1" (click)="handleSearch(currentPage() - 1)" data-testid="button-prev-page">&#8249;</button>
-          <button class="active">{{ currentPage() }}</button>
-          <button [disabled]="currentPage() >= totalPages()" (click)="handleSearch(currentPage() + 1)" data-testid="button-next-page">&#8250;</button>
-          <button [disabled]="currentPage() >= totalPages()" (click)="handleSearch(totalPages())" data-testid="button-last-page">&#187;</button>
+  <div class="search-panel">
+    @if (activeTab() === 'receipt-search') {
+      <div class="search-form">
+        <div class="form-grid-3">
+          <div class="form-group">
+            <label class="form-label">Cashier</label>
+            <select class="form-select" [ngModel]="cashierFilter()" (ngModelChange)="cashierFilter.set($event)" data-testid="select-cashier-filter">
+              <option value="0">All Cashiers</option>
+              @for (c of cashiers(); track c.id) {
+                <option [value]="c.cashierId || c.id">{{ c.name }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">From Date <span class="required">*</span></label>
+            <input type="date" class="form-input" [ngModel]="fromDate()" (ngModelChange)="fromDate.set($event)" data-testid="input-from-date" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">To Date <span class="required">*</span></label>
+            <input type="date" class="form-input" [ngModel]="toDate()" (ngModelChange)="toDate.set($event)" data-testid="input-to-date" />
+          </div>
+        </div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Account Number</label>
+            <input class="form-input" placeholder="Type to search account..." [ngModel]="accountFilter()" (ngModelChange)="accountFilter.set($event)" data-testid="input-account-filter" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Receipt Number</label>
+            <input class="form-input" placeholder="Type to search receipt..." [ngModel]="receiptFilter()" (ngModelChange)="receiptFilter.set($event)" data-testid="input-receipt-filter" />
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-outline" (click)="handleClear()" data-testid="button-clear">&#10005; Clear</button>
+          <button class="btn-primary" (click)="handleSearch(1)" [disabled]="isLoading()" data-testid="button-load">
+            @if (isLoading()) { <span class="spinner spinner-sm"></span> }
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            Load
+          </button>
         </div>
       </div>
     }
-  }
 
-  @if (isLoading()) {
-    <div class="loading-state">
-      <div class="spinner"></div>
-      <p>Loading receipts...</p>
-    </div>
-  }
+    @if (activeTab() === 'cashbook-trace') {
+      <div class="search-form">
+        <div class="form-grid-3">
+          <div class="form-group">
+            <label class="form-label">Bank Reference / Receipt No</label>
+            <input class="form-input" placeholder="Search bank reference..." [ngModel]="cashbookSearchText()" (ngModelChange)="cashbookSearchText.set($event)" data-testid="input-cashbook-search" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Financial Year</label>
+            <input class="form-input" placeholder="e.g. 2024/2025" [ngModel]="cashbookFinYear()" (ngModelChange)="cashbookFinYear.set($event)" data-testid="input-cashbook-fin-year" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Month</label>
+            <select class="form-select" [ngModel]="cashbookMonth()" (ngModelChange)="cashbookMonth.set($event)" data-testid="select-cashbook-month">
+              @for (m of months; track m.value) {
+                <option [value]="m.value">{{ m.label }}</option>
+              }
+            </select>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-primary" (click)="handleCashbookSearch()" [disabled]="cashbookSearching()" data-testid="button-cashbook-search">
+            @if (cashbookSearching()) { <span class="spinner spinner-sm"></span> }
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            Search Cashbook
+          </button>
+        </div>
+      </div>
+    }
+
+    @if (activeTab() === 'bank-statement') {
+      <div class="search-form">
+        <div class="form-group">
+          <label class="form-label">Bank Statement Reference</label>
+          <div class="input-with-button">
+            <input class="form-input" placeholder="Search bank statement notes..." [ngModel]="bankNoteSearchText()" (ngModelChange)="bankNoteSearchText.set($event)" data-testid="input-bank-note-search" />
+            <button class="btn-primary" (click)="handleBankNoteSearch()" [disabled]="bankNoteSearching()" data-testid="button-bank-note-search">
+              @if (bankNoteSearching()) { <span class="spinner spinner-sm"></span> }
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              Search
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (activeTab() === 'eft-account') {
+      <div class="search-form">
+        <div class="form-group">
+          <label class="form-label">Account ID</label>
+          <div class="input-with-button">
+            <input class="form-input" placeholder="Enter account ID..." [ngModel]="eftAccountSearch()" (ngModelChange)="eftAccountSearch.set($event)" data-testid="input-eft-search" />
+            <button class="btn-primary" (click)="handleEftSearch()" [disabled]="eftSearching()" data-testid="button-eft-search">
+              @if (eftSearching()) { <span class="spinner spinner-sm"></span> }
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              Search
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+
+  <div class="content-area">
+    @if (isLoading()) {
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading receipts...</p>
+      </div>
+    }
+
+    @if (activeTab() === 'cashbook-trace' && cashbookResults() && cashbookResults()!.length > 0) {
+      <div class="sub-results">
+        <h4>Cashbook Results ({{ cashbookResults()!.length }})</h4>
+        <div class="table-container">
+          <table>
+            <thead><tr><th>Receipt No</th><th>Account</th><th>Amount</th><th>Date</th><th>Description</th><th>Actions</th></tr></thead>
+            <tbody>
+              @for (item of cashbookResults()!; track $index) {
+                <tr [attr.data-testid]="'row-cashbook-' + $index">
+                  <td class="font-mono">{{ item.receiptNo || item.receipt_No || '-' }}</td>
+                  <td class="font-mono">{{ item.accountNumber || item.account_Number || '-' }}</td>
+                  <td class="amount-cell">{{ formatCurrency(item.amount || 0) }}</td>
+                  <td>{{ item.transactionDate || item.date || '-' }}</td>
+                  <td>{{ item.description || item.narration || '-' }}</td>
+                  <td><button class="btn-outline btn-sm" (click)="loadFromCashbookResult(item)" [attr.data-testid]="'button-load-cashbook-' + $index">Load Receipt</button></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+
+    @if (activeTab() === 'bank-statement' && bankNoteResults() && bankNoteResults()!.length > 0) {
+      <div class="sub-results">
+        <h4>Bank Statement Results ({{ bankNoteResults()!.length }})</h4>
+        <div class="table-container">
+          <table>
+            <thead><tr><th>Reference</th><th>Amount</th><th>Date</th><th>Receipt No</th><th>Actions</th></tr></thead>
+            <tbody>
+              @for (item of bankNoteResults()!; track $index) {
+                <tr [attr.data-testid]="'row-banknote-' + $index">
+                  <td class="font-mono">{{ item.reference || item.bankReference || '-' }}</td>
+                  <td class="amount-cell">{{ formatCurrency(item.amount || 0) }}</td>
+                  <td>{{ item.date || item.transactionDate || '-' }}</td>
+                  <td class="font-mono">{{ item.receiptNo || '-' }}</td>
+                  <td><button class="btn-outline btn-sm" (click)="loadFromBankNote(item)" [attr.data-testid]="'button-load-banknote-' + $index">Load Receipt</button></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+
+    @if (activeTab() === 'eft-account' && eftResults() && eftResults()!.length > 0) {
+      <div class="sub-results">
+        <h4>EFT Results ({{ eftResults()!.length }})</h4>
+        <div class="table-container">
+          <table>
+            <thead><tr><th>Reference</th><th>Amount</th><th>Date</th><th>Receipt No</th><th>Actions</th></tr></thead>
+            <tbody>
+              @for (item of eftResults()!; track $index) {
+                <tr [attr.data-testid]="'row-eft-' + $index">
+                  <td class="font-mono">{{ item.reference || item.bankReference || '-' }}</td>
+                  <td class="amount-cell">{{ formatCurrency(item.amount || 0) }}</td>
+                  <td>{{ item.date || item.transactionDate || '-' }}</td>
+                  <td class="font-mono">{{ item.receiptNo || '-' }}</td>
+                  <td><button class="btn-outline btn-sm" (click)="loadFromEft(item)" [attr.data-testid]="'button-load-eft-' + $index">Load Receipt</button></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+
+    @if (receipts().length > 0) {
+      <div class="results-header">
+        <div class="results-info">
+          <span class="results-count" data-testid="text-results-count">{{ filteredReceipts().length }} of {{ totalCount() }} receipts</span>
+          <span class="results-total" data-testid="text-results-total">Total: {{ formatCurrency(filteredTotal()) }}</span>
+        </div>
+        <div class="results-filters">
+          <input class="form-input search-inline" placeholder="Quick filter..." [ngModel]="quickSearch()" (ngModelChange)="quickSearch.set($event)" data-testid="input-quick-search" />
+          <select class="form-select filter-inline" [ngModel]="filterPaymentMethod()" (ngModelChange)="filterPaymentMethod.set($event)" data-testid="select-payment-method">
+            <option value="__all__">All Methods</option>
+            @for (m of uniquePaymentMethods(); track m) {
+              <option [value]="m">{{ m }}</option>
+            }
+          </select>
+          <select class="form-select filter-inline" [ngModel]="filterStatus()" (ngModelChange)="filterStatus.set($event)" data-testid="select-status">
+            <option value="all">All Status</option>
+            <option value="active">Active</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th class="sortable" (click)="handleSort('receiptNo')" data-testid="th-receipt-no">
+                Receipt No @if (sortField() === 'receiptNo') { <span>{{ sortDir() === 'asc' ? '&#8593;' : '&#8595;' }}</span> }
+              </th>
+              <th class="sortable" (click)="handleSort('accountNumber')" data-testid="th-account">
+                Account @if (sortField() === 'accountNumber') { <span>{{ sortDir() === 'asc' ? '&#8593;' : '&#8595;' }}</span> }
+              </th>
+              <th class="sortable" (click)="handleSort('amount')" data-testid="th-amount">
+                Amount @if (sortField() === 'amount') { <span>{{ sortDir() === 'asc' ? '&#8593;' : '&#8595;' }}</span> }
+              </th>
+              <th>Method</th>
+              <th>Payment Option</th>
+              <th class="sortable" (click)="handleSort('receiptDate')" data-testid="th-date">
+                Date @if (sortField() === 'receiptDate') { <span>{{ sortDir() === 'asc' ? '&#8593;' : '&#8595;' }}</span> }
+              </th>
+              <th class="sortable" (click)="handleSort('cashierName')" data-testid="th-cashier">
+                Cashier @if (sortField() === 'cashierName') { <span>{{ sortDir() === 'asc' ? '&#8593;' : '&#8595;' }}</span> }
+              </th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of filteredReceipts(); track $index) {
+              <tr [class.cancelled-row]="getField(r, 'isCancelled')" [attr.data-testid]="'row-receipt-' + $index">
+                <td class="font-mono">{{ r.receiptNo || '-' }}</td>
+                <td class="font-mono">{{ r.accountNumber || r['accountNo'] || '-' }}</td>
+                <td class="amount-cell">{{ formatCurrency(r.amount || 0) }}</td>
+                <td>{{ inferPaymentMethod(r) }}</td>
+                <td>{{ r.paymentOption || '-' }}</td>
+                <td>{{ formatReceiptDate(r.receiptDate || '') }}</td>
+                <td>{{ r.cashierName || '-' }}</td>
+                <td>
+                  @if (getField(r, 'isCancelled')) {
+                    <span class="badge badge-danger">Cancelled</span>
+                  } @else {
+                    <span class="badge badge-success">Active</span>
+                  }
+                </td>
+                <td>
+                  <button class="btn-outline btn-sm" (click)="handlePrintReceipt(r)" [disabled]="printingReceiptId() === (r.receiptId || r['id'])" [attr.data-testid]="'button-print-' + $index">
+                    @if (printingReceiptId() === (r.receiptId || r['id'])) { <span class="spinner spinner-sm"></span> } Print
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (totalPages() > 1) {
+        <div class="pagination-bar">
+          <span class="pagination-info" data-testid="text-page-info">Page {{ currentPage() }} of {{ totalPages() }}</span>
+          <div class="pagination">
+            <button [disabled]="currentPage() <= 1" (click)="handleSearch(1)" data-testid="button-first-page">&#171;</button>
+            <button [disabled]="currentPage() <= 1" (click)="handleSearch(currentPage() - 1)" data-testid="button-prev-page">&#8249;</button>
+            <button class="active">{{ currentPage() }}</button>
+            <button [disabled]="currentPage() >= totalPages()" (click)="handleSearch(currentPage() + 1)" data-testid="button-next-page">&#8250;</button>
+            <button [disabled]="currentPage() >= totalPages()" (click)="handleSearch(totalPages())" data-testid="button-last-page">&#187;</button>
+          </div>
+        </div>
+      }
+    }
+
+    @if (!isLoading() && receipts().length === 0 && activeTab() === 'receipt-search') {
+      <div class="empty-state">
+        <p>Select filters and click Load to search receipts</p>
+      </div>
+    }
+  </div>
 </div>
