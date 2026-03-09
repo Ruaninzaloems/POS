@@ -1,0 +1,148 @@
+Matching logic:
+
+If the user provides a town name plus erf number, match that first
+
+If a portion number is also provided, include that in the match
+
+If the user provides only erf number, return possible matches but rank exact town matches highest where context exists
+
+If the user provides a sectional unit number, search cons_unit.sectionunitnumber
+
+If the user provides an SG/LPI-like reference, normalize it into padded components and compare against generated search keys
+
+Always prefer structured field matching over free text matching
+
+Build generated search keys for each property record:
+
+raw erf number
+
+padded erf number
+
+raw portion number
+
+padded portion number
+
+town + erf
+
+town + erf + portion
+
+erf + portion
+
+sectional unit number
+
+SG/LPI-style combined key
+
+Padding rules:
+
+Erf number must be padded to the agreed fixed length
+
+Portion number must be padded to the agreed fixed length
+
+If portion is blank or main erf, treat it consistently as zero/default format
+
+Use one standard format everywhere in matching logic
+
+Example:
+If user searches Erf 2153 Portion 3 Benoni
+the engine must parse:
+
+town = Benoni
+
+erf = 2153
+
+portion = 3
+
+Then generate comparable keys such as:
+
+BENONI|2153|3
+
+BENONI|00002153|00003
+
+2153|3
+
+00002153|00003
+
+If user searches only Erf 2153
+the engine must still match all records with erf 2153, but if the town is known from user context or selected municipality filters, rank those first.
+
+If user searches Portion 3 of Erf 2153
+the engine must not rely on exact phrase order.
+It must still detect:
+
+erf = 2153
+
+portion = 3
+
+If user searches a sectional unit number, match directly against cons_unit.sectionunitnumber.
+
+Implementation requirements:
+
+Create a reusable normalization function
+
+Create a reusable parser that extracts town, erf, portion, sectional unit
+
+Create a generated search key builder for every property record
+
+Store normalized search keys in indexed/searchable columns where possible for performance
+
+Do not do heavy wildcard searching first
+
+Use structured exact/normalized comparisons first, then fallback ranking if needed
+
+Recommended output ranking:
+
+Exact town + erf + portion
+
+Exact town + erf
+
+Exact erf + portion
+
+Exact sectional unit
+
+Exact normalized SG/LPI-style key
+
+Loose text fallback
+
+Important:
+
+Town matching is critical because erf numbers repeat across towns
+
+Portion matching must distinguish main erf from subdivisions
+
+Sectional units must be handled separately from normal erf/portion logic
+
+The search must be user-friendly, but the backend matching must stay strict and deterministic
+
+Developer note:
+Create test cases for:
+
+Erf 2153
+
+Erf 2153 Benoni
+
+Portion 3 Erf 2153 Benoni
+
+Ptn 3 of Erf 2153
+
+Unit 12
+
+mixed casing
+
+extra spaces
+
+punctuation
+
+zero-padded and non-padded formats
+
+Expected result:
+A user can search using natural property references, and the system will correctly identify the linked account by normalizing the reference into structured searchable keys based on town, erf, portion, and sectional unit.
+
+Here is a cleaner technical rule you can also give them for the format side:
+
+Standard normalized property key format:
+TOWN|ERF_PADDED|PORTION_PADDED|SECTIONUNIT
+
+Examples:
+BENONI|00002153|00000|
+BENONI|00002153|00003|
+BENONI|00000000|00000|00012

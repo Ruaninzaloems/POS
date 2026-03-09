@@ -614,7 +614,7 @@ async function searchForSuggestions(note: string, reference: string, transaction
   };
 
   const addResult = (item: any, matchType: SuggestedMatch['matchType'], matchDetail: string, confidence: number, reasoning: string[]) => {
-    const accId = item.account_ID || item.accountID || item.id;
+    const accId = item.account_ID || item.accountID || item.accountId || item.id;
     if (!accId) return;
     const clampedConf = Math.min(confidence, 99);
     const existing = suggestions.find(s => s.accountId === accId);
@@ -1088,11 +1088,19 @@ async function searchForSuggestions(note: string, reference: string, transaction
       );
     }
 
-    for (const sgTerm of sgSearchTerms) {
+    const allSgTerms = [...sgSearchTerms];
+    if (!allSgTerms.includes(erf.erf)) allSgTerms.push(erf.erf);
+    for (const sgTerm of allSgTerms) {
       searchPromises.push(
         safe(() => platinumDDOldAccountAutocomplete(sgTerm)).then((rawData: any) => {
           const items = unwrap(rawData);
           for (const item of items.slice(0, 10)) {
+            if (item.displayItem && !item.sgNumber) item.sgNumber = item.displayItem;
+            if (item.displayItem && !item.accountNumber) {
+              const sgParts = parseSgNumber(item.displayItem);
+              if (sgParts.erf) item.erfNumber = sgParts.erf;
+              if (sgParts.portion) item.portion = sgParts.portion;
+            }
             const hasAreaMatch = checkAreaMatch(item, erf.area);
             addResult(item, 'erf_number',
               `${erfLabel}${areaLabel} — SG code match${hasAreaMatch ? ' (area confirmed)' : ''}`,
@@ -1100,7 +1108,7 @@ async function searchForSuggestions(note: string, reference: string, transaction
               [
                 `Parsed "${erfLabel}" from description`,
                 `Searched old account autocomplete with "${sgTerm}"`,
-                `Matches any municipality SG code containing this ERF`,
+                item.displayItem ? `SG code: ${item.displayItem}` : `Matches SG code containing this ERF`,
                 hasAreaMatch ? `Area confirmed` : `Verify area`,
               ]
             );
@@ -1108,6 +1116,49 @@ async function searchForSuggestions(note: string, reference: string, transaction
         })
       );
     }
+
+    searchPromises.push(
+      safe(() => billingAutocomplete(erf.erf.padStart(8, '0'), 'erfNumber')).then((items: any[]) => {
+        for (const item of items.slice(0, 10)) {
+          if (item.displayItem && !item.sgNumber) item.sgNumber = item.displayItem;
+          if (item.displayItem) {
+            const sgParts = parseSgNumber(item.displayItem);
+            if (sgParts.erf) item.erfNumber = sgParts.erf;
+            if (sgParts.portion) item.portion = sgParts.portion;
+          }
+          const hasAreaMatch = checkAreaMatch(item, erf.area);
+          addResult(item, 'erf_number',
+            `${erfLabel}${areaLabel} — ERF autocomplete${hasAreaMatch ? ' (area confirmed)' : ''}`,
+            hasAreaMatch ? 93 : 88,
+            [
+              `Parsed "${erfLabel}" from description`,
+              `Searched billing enquiry ERF autocomplete`,
+              item.displayItem ? `SG code: ${item.displayItem}` : `ERF matched`,
+              hasAreaMatch ? `Area confirmed` : `Verify area`,
+            ]
+          );
+        }
+      })
+    );
+
+    searchPromises.push(
+      safe(() => platinumDDAccountAutocomplete(erf.erf.padStart(8, '0'))).then((rawData: any) => {
+        const items = unwrap(rawData);
+        for (const item of items.slice(0, 10)) {
+          if (item.displayItem && !item.sgNumber) item.sgNumber = item.displayItem;
+          const hasAreaMatch = checkAreaMatch(item, erf.area);
+          addResult(item, 'erf_number',
+            `${erfLabel}${areaLabel} — DD autocomplete${hasAreaMatch ? ' (area confirmed)' : ''}`,
+            hasAreaMatch ? 92 : 87,
+            [
+              `Parsed "${erfLabel}" from description`,
+              `Searched DD account autocomplete with padded ERF`,
+              hasAreaMatch ? `Area confirmed` : `Verify area`,
+            ]
+          );
+        }
+      })
+    );
   }
 
   const tokenMatchesWord = (tokens: string[], word: string): boolean => {
