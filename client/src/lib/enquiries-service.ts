@@ -64,9 +64,14 @@ export function clearEnquiryCache(accountId?: number): void {
   }
 }
 
-async function fetchOnce(url: string, options?: RequestInit): Promise<any> {
+async function fetchOnce(url: string, options?: RequestInit, externalSignal?: AbortSignal): Promise<any> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const onExternalAbort = () => controller.abort();
+  if (externalSignal) {
+    if (externalSignal.aborted) { clearTimeout(timeoutId); throw new Error('Request cancelled'); }
+    externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+  }
   try {
     const resolved = resolveApiUrl(url);
     const authHeaders = getAuthHeaders();
@@ -82,21 +87,27 @@ async function fetchOnce(url: string, options?: RequestInit): Promise<any> {
     return data;
   } catch (e: any) {
     clearTimeout(timeoutId);
-    if (e.name === 'AbortError') throw new Error('Request timed out');
+    if (e.name === 'AbortError') {
+      throw new Error(externalSignal?.aborted ? 'Request cancelled' : 'Request timed out');
+    }
     throw e;
+  } finally {
+    if (externalSignal) externalSignal.removeEventListener('abort', onExternalAbort);
   }
 }
 
 const MAX_RETRIES = 1;
 const RETRY_DELAY = 400;
 
-async function fetchWithTimeout(url: string, options?: RequestInit): Promise<any> {
+async function fetchWithTimeout(url: string, options?: RequestInit, externalSignal?: AbortSignal): Promise<any> {
   let lastError: any;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    if (externalSignal?.aborted) throw new Error('Request cancelled');
     try {
-      return await fetchOnce(url, options);
+      return await fetchOnce(url, options, externalSignal);
     } catch (e: any) {
       lastError = e;
+      if (e.message === 'Request cancelled') throw e;
       const isRetryable = e.message?.includes('timed out') || e.message?.includes('502') || e.message?.includes('503') || e.message?.includes('Failed to fetch') || e.message?.includes('NetworkError');
       if (!isRetryable || attempt >= MAX_RETRIES) throw e;
       await new Promise(r => setTimeout(r, RETRY_DELAY * (attempt + 1)));
@@ -159,7 +170,7 @@ export interface EnquirySearchResult {
 }
 
 // === SEARCH ===
-export async function searchAccounts(criteria: EnquirySearchCriteria): Promise<EnquirySearchResult[]> {
+export async function searchAccounts(criteria: EnquirySearchCriteria, signal?: AbortSignal): Promise<EnquirySearchResult[]> {
   if (criteria.emailAddress && !criteria.accountNo && !criteria.name && !criteria.idNo) {
     return searchByEmail(criteria.emailAddress);
   }
@@ -181,7 +192,7 @@ export async function searchAccounts(criteria: EnquirySearchCriteria): Promise<E
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-  });
+  }, signal);
   return normalizeArray(data);
 }
 
@@ -262,9 +273,34 @@ export function getAutocompleteType(searchField: string): string | null {
   return FIELD_TO_AUTOCOMPLETE_TYPE[searchField] || null;
 }
 
-export async function autocomplete(search: string, type: string = 'accountNumber'): Promise<{ displayItem: string; accountId: number }[]> {
-  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/autocomplete?search=${encodeURIComponent(search)}&type=${encodeURIComponent(type)}`);
+export async function autocomplete(search: string, type: string = 'accountNumber', signal?: AbortSignal): Promise<{ displayItem: string; accountId: number }[]> {
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/autocomplete?search=${encodeURIComponent(search)}&type=${encodeURIComponent(type)}`, undefined, signal);
   return normalizeArray(data);
+}
+
+export async function autocompleteFast(search: string, searchField: string = 'accountNo', signal?: AbortSignal): Promise<EnquirySearchResult[]> {
+  const acType = getAutocompleteType(searchField);
+  if (!acType) return [];
+  const suggestions = await autocomplete(search, acType, signal);
+  if (!suggestions.length) return [];
+  const validSuggestions = suggestions.filter(s => s.accountId && s.accountId > 0);
+  if (!validSuggestions.length) return [];
+  return validSuggestions.slice(0, 15).map(s => {
+    const displayParts = (s.displayItem || '').split(' - ');
+    const accountNo = displayParts[0]?.trim() || String(s.accountId).padStart(12, '0');
+    const name = displayParts.slice(1).join(' - ').trim() || '';
+    return {
+      account_ID: s.accountId,
+      accountID: s.accountId,
+      accountNumber: accountNo,
+      accountNo: accountNo,
+      surname_Company: name,
+      initials: '',
+      lastName: name,
+      displayItem: s.displayItem,
+      _fromAutocomplete: true,
+    } as unknown as EnquirySearchResult;
+  });
 }
 
 export async function autocompleteSearch(search: string, searchField: string = 'accountNo'): Promise<EnquirySearchResult[]> {

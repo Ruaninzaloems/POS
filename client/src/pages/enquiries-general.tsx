@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import {
   searchAccounts, getAccountBalance, getAutocompleteType,
-  autocomplete, autocompleteSearch, prefetchAccountData, clearEnquiryCache,
+  autocomplete, autocompleteSearch, autocompleteFast, prefetchAccountData, clearEnquiryCache,
   getHandoverInfo, getNameInfo, getMeteredServicesOnAccount,
   getAttpApplicationHistory, getAccountInfoResult, getBasicAccountDetails,
   type EnquirySearchCriteria, type EnquirySearchResult,
@@ -505,6 +505,7 @@ function GeneralEnquiriesContent() {
   }, [selectedAccount]);
 
   const quickSearchTokenRef = useRef(0);
+  const quickSearchAbortRef = useRef<AbortController | null>(null);
   const fullSearchTokenRef = useRef(0);
   const balanceCacheRef = useRef<Map<number, number>>(new Map());
 
@@ -551,66 +552,95 @@ function GeneralEnquiriesContent() {
     }
   }, []);
 
+  const cancelQuickSearch = useCallback(() => {
+    quickSearchTokenRef.current++;
+    if (quickSearchAbortRef.current) { quickSearchAbortRef.current.abort(); quickSearchAbortRef.current = null; }
+  }, []);
+
   const doQuickSearch = useCallback(async (query: string) => {
     if (query.trim().length < 2) {
       setDropdownResults([]);
       setDropdownSearching(false);
       return;
     }
+    cancelQuickSearch();
+    const abortCtrl = new AbortController();
+    quickSearchAbortRef.current = abortCtrl;
+    const token = ++quickSearchTokenRef.current;
+    const isAborted = () => abortCtrl.signal.aborted || quickSearchTokenRef.current !== token;
+
     setDropdownSearching(true);
     const { field } = detectSearchType(query);
-    const token = ++quickSearchTokenRef.current;
     const num = query.trim();
     const isNumeric = /^\d{4,}$/.test(num);
+    const seen = new Set<number>();
+    const mergedResults: EnquirySearchResult[] = [];
+
+    const mergeAndShow = (newItems: EnquirySearchResult[]) => {
+      if (isAborted()) return;
+      for (const item of newItems) {
+        const id = item.account_ID || item.accountID;
+        if (id && !seen.has(id)) { seen.add(id); mergedResults.push(item); }
+      }
+      setDropdownResults([...mergedResults]);
+      if (mergedResults.length > 0) setShowDropdown(true);
+    };
+
     try {
-      const promises: Promise<EnquirySearchResult[]>[] = [
-        searchAccounts({ [field]: num } as any).catch(() => [] as EnquirySearchResult[]),
-        autocompleteSearch(num, field).catch(() => [] as EnquirySearchResult[]),
-      ];
+      const sig = abortCtrl.signal;
+      const fastPromise = autocompleteFast(num, field, sig).then(r => {
+        mergeAndShow(r);
+        return r;
+      }).catch(() => [] as EnquirySearchResult[]);
+
+      const slowPromises: Promise<void>[] = [];
+
+      slowPromises.push(
+        searchAccounts({ [field]: num } as any, sig).then(r => { mergeAndShow(r); }).catch(() => {})
+      );
+
       if (isNumeric && field === 'accountNo') {
-        const padded = num.padStart(12, '0');
-        promises.push(
-          searchAccounts({ oldAccountCode: num } as any).catch(() => [] as EnquirySearchResult[]),
-          autocompleteSearch(num, 'oldAccountCode').catch(() => [] as EnquirySearchResult[]),
+        slowPromises.push(
+          autocompleteFast(num, 'oldAccountCode', sig).then(r => { mergeAndShow(r); }).catch(() => {})
         );
+        slowPromises.push(
+          searchAccounts({ oldAccountCode: num } as any, sig).then(r => { mergeAndShow(r); }).catch(() => {})
+        );
+        const padded = num.padStart(12, '0');
         if (padded !== num) {
-          promises.push(
-            searchAccounts({ accountNo: padded } as any).catch(() => [] as EnquirySearchResult[]),
+          slowPromises.push(
+            searchAccounts({ accountNo: padded } as any, sig).then(r => { mergeAndShow(r); }).catch(() => {})
           );
         }
       }
-      const allResults = await Promise.all(promises);
-      if (quickSearchTokenRef.current !== token) return;
-      let results: EnquirySearchResult[] = [];
-      for (const r of allResults) {
-        if (r.length > 0) { results = r; break; }
+
+      await fastPromise;
+
+      if (!isAborted() && mergedResults.length > 0) {
+        enrichWithBalances(mergedResults.slice(0, 10), quickSearchTokenRef, token, (enriched) => {
+          if (isAborted()) return;
+          const enrichMap = new Map<number, EnquirySearchResult>();
+          enriched.forEach(r => { const id = r.account_ID || r.accountID; if (id) enrichMap.set(id, r); });
+          setDropdownResults(prev => prev.map(r => { const id = r.account_ID || r.accountID; return id && enrichMap.has(id) ? enrichMap.get(id)! : r; }));
+        });
       }
-      if (results.length === 0) {
-        const merged = new Map<number, EnquirySearchResult>();
-        for (const r of allResults) {
-          for (const item of r) {
-            const id = item.account_ID || item.accountID;
-            if (id && !merged.has(id)) merged.set(id, item);
-          }
-        }
-        results = Array.from(merged.values());
-      }
-      setDropdownResults(results);
-      setShowDropdown(true);
-      if (results.length > 0) {
-        enrichWithBalances(results.slice(0, 10), quickSearchTokenRef, token, (enriched) => {
-          if (quickSearchTokenRef.current !== token) return;
+
+      await Promise.allSettled(slowPromises);
+
+      if (!isAborted() && mergedResults.length > 0) {
+        enrichWithBalances(mergedResults.slice(0, 10), quickSearchTokenRef, token, (enriched) => {
+          if (isAborted()) return;
           const enrichMap = new Map<number, EnquirySearchResult>();
           enriched.forEach(r => { const id = r.account_ID || r.accountID; if (id) enrichMap.set(id, r); });
           setDropdownResults(prev => prev.map(r => { const id = r.account_ID || r.accountID; return id && enrichMap.has(id) ? enrichMap.get(id)! : r; }));
         });
       }
     } catch (e: any) {
-      if (quickSearchTokenRef.current === token) setDropdownResults([]);
+      if (!isAborted()) setDropdownResults([]);
     } finally {
-      if (quickSearchTokenRef.current === token) setDropdownSearching(false);
+      if (!isAborted()) setDropdownSearching(false);
     }
-  }, [enrichWithBalances]);
+  }, [enrichWithBalances, cancelQuickSearch]);
 
   const handleQuickQueryChange = (val: string) => {
     setQuickQuery(val);
@@ -619,8 +649,9 @@ function GeneralEnquiriesContent() {
     if (val.trim().length >= 2) {
       setShowDropdown(true);
       setDropdownSearching(true);
-      debounceRef.current = setTimeout(() => doQuickSearch(val), 400);
+      debounceRef.current = setTimeout(() => doQuickSearch(val), 250);
     } else {
+      cancelQuickSearch();
       setShowDropdown(val.trim().length > 0);
       setDropdownResults([]);
       setDropdownSearching(false);
@@ -628,6 +659,8 @@ function GeneralEnquiriesContent() {
   };
 
   const handleSelectAccount = (account: EnquirySearchResult) => {
+    cancelQuickSearch();
+    setDropdownSearching(false);
     setSelectedAccount(account);
     setActiveTab('account');
     setShowDropdown(false);

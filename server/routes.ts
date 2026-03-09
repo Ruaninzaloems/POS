@@ -2523,15 +2523,32 @@ export async function registerRoutes(
 
   // --- Billing Enquiry - Autocomplete ---
 
+  const autocompleteCache = new Map<string, { data: any; ts: number }>();
+  const AUTOCOMPLETE_CACHE_TTL = 60_000;
+
   app.get("/api/platinum/billing-enquiry/autocomplete", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
       const search = req.query.search || '';
       const type = req.query.type || 'accountNumber';
+      const siteId = (session as any).siteId || (session as any).site?.id || 'default';
+      const cacheKey = `${siteId}:${type}:${search}`;
+      const cached = autocompleteCache.get(cacheKey);
+      if (cached && Date.now() - cached.ts < AUTOCOMPLETE_CACHE_TTL) {
+        res.json(cached.data);
+        return;
+      }
       console.log(`[autocomplete] search="${search}" type="${type}"`);
       const data = await platinumGet(session, "/api/BillingEnquiry/Autocomplete", req.query as Record<string, string>);
       const count = Array.isArray(data) ? data.length : (data?._error ? 'ERROR' : '?');
       console.log(`[autocomplete] Results: ${count}`);
+      if (data && !data._error) {
+        autocompleteCache.set(cacheKey, { data, ts: Date.now() });
+        if (autocompleteCache.size > 100) {
+          const oldest = [...autocompleteCache.entries()].sort((a, b) => a[1].ts - b[1].ts);
+          for (let i = 0; i < 20; i++) autocompleteCache.delete(oldest[i][0]);
+        }
+      }
       handlePlatinumResult(res, data);
     } catch (e: any) {
       console.log(`[autocomplete] Error: search="${req.query.search}" type="${req.query.type}" — ${e.message}`);
