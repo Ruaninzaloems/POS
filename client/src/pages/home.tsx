@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { usePos } from '@/lib/pos-state';
 import {
@@ -16,31 +16,45 @@ import {
   Monitor,
   Smartphone,
   ChevronDown,
+  ChevronRight,
   MessageSquareMore,
   Power,
+  CreditCard,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HelpTip } from '@/components/ui/help-tip';
 import { logoutUser } from '@/lib/external-api';
 
-const menuItems = [
+type MenuItem = { label: string; href: string; icon: any; description: string; helpTip: string };
+type MenuGroup = { label: string; icon: any; helpTip: string; children: MenuItem[] };
+type MenuEntry = MenuItem | MenuGroup;
+
+const isGroup = (entry: MenuEntry): entry is MenuGroup => 'children' in entry;
+
+const posChildren: MenuItem[] = [
   { label: 'POS', href: '/pos', icon: Layers, description: 'Point of sale receipting and payments', helpTip: 'Process payments for consumer accounts, prepaid, clearance, and direct income' },
-  { label: 'Billing Dashboard', href: '/billing-dashboard', icon: BarChart3, description: 'Billing statistics and notifications', helpTip: 'View billing notifications, alerts, and system status across all municipal services' },
   { label: 'Direct Deposits Manual', href: '/direct-deposits/manual', icon: Banknote, description: 'Manual allocation of direct deposits', helpTip: 'Allocate EFT and direct deposit payments to consumer accounts' },
   { label: 'Direct Deposits Auto', href: '/direct-deposits/auto', icon: RefreshCw, description: 'Automatic processing of direct deposits', helpTip: 'Allocate EFT and direct deposit payments to consumer accounts automatically' },
   { label: 'Third Party Payment Processing', href: '/third-party/processing', icon: Users, description: 'Process third party payments', helpTip: 'Import and process bulk payment files from external sources' },
   { label: 'Utilipay Distribution Reconciliation', href: '/third-party/utilipay-reconciliation', icon: Zap, description: 'Reconcile Utilipay distribution records', helpTip: 'Import and process bulk payment files from external sources' },
   { label: 'Bulk Allocation Progress', href: '/bulk-allocation', icon: FileBarChart, description: 'View bulk allocation progress and errors', helpTip: 'Track the progress and status of bulk deposit allocations being processed' },
   { label: 'View Receipts', href: '/view-receipts', icon: FileSearch, description: 'Search and view transaction receipts', helpTip: 'Search and reprint previously issued receipts' },
-  { label: 'General Enquiries', href: '/enquiries/general', icon: Search, description: 'Search and view account details', helpTip: 'Look up account balances, transaction history, and billing details' },
-  { label: 'Client Communications', href: '/communications', icon: MessageSquareMore, description: 'Send custom emails and SMS to account holders', helpTip: 'Send emails and SMS messages to account holders' },
   { label: 'Supervisor', href: '/supervisor', icon: ShieldCheck, description: 'Supervisor dashboard and approvals', helpTip: 'Review and approve cashier day-end submissions and cancellation requests' },
 ];
+
+const menuEntries: MenuEntry[] = [
+  { label: 'Point of Sale', icon: CreditCard, helpTip: 'All POS receipting, payments, deposits, and supervisor functions', children: posChildren },
+  { label: 'Billing Dashboard', href: '/billing-dashboard', icon: BarChart3, description: 'Billing statistics and notifications', helpTip: 'View billing notifications, alerts, and system status across all municipal services' },
+  { label: 'General Enquiries', href: '/enquiries/general', icon: Search, description: 'Search and view account details', helpTip: 'Look up account balances, transaction history, and billing details' },
+  { label: 'Client Communications', href: '/communications', icon: MessageSquareMore, description: 'Send custom emails and SMS to account holders', helpTip: 'Send emails and SMS messages to account holders' },
+];
+
 
 export default function HomePage() {
   const [, setLocation] = useLocation();
   const { currentUser, activeSession, endSession, viewMode, toggleViewMode, siteInfo } = usePos();
   const isSite02 = siteInfo?.id === 'site02';
+  const [posOpen, setPosOpen] = useState(true);
 
   return (
     <div className="flex flex-col h-screen bg-[#F2F4F7] overflow-hidden">
@@ -102,18 +116,51 @@ export default function HomePage() {
       <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
         <div className="md:hidden flex-1 overflow-y-auto overscroll-contain p-4 bg-white">
           <h2 className="text-sm font-semibold text-[#6B6B6B] uppercase tracking-wider mb-3">Modules</h2>
-          <div className="grid grid-cols-2 gap-2.5 pb-4">
-            {menuItems.map((item, idx) => (
-              <Link key={idx} href={item.href}>
+          <div className="flex flex-col gap-2.5 pb-4">
+            {menuEntries.map((entry, idx) => isGroup(entry) ? (
+              <div key={idx}>
                 <button
-                  className="w-full flex flex-col items-center gap-2 p-3.5 rounded-lg text-center hover:bg-[var(--pos-accent-tint)] active:scale-[0.97] transition-all group border border-[#D6D6D6] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.15)] relative overflow-hidden touch-manipulation"
-                  data-testid={`menu-item-${item.href.replace(/\//g, '-').slice(1) || 'home'}`}
+                  className="w-full flex items-center gap-2.5 p-3 rounded-lg bg-[var(--pos-accent)] text-white shadow-[0_1px_3px_rgba(0,0,0,0.2)] active:scale-[0.98] transition-all touch-manipulation"
+                  onClick={() => setPosOpen(v => !v)}
+                  data-testid="menu-group-pos-mobile"
+                >
+                  <entry.icon className="w-5 h-5 shrink-0" />
+                  <span className="text-sm font-semibold flex-1 text-left">{entry.label}</span>
+                  <ChevronDown className={`w-4 h-4 transition-transform ${posOpen ? '' : '-rotate-90'}`} />
+                </button>
+                {posOpen && (
+                  <div className="grid grid-cols-2 gap-2 mt-2 ml-2">
+                    {entry.children.map((child, ci) => (
+                      <Link key={ci} href={child.href}>
+                        <button
+                          className="w-full flex flex-col items-center gap-2 p-3 rounded-lg text-center hover:bg-[var(--pos-accent-tint)] active:scale-[0.97] transition-all group border border-[#D6D6D6] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.15)] relative overflow-hidden touch-manipulation"
+                          data-testid={`menu-item-${child.href.replace(/\//g, '-').slice(1) || 'home'}`}
+                        >
+                          <div className="absolute top-0 left-0 right-0 h-0.5 bg-[var(--pos-accent)] opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <div className="w-10 h-10 rounded-lg bg-[#F7F7F7] flex items-center justify-center shrink-0 group-hover:bg-[var(--pos-accent-tint)] transition-colors">
+                            <child.icon className="w-5 h-5 text-[#6B6B6B] group-hover:text-[var(--pos-accent)]" />
+                          </div>
+                          <div className="text-[11px] font-medium text-[#2E2E2E] leading-tight inline-flex items-center gap-0.5">{child.label} <HelpTip text={child.helpTip} side="bottom" /></div>
+                        </button>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link key={idx} href={entry.href}>
+                <button
+                  className="w-full flex items-center gap-3 p-3 rounded-lg text-left hover:bg-[var(--pos-accent-tint)] active:scale-[0.97] transition-all group border border-[#D6D6D6] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.15)] relative overflow-hidden touch-manipulation"
+                  data-testid={`menu-item-${entry.href.replace(/\//g, '-').slice(1) || 'home'}`}
                 >
                   <div className="absolute top-0 left-0 right-0 h-0.5 bg-[var(--pos-accent)] opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="w-11 h-11 rounded-lg bg-[#F7F7F7] flex items-center justify-center shrink-0 group-hover:bg-[var(--pos-accent-tint)] transition-colors">
-                    <item.icon className="w-5 h-5 text-[#6B6B6B] group-hover:text-[var(--pos-accent)]" />
+                  <div className="w-10 h-10 rounded-lg bg-[#F7F7F7] flex items-center justify-center shrink-0 group-hover:bg-[var(--pos-accent-tint)] transition-colors">
+                    <entry.icon className="w-5 h-5 text-[#6B6B6B] group-hover:text-[var(--pos-accent)]" />
                   </div>
-                  <div className="text-[11px] font-medium text-[#2E2E2E] leading-tight inline-flex items-center gap-0.5">{item.label} <HelpTip text={item.helpTip} side="bottom" /></div>
+                  <div>
+                    <div className="text-sm font-medium text-[#2E2E2E] inline-flex items-center gap-0.5">{entry.label} <HelpTip text={entry.helpTip} side="bottom" /></div>
+                    <div className="text-xs text-[#6B6B6B] truncate">{entry.description}</div>
+                  </div>
                 </button>
               </Link>
             ))}
@@ -125,16 +172,49 @@ export default function HomePage() {
             <h2 className="text-sm font-semibold uppercase tracking-wider">Modules</h2>
           </div>
           <nav className="py-1">
-            {menuItems.map((item, idx) => (
-              <Link key={idx} href={item.href}>
+            {menuEntries.map((entry, idx) => isGroup(entry) ? (
+              <div key={idx}>
                 <button
                   className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[var(--pos-accent-tint-strong)] transition-colors group border-l-3 border-transparent hover:border-[var(--pos-accent)]"
-                  data-testid={`menu-item-desktop-${item.href.replace(/\//g, '-').slice(1) || 'home'}`}
+                  onClick={() => setPosOpen(v => !v)}
+                  data-testid="menu-group-pos-desktop"
                 >
-                  <item.icon className="w-[18px] h-[18px] text-[#6B6B6B] group-hover:text-[var(--pos-accent)] shrink-0" />
+                  <entry.icon className="w-[18px] h-[18px] text-[var(--pos-accent)] shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-[#2E2E2E] inline-flex items-center gap-1">{item.label} <HelpTip text={item.helpTip} side="right" /></div>
-                    <div className="text-xs text-[#6B6B6B] truncate">{item.description}</div>
+                    <div className="text-sm font-semibold text-[#2E2E2E] inline-flex items-center gap-1">{entry.label} <HelpTip text={entry.helpTip} side="right" /></div>
+                  </div>
+                  <ChevronDown className={`w-3.5 h-3.5 text-[#6B6B6B] transition-transform ${posOpen ? '' : '-rotate-90'}`} />
+                </button>
+                {posOpen && (
+                  <div className="bg-white/60">
+                    {entry.children.map((child, ci) => (
+                      <Link key={ci} href={child.href}>
+                        <button
+                          className="w-full flex items-center gap-3 pl-8 pr-4 py-2 text-left hover:bg-[var(--pos-accent-tint-strong)] transition-colors group border-l-3 border-transparent hover:border-[var(--pos-accent)]"
+                          data-testid={`menu-item-desktop-${child.href.replace(/\//g, '-').slice(1) || 'home'}`}
+                        >
+                          <child.icon className="w-4 h-4 text-[#6B6B6B] group-hover:text-[var(--pos-accent)] shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[13px] font-medium text-[#2E2E2E] inline-flex items-center gap-1">{child.label} <HelpTip text={child.helpTip} side="right" /></div>
+                            <div className="text-xs text-[#6B6B6B] truncate">{child.description}</div>
+                          </div>
+                          <ChevronRight className="w-3 h-3 text-[#6B6B6B] opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                        </button>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link key={idx} href={entry.href}>
+                <button
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[var(--pos-accent-tint-strong)] transition-colors group border-l-3 border-transparent hover:border-[var(--pos-accent)]"
+                  data-testid={`menu-item-desktop-${entry.href.replace(/\//g, '-').slice(1) || 'home'}`}
+                >
+                  <entry.icon className="w-[18px] h-[18px] text-[#6B6B6B] group-hover:text-[var(--pos-accent)] shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-[#2E2E2E] inline-flex items-center gap-1">{entry.label} <HelpTip text={entry.helpTip} side="right" /></div>
+                    <div className="text-xs text-[#6B6B6B] truncate">{entry.description}</div>
                   </div>
                   <ChevronDown className="w-3.5 h-3.5 text-[#6B6B6B] -rotate-90 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                 </button>
