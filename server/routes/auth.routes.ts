@@ -24,7 +24,11 @@ export function registerAuthRoutes(app: Express, httpServer: Server): void {
         res.status(401).json({ success: false, error: result.error });
       }
     } catch (e: any) {
-      res.status(500).json({ success: false, error: e.message });
+      console.error('[Auth] Login error:', e.message, e.stack?.substring(0, 300));
+      const userMessage = e.message?.includes('fetch') || e.message?.includes('ECONNREFUSED') || e.message?.includes('ETIMEDOUT')
+        ? 'Cannot connect to the billing server. Please try again in a moment.'
+        : e.message || 'Login failed. Please try again.';
+      res.status(500).json({ success: false, error: userMessage });
     }
   });
 

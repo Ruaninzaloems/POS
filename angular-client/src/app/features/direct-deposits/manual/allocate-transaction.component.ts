@@ -338,7 +338,9 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
   formatDate(val: string | null): string {
     if (!val) return '-';
     try {
-      return new Date(val).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return val;
+      return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
     } catch { return val; }
   }
 

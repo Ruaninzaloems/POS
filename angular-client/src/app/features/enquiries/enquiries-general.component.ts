@@ -264,7 +264,8 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     if (!v) return '-';
     try {
       const d = new Date(v);
-      return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString('en-GB');
+      if (isNaN(d.getTime())) return String(v);
+      return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
     } catch {
       return String(v);
     }

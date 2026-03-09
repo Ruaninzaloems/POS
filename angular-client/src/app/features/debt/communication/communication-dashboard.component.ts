@@ -244,7 +244,11 @@ export class CommunicationDashboardComponent implements OnInit {
 
   formatDate(d: string | null | undefined): string {
     if (!d) return '—';
-    try { return new Date(d).toLocaleString(); } catch { return String(d); }
+    try {
+      const dt = new Date(d);
+      if (isNaN(dt.getTime())) return String(d);
+      return `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+    } catch { return String(d); }
   }
 
   goHome(): void { this.router.navigate(['/']); }

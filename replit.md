@@ -6,6 +6,7 @@ This project is an Angular 19/Express/PostgreSQL web application for a Municipal
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 Theme: Platinum SCM Design System — navy primary (`--platinum-primary: #0f2b46`), gold accent (`--platinum-accent: #c9a84c`), white surfaces, Inter font. Layout: sidebar (250px collapsible to 64px) + toolbar (56px) shell with grouped navigation. NO dark slate themes. All pages must use this consistent light theme with CSS variables from `styles.css`.
+**Date Format Rule**: ALL date displays EVERYWHERE in the UI must use `dd/mm/yyyy` format. Reports and all screens. This is a permanent standard — never use `month: 'short'`, `dateStyle: 'medium'`, or any other format. Date values sent to APIs remain unchanged (ISO format). Use the `padStart(2,'0')` pattern for consistent formatting.
 
 ## Permanent Project Standards (NON-NEGOTIABLE)
 Full details in **`PROJECT_IMPLEMENTATION_RULES.md`** and **`POST_CHANGE_CHECKLIST.md`** (both in repo root). These rules apply to EVERY development task — no exceptions.
@@ -94,7 +95,7 @@ The Debt & Legal solution employs a hybrid architecture where Replit handles the
 ### Key Features
 - **POS Workflow (Tabbed)**: Single-page workflow at `/pos` with 3 tabs: (1) Session Setup (cashier registration, office selection, float), (2) POS Receipting (unified multi-type basket, split tender, cash rounding, receipt delivery), (3) Day-End Reconciliation (denomination counting, recon submission). Auto-advances to Transact tab when session is active. Wrapper: `PosWorkflowComponent` embeds `CashierSetupComponent`, `PosComponent`, `CashierDayEndComponent`. Old routes `/cashier-setup` and `/cashier-day-end` redirect to `/pos`.
 - **POS Basket System**: Signal-based `PosBasketService` (`services/pos-basket.service.ts`) with typed models (`models/pos-basket.models.ts`). Multi-type basket supports 4 item types: `account` (consumer), `clearance`, `prepaid`, `misc`. Processing order enforced: account→clearance→prepaid→misc. SA cash rounding (nearest 10c) adjusts first basket item. Split tender (cash+card) creates separate API receipt calls with smart item allocation. Unified dynamic search searches accounts, groups, misc items, and prepaid meters simultaneously. Account group/institution search with expandable drill-down. Misc SCOA auto-populates from API (first item, read-only). Prepaid meter can be added from account's linked meter chip. Receipt delivery via print, email, WhatsApp, or SMS.
-- **Direct Deposits**: Manual allocation queue, auto-allocation with AI matching, bulk CSV processing
+- **Direct Deposits**: Auto-loading smart grid with column sorting, pagination, search/filter, auto-allocate (description-based account detection), manual allocation queue, auto-allocation with AI matching, bulk CSV processing
 - **Enquiries**: Multi-tab account detail view with 25+ tab categories, quick/advanced search
 - **Supervisor Dashboard**: Day-end approval/decline, cancellation requests, cash reports
 - **Receipts**: Search, view, print, cashbook trace, bank statement notes

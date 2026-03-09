@@ -252,7 +252,9 @@ export class AutoAllocationComponent implements OnInit {
   formatDate(val: string | null | undefined): string {
     if (!val) return '-';
     try {
-      return new Date(val).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return val;
+      return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
     } catch { return val; }
   }
 
@@ -260,8 +262,8 @@ export class AutoAllocationComponent implements OnInit {
     if (!val) return '-';
     try {
       const d = new Date(val);
-      return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) +
-        ' ' + d.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
+      if (isNaN(d.getTime())) return val;
+      return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
     } catch { return val || '-'; }
   }
 

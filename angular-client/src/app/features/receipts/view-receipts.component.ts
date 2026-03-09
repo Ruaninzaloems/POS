@@ -436,9 +436,9 @@ export class ViewReceiptsComponent implements OnInit {
   formatReceiptDate(dateStr: string): string {
     if (!dateStr) return '-';
     try {
-      return new Date(dateStr).toLocaleDateString('en-GB', {
-        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false
-      });
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
     } catch { return dateStr; }
   }
 

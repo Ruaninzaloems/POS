@@ -2,178 +2,199 @@
   <div class="page-header-bar">
     <div class="header-left">
       <div class="header-icon">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
       </div>
       <div>
-        <h1 class="page-title" data-testid="text-page-title">Unmatched Queue</h1>
-        <p class="page-subtitle">Direct deposit transactions awaiting allocation</p>
+        <h1 class="page-title" data-testid="text-page-title">Direct Deposits</h1>
+        <p class="page-subtitle">Bank statement items awaiting allocation</p>
       </div>
     </div>
     <div class="header-actions">
-      <button class="btn-outline" (click)="navigateToHistory()" data-testid="button-history">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+      <button class="btn-header" (click)="navigateToHistory()" data-testid="button-history">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         History
       </button>
-      <button class="btn-outline icon-btn" (click)="loadData()" [disabled]="loading()" title="Refresh" data-testid="button-refresh">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" [class.spinning]="loading()"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+      <button class="btn-header btn-header-accent" (click)="loadData()" [disabled]="loading()" data-testid="button-refresh">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" [class.spinning]="loading()"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+        Refresh
       </button>
     </div>
   </div>
 
-  <div class="filters-bar card" data-testid="card-filters">
-    <div class="filters-grid">
-      <div class="filter-group">
-        <label class="form-label">From Date</label>
-        <input type="date" class="form-input" [ngModel]="fromDate()" (ngModelChange)="fromDate.set($event)" data-testid="input-from-date" />
-      </div>
-      <div class="filter-group">
-        <label class="form-label">To Date</label>
-        <input type="date" class="form-input" [ngModel]="toDate()" (ngModelChange)="toDate.set($event)" data-testid="input-to-date" />
-      </div>
-      <div class="filter-group">
-        <label class="form-label">Search</label>
-        <input type="text" class="form-input" placeholder="Reference, note, amount..." [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" data-testid="input-search" />
-      </div>
-      <div class="filter-group">
-        <label class="form-label">Status</label>
-        <select class="form-select" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)" data-testid="select-status">
-          <option value="all">All</option>
-          <option value="unallocated">Unallocated</option>
-          <option value="allocated">Allocated</option>
-        </select>
-      </div>
-    </div>
-    <div class="filter-actions">
-      <button class="btn-primary" (click)="loadData()" [disabled]="loading()" data-testid="button-search">
-        @if (loading()) {
-          <span class="spinner-sm"></span>
-        } @else {
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-        }
-        Fetch Deposits
-      </button>
-    </div>
-  </div>
-
-  @if (loading()) {
+  @if (loading() && items().length === 0) {
     <div class="loading-state">
       <div class="spinner"></div>
-      <p>Loading unmatched deposits...</p>
+      <p>Loading deposits from Platinum...</p>
     </div>
   } @else if (error()) {
     <div class="error-state card">
+      <div class="error-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+      </div>
       <p class="error-message" data-testid="text-error">{{ error() }}</p>
-      <button class="btn-primary" (click)="loadData()" data-testid="button-retry">Retry</button>
-    </div>
-  } @else if (!hasSearched()) {
-    <div class="empty-hero">
-      <div class="hero-icon">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-      </div>
-      <h2>Fetch Unmatched Deposits</h2>
-      <p>Select a date range and click "Fetch Deposits" to load bank statement items awaiting allocation.</p>
-      <div class="steps-grid">
-        <div class="step-card card">
-          <div class="step-num">1</div>
-          <div class="step-title">Search</div>
-          <div class="step-desc">Set date range and fetch deposits</div>
-        </div>
-        <div class="step-card card">
-          <div class="step-num">2</div>
-          <div class="step-title">Match</div>
-          <div class="step-desc">Review suggested account matches</div>
-        </div>
-        <div class="step-card card">
-          <div class="step-num">3</div>
-          <div class="step-title">Allocate</div>
-          <div class="step-desc">Assign deposits to accounts</div>
-        </div>
-      </div>
+      <button class="btn-primary" (click)="loadData()" data-testid="button-retry">Try Again</button>
     </div>
   } @else {
-    @if (items().length > 0) {
-      <div class="stats-row" data-testid="stats-summary">
-        <div class="stat-card card">
-          <div class="stat-icon stat-icon-blue">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-          </div>
-          <div class="stat-info">
-            <span class="stat-label">Total Items</span>
-            <span class="stat-value" data-testid="stat-total">{{ stats().total }}</span>
-            <span class="stat-sub">{{ formatCurrency(stats().totalAmount) }}</span>
-          </div>
+    <div class="stats-row" data-testid="stats-summary">
+      <div class="stat-card">
+        <div class="stat-icon stat-icon-blue">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
         </div>
-        <div class="stat-card card">
-          <div class="stat-icon stat-icon-green">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-          </div>
-          <div class="stat-info">
-            <span class="stat-label">Allocated</span>
-            <span class="stat-value" data-testid="stat-allocated">{{ stats().allocated }}</span>
-            <span class="stat-sub">{{ formatCurrency(stats().allocatedAmount) }}</span>
-          </div>
-        </div>
-        <div class="stat-card card">
-          <div class="stat-icon stat-icon-amber">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          </div>
-          <div class="stat-info">
-            <span class="stat-label">Unallocated</span>
-            <span class="stat-value" data-testid="stat-unallocated">{{ stats().unallocated }}</span>
-            <span class="stat-sub">{{ formatCurrency(stats().unallocatedAmount) }}</span>
-          </div>
+        <div class="stat-info">
+          <span class="stat-label">Total Deposits</span>
+          <span class="stat-value" data-testid="stat-total">{{ stats().total }}</span>
+          <span class="stat-sub">{{ formatCurrency(stats().totalAmount) }}</span>
         </div>
       </div>
-    }
+      <div class="stat-card">
+        <div class="stat-icon stat-icon-green">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+        <div class="stat-info">
+          <span class="stat-label">Allocated</span>
+          <span class="stat-value stat-value-green" data-testid="stat-allocated">{{ stats().allocated }}</span>
+          <span class="stat-sub">{{ formatCurrency(stats().allocatedAmount) }}</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon stat-icon-amber">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="stat-info">
+          <span class="stat-label">Pending</span>
+          <span class="stat-value stat-value-amber" data-testid="stat-unallocated">{{ stats().unallocated }}</span>
+          <span class="stat-sub">{{ formatCurrency(stats().unallocatedAmount) }}</span>
+        </div>
+      </div>
+    </div>
 
-    @if (filteredItems().length === 0) {
-      <div class="empty-state card">
-        <p>No deposits match your current filters</p>
+    <div class="toolbar" data-testid="card-filters">
+      <div class="toolbar-search">
+        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" class="search-input" placeholder="Search by reference, note, amount, or ID..." [ngModel]="searchQuery()" (ngModelChange)="onSearchChange($event)" data-testid="input-search" />
+        @if (searchQuery()) {
+          <button class="search-clear" (click)="onSearchChange('')" title="Clear search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        }
+      </div>
+      <div class="toolbar-filters">
+        <select class="filter-select" [ngModel]="statusFilter()" (ngModelChange)="onStatusFilterChange($event)" data-testid="select-status">
+          <option value="all">All Status</option>
+          <option value="unallocated">Unallocated</option>
+          <option value="allocated">Allocated</option>
+        </select>
+        <select class="filter-select" [ngModel]="pageSize()" (ngModelChange)="onPageSizeChange(+$event)" data-testid="select-page-size">
+          @for (size of pageSizeOptions; track size) {
+            <option [value]="size">{{ size }} per page</option>
+          }
+        </select>
+      </div>
+      @if (loading()) {
+        <div class="toolbar-loading">
+          <div class="spinner-sm"></div>
+          <span>Refreshing...</span>
+        </div>
+      }
+    </div>
+
+    @if (sortedItems().length === 0 && !loading()) {
+      <div class="empty-state">
+        <div class="empty-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+        </div>
+        <p class="empty-title">No deposits found</p>
+        <p class="empty-desc">
+          @if (searchQuery() || statusFilter() !== 'all') {
+            Try adjusting your search or filters.
+          } @else {
+            No bank statement items available.
+          }
+        </p>
       </div>
     } @else {
-      <div class="table-container card" data-testid="table-deposits">
-        <table>
+      <div class="grid-container" data-testid="table-deposits">
+        <table class="data-grid">
           <thead>
             <tr>
-              <th style="width:40px">
-                <input type="checkbox" (change)="selectAllItems()" data-testid="checkbox-select-all" />
+              <th class="col-checkbox">
+                <input type="checkbox" [checked]="isAllOnPageSelected()" (change)="selectAllItems()" data-testid="checkbox-select-all" />
               </th>
-              <th>POS Item ID</th>
-              <th>Date</th>
-              <th>Reference</th>
-              <th>Note / Description</th>
-              <th class="text-right">Amount</th>
-              <th>Status</th>
-              <th class="text-center">Actions</th>
+              <th class="col-sortable col-id" (click)="sort('posItem_ID')" data-testid="th-id">
+                <span>ID</span>
+                <span class="sort-indicator" [class.active]="sortField() === 'posItem_ID'">{{ getSortIcon('posItem_ID') }}</span>
+              </th>
+              <th class="col-sortable col-date" (click)="sort('dateOfTransaction')" data-testid="th-date">
+                <span>Date</span>
+                <span class="sort-indicator" [class.active]="sortField() === 'dateOfTransaction'">{{ getSortIcon('dateOfTransaction') }}</span>
+              </th>
+              <th class="col-sortable col-ref" (click)="sort('reference')" data-testid="th-reference">
+                <span>Reference</span>
+                <span class="sort-indicator" [class.active]="sortField() === 'reference'">{{ getSortIcon('reference') }}</span>
+              </th>
+              <th class="col-sortable col-note" (click)="sort('note')" data-testid="th-note">
+                <span>Description</span>
+                <span class="sort-indicator" [class.active]="sortField() === 'note'">{{ getSortIcon('note') }}</span>
+              </th>
+              <th class="col-sortable col-amount text-right" (click)="sort('amount')" data-testid="th-amount">
+                <span>Amount</span>
+                <span class="sort-indicator" [class.active]="sortField() === 'amount'">{{ getSortIcon('amount') }}</span>
+              </th>
+              <th class="col-sortable col-status" (click)="sort('billingAllocated')" data-testid="th-status">
+                <span>Status</span>
+                <span class="sort-indicator" [class.active]="sortField() === 'billingAllocated'">{{ getSortIcon('billingAllocated') }}</span>
+              </th>
+              <th class="col-actions">Actions</th>
             </tr>
           </thead>
           <tbody>
-            @for (item of filteredItems(); track trackByPosItemId) {
-              <tr [class.row-allocated]="item.billingAllocated" (click)="selectItem(item)" class="clickable-row" [attr.data-testid]="'row-item-' + item.posItem_ID">
-                <td (click)="$event.stopPropagation()">
-                  <input type="checkbox" [checked]="isItemSelected(item.posItem_ID)" (change)="toggleItemSelection(item.posItem_ID)" [attr.data-testid]="'checkbox-item-' + item.posItem_ID" />
+            @for (item of paginatedItems(); track item.posItem_ID) {
+              <tr class="data-row" [class.row-allocated]="item.billingAllocated" [class.row-selected]="isItemSelected(item.posItem_ID)" (click)="selectItem(item)" [attr.data-testid]="'row-item-' + item.posItem_ID">
+                <td class="col-checkbox" (click)="toggleItemSelection(item.posItem_ID, $event)">
+                  <input type="checkbox" [checked]="isItemSelected(item.posItem_ID)" [attr.data-testid]="'checkbox-item-' + item.posItem_ID" />
                 </td>
-                <td class="font-mono" [attr.data-testid]="'text-id-' + item.posItem_ID">{{ item.posItem_ID }}</td>
-                <td>{{ formatDate(item.dateOfTransaction) }}</td>
-                <td class="truncate-cell">{{ item.reference || '-' }}</td>
-                <td class="truncate-cell">{{ item.note || '-' }}</td>
-                <td class="text-right font-mono font-semibold">{{ formatCurrency(item.amount) }}</td>
-                <td>
-                  @if (item.billingAllocated) {
-                    <span class="badge badge-success" [attr.data-testid]="'badge-status-' + item.posItem_ID">Allocated</span>
-                  } @else {
-                    <span class="badge badge-warning" [attr.data-testid]="'badge-status-' + item.posItem_ID">Unallocated</span>
+                <td class="cell-mono cell-id" [attr.data-testid]="'text-id-' + item.posItem_ID">{{ item.posItem_ID }}</td>
+                <td class="cell-date">{{ formatDate(item.dateOfTransaction) }}</td>
+                <td class="cell-ref">
+                  <span class="cell-truncate">{{ item.reference || '-' }}</span>
+                </td>
+                <td class="cell-note">
+                  <span class="cell-truncate">{{ item.note || '-' }}</span>
+                  @if (hasAccountClue(item) && !item.billingAllocated) {
+                    <span class="clue-badge" title="Account number detected in description">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                      Match
+                    </span>
                   }
                 </td>
-                <td class="text-center" (click)="$event.stopPropagation()">
-                  @if (!item.billingAllocated) {
-                    <button class="btn-primary btn-sm" (click)="navigateToAllocate(item)" [attr.data-testid]="'button-allocate-' + item.posItem_ID">
-                      Allocate
-                    </button>
+                <td class="cell-amount text-right" [attr.data-testid]="'text-amount-' + item.posItem_ID">{{ formatCurrency(item.amount) }}</td>
+                <td class="cell-status">
+                  @if (item.billingAllocated) {
+                    <span class="status-badge status-allocated" [attr.data-testid]="'badge-status-' + item.posItem_ID">Allocated</span>
                   } @else {
-                    <button class="btn-outline btn-sm" (click)="selectItem(item)" [attr.data-testid]="'button-view-' + item.posItem_ID">
-                      View
-                    </button>
+                    <span class="status-badge status-pending" [attr.data-testid]="'badge-status-' + item.posItem_ID">Pending</span>
+                  }
+                </td>
+                <td class="cell-actions" (click)="$event.stopPropagation()">
+                  @if (!item.billingAllocated) {
+                    <div class="action-group">
+                      @if (hasAccountClue(item)) {
+                        <button class="btn-auto" (click)="autoAllocateItem(item)" [disabled]="autoAllocating() && autoAllocatingId() === item.posItem_ID" title="Quick allocate using detected account" [attr.data-testid]="'button-auto-' + item.posItem_ID">
+                          @if (autoAllocating() && autoAllocatingId() === item.posItem_ID) {
+                            <div class="spinner-xs"></div>
+                          } @else {
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                          }
+                          Quick
+                        </button>
+                      }
+                      <button class="btn-allocate" (click)="navigateToAllocate(item)" [attr.data-testid]="'button-allocate-' + item.posItem_ID">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+                        Allocate
+                      </button>
+                    </div>
+                  } @else {
+                    <button class="btn-view" (click)="selectItem(item)" [attr.data-testid]="'button-view-' + item.posItem_ID">View</button>
                   }
                 </td>
               </tr>
@@ -183,89 +204,125 @@
       </div>
 
       <div class="pagination-bar">
-        <span class="pagination-info">Showing {{ filteredItems().length }} of {{ totalCount() }} items</span>
+        <div class="pagination-info">
+          Showing {{ ((page() - 1) * pageSize()) + 1 }}–{{ Math.min(page() * pageSize(), sortedItems().length) }} of {{ sortedItems().length }}
+          @if (searchQuery() || statusFilter() !== 'all') {
+            <span class="pagination-filter-note">(filtered from {{ items().length }})</span>
+          }
+        </div>
+        <div class="pagination-controls">
+          <button class="page-btn" [disabled]="page() === 1" (click)="changePage(page() - 1)" data-testid="button-prev-page">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          @for (p of pageNumbers(); track p) {
+            @if (p === '...') {
+              <span class="page-ellipsis">...</span>
+            } @else {
+              <button class="page-btn" [class.page-active]="p === page()" (click)="changePage(p)" [attr.data-testid]="'button-page-' + p">{{ p }}</button>
+            }
+          }
+          <button class="page-btn" [disabled]="page() === totalPages()" (click)="changePage(page() + 1)" data-testid="button-next-page">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
       </div>
     }
   }
 
   @if (detailOpen() && selectedItem()) {
     <div class="dialog-overlay" (click)="closeDetail()">
-      <div class="dialog-content dialog-lg" (click)="$event.stopPropagation()">
+      <div class="dialog-panel" (click)="$event.stopPropagation()">
         <div class="dialog-header">
-          <h3>Deposit Details — #{{ selectedItem()!.posItem_ID }}</h3>
-          <button class="btn-close" (click)="closeDetail()" data-testid="button-close-detail">✕</button>
+          <div class="dialog-header-info">
+            <h3>Deposit #{{ selectedItem()!.posItem_ID }}</h3>
+            <span class="dialog-amount">{{ formatCurrency(selectedItem()!.amount) }}</span>
+          </div>
+          <button class="btn-dialog-close" (click)="closeDetail()" data-testid="button-close-detail">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </div>
         <div class="dialog-body">
-          <div class="detail-grid">
-            <div class="detail-row">
-              <span class="detail-label">POS Item ID</span>
-              <span class="detail-value font-mono">{{ selectedItem()!.posItem_ID }}</span>
+          <div class="detail-section">
+            <h4 class="detail-section-title">Transaction Details</h4>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span class="detail-label">POS Item ID</span>
+                <span class="detail-value mono">{{ selectedItem()!.posItem_ID }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Transaction Date</span>
+                <span class="detail-value">{{ formatDate(selectedItem()!.dateOfTransaction) }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Amount</span>
+                <span class="detail-value mono bold">{{ formatCurrency(selectedItem()!.amount) }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Status</span>
+                <span class="detail-value">
+                  @if (selectedItem()!.billingAllocated) {
+                    <span class="status-badge status-allocated">Allocated</span>
+                  } @else {
+                    <span class="status-badge status-pending">Pending</span>
+                  }
+                </span>
+              </div>
             </div>
-            <div class="detail-row">
-              <span class="detail-label">Transaction Date</span>
-              <span class="detail-value">{{ formatDate(selectedItem()!.dateOfTransaction) }}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">Amount</span>
-              <span class="detail-value font-mono font-semibold">{{ formatCurrency(selectedItem()!.amount) }}</span>
-            </div>
-            <div class="detail-row">
+            <div class="detail-full">
               <span class="detail-label">Reference</span>
               <span class="detail-value">{{ selectedItem()!.reference || '-' }}</span>
             </div>
-            <div class="detail-row">
-              <span class="detail-label">Note</span>
+            <div class="detail-full">
+              <span class="detail-label">Description / Note</span>
               <span class="detail-value">{{ selectedItem()!.note || '-' }}</span>
             </div>
-            <div class="detail-row">
-              <span class="detail-label">Date Captured</span>
-              <span class="detail-value">{{ formatDateTime(selectedItem()!.dateCaptured) }}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">Status</span>
-              <span class="detail-value">
-                @if (selectedItem()!.billingAllocated) {
-                  <span class="badge badge-success">Allocated</span>
-                } @else {
-                  <span class="badge badge-warning">Unallocated</span>
-                }
-              </span>
-            </div>
-            @if (selectedItem()!.dateAllocated) {
-              <div class="detail-row">
-                <span class="detail-label">Date Allocated</span>
-                <span class="detail-value">{{ formatDateTime(selectedItem()!.dateAllocated) }}</span>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span class="detail-label">Date Captured</span>
+                <span class="detail-value">{{ formatDateTime(selectedItem()!.dateCaptured) }}</span>
               </div>
-            }
+              @if (selectedItem()!.dateAllocated) {
+                <div class="detail-item">
+                  <span class="detail-label">Date Allocated</span>
+                  <span class="detail-value">{{ formatDateTime(selectedItem()!.dateAllocated) }}</span>
+                </div>
+              }
+            </div>
           </div>
 
           @if (!selectedItem()!.billingAllocated) {
-            <div class="suggested-matches-section">
-              <h4>Suggested Matches</h4>
+            <div class="detail-section">
+              <h4 class="detail-section-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                Suggested Matches
+              </h4>
               @if (matchLoading()) {
-                <div class="loading-state" style="padding:1rem">
-                  <div class="spinner"></div>
-                  <p>Searching for matches...</p>
+                <div class="matches-loading">
+                  <div class="spinner-sm"></div>
+                  <span>Searching for account matches...</span>
                 </div>
               } @else if (suggestedMatches().length === 0) {
-                <p class="text-muted" style="padding:0.5rem 0">No automatic matches found. Use the Allocate button to search manually.</p>
+                <div class="matches-empty">
+                  <p>No automatic matches found from the description.</p>
+                  <p class="text-hint">Use the Allocate button below to search manually.</p>
+                </div>
               } @else {
                 <div class="matches-list">
                   @for (match of suggestedMatches(); track match.accountId) {
-                    <div class="match-card card" [attr.data-testid]="'match-' + match.accountId">
+                    <div class="match-card" [attr.data-testid]="'match-' + match.accountId">
                       <div class="match-info">
-                        <div class="match-header">
-                          <span class="font-mono font-semibold">{{ match.accountNo }}</span>
-                          <span class="badge" [ngClass]="getConfidenceBadgeClass(match.confidence)">{{ match.confidence }}%</span>
+                        <div class="match-top">
+                          <span class="match-acc mono">{{ match.accountNo }}</span>
+                          <span class="confidence-badge" [ngClass]="getConfidenceBadgeClass(match.confidence)">{{ match.confidence }}%</span>
                         </div>
                         <div class="match-name">{{ match.name }}</div>
-                        <div class="match-detail text-muted">{{ match.matchDetail }}</div>
+                        <div class="match-detail">{{ match.matchDetail }}</div>
                         @if (match.outstandingAmount) {
                           <div class="match-outstanding">Outstanding: {{ formatCurrency(match.outstandingAmount) }}</div>
                         }
                       </div>
                       <button class="btn-primary btn-sm" (click)="navigateToAllocate(selectedItem()!)" [attr.data-testid]="'button-allocate-match-' + match.accountId">
-                        Allocate →
+                        Allocate
                       </button>
                     </div>
                   }
@@ -274,10 +331,11 @@
             </div>
 
             <div class="dialog-footer">
+              <button class="btn-outline" (click)="closeDetail()" data-testid="button-cancel-detail">Close</button>
               <button class="btn-primary" (click)="navigateToAllocate(selectedItem()!)" data-testid="button-allocate-from-detail">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
                 Allocate This Deposit
               </button>
-              <button class="btn-outline" (click)="closeDetail()" data-testid="button-cancel-detail">Close</button>
             </div>
           }
         </div>

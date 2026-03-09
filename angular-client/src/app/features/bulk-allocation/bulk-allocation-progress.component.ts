@@ -309,8 +309,7 @@ export class BulkAllocationProgressComponent implements OnInit {
     try {
       const d = new Date(val);
       if (isNaN(d.getTime())) return val;
-      return d.toLocaleDateString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit' }) +
-        ' ' + d.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
+      return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
     } catch { return val; }
   }
 

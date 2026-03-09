@@ -60,7 +60,9 @@ export class Section129AuthorizationComponent implements OnInit {
   formatDate(d: string | undefined): string {
     if (!d) return '—';
     try {
-      return new Date(d).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' });
+      const dt = new Date(d);
+      if (isNaN(dt.getTime())) return d;
+      return `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`;
     } catch {
       return d;
     }

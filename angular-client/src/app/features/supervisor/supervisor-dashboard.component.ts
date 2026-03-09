@@ -466,7 +466,8 @@ export class SupervisorDashboardComponent implements OnInit {
   formatDate(dateStr: string): string {
     if (!dateStr) return '-';
     try {
-      return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const d = new Date(dateStr);
+      return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
     } catch { return dateStr; }
   }
 

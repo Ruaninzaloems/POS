@@ -262,8 +262,8 @@ export class AllocationHistoryComponent implements OnInit {
   handleDownload(): void {
     const content = 'FileDate,CapturedDate,Description,Reference,Process,Method,Amount,Status,Records\n' +
       this.filteredHistory().map(t => {
-        const fd = t.fileDate ? new Date(t.fileDate).toLocaleDateString('en-GB') : '';
-        const cd = t.dateCaptured ? new Date(t.dateCaptured).toLocaleDateString('en-GB') : '';
+        const fd = t.fileDate ? this.formatDate(t.fileDate) : '';
+        const cd = t.dateCaptured ? this.formatDate(t.dateCaptured) : '';
         const method = this.isManual(t) ? 'Manual' : 'Bulk';
         return `${fd},${cd},"${t.fileName}","${t.paymentReference}",${t.process},${method},${t.allocatedAmount},${t.job_Status},${t.records}`;
       }).join('\n');
@@ -283,7 +283,8 @@ export class AllocationHistoryComponent implements OnInit {
   formatDate(val: string | null): string {
     if (!val) return '-';
     try {
-      return new Date(val).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const d = new Date(val);
+      return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
     } catch { return val; }
   }
 
@@ -291,8 +292,9 @@ export class AllocationHistoryComponent implements OnInit {
     if (!val) return '-';
     try {
       const d = new Date(val);
-      return d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
-        ' ' + d.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
+      const date = String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+      const time = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+      return date + ' ' + time;
     } catch { return val || '-'; }
   }
 

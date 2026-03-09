@@ -1,7 +1,12 @@
 export function formatDate(d: string | null | undefined): string {
   if (!d) return '—';
   try {
-    return new Date(d).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' });
+    const dt = new Date(d);
+    if (isNaN(dt.getTime())) return String(d);
+    const day = String(dt.getDate()).padStart(2, '0');
+    const month = String(dt.getMonth() + 1).padStart(2, '0');
+    const year = dt.getFullYear();
+    return `${day}/${month}/${year}`;
   } catch {
     return String(d);
   }
@@ -10,7 +15,14 @@ export function formatDate(d: string | null | undefined): string {
 export function formatDateShort(d: string | null | undefined): string {
   if (!d) return '—';
   try {
-    return new Date(d).toLocaleString('en-ZA', { dateStyle: 'short', timeStyle: 'short' });
+    const dt = new Date(d);
+    if (isNaN(dt.getTime())) return String(d);
+    const day = String(dt.getDate()).padStart(2, '0');
+    const month = String(dt.getMonth() + 1).padStart(2, '0');
+    const year = dt.getFullYear();
+    const hours = String(dt.getHours()).padStart(2, '0');
+    const mins = String(dt.getMinutes()).padStart(2, '0');
+    return `${day}/${month}/${year} ${hours}:${mins}`;
   } catch {
     return String(d);
   }
@@ -19,14 +31,15 @@ export function formatDateShort(d: string | null | undefined): string {
 export function formatTimestamp(ts: string | null | undefined): string {
   if (!ts) return '—';
   try {
-    return new Date(ts).toLocaleString('en-ZA', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
+    const dt = new Date(ts);
+    if (isNaN(dt.getTime())) return String(ts);
+    const day = String(dt.getDate()).padStart(2, '0');
+    const month = String(dt.getMonth() + 1).padStart(2, '0');
+    const year = dt.getFullYear();
+    const hours = String(dt.getHours()).padStart(2, '0');
+    const mins = String(dt.getMinutes()).padStart(2, '0');
+    const secs = String(dt.getSeconds()).padStart(2, '0');
+    return `${day}/${month}/${year} ${hours}:${mins}:${secs}`;
   } catch {
     return String(ts);
   }
@@ -64,6 +77,20 @@ export function formatDuration(startDate: string | null | undefined, endDate: st
 export function formatPercentage(value: number | null | undefined, decimals: number = 1): string {
   if (value == null) return '—';
   return `${value.toFixed(decimals)}%`;
+}
+
+export function formatDateOnly(d: string | null | undefined): string {
+  if (!d) return '—';
+  try {
+    const dt = new Date(d);
+    if (isNaN(dt.getTime())) return String(d);
+    const day = String(dt.getDate()).padStart(2, '0');
+    const month = String(dt.getMonth() + 1).padStart(2, '0');
+    const year = dt.getFullYear();
+    return `${day}/${month}/${year}`;
+  } catch {
+    return String(d);
+  }
 }
 
 export function getFinancialYear(): string {

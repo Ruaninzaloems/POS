@@ -140,11 +140,6 @@ app.use((req, res, next) => {
 
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
-  } else {
-    app.get('/{*path}', (req: Request, res: Response, next: NextFunction) => {
-      if (req.path.startsWith('/api') || req.path.startsWith('/dist')) return next();
-      return res.status(200).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Redirecting...</title></head><body style="font-family:sans-serif;padding:2rem;text-align:center"><h2>Wrong port</h2><p>This is the API server (port 3000). The Angular app runs on port 5000.</p><p>The Replit preview should load automatically on the correct port. If not, try refreshing.</p></body></html>`);
-    });
   }
 
   const defaultPort = process.env.NODE_ENV === 'production' ? '5000' : '3000';

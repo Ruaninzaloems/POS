@@ -76,7 +76,7 @@ export class CashierDayEndComponent implements OnInit {
   showTransactionHistory = signal(false);
   enableDenominationCounting = signal(true);
 
-  today = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  today = (() => { const d = new Date(); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; })();
 
   totalNotes = computed(() =>
     NOTE_DENOMINATIONS.reduce((sum, d) => sum + (this.denominations()[d.key] || 0) * d.value, 0)
@@ -300,7 +300,9 @@ export class CashierDayEndComponent implements OnInit {
     const dateVal = item.dateCaptured || item.receiptDate || item.date;
     if (!dateVal) return '-';
     try {
-      return new Date(dateVal).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' });
+      const d = new Date(dateVal);
+      if (isNaN(d.getTime())) return '-';
+      return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
     } catch {
       return '-';
     }
