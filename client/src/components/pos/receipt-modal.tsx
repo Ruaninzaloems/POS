@@ -16,7 +16,7 @@ const MAX_CONCURRENT = 3;
 const PER_CHUNK_TIMEOUT_SECONDS = 120;
 
 export function ReceiptModal() {
-  const { isReceiptModalOpen, closeReceiptModal, payment, transactionItems, recentTransactions, transactionProcessing, processingStep, currentTransactionId, processingRecord, sessionDetails, forceFailTransaction } = usePos();
+  const { isReceiptModalOpen, closeReceiptModal, payment, transactionItems, recentTransactions, transactionProcessing, processingStep, currentTransactionId, processingRecord, sessionDetails, forceFailTransaction, siteInfo } = usePos();
 
   const TRANSACTION_TIMEOUT_SECONDS = useMemo(() => {
     const itemCount = transactionItems.length;
@@ -94,6 +94,7 @@ export function ReceiptModal() {
   const [emailSelected, setEmailSelected] = useState(false);
   const [smsSelected, setSmsSelected] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [consolidatedSelected, setConsolidatedSelected] = useState(false);
   
   const [emailAddress, setEmailAddress] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
@@ -265,19 +266,159 @@ export function ReceiptModal() {
         setPrintSelected(true);
         setEmailSelected(false);
         setSmsSelected(false);
+        setConsolidatedSelected(false);
     }
   }, [isReceiptModalOpen, transactionItems]);
+
+  const handlePrintConsolidated = useCallback(() => {
+    if (!currentTransaction) return;
+    const items = currentTransaction.items || transactionItems;
+    const consumerItems = items.filter((i: TransactionItem) => i.type === 'CONSUMER_SERVICES' || i.type === 'MULTI_ACCOUNT' || i.type === 'ACCOUNT_GROUP');
+    const clearanceItems = items.filter((i: TransactionItem) => i.type === 'CLEARANCE');
+    const directIncomeItems = items.filter((i: TransactionItem) => i.type === 'DIRECT_INCOME');
+    const prepaidItems = items.filter((i: TransactionItem) => i.type === 'PREPAID');
+    const srs = currentTransaction.splitReceipts || [];
+    const cashRecs = srs.filter(sr => sr.paymentType === 'cash');
+    const cardRecs = srs.filter(sr => sr.paymentType === 'card');
+    const hasBoth = cashRecs.length > 0 && cardRecs.length > 0;
+    const cashierName = sessionDetails?.cashierName || currentTransaction.splitReceipts?.[0]?.receiptDetail?.cashierName || '';
+    const cashOffice = sessionDetails?.officeDesc || currentTransaction.splitReceipts?.[0]?.receiptDetail?.cashOffice || '';
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-ZA', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const timeStr = now.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+
+    const r = (n: number) => `R ${n.toFixed(2)}`;
+    const line = (l: string, v: string) => `<tr><td style="text-align:left">${l}</td><td style="text-align:right;white-space:nowrap">${v}</td></tr>`;
+    const sep = () => '<tr><td colspan="2" style="border-bottom:1px dashed #000;padding:2px 0"></td></tr>';
+    const heading = (t: string) => `<tr><td colspan="2" style="font-weight:bold;text-align:left;padding:6px 0 2px">${t}</td></tr>`;
+
+    let rows = '';
+    const siteName = siteInfo?.name || cashOffice || 'Municipality';
+    rows += `<tr><td colspan="2" style="text-align:center;font-weight:bold;font-size:14px;padding-bottom:2px">${siteName}</td></tr>`;
+    rows += `<tr><td colspan="2" style="text-align:center;font-size:10px;padding-bottom:6px">Consolidated Receipt</td></tr>`;
+    rows += sep();
+    rows += line('Receipt No', currentTransaction.receiptNumber || '');
+    rows += line('Date', `${dateStr} ${timeStr}`);
+    if (cashierName) rows += line('Cashier', cashierName);
+    if (cashOffice) rows += line('Cash Office', cashOffice);
+    rows += sep();
+
+    if (consumerItems.length > 0) {
+      rows += heading(`${consumerItems.length} Account${consumerItems.length > 1 ? 's' : ''}`);
+      consumerItems.forEach((item: TransactionItem) => {
+        rows += line(item.reference || 'Account', r(item.amountToPay));
+        const name = item.originalData?.accountName || item.originalData?.name || item.description;
+        if (name) rows += `<tr><td colspan="2" style="font-size:10px;color:#555;padding-left:4px">${name}</td></tr>`;
+      });
+      rows += sep();
+    }
+
+    if (clearanceItems.length > 0) {
+      rows += heading('Clearance');
+      clearanceItems.forEach((item: TransactionItem) => {
+        rows += line(item.reference || 'Clearance', r(item.amountToPay));
+        if (item.originalData?.costScheduleNo) rows += `<tr><td colspan="2" style="font-size:10px;color:#555;padding-left:4px">CS: ${item.originalData.costScheduleNo}</td></tr>`;
+      });
+      rows += sep();
+    }
+
+    if (directIncomeItems.length > 0) {
+      rows += heading(`${directIncomeItems.length} Direct Income`);
+      directIncomeItems.forEach((item: TransactionItem) => {
+        const groupName = item.originalData?.groupName || item.originalData?.miscGroup || '';
+        const vatRate = item.originalData?.vatRate || 15;
+        const isVatable = vatRate > 0;
+        const amtExVat = isVatable ? item.amountToPay / (1 + vatRate / 100) : item.amountToPay;
+        const vatAmt = isVatable ? item.amountToPay - amtExVat : 0;
+        const paidBy = item.paidBy || 'Walk-in';
+
+        rows += `<tr><td style="text-align:left;font-weight:bold;font-size:11px">${item.description || ''}</td><td style="text-align:right;font-weight:bold">${r(item.amountToPay)}</td></tr>`;
+        if (groupName) rows += line('  Group', groupName);
+        rows += line('  Paid By', paidBy);
+        if (isVatable) {
+          rows += line('  Amount ex VAT', r(amtExVat));
+          if (vatAmt > 0) rows += line(`  VAT (${vatRate}%)`, r(vatAmt));
+        }
+        if (item.notes) rows += line('  Reference', item.notes);
+      });
+      rows += sep();
+    }
+
+    if (prepaidItems.length > 0) {
+      rows += heading(`${prepaidItems.length} Prepaid`);
+      prepaidItems.forEach((item: TransactionItem) => {
+        const isWater = item.originalData?.prepaidType === 'Water';
+        rows += line(`${isWater ? 'Water' : 'Electricity'} - ${item.reference}`, r(item.amountToPay));
+      });
+      rows += sep();
+    }
+
+    rows += `<tr><td style="text-align:left;font-weight:bold;font-size:13px;padding:4px 0">Total Paid</td><td style="text-align:right;font-weight:bold;font-size:13px">${r(payment.tenderTotal)}</td></tr>`;
+    if (payment.cashAmount > 0 && payment.cardAmount > 0) {
+      rows += line('Cash', r(payment.cashAmount));
+      rows += line('Card', r(payment.cardAmount));
+    }
+    if (payment.changeDue > 0) {
+      rows += line('Change', r(payment.changeDue));
+    }
+    rows += sep();
+
+    if (srs.length > 0) {
+      if (hasBoth) {
+        rows += `<tr><td colspan="2" style="text-align:center;font-size:10px;font-weight:bold;padding:4px 0">Split Payment — ${srs.length} of ${srs.length} receipts</td></tr>`;
+      }
+      if (cashRecs.length > 0) {
+        const cashTotal = cashRecs.reduce((s, sr) => s + sr.amount, 0);
+        rows += `<tr><td colspan="2" style="font-size:10px;font-weight:bold;padding:4px 0 1px">Cash ${hasBoth ? `(${r(cashTotal)})` : ''}</td></tr>`;
+        cashRecs.forEach(sr => {
+          rows += `<tr><td style="font-size:10px;font-family:monospace;padding-left:4px">${sr.receiptNumber}</td><td style="text-align:right;font-size:10px;font-family:monospace">${r(sr.amount)}</td></tr>`;
+        });
+      }
+      if (cardRecs.length > 0) {
+        const cardTotal = cardRecs.reduce((s, sr) => s + sr.amount, 0);
+        rows += `<tr><td colspan="2" style="font-size:10px;font-weight:bold;padding:4px 0 1px">Card ${hasBoth ? `(${r(cardTotal)})` : ''}</td></tr>`;
+        cardRecs.forEach(sr => {
+          rows += `<tr><td style="font-size:10px;font-family:monospace;padding-left:4px">${sr.receiptNumber}</td><td style="text-align:right;font-size:10px;font-family:monospace">${r(sr.amount)}</td></tr>`;
+        });
+      }
+      rows += sep();
+    }
+
+    rows += `<tr><td colspan="2" style="text-align:center;padding:8px 0 4px;font-size:11px">Thank you.</td></tr>`;
+
+    const html = `<!DOCTYPE html><html><head><style>
+@page { margin: 0; size: 80mm auto; }
+@media print { body { margin: 0; } }
+body { font-family: 'Courier New', Courier, monospace; font-size: 11px; width: 72mm; margin: 0 auto; padding: 4mm; }
+table { width: 100%; border-collapse: collapse; }
+td { padding: 1px 0; vertical-align: top; font-size: 11px; }
+</style></head><body><table>${rows}</table></body></html>`;
+
+    const printWindow = window.open('', '_blank', 'width=320,height=600');
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+      setTimeout(() => { printWindow.print(); }, 300);
+    }
+  }, [currentTransaction, transactionItems, payment, sessionDetails, siteInfo]);
 
   const handleComplete = () => {
       console.log('Receipt Options:', {
           receiptNo: currentTransaction?.receiptNumber,
           print: printSelected,
+          consolidated: consolidatedSelected,
           email: emailSelected ? emailAddress : null,
           sms: smsSelected ? mobileNumber : null
       });
 
+      if (consolidatedSelected) {
+          handlePrintConsolidated();
+      }
+
       if (printSelected) {
           handlePrint();
+      } else if (!consolidatedSelected) {
+          closeReceiptModal();
       } else {
           closeReceiptModal();
       }
@@ -659,6 +800,16 @@ export function ReceiptModal() {
                     </Label>
                 </div>
 
+                <div 
+                    className={`flex items-center space-x-3 border p-4 rounded-xl cursor-pointer transition-colors touch-manipulation ${consolidatedSelected ? 'border-[var(--pos-accent)] bg-[var(--pos-accent-tint)] ring-1 ring-[var(--pos-accent-shadow)]' : 'border-input hover:bg-muted/50'}`}
+                    onClick={() => setConsolidatedSelected(!consolidatedSelected)}
+                >
+                    <Checkbox id="consolidated-opt" checked={consolidatedSelected} onCheckedChange={(c) => setConsolidatedSelected(!!c)} />
+                    <Label htmlFor="consolidated-opt" className="flex-1 cursor-pointer flex items-center gap-2 font-medium">
+                        <Printer className="w-5 h-5 text-[var(--pos-accent)]" /> Print Consolidated Receipt
+                    </Label>
+                </div>
+
                 <div className={`border rounded-xl transition-all ${emailSelected ? 'border-[var(--pos-accent)] bg-[var(--pos-accent-tint)] ring-1 ring-[var(--pos-accent-shadow)]' : 'border-input'}`}>
                     <div 
                         className="flex items-center space-x-3 p-4 cursor-pointer hover:bg-muted/50 rounded-t-xl touch-manipulation"
@@ -735,7 +886,7 @@ export function ReceiptModal() {
                       Fetching Receipt...
                     </>
                   ) : (
-                    printSelected ? 'Print & Complete' : 'Complete'
+                    (printSelected || consolidatedSelected) ? 'Print & Complete' : 'Complete'
                   )}
               </Button>
             )}
