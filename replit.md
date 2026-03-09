@@ -52,7 +52,7 @@ Receipt generation is optimized by separating printing from payment processing. 
 For large multi-account payments, the system implements dynamic timeout scaling at the server proxy, client API, and UI levels. Payments exceeding a `CHUNK_SIZE` (25 accounts) are split into parallel batches (up to 3 concurrent chunks) to improve performance and handle partial failures gracefully.
 
 #### Day-End Reconciliation
-The day-end process involves a multi-step submission and approval workflow with distinct statuses (`NOT_SUBMITTED`, `PENDING_APPROVAL`, `RETURNED`, `COMPLETED`). The system manages cashier sessions based on reconciliation status to allow re-submission or block further transactions.
+The day-end process involves a multi-step submission and approval workflow with distinct statuses (`NOT_SUBMITTED`, `PENDING_APPROVAL`, `RETURNED`, `COMPLETED`). The system manages cashier sessions based on reconciliation status to allow re-submission or block further transactions. The server-side `save-reconcile-data` endpoint tries multiple Platinum API path variations, stops at the first success, then verifies the reconcile record was actually created via `validate-cashier` (3 retry attempts with delays). Only returns success to the client if verification confirms the DB write. Previous Platinum API bug (save returned success without creating the record) was fixed on 2026-03-08.
 
 #### SA 10c Cash Rounding
 Cash payments are rounded up to the nearest 10c (South African standard). The UI provides explicit user interaction for rounding, adjusting the first basket item's amount to pay, and updating the cash tender.

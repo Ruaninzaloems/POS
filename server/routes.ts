@@ -2715,6 +2715,11 @@ export async function registerRoutes(
       console.log(`[dayend-save] Query: userId=${userId}, Payload:`, JSON.stringify(req.body));
 
       const cashierId = String(req.body.cashierId || '');
+      const effectiveUserId = userId || String(session.userData?.user_ID || '');
+      if (!effectiveUserId) {
+        res.status(400).json({ message: "userId is required for save-reconcile-data" });
+        return;
+      }
       const endpoints = [
         { label: 'bp-day-end (userId+cashierId query)', path: '/api/billing-payment-day-end-reconcile/save-Reconcile-data', params: { userId, cashierId } },
         { label: 'bp-day-end (cashierId query only)', path: '/api/billing-payment-day-end-reconcile/save-Reconcile-data', params: { cashierId } },
@@ -2724,53 +2729,72 @@ export async function registerRoutes(
         { label: 'auth-day-end (userId query)', path: '/api/billing/auth-day-end-reconcile/save-Reconcile-data', params: { userId } },
       ];
 
-      const results: Array<{ label: string; response: any; error?: string }> = [];
+      const finYear = req.body.finyear || session.userData?.finYear;
+      if (!finYear) {
+        console.warn('[dayend-save] Financial year missing from request and session');
+      }
+
+      const errors: string[] = [];
+      let saveSucceeded = false;
+      let saveResponse: any = null;
+
       for (const ep of endpoints) {
         try {
           console.log(`[dayend-save] Trying: ${ep.label} → ${ep.path}?${new URLSearchParams(ep.params as any).toString()}`);
           const data = await platinumPost(session, ep.path, req.body, ep.params as any);
           const respStr = JSON.stringify(data).substring(0, 500);
           console.log(`[dayend-save] ${ep.label} Response: ${respStr}`);
-          results.push({ label: ep.label, response: data });
+
+          const isSuccess = data && !data._error && data.success !== false && data.isSuccess !== false;
+          if (!isSuccess) {
+            const errMsg = data?.message || data?.title || 'Unknown error';
+            console.log(`[dayend-save] ${ep.label} returned non-success: ${errMsg}`);
+            errors.push(`${ep.label}: ${errMsg}`);
+            continue;
+          }
+
+          console.log(`[dayend-save] ${ep.label} returned success — verifying DB write...`);
+          await new Promise(r => setTimeout(r, 1000));
+
+          let verified = false;
+          for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+              const vcData = await platinumGet(session, "/api/ReceiptPrepaid/validate-cashier", { userId: effectiveUserId, finYear });
+              if (vcData?.cashierReconcile != null) {
+                console.log(`[dayend-save] Verify attempt ${attempt}: cashierReconcile PRESENT — DB write confirmed`);
+                console.log(`[dayend-save] cashierReconcile data:`, JSON.stringify(vcData.cashierReconcile).substring(0, 500));
+                verified = true;
+                break;
+              }
+              console.log(`[dayend-save] Verify attempt ${attempt}: cashierReconcile still NULL`);
+            } catch (verifyErr: any) {
+              console.log(`[dayend-save] Verify attempt ${attempt} failed: ${verifyErr.message}`);
+            }
+            if (attempt < 3) {
+              await new Promise(r => setTimeout(r, 2000));
+            }
+          }
+
+          if (verified) {
+            saveSucceeded = true;
+            saveResponse = data;
+            break;
+          } else {
+            console.warn(`[dayend-save] ${ep.label} returned success but DB write NOT verified after 3 attempts — trying next endpoint`);
+            errors.push(`${ep.label}: API returned success but reconcile record was not created in database`);
+          }
         } catch (err: any) {
           console.log(`[dayend-save] ${ep.label} threw: ${err.message}`);
-          results.push({ label: ep.label, response: null, error: err.message });
+          errors.push(`${ep.label}: ${err.message}`);
         }
       }
 
-      console.log(`[dayend-save] === ALL RESULTS SUMMARY ===`);
-      for (const r of results) {
-        const isSuccess = r.response && !r.response._error && r.response.success !== false;
-        const isError = r.response?._error === true;
-        const status = isError ? `ERROR(${r.response?.status})` : (isSuccess ? 'SUCCESS' : (r.error ? `THROW(${r.error.substring(0,50)})` : 'UNKNOWN'));
-        console.log(`[dayend-save] ${r.label}: ${status} — ${JSON.stringify(r.response?.message || r.response?.title || r.error || '').substring(0, 200)}`);
-      }
-
-      const validResult = results.find(r => r.response && !r.response._error && r.response.success !== false);
-
-      if (validResult) {
-        console.log(`[dayend-save] Using result from: ${validResult.label}`);
-
-        console.log(`[dayend-save] Now verifying: calling validate-cashier to check if cashierReconcile was created...`);
-        try {
-          const finYear = req.body.finyear || session.userData?.finYear;
-          if (!finYear) {
-            console.warn('[dayend-save] Financial year missing from request and session');
-          }
-          const vcData = await platinumGet(session, "/api/ReceiptPrepaid/validate-cashier", { userId, finYear });
-          const hasReconcile = vcData?.cashierReconcile != null;
-          console.log(`[dayend-save] Post-save verify: cashierReconcile=${hasReconcile ? 'PRESENT' : 'NULL'} — ${hasReconcile ? 'DB WRITE CONFIRMED' : 'DB WRITE FAILED — record was not created!'}`);
-          if (hasReconcile) {
-            console.log(`[dayend-save] cashierReconcile data:`, JSON.stringify(vcData.cashierReconcile).substring(0, 500));
-          }
-        } catch (verifyErr: any) {
-          console.log(`[dayend-save] Post-save verify failed: ${verifyErr.message}`);
-        }
-
-        handlePlatinumResult(res, validResult.response);
+      if (saveSucceeded && saveResponse) {
+        console.log(`[dayend-save] Save completed and verified successfully`);
+        handlePlatinumResult(res, saveResponse);
       } else {
-        console.error(`[dayend-save] ALL endpoints failed!`);
-        res.status(502).json({ message: "All save-Reconcile-data endpoints failed", results: results.map(r => ({ label: r.label, error: r.error || r.response?.message })) });
+        console.error(`[dayend-save] ALL endpoints failed or verification failed!`, errors);
+        res.status(502).json({ message: "Day-end save failed: reconcile record could not be created. " + errors[errors.length - 1], errors });
       }
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
