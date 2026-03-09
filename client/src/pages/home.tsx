@@ -20,6 +20,7 @@ import {
   MessageSquareMore,
   Power,
   CreditCard,
+  Landmark,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HelpTip } from '@/components/ui/help-tip';
@@ -42,8 +43,11 @@ const posChildren: MenuItem[] = [
   { label: 'Supervisor', href: '/supervisor', icon: ShieldCheck, description: 'Supervisor dashboard and approvals', helpTip: 'Review and approve cashier day-end submissions and cancellation requests' },
 ];
 
+const debtChildren: MenuItem[] = [];
+
 const menuEntries: MenuEntry[] = [
   { label: 'Point of Sale', icon: CreditCard, helpTip: 'All POS receipting, payments, deposits, and supervisor functions', children: posChildren },
+  { label: 'Debt', icon: Landmark, helpTip: 'Debt management, arrangements, and collections', children: debtChildren },
   { label: 'Billing Dashboard', href: '/billing-dashboard', icon: BarChart3, description: 'Billing statistics and notifications', helpTip: 'View billing notifications, alerts, and system status across all municipal services' },
   { label: 'General Enquiries', href: '/enquiries/general', icon: Search, description: 'Search and view account details', helpTip: 'Look up account balances, transaction history, and billing details' },
   { label: 'Client Communications', href: '/communications', icon: MessageSquareMore, description: 'Send custom emails and SMS to account holders', helpTip: 'Send emails and SMS messages to account holders' },
@@ -54,7 +58,8 @@ export default function HomePage() {
   const [, setLocation] = useLocation();
   const { currentUser, activeSession, endSession, viewMode, toggleViewMode, siteInfo } = usePos();
   const isSite02 = siteInfo?.id === 'site02';
-  const [posOpen, setPosOpen] = useState(true);
+  const [groupOpen, setGroupOpen] = useState<Record<string, boolean>>({ 'Point of Sale': true, 'Debt': true });
+  const toggleGroup = (label: string) => setGroupOpen(prev => ({ ...prev, [label]: !prev[label] }));
 
   return (
     <div className="flex flex-col h-screen bg-[#F2F4F7] overflow-hidden">
@@ -121,14 +126,14 @@ export default function HomePage() {
               <div key={idx}>
                 <button
                   className="w-full flex items-center gap-2.5 p-3 rounded-lg bg-[var(--pos-accent)] text-white shadow-[0_1px_3px_rgba(0,0,0,0.2)] active:scale-[0.98] transition-all touch-manipulation"
-                  onClick={() => setPosOpen(v => !v)}
-                  data-testid="menu-group-pos-mobile"
+                  onClick={() => toggleGroup(entry.label)}
+                  data-testid={`menu-group-${entry.label.toLowerCase().replace(/\s+/g, '-')}-mobile`}
                 >
                   <entry.icon className="w-5 h-5 shrink-0" />
                   <span className="text-sm font-semibold flex-1 text-left">{entry.label}</span>
-                  <ChevronDown className={`w-4 h-4 transition-transform ${posOpen ? '' : '-rotate-90'}`} />
+                  <ChevronDown className={`w-4 h-4 transition-transform ${groupOpen[entry.label] ? '' : '-rotate-90'}`} />
                 </button>
-                {posOpen && (
+                {groupOpen[entry.label] && entry.children.length > 0 && (
                   <div className="grid grid-cols-2 gap-2 mt-2 ml-2">
                     {entry.children.map((child, ci) => (
                       <Link key={ci} href={child.href}>
@@ -176,16 +181,16 @@ export default function HomePage() {
               <div key={idx}>
                 <button
                   className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[var(--pos-accent-tint-strong)] transition-colors group border-l-3 border-transparent hover:border-[var(--pos-accent)]"
-                  onClick={() => setPosOpen(v => !v)}
-                  data-testid="menu-group-pos-desktop"
+                  onClick={() => toggleGroup(entry.label)}
+                  data-testid={`menu-group-${entry.label.toLowerCase().replace(/\s+/g, '-')}-desktop`}
                 >
                   <entry.icon className="w-[18px] h-[18px] text-[var(--pos-accent)] shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-semibold text-[#2E2E2E] inline-flex items-center gap-1">{entry.label} <HelpTip text={entry.helpTip} side="right" /></div>
                   </div>
-                  <ChevronDown className={`w-3.5 h-3.5 text-[#6B6B6B] transition-transform ${posOpen ? '' : '-rotate-90'}`} />
+                  <ChevronDown className={`w-3.5 h-3.5 text-[#6B6B6B] transition-transform ${groupOpen[entry.label] ? '' : '-rotate-90'}`} />
                 </button>
-                {posOpen && (
+                {groupOpen[entry.label] && entry.children.length > 0 && (
                   <div className="bg-white/60">
                     {entry.children.map((child, ci) => (
                       <Link key={ci} href={child.href}>
