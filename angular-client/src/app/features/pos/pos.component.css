@@ -1133,6 +1133,101 @@
   }
 }
 
+.session-indicator {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: 8px;
+  letter-spacing: 0.3px;
+}
+.session-active {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+}
+
+.session-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 24px;
+  font-size: 13px;
+  border-bottom: 1px solid #e2e8f0;
+}
+.session-banner-loading {
+  background: #f8fafc;
+  color: #64748b;
+}
+.session-banner-blocked {
+  background: #fef3c7;
+  border-bottom-color: #fde68a;
+}
+.session-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+.session-banner-content svg {
+  flex-shrink: 0;
+  color: #b45309;
+}
+.session-banner-content div {
+  flex: 1;
+}
+.session-banner-content strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #92400e;
+  margin-bottom: 2px;
+}
+.session-banner-content p {
+  margin: 0;
+  font-size: 12px;
+  color: #a16207;
+  line-height: 1.4;
+}
+.return-reason {
+  font-style: italic;
+  margin-top: 4px !important;
+  color: #dc2626 !important;
+}
+.session-setup-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--platinum-primary, #0f2b46);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.session-setup-btn:hover {
+  background: #1a3d5c;
+}
+.session-setup-btn svg {
+  color: white;
+}
+
+.pos-tab:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.header-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 @media (max-width: 640px) {
   .pos-header {
     padding: 0 12px;

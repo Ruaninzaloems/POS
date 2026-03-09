@@ -15,6 +15,9 @@
           @if (user()?.firstName) {
             &mdash; {{ user()?.firstName }} {{ user()?.lastName }}
           }
+          @if (sessionActive()) {
+            <span class="session-indicator session-active">Session Active</span>
+          }
         </span>
       </div>
     </div>
@@ -23,11 +26,11 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         <span class="btn-label">Enquiry</span>
       </button>
-      <button class="header-btn" (click)="openDropBoxDialog()" title="Cash Drop Box" data-testid="button-dropbox">
+      <button class="header-btn" (click)="openDropBoxDialog()" [disabled]="!sessionActive()" title="Cash Drop Box" data-testid="button-dropbox">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
         <span class="btn-label">Drop Box</span>
       </button>
-      <button class="header-btn" (click)="openCancelDialog()" title="Cancel Receipt" data-testid="button-cancel-receipt">
+      <button class="header-btn" (click)="openCancelDialog()" [disabled]="!sessionActive()" title="Cancel Receipt" data-testid="button-cancel-receipt">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
         <span class="btn-label">Cancel</span>
       </button>
@@ -42,20 +45,58 @@
     </div>
   </div>
 
+  @if (sessionLoading()) {
+    <div class="session-banner session-banner-loading">
+      <div class="spinner-sm"></div>
+      <span>Checking cashier session...</span>
+    </div>
+  } @else if (!sessionActive()) {
+    <div class="session-banner session-banner-blocked" data-testid="session-blocked-banner">
+      <div class="session-banner-content">
+        @if (sessionStatus() === 'pending_approval') {
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          <div>
+            <strong>Day-End Pending Approval</strong>
+            <p>Your day-end reconciliation is awaiting supervisor approval. You cannot transact until it is approved or returned.</p>
+          </div>
+        } @else if (sessionStatus() === 'returned') {
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <div>
+            <strong>Day-End Returned</strong>
+            <p>Your day-end was returned by the supervisor. Please review and re-submit.</p>
+            @if (sessionReturnReason()) {
+              <p class="return-reason">Reason: {{ sessionReturnReason() }}</p>
+            }
+          </div>
+        } @else {
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <div>
+            <strong>No Active Cashier Session</strong>
+            <p>You must complete cashier setup before you can process transactions, submit drop boxes, or cancel receipts.</p>
+          </div>
+        }
+        <button class="session-setup-btn" (click)="navigateToCashierSetup()" data-testid="button-goto-setup">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+          Go to Cashier Setup
+        </button>
+      </div>
+    </div>
+  }
+
   <div class="pos-tabs">
-    <button class="pos-tab" [class.active]="activeMode() === 'account'" (click)="setMode('account')" data-testid="tab-account">
+    <button class="pos-tab" [class.active]="activeMode() === 'account'" (click)="setMode('account')" [disabled]="!sessionActive() || !canDoAccountPayments()" data-testid="tab-account">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       Account Payment
     </button>
-    <button class="pos-tab" [class.active]="activeMode() === 'clearance'" (click)="setMode('clearance')" data-testid="tab-clearance">
+    <button class="pos-tab" [class.active]="activeMode() === 'clearance'" (click)="setMode('clearance')" [disabled]="!sessionActive() || !canDoClearance()" data-testid="tab-clearance">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>
       Clearance
     </button>
-    <button class="pos-tab" [class.active]="activeMode() === 'prepaid'" (click)="setMode('prepaid')" data-testid="tab-prepaid">
+    <button class="pos-tab" [class.active]="activeMode() === 'prepaid'" (click)="setMode('prepaid')" [disabled]="!sessionActive() || !canDoPrepaid()" data-testid="tab-prepaid">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
       Prepaid
     </button>
-    <button class="pos-tab" [class.active]="activeMode() === 'misc'" (click)="setMode('misc')" data-testid="tab-misc">
+    <button class="pos-tab" [class.active]="activeMode() === 'misc'" (click)="setMode('misc')" [disabled]="!sessionActive() || !canDoMisc()" data-testid="tab-misc">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
       Miscellaneous
     </button>
@@ -71,10 +112,11 @@
               <input
                 class="search-input"
                 type="text"
-                placeholder="Search account number, name, meter, address..."
+                [placeholder]="sessionActive() ? 'Search account number, name, meter, address...' : 'Start cashier session to search'"
                 [ngModel]="searchQuery()"
                 (ngModelChange)="searchQuery.set($event)"
                 (keydown)="onSearchKeydown($event)"
+                [disabled]="!sessionActive()"
                 data-testid="input-search"
               />
               @if (searchQuery()) {
@@ -82,7 +124,7 @@
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                 </button>
               }
-              <button class="search-go-btn" (click)="search()" [disabled]="searchLoading()" data-testid="button-search">
+              <button class="search-go-btn" (click)="search()" [disabled]="searchLoading() || !sessionActive()" data-testid="button-search">
                 @if (searchLoading()) {
                   <div class="spinner-sm"></div>
                 } @else {
@@ -221,7 +263,7 @@
             <button
               class="process-btn"
               (click)="openPaymentPanel()"
-              [disabled]="!hasItems() || totalToPay() <= 0"
+              [disabled]="!hasItems() || totalToPay() <= 0 || !sessionActive()"
               data-testid="button-open-payment"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
@@ -249,7 +291,7 @@
                 (keydown.enter)="searchClearance()"
                 data-testid="input-clearance-id"
               />
-              <button class="search-go-btn" (click)="searchClearance()" [disabled]="clearanceSearching()" data-testid="button-search-clearance">
+              <button class="search-go-btn" (click)="searchClearance()" [disabled]="clearanceSearching() || !sessionActive()" data-testid="button-search-clearance">
                 @if (clearanceSearching()) {
                   <div class="spinner-sm"></div>
                 } @else {
@@ -290,7 +332,7 @@
                   </tfoot>
                 </table>
               }
-              <button class="process-btn" (click)="submitClearancePayment()" [disabled]="processingPayment()" data-testid="button-pay-clearance">
+              <button class="process-btn" (click)="submitClearancePayment()" [disabled]="processingPayment() || !sessionActive()" data-testid="button-pay-clearance">
                 @if (processingPayment()) {
                   <div class="spinner-sm"></div> Processing...
                 } @else {
@@ -328,7 +370,7 @@
                 <input class="form-input" type="number" min="1" step="1" placeholder="100" [ngModel]="prepaidAmount()" (ngModelChange)="prepaidAmount.set($event)" data-testid="input-prepaid-amount" />
               </div>
             </div>
-            <button class="search-go-btn" style="margin-top:12px" (click)="searchPrepaid()" [disabled]="prepaidSearching()" data-testid="button-prepaid-breakdown">
+            <button class="search-go-btn" style="margin-top:12px" (click)="searchPrepaid()" [disabled]="prepaidSearching() || !sessionActive()" data-testid="button-prepaid-breakdown">
               @if (prepaidSearching()) {
                 <div class="spinner-sm"></div>
               } @else {
@@ -349,7 +391,7 @@
                 <div class="breakdown-item"><span>VAT</span><span class="mono">R {{ formatCurrency(bd.vat || bd.vatAmount || 0) }}</span></div>
                 <div class="breakdown-item"><span>Total</span><span class="mono">R {{ formatCurrency(bd.totalAmount || bd.amount || prepaidAmount()) }}</span></div>
               </div>
-              <button class="process-btn" (click)="purchasePrepaidToken()" [disabled]="prepaidProcessing()" data-testid="button-purchase-token">
+              <button class="process-btn" (click)="purchasePrepaidToken()" [disabled]="prepaidProcessing() || !sessionActive()" data-testid="button-purchase-token">
                 @if (prepaidProcessing()) {
                   <div class="spinner-sm"></div> Processing...
                 } @else {
@@ -427,7 +469,7 @@
                 <input class="form-input" type="text" placeholder="Payment description" [ngModel]="miscDescription()" (ngModelChange)="miscDescription.set($event)" data-testid="input-misc-desc" />
               </div>
             </div>
-            <button class="process-btn" style="margin-top:16px" (click)="submitMiscPayment()" [disabled]="miscProcessing() || miscAmount() <= 0" data-testid="button-submit-misc">
+            <button class="process-btn" style="margin-top:16px" (click)="submitMiscPayment()" [disabled]="miscProcessing() || miscAmount() <= 0 || !sessionActive()" data-testid="button-submit-misc">
               @if (miscProcessing()) {
                 <div class="spinner-sm"></div> Processing...
               } @else {
@@ -456,22 +498,30 @@
         </div>
 
         <div class="tender-tabs">
-          <button class="tender-tab" [class.active]="activeTender() === 'cash'" (click)="setTenderType('cash')" data-testid="tender-tab-cash">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
-            Cash
-          </button>
-          <button class="tender-tab" [class.active]="activeTender() === 'card'" (click)="setTenderType('card')" data-testid="tender-tab-card">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-            Card
-          </button>
-          <button class="tender-tab" [class.active]="activeTender() === 'cheque'" (click)="setTenderType('cheque')" data-testid="tender-tab-cheque">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 17V7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/><path d="M6 15h12"/><path d="M6 11h2"/></svg>
-            Cheque
-          </button>
-          <button class="tender-tab" [class.active]="activeTender() === 'eft'" (click)="setTenderType('eft')" data-testid="tender-tab-eft">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20"/><path d="m17 7-5-5-5 5"/><path d="m17 17-5 5-5-5"/></svg>
-            EFT
-          </button>
+          @if (canTenderCash()) {
+            <button class="tender-tab" [class.active]="activeTender() === 'cash'" (click)="setTenderType('cash')" data-testid="tender-tab-cash">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
+              Cash
+            </button>
+          }
+          @if (canTenderCard()) {
+            <button class="tender-tab" [class.active]="activeTender() === 'card'" (click)="setTenderType('card')" data-testid="tender-tab-card">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+              Card
+            </button>
+          }
+          @if (canTenderCheque()) {
+            <button class="tender-tab" [class.active]="activeTender() === 'cheque'" (click)="setTenderType('cheque')" data-testid="tender-tab-cheque">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 17V7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/><path d="M6 15h12"/><path d="M6 11h2"/></svg>
+              Cheque
+            </button>
+          }
+          @if (canTenderEft()) {
+            <button class="tender-tab" [class.active]="activeTender() === 'eft'" (click)="setTenderType('eft')" data-testid="tender-tab-eft">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20"/><path d="m17 7-5-5-5 5"/><path d="m17 17-5 5-5-5"/></svg>
+              EFT
+            </button>
+          }
         </div>
 
         <div class="tender-body">

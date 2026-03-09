@@ -181,6 +181,12 @@ export class PosComponent implements OnInit, OnDestroy {
   paymentTypes = signal<any[]>([]);
   cashierInfo = signal<any>(null);
 
+  sessionActive = signal(false);
+  sessionLoading = signal(true);
+  sessionStatus = signal<'none' | 'active' | 'pending_approval' | 'returned' | 'closed'>('none');
+  sessionReturnReason = signal('');
+  receiptRange = signal<any>(null);
+
   totalDue = computed(() => this.transactionItems().reduce((sum, item) => sum + item.amountDue, 0));
   totalToPay = computed(() => this.transactionItems().reduce((sum, item) => sum + item.amountToPay, 0));
   hasItems = computed(() => this.transactionItems().length > 0);
@@ -196,6 +202,78 @@ export class PosComponent implements OnInit, OnDestroy {
     return diff > 0.005 ? diff : 0;
   });
 
+  canDoAccountPayments = computed(() => {
+    const opts = this.paymentOptions();
+    if (!opts || opts.length === 0) return true;
+    return opts.some((o: any) => {
+      const desc = (o.posPaymentOptionDesc || o.description || o.name || '').toLowerCase();
+      return (o.isTicked || o.enabled) && (desc.includes('account') || desc.includes('consumer'));
+    });
+  });
+
+  canDoClearance = computed(() => {
+    const opts = this.paymentOptions();
+    if (!opts || opts.length === 0) return true;
+    return opts.some((o: any) => {
+      const desc = (o.posPaymentOptionDesc || o.description || o.name || '').toLowerCase();
+      return (o.isTicked || o.enabled) && desc.includes('clearance');
+    });
+  });
+
+  canDoPrepaid = computed(() => {
+    const opts = this.paymentOptions();
+    if (!opts || opts.length === 0) return true;
+    return opts.some((o: any) => {
+      const desc = (o.posPaymentOptionDesc || o.description || o.name || '').toLowerCase();
+      return (o.isTicked || o.enabled) && (desc.includes('prepaid') || desc.includes('electricity') || desc.includes('token'));
+    });
+  });
+
+  canDoMisc = computed(() => {
+    const opts = this.paymentOptions();
+    if (!opts || opts.length === 0) return true;
+    return opts.some((o: any) => {
+      const desc = (o.posPaymentOptionDesc || o.description || o.name || '').toLowerCase();
+      return (o.isTicked || o.enabled) && (desc.includes('misc') || desc.includes('sundry'));
+    });
+  });
+
+  canTenderCash = computed(() => {
+    const types = this.paymentTypes();
+    if (!types || types.length === 0) return true;
+    return types.some((t: any) => {
+      const desc = (t.posPaymentTypeDesc || t.description || t.name || '').toLowerCase();
+      return (t.isTicked || t.enabled) && desc.includes('cash');
+    });
+  });
+
+  canTenderCard = computed(() => {
+    const types = this.paymentTypes();
+    if (!types || types.length === 0) return true;
+    return types.some((t: any) => {
+      const desc = (t.posPaymentTypeDesc || t.description || t.name || '').toLowerCase();
+      return (t.isTicked || t.enabled) && (desc.includes('card') || desc.includes('credit'));
+    });
+  });
+
+  canTenderCheque = computed(() => {
+    const types = this.paymentTypes();
+    if (!types || types.length === 0) return true;
+    return types.some((t: any) => {
+      const desc = (t.posPaymentTypeDesc || t.description || t.name || '').toLowerCase();
+      return (t.isTicked || t.enabled) && desc.includes('cheque');
+    });
+  });
+
+  canTenderEft = computed(() => {
+    const types = this.paymentTypes();
+    if (!types || types.length === 0) return true;
+    return types.some((t: any) => {
+      const desc = (t.posPaymentTypeDesc || t.description || t.name || '').toLowerCase();
+      return (t.isTicked || t.enabled) && desc.includes('eft');
+    });
+  });
+
   denominations = [200, 100, 50, 20, 10, 5, 2, 1, 0.50, 0.20, 0.10, 0.05];
 
   private cashierCheckDone = false;
@@ -208,29 +286,72 @@ export class PosComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {}
 
   async loadCashierInfo(): Promise<void> {
+    this.sessionLoading.set(true);
     try {
       const userId = this.user()?.user_ID;
-      if (!userId) return;
+      if (!userId) {
+        this.sessionActive.set(false);
+        this.sessionStatus.set('none');
+        this.sessionLoading.set(false);
+        return;
+      }
 
-      const [cashierData, finYear] = await Promise.all([
-        firstValueFrom(this.api.get<any>('/api/platinum/receipt-prepaid/active-cashier-details', { userId: String(userId) })),
-        firstValueFrom(this.api.get<any>('/api/platinum/active-fin-year')),
+      const finYear = this.user()?.finYear || '';
+
+      const [cashierData, validateData] = await Promise.all([
+        firstValueFrom(this.api.get<any>('/api/platinum/receipt-prepaid/active-cashier-details', { userId: String(userId) })).catch(() => null),
+        firstValueFrom(this.api.get<any>('/api/platinum/receipt-prepaid/validate-cashier', { userId: String(userId), finYear })).catch(() => null),
       ]);
 
-      if (cashierData && !cashierData._error) {
-        this.cashierInfo.set({
-          ...cashierData,
-          finYear: finYear ? String(finYear).replace(/"/g, '') : '',
-        });
+      const resolvedFinYear = finYear || (cashierData?.finYear ? String(cashierData.finYear) : '');
+      const hasPendingDayEnd = validateData?.hasPendingDayEnd === true;
+      const hasDayEndReturned = validateData?.hasDayEndReturned === true;
+      const isActive = validateData?.isActive === true || (cashierData && !cashierData._error && cashierData.cashOffice_ID);
+
+      if (hasDayEndReturned) {
+        this.sessionActive.set(true);
+        this.sessionStatus.set('returned');
+        this.sessionReturnReason.set(validateData?.returnReason || validateData?.declineReason || '');
+        this.cashierInfo.set({ ...cashierData, finYear: resolvedFinYear });
         this.cashierCheckDone = true;
         this.loadPaymentConfig();
+        this.sessionLoading.set(false);
+        return;
+      }
+
+      if (hasPendingDayEnd) {
+        this.sessionActive.set(false);
+        this.sessionStatus.set('pending_approval');
+        this.sessionReturnReason.set('');
+        this.cashierInfo.set({ ...cashierData, finYear: resolvedFinYear });
+        this.sessionLoading.set(false);
+        return;
+      }
+
+      if (cashierData && !cashierData._error && isActive) {
+        this.cashierInfo.set({
+          ...cashierData,
+          finYear: resolvedFinYear,
+        });
+        this.sessionActive.set(true);
+        this.sessionStatus.set('active');
+        this.cashierCheckDone = true;
+        this.loadPaymentConfig();
+
+        if (validateData?.receiptRange) {
+          this.receiptRange.set(validateData.receiptRange);
+        }
       } else {
-        this.cashierInfo.set({ finYear: finYear ? String(finYear).replace(/"/g, '') : '' });
-        this.toast.error('Could not load cashier details. Some features may be unavailable.');
+        this.cashierInfo.set({ finYear: resolvedFinYear });
+        this.sessionActive.set(false);
+        this.sessionStatus.set('none');
       }
     } catch (e: any) {
       this.cashierInfo.set(null);
-      this.toast.error('Failed to load cashier configuration.');
+      this.sessionActive.set(false);
+      this.sessionStatus.set('none');
+    } finally {
+      this.sessionLoading.set(false);
     }
   }
 
@@ -273,6 +394,13 @@ export class PosComponent implements OnInit, OnDestroy {
   }
 
   setMode(mode: PaymentMode): void {
+    if (!this.sessionActive()) return;
+    const allowed =
+      (mode === 'account' && this.canDoAccountPayments()) ||
+      (mode === 'clearance' && this.canDoClearance()) ||
+      (mode === 'prepaid' && this.canDoPrepaid()) ||
+      (mode === 'misc' && this.canDoMisc());
+    if (!allowed) return;
     this.activeMode.set(mode);
     if (mode === 'misc' && this.miscGroups().length === 0) {
       this.loadMiscGroups();
@@ -283,6 +411,10 @@ export class PosComponent implements OnInit, OnDestroy {
   }
 
   async search(): Promise<void> {
+    if (!this.sessionActive()) {
+      this.toast.error('No active cashier session. Please complete cashier setup first.');
+      return;
+    }
     const query = this.searchQuery().trim();
     if (!query || query.length < 2) return;
     this.searchLoading.set(true);
@@ -425,12 +557,28 @@ export class PosComponent implements OnInit, OnDestroy {
   }
 
   openPaymentPanel(): void {
+    if (!this.sessionActive()) {
+      this.toast.error('No active cashier session. Please complete cashier setup first.');
+      return;
+    }
     if (!this.hasItems() || this.totalToPay() <= 0) {
       this.toast.error('Add items and enter amounts first.');
       return;
     }
     this.resetTenderFields();
-    this.cashAmount.set(this.totalToPay());
+    if (this.canTenderCash()) {
+      this.cashAmount.set(this.totalToPay());
+      this.activeTender.set('cash');
+    } else if (this.canTenderCard()) {
+      this.cardAmount.set(this.totalToPay());
+      this.activeTender.set('card');
+    } else if (this.canTenderCheque()) {
+      this.chequeAmount.set(this.totalToPay());
+      this.activeTender.set('cheque');
+    } else if (this.canTenderEft()) {
+      this.eftAmount.set(this.totalToPay());
+      this.activeTender.set('eft');
+    }
     this.showPaymentPanel.set(true);
   }
 
@@ -439,6 +587,12 @@ export class PosComponent implements OnInit, OnDestroy {
   }
 
   setTenderType(type: TenderType): void {
+    const allowed =
+      (type === 'cash' && this.canTenderCash()) ||
+      (type === 'card' && this.canTenderCard()) ||
+      (type === 'cheque' && this.canTenderCheque()) ||
+      (type === 'eft' && this.canTenderEft());
+    if (!allowed) return;
     this.activeTender.set(type);
   }
 
@@ -500,6 +654,10 @@ export class PosComponent implements OnInit, OnDestroy {
   }
 
   async processPayment(): Promise<void> {
+    if (!this.sessionActive()) {
+      this.toast.error('No active cashier session. Cannot process payments.');
+      return;
+    }
     if (this.shortfall() > 0) {
       this.toast.error('Total tendered is less than the amount due.');
       return;
@@ -654,6 +812,10 @@ export class PosComponent implements OnInit, OnDestroy {
   }
 
   openCancelDialog(): void {
+    if (!this.sessionActive()) {
+      this.toast.error('No active cashier session. Please complete cashier setup first.');
+      return;
+    }
     this.cancelReceiptNo.set('');
     this.cancelReason.set('');
     this.showCancelDialog.set(true);
@@ -664,6 +826,10 @@ export class PosComponent implements OnInit, OnDestroy {
   }
 
   async submitCancelRequest(): Promise<void> {
+    if (!this.sessionActive()) {
+      this.toast.error('No active cashier session. Cannot cancel receipts.');
+      return;
+    }
     if (!this.cancelReceiptNo()) {
       this.toast.error('Enter a receipt number to cancel.');
       return;
@@ -687,6 +853,10 @@ export class PosComponent implements OnInit, OnDestroy {
   }
 
   openDropBoxDialog(): void {
+    if (!this.sessionActive()) {
+      this.toast.error('No active cashier session. Please complete cashier setup first.');
+      return;
+    }
     this.dropBoxAmount.set(0);
     this.dropBoxReference.set('');
     this.showDropBoxDialog.set(true);
@@ -697,6 +867,10 @@ export class PosComponent implements OnInit, OnDestroy {
   }
 
   async submitDropBox(): Promise<void> {
+    if (!this.sessionActive()) {
+      this.toast.error('No active cashier session. Cannot submit drop box.');
+      return;
+    }
     if (this.dropBoxAmount() <= 0) {
       this.toast.error('Enter an amount for the drop box.');
       return;
@@ -722,6 +896,10 @@ export class PosComponent implements OnInit, OnDestroy {
   }
 
   async searchClearance(): Promise<void> {
+    if (!this.sessionActive()) {
+      this.toast.error('No active cashier session. Please complete cashier setup first.');
+      return;
+    }
     const id = this.clearanceSearchId().trim();
     if (!id) return;
     this.clearanceSearching.set(true);
@@ -763,6 +941,10 @@ export class PosComponent implements OnInit, OnDestroy {
   }
 
   async submitClearancePayment(): Promise<void> {
+    if (!this.sessionActive()) {
+      this.toast.error('No active cashier session. Cannot process payments.');
+      return;
+    }
     const cd = this.clearanceData();
     if (!cd) return;
     this.processingPayment.set(true);
@@ -809,6 +991,10 @@ export class PosComponent implements OnInit, OnDestroy {
   }
 
   async searchPrepaid(): Promise<void> {
+    if (!this.sessionActive()) {
+      this.toast.error('No active cashier session. Please complete cashier setup first.');
+      return;
+    }
     const meter = this.prepaidMeterNo().trim();
     if (!meter) return;
     this.prepaidSearching.set(true);
@@ -846,6 +1032,10 @@ export class PosComponent implements OnInit, OnDestroy {
   }
 
   async purchasePrepaidToken(): Promise<void> {
+    if (!this.sessionActive()) {
+      this.toast.error('No active cashier session. Cannot purchase tokens.');
+      return;
+    }
     const bd = this.prepaidBreakdown();
     if (!bd) return;
     this.prepaidProcessing.set(true);
@@ -917,6 +1107,10 @@ export class PosComponent implements OnInit, OnDestroy {
   }
 
   async submitMiscPayment(): Promise<void> {
+    if (!this.sessionActive()) {
+      this.toast.error('No active cashier session. Cannot process payments.');
+      return;
+    }
     if (!this.miscSelectedGroupId() || !this.miscSelectedScoaId() || this.miscAmount() <= 0) {
       this.toast.error('Select a group, item, and enter an amount.');
       return;
