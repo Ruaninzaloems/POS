@@ -335,7 +335,7 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open && (step === 'submitting')) return; onClose(); }}>
       {dayEndStatus === 'PENDING_APPROVAL' ? (
         <DialogContent className="max-w-[95vw] sm:max-w-md p-6 rounded-xl border-0 shadow-2xl">
           <div className="flex flex-col items-center text-center space-y-4 py-6">
@@ -352,7 +352,7 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
           </div>
         </DialogContent>
       ) : (
-      <DialogContent className="max-w-[100vw] sm:max-w-4xl h-[100dvh] sm:h-auto sm:max-h-[92vh] overflow-y-auto p-0 gap-0 rounded-none sm:rounded-xl border-0 shadow-2xl">
+      <DialogContent className="max-w-[100vw] sm:max-w-4xl h-[100dvh] sm:h-auto sm:max-h-[92vh] overflow-y-auto p-0 gap-0 rounded-none sm:rounded-xl border-0 shadow-2xl" hideCloseButton={step === 'submitting'} preventClose={step === 'submitting'}>
         <div className="bg-[linear-gradient(180deg,var(--pos-accent)_0%,var(--pos-accent-dark)_100%)] text-white px-6 py-5 rounded-t-xl">
           <div className="flex items-start justify-between">
             <div>
@@ -968,6 +968,9 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
               <div className="text-sm text-red-800">
                 <p className="font-bold mb-1">Submission Failed</p>
                 <p className="text-red-600">{errorMessage}</p>
+                <p className="text-slate-500 mt-3 text-xs">
+                  Your data has not been saved. You can retry the submission or go back to edit your figures. No partial data has been submitted.
+                </p>
               </div>
             </div>
           </div>
