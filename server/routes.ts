@@ -6,6 +6,7 @@ import { writeFileSync, unlinkSync, existsSync } from "fs";
 import type { Request } from "express";
 import OpenAI from "openai";
 import { legalEngine, getClientIp, seedDefaultRules } from "./legal-compliance";
+import { debtScoringEngine, seedDefaultWeights } from "./debt-scoring";
 
 function getSession(req: Request): UserSession {
   if (!req.session.platinumAuth) {
@@ -7298,10 +7299,11 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
   function requireLegalAdmin(session: UserSession, res: any): boolean {
     const userData = session.userData || {};
     const isSuperUser = userData.superUser === true;
+    if (isSuperUser) return true;
     const permissions: string[] = userData.permissions || userData.roles || [];
-    const hasAdmin = permissions.includes('ADMIN') || permissions.includes('admin') || permissions.includes('LEGAL_ADMIN') || permissions.includes('COMPLIANCE_ADMIN');
-    if (!isSuperUser && !hasAdmin && permissions.length > 0) {
-      res.status(403).json({ message: "Insufficient permissions: Legal administration access required" });
+    const hasAdmin = permissions.includes('ADMIN') || permissions.includes('admin') || permissions.includes('LEGAL_ADMIN') || permissions.includes('COMPLIANCE_ADMIN') || permissions.includes('DEBT_ADMIN');
+    if (!hasAdmin) {
+      res.status(403).json({ message: "Insufficient permissions: Legal/Debt administration access required" });
       return false;
     }
     return true;
@@ -7462,6 +7464,172 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
       res.json(result);
     } catch (e: any) {
       res.status(500).json({ message: "Failed to validate action", detail: e.message });
+    }
+  });
+
+  // =====================================================
+  // INTELLIGENT DEBT QUALIFICATION & RISK SCORING ROUTES
+  // =====================================================
+
+  seedDefaultWeights().catch(e => console.error("[DebtScoring] Seed weights failed:", e.message));
+
+  app.post("/api/debt-scoring/score-account", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const accountData = req.body;
+      if (!accountData.accountNo) { res.status(400).json({ message: "accountNo is required" }); return; }
+      const scoredBy = session.userData?.userName || session.userData?.user_ID?.toString() || "system";
+      const result = await debtScoringEngine.scoreAccount(accountData, scoredBy);
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to score account", detail: e.message });
+    }
+  });
+
+  app.post("/api/debt-scoring/score-bulk", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const { accounts } = req.body;
+      if (!Array.isArray(accounts) || accounts.length === 0) { res.status(400).json({ message: "accounts array is required" }); return; }
+      const scoredBy = session.userData?.userName || session.userData?.user_ID?.toString() || "system";
+      const results = await debtScoringEngine.scoreBulk(accounts, scoredBy);
+      res.json(results);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to score accounts in bulk", detail: e.message });
+    }
+  });
+
+  app.get("/api/debt-scoring/scores", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const filters = {
+        riskCategory: req.query.riskCategory as string | undefined,
+        minScore: req.query.minScore ? parseFloat(req.query.minScore as string) : undefined,
+        maxScore: req.query.maxScore ? parseFloat(req.query.maxScore as string) : undefined,
+        limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
+        offset: req.query.offset ? parseInt(req.query.offset as string) : 0,
+      };
+      const result = await debtScoringEngine.getScores(filters);
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to fetch scores", detail: e.message });
+    }
+  });
+
+  app.get("/api/debt-scoring/scores/:accountNo", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const score = await debtScoringEngine.getScoreByAccount(req.params.accountNo);
+      if (!score) { res.status(404).json({ message: "No score found for this account" }); return; }
+      res.json(score);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to fetch score", detail: e.message });
+    }
+  });
+
+  app.get("/api/debt-scoring/weights", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const weights = await debtScoringEngine.getWeights();
+      res.json(weights);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to fetch weights", detail: e.message });
+    }
+  });
+
+  app.put("/api/debt-scoring/weights", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      await debtScoringEngine.updateWeights(req.body);
+      const weights = await debtScoringEngine.getWeights();
+      res.json(weights);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to update weights", detail: e.message });
+    }
+  });
+
+  app.get("/api/debt-scoring/qualification-rules", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const activeOnly = req.query.activeOnly === "true";
+      const rules = await debtScoringEngine.getAllRules(activeOnly);
+      res.json(rules);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to fetch qualification rules", detail: e.message });
+    }
+  });
+
+  app.get("/api/debt-scoring/qualification-rules/:id", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const rule = await debtScoringEngine.getRule(parseInt(req.params.id));
+      if (!rule) { res.status(404).json({ message: "Rule not found" }); return; }
+      res.json(rule);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to fetch qualification rule", detail: e.message });
+    }
+  });
+
+  app.post("/api/debt-scoring/qualification-rules", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const rule = await debtScoringEngine.createRule({
+        ...req.body,
+        createdBy: session.userData?.userName || session.userData?.user_ID?.toString(),
+      });
+      res.json(rule);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to create qualification rule", detail: e.message });
+    }
+  });
+
+  app.put("/api/debt-scoring/qualification-rules/:id", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const rule = await debtScoringEngine.updateRule(parseInt(req.params.id), req.body);
+      if (!rule) { res.status(404).json({ message: "Rule not found" }); return; }
+      res.json(rule);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to update qualification rule", detail: e.message });
+    }
+  });
+
+  app.delete("/api/debt-scoring/qualification-rules/:id", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      await debtScoringEngine.deleteRule(parseInt(req.params.id));
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to delete qualification rule", detail: e.message });
+    }
+  });
+
+  app.post("/api/debt-scoring/qualification-rules/:id/run", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const rule = await debtScoringEngine.getRule(parseInt(req.params.id));
+      if (!rule) { res.status(404).json({ message: "Rule not found" }); return; }
+      const { accounts } = req.body;
+      if (!Array.isArray(accounts) || accounts.length === 0) {
+        res.status(400).json({ message: "accounts array is required to evaluate against the rule" });
+        return;
+      }
+      const matched: any[] = [];
+      const unmatched: any[] = [];
+      for (const acc of accounts) {
+        if (debtScoringEngine.evaluateQualificationRule(rule, acc)) {
+          matched.push(acc);
+        } else {
+          unmatched.push(acc);
+        }
+      }
+      res.json({ rule: { id: rule.id, name: rule.name }, totalEvaluated: accounts.length, matchedCount: matched.length, unmatchedCount: unmatched.length, matched, unmatched });
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to run qualification rule", detail: e.message });
     }
   });
 

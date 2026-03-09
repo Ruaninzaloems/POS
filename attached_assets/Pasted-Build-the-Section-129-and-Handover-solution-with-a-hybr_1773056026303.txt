@@ -1,0 +1,220 @@
+Build the Section 129 and Handover solution with a hybrid architecture:
+
+Replit is the UI, rules engine, and process orchestrator.
+
+Platinum remains the system of record through APIs only.
+
+Azure Service Bus must be used only for long-running, heavy, retryable background jobs.
+
+Normal lookups and screen reads must stay synchronous API calls.
+
+No Replit database.
+
+No fallback data.
+
+No mock responses in live flows.
+
+Architecture rules
+
+Use direct APIs for:
+
+configuration reads and saves
+
+dropdowns and lookups
+
+enquiry screens
+
+run lists
+
+account lists
+
+handover lists
+
+reports and downloads
+
+normal status reads
+
+Use Azure Service Bus for:
+
+Section 129 trial run processing
+
+Section 129 final run processing
+
+14-workday lapse processing
+
+handover batch processing
+
+handover termination processing
+
+bulk notice generation
+
+SMS/email/print batch generation
+
+retryable communication failures
+
+dashboard event updates where background processing is required
+
+Processing pattern
+
+For every long-running process, use this pattern:
+
+Replit API receives the user request
+
+Validate input and permissions
+
+Save the process request header and audit entry via Platinum API
+
+Publish a message to Azure Service Bus
+
+Background worker picks up the message
+
+Worker executes rules and processing
+
+Worker writes all results back to Platinum through APIs
+
+Worker updates status, audit, files, and errors
+
+Replit UI polls or refreshes job status
+
+Do not do this
+
+Do not run heavy trial/final/handover processing inside the browser
+
+Do not wait for long-running HTTP requests to finish in the UI
+
+Do not calculate legal results only in frontend state
+
+Do not update Platinum directly without audit metadata
+
+Do not use Service Bus for simple dropdowns or screen loads
+
+Core modules to implement
+
+Configuration module
+
+Rule engine
+
+Trial review module
+
+Trial run module
+
+Authorisation module
+
+Final run module
+
+Lapse tracker
+
+Handover module
+
+Handover termination module
+
+General enquiries module
+
+Reports and file module
+
+Audit and dashboard module
+
+Business rules to enforce exactly
+
+only one enabled Section 129 config per financial year
+
+lapse days are workdays
+
+support Account, Bulk, and Rotation
+
+exclude handed-over accounts
+
+ignore RPP balances
+
+exclude accounts with active clearances
+
+final run must use approved trial data
+
+all handover and termination actions must be auditable
+
+all generated files must be tracked and downloadable
+
+all write actions must store user and timestamp details
+
+Audit requirements on every write action
+
+Persist:
+
+CapturerID
+
+DateCaptured
+
+ModifierID
+
+DateModified
+
+ReviewerID where applicable
+
+ReviewDate where applicable
+
+StatusID
+
+Comment or Notes where applicable
+
+RunID / AccountID / HandoverID where applicable
+
+Azure Service Bus message types
+
+Create command messages for:
+
+StartSection129TrialRun
+
+SubmitSection129TrialReview
+
+AuthorizeSection129Run
+
+StartSection129FinalRun
+
+ProcessLapseCheck
+
+StartHandoverSubmit
+
+StartHandoverTerminate
+
+GenerateRunFiles
+
+RetryCommunicationBatch
+
+If needed, create event messages for:
+
+Section129TrialRunCompleted
+
+Section129FinalRunCompleted
+
+HandoverCompleted
+
+HandoverTerminationCompleted
+
+CommunicationBatchFailed
+
+Deliverables required before coding too far
+
+Return:
+
+final architecture diagram
+
+API list
+
+Service Bus queue/topic design
+
+worker process design
+
+table-to-process mapping
+
+status matrix
+
+audit matrix
+
+error/retry strategy
+
+requirement compliance checklist
+
+Final instruction:
+Keep synchronous APIs for normal user interactions.
+Use Azure Service Bus only for asynchronous debt-processing jobs.
+Make the solution fully auditable, API-driven, and aligned to the full Section 129 and Handover specification.

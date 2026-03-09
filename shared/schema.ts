@@ -134,3 +134,60 @@ export const insertLitigationEvidenceBundleSchema = createInsertSchema(litigatio
 
 export type InsertLitigationEvidenceBundle = z.infer<typeof insertLitigationEvidenceBundleSchema>;
 export type LitigationEvidenceBundle = typeof litigationEvidenceBundles.$inferSelect;
+
+export const debtRiskScores = pgTable("debt_risk_scores", {
+  id: serial("id").primaryKey(),
+  accountNo: text("account_no").notNull(),
+  overallScore: numeric("overall_score", { precision: 5, scale: 2 }).notNull(),
+  riskCategory: text("risk_category").notNull(),
+  factorScores: jsonb("factor_scores"),
+  scoredBy: text("scored_by"),
+  scoredAt: timestamp("scored_at").notNull().defaultNow(),
+  metadata: jsonb("metadata"),
+});
+
+export const insertDebtRiskScoreSchema = createInsertSchema(debtRiskScores).omit({
+  id: true,
+  scoredAt: true,
+});
+
+export type InsertDebtRiskScore = z.infer<typeof insertDebtRiskScoreSchema>;
+export type DebtRiskScore = typeof debtRiskScores.$inferSelect;
+
+export const debtQualificationRules = pgTable("debt_qualification_rules", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  conditions: jsonb("conditions").notNull(),
+  priority: integer("priority").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertDebtQualificationRuleSchema = createInsertSchema(debtQualificationRules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertDebtQualificationRule = z.infer<typeof insertDebtQualificationRuleSchema>;
+export type DebtQualificationRule = typeof debtQualificationRules.$inferSelect;
+
+export const debtScoringWeights = pgTable("debt_scoring_weights", {
+  id: serial("id").primaryKey(),
+  factorKey: text("factor_key").notNull().unique(),
+  label: text("label").notNull(),
+  weight: numeric("weight", { precision: 5, scale: 2 }).notNull(),
+  description: text("description"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertDebtScoringWeightSchema = createInsertSchema(debtScoringWeights).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type InsertDebtScoringWeight = z.infer<typeof insertDebtScoringWeightSchema>;
+export type DebtScoringWeight = typeof debtScoringWeights.$inferSelect;

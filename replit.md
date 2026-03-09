@@ -87,6 +87,21 @@ A full legal compliance framework under the "Compliance" sidebar group covering 
 
 **Legal Compliance API Routes** (`/api/legal/*`): rules (GET/POST/PUT/DELETE), compliance-log (GET), compliance-log/:entityId (GET), evidence-bundle (POST/GET), evidence-bundles (GET), validate-action (POST).
 
+#### Intelligent Debt Qualification & Risk Scoring
+World-class predictive debt scoring engine that goes beyond simple filtering.
+
+**Debt Risk Scoring Engine** (`server/debt-scoring.ts`): `DebtScoringEngine` class scores each debtor account 0-100 based on 8 weighted factors: payment history, arrear age, payment frequency, debt size, indigent status, service type, previous legal actions, location risk. Scores categorize as LOW (0-30), MEDIUM (30-60), HIGH (60-100). Weights are configurable and stored in `debt_scoring_weights` table with seed defaults. Drives handover priority, attorney allocation, and legal escalation.
+
+**Smart Qualification Rules**: Configurable complex multi-condition filters with AND/OR logic. Example: "Water arrears > 90 days AND electricity arrears > R1000 AND no payment in 60 days AND property value > R500k". Rules stored in `debt_qualification_rules` table with priority ordering and active/inactive toggle. Rule execution evaluates account datasets against conditions and returns matched/unmatched results.
+
+**Database Tables**: `debt_risk_scores` (cached scores per account), `debt_qualification_rules` (configurable filter rules), `debt_scoring_weights` (factor weight configuration). All PostgreSQL via Drizzle ORM.
+
+**Risk Scoring Dashboard** (`/debt/risk-scoring`): Three tabs — Score Account (single + bulk scoring with visual gauge and factor breakdown bars), Dashboard (paginated scored accounts grid with risk category filters and distribution summary), Weights (slider-based weight configuration for all 8 scoring factors).
+
+**Qualification Rules Page** (`/debt/qualification-rules`): Rules grid with CRUD, inline condition builder (field selector, operator, value, AND/OR logic), rule execution against test datasets with matched results display, CSV-format test account input.
+
+**Debt Scoring API Routes** (`/api/debt-scoring/*`): score-account (POST), score-bulk (POST), scores (GET), scores/:accountNo (GET), weights (GET/PUT), qualification-rules (CRUD + run).
+
 ## External Dependencies
 
 ### Multi-Site Support

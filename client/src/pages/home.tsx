@@ -30,6 +30,8 @@ import {
   MessageSquare,
   Scale,
   FileStack,
+  Target,
+  Filter,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HelpTip } from '@/components/ui/help-tip';
@@ -61,6 +63,8 @@ const debtChildren: MenuItem[] = [
   { label: 'Section 129 Report', href: '/debt/section129-report', icon: FileText, description: 'Section 129 Notices Report', helpTip: 'Generate reports on Section 129 notices by financial year, billing cycle, ageing, and amount' },
   { label: 'Handover Report', href: '/debt/handover-report', icon: ClipboardList, description: 'Handover Report', helpTip: 'Generate reports on account handovers by financial year, billing cycle, attorney, and account' },
   { label: 'SMS Log Report', href: '/debt/sms-log-report', icon: MessageSquare, description: 'SMS Log Report', helpTip: 'View SMS notification logs for Section 129 notices and debt recovery communications' },
+  { label: 'Risk Scoring', href: '/debt/risk-scoring', icon: Target, description: 'Intelligent debt risk scoring engine', helpTip: 'Score debtor accounts 0-100 based on payment history, arrear age, debt size, indigent status, and more — drives handover priority and legal escalation' },
+  { label: 'Qualification Rules', href: '/debt/qualification-rules', icon: Filter, description: 'Smart qualification rules builder', helpTip: 'Define complex multi-condition rules to qualify accounts for debt recovery, handover, or legal action' },
 ];
 
 const complianceChildren: MenuItem[] = [

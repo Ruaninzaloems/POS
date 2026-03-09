@@ -3356,3 +3356,71 @@ export async function fetchEvidenceBundle(id: number): Promise<any> {
     }
     return res.json();
 }
+
+export async function scoreDebtAccount(accountData: Record<string, any>): Promise<any> {
+    const res = await apiFetch('/api/debt-scoring/score-account', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(accountData) });
+    if (!res.ok) throw new Error(`Failed to score account (status ${res.status})`);
+    return res.json();
+}
+
+export async function scoreDebtBulk(accounts: Record<string, any>[]): Promise<any[]> {
+    const res = await apiFetch('/api/debt-scoring/score-bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accounts }) });
+    if (!res.ok) throw new Error(`Failed to score accounts in bulk (status ${res.status})`);
+    return res.json();
+}
+
+export async function fetchDebtScores(params?: Record<string, string>): Promise<{ scores: any[]; total: number }> {
+    const searchParams = new URLSearchParams(params || {});
+    const res = await apiFetch(`/api/debt-scoring/scores?${searchParams.toString()}`);
+    if (!res.ok) throw new Error(`Failed to fetch debt scores (status ${res.status})`);
+    return res.json();
+}
+
+export async function fetchDebtScoreByAccount(accountNo: string): Promise<any> {
+    const res = await apiFetch(`/api/debt-scoring/scores/${encodeURIComponent(accountNo)}`);
+    if (!res.ok) throw new Error(`Failed to fetch debt score (status ${res.status})`);
+    return res.json();
+}
+
+export async function fetchScoringWeights(): Promise<Record<string, { label: string; weight: number; description: string }>> {
+    const res = await apiFetch('/api/debt-scoring/weights');
+    if (!res.ok) throw new Error(`Failed to fetch scoring weights (status ${res.status})`);
+    return res.json();
+}
+
+export async function updateScoringWeights(weights: Record<string, number>): Promise<any> {
+    const res = await apiFetch('/api/debt-scoring/weights', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(weights) });
+    if (!res.ok) throw new Error(`Failed to update scoring weights (status ${res.status})`);
+    return res.json();
+}
+
+export async function fetchQualificationRules(activeOnly?: boolean): Promise<any[]> {
+    const qs = activeOnly ? '?activeOnly=true' : '';
+    const res = await apiFetch(`/api/debt-scoring/qualification-rules${qs}`);
+    if (!res.ok) throw new Error(`Failed to fetch qualification rules (status ${res.status})`);
+    return res.json();
+}
+
+export async function createQualificationRule(rule: Record<string, any>): Promise<any> {
+    const res = await apiFetch('/api/debt-scoring/qualification-rules', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(rule) });
+    if (!res.ok) throw new Error(`Failed to create qualification rule (status ${res.status})`);
+    return res.json();
+}
+
+export async function updateQualificationRule(id: number, updates: Record<string, any>): Promise<any> {
+    const res = await apiFetch(`/api/debt-scoring/qualification-rules/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updates) });
+    if (!res.ok) throw new Error(`Failed to update qualification rule (status ${res.status})`);
+    return res.json();
+}
+
+export async function deleteQualificationRule(id: number): Promise<any> {
+    const res = await apiFetch(`/api/debt-scoring/qualification-rules/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(`Failed to delete qualification rule (status ${res.status})`);
+    return res.json();
+}
+
+export async function runQualificationRule(id: number, accounts: Record<string, any>[]): Promise<any> {
+    const res = await apiFetch(`/api/debt-scoring/qualification-rules/${id}/run`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accounts }) });
+    if (!res.ok) throw new Error(`Failed to run qualification rule (status ${res.status})`);
+    return res.json();
+}
