@@ -199,7 +199,7 @@ function parseDescriptionForClues(note: string, reference: string): ParsedClues 
 
   const accPatterns = [
     /USER\s+(\d{4,})/gi,
-    /ACC(?:OUNT)?\s*(?:NO\.?|#)?\s*(\d{4,})/gi,
+    /ACC(?:OUNT)?\s*(?:NO\.?\s*-?\s*|#)?\s*(\d{4,})/gi,
     /(\d{8,})/g,
   ];
 
@@ -240,9 +240,23 @@ function parseDescriptionForClues(note: string, reference: string): ParsedClues 
   const erfPatterns = [
     /ERF\s*(?:NUMBER|NR|NO\.?)?\s*:?\s*(\d+)\s*\/\s*(\d+)\s+(\w+)(?:\s+(\w+))?/gi,
     /ERF\s*(?:NUMBER|NR|NO\.?)?\s*:?\s*(\d+)\s*\/\s*(\d+)/gi,
+    /ERF\s*(?:NUMBER|NR|NO\.?)?\s*:?\s*(\d+)\s*(?:PTN|PORTION)\s*(\d+)\s*(\w+)/gi,
+    /ERF\s*(?:NUMBER|NR|NO\.?)?\s*:?\s*(\d+)\s*(?:PTN|PORTION)\s*(\d+)/gi,
+    /ERF\s*(?:NUMBER|NR|NO\.?)?\s*:?\s*(\d+)\s+UNIT\s+\d+\s+(\w+)(?:\s+(\w+))?/gi,
+    /ERF\s*(?:NUMBER|NR|NO\.?)?\s*:?\s*(\d+)\s+[-–]\s+(\w+)(?:\s+(\w+))?/gi,
     /ERF\s*(?:NUMBER|NR|NO\.?)?\s*:?\s*(\d+)\s+(\w+)(?:\s+(\w+))?/gi,
+    /ERF\s*(?:NUMBER|NR|NO\.?)?\s*:?\s*(\d+)([A-Z]{2,})/gi,
     /ERF\s*(?:NUMBER|NR|NO\.?)?\s*:?\s*(\d+)/gi,
   ];
+
+  const AREA_NAMES = new Set([
+    'george', 'blanco', 'pacaltsdorp', 'pacalts', 'wilderness', 'uniondale',
+    'haarlem', 'hoekwil', 'friemersheim', 'kleinkrantz', 'heather', 'herold',
+    'herolds', 'heroldsbaai', 'herholdsbaai', 'heroldsbay', 'touwsranten',
+    'slowveld', 'tyolora', 'delplan', 'conville',
+    'le', 'grand', 'estate', 'outeniqua',
+  ]);
+
   for (const pattern of erfPatterns) {
     let match;
     const re = new RegExp(pattern.source, pattern.flags);
@@ -252,11 +266,27 @@ function parseDescriptionForClues(note: string, reference: string): ParsedClues 
       let area = '';
       let qualifier: string | null = null;
 
-      if (pattern.source.includes('\\/')) {
+      const src = pattern.source;
+      const isPtnPattern = src.includes('PTN|PORTION');
+      const isUnitPattern = src.includes('UNIT');
+      const isGluedAreaPattern = src.includes('([A-Z]{2,})');
+
+      if (src.includes('\\/')) {
         erfNum = match[1];
         portion = match[2];
         area = (match[3] || '').toLowerCase().trim();
         qualifier = (match[4] || '').toLowerCase().trim() || null;
+      } else if (isPtnPattern) {
+        erfNum = match[1];
+        portion = match[2];
+        area = (match[3] || '').toLowerCase().trim();
+      } else if (isUnitPattern) {
+        erfNum = match[1];
+        area = (match[2] || '').toLowerCase().trim();
+        qualifier = (match[3] || '').toLowerCase().trim() || null;
+      } else if (isGluedAreaPattern) {
+        erfNum = match[1];
+        area = (match[2] || '').toLowerCase().trim();
       } else if (match[2] && /^[A-Za-z]/.test(match[2])) {
         erfNum = match[1];
         area = match[2].toLowerCase().trim();
@@ -267,12 +297,57 @@ function parseDescriptionForClues(note: string, reference: string): ParsedClues 
 
       if (erfNum && erfNum.length > 8) continue;
 
+      if (isPtnPattern && match[2]) {
+        portion = match[2];
+      }
+
+      const afterMatch = text.substring(match.index + match[0].length);
+      if (!area && !isPtnPattern) {
+        const ptnAfter = afterMatch.match(/^\s*(?:PTN|PORTION)\s*(\d+)(?:\s+([A-Z]{3,}))?/i);
+        if (ptnAfter) {
+          portion = ptnAfter[1];
+          if (ptnAfter[2]) area = ptnAfter[2].toLowerCase();
+        }
+      }
+
+      if (area && /^ptn\d*/i.test(area)) area = '';
+      if (area === 'portion' || area === 'ptn') area = '';
+
+      if (area === 'le' || area === 'grand' || area === 'estate') {
+        const leGrandMatch = text.substring(match.index).match(/LE\s+GRAND(?:\s+ESTATE)?/i);
+        if (leGrandMatch) area = 'le grand estate';
+        else area = '';
+      }
+
+      if (area === 'herold') {
+        const heroldBayMatch = text.substring(match.index).match(/HEROLD\s*(?:S\s*)?BAY/i);
+        if (heroldBayMatch) area = 'herold bay';
+      }
+
       if (area && (GENERIC_WORDS.has(area) || NON_AREA_DESCRIPTORS.has(area))) {
         area = '';
       }
       if (area && area.length <= 2) {
-        area = '';
+        if (area === 'hb') area = 'herold bay';
+        else if (area === 'ha') area = 'haarlem';
+        else if (area === 'ge') area = 'george';
+        else area = '';
       }
+
+      area = area
+        .replace(/deposit$/i, '')
+        .replace(/depo(?:sit)?$/i, '')
+        .replace(/water$/i, '')
+        .replace(/conn(?:ection|ectio)?$/i, '')
+        .replace(/dep$/i, '')
+        .trim();
+
+      if (area === 'georg' || area === 'grg') area = 'george';
+      if (area === 'pacalts') area = 'pacaltsdorp';
+      if (area === 'blanc') area = 'blanco';
+      if (area === 'hb' || area === 'heroldsbay') area = 'herold bay';
+      if (area === 'herholdsbaai' || area === 'heroldsbaai') area = 'herold bay';
+
       if (qualifier === 'ru' || qualifier === 'rural') {
         qualifier = 'rural';
       }
