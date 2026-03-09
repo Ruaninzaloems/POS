@@ -29,7 +29,22 @@ import {
   updateLegalRule,
   deleteLegalRule,
 } from '@/lib/external-api';
-import type { LegalRuleVersion } from '@shared/schema';
+interface LegalRuleVersion {
+  id: number;
+  ruleCode: string;
+  title: string;
+  category: string;
+  description: string;
+  legislativeRef: string;
+  isActive: boolean;
+  version: number;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  conditions?: any;
+  metadata?: any;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 const CATEGORIES = [
   { value: 'NCA', label: 'National Credit Act' },

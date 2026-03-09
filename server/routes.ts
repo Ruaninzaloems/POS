@@ -5,10 +5,6 @@ import { execSync } from "child_process";
 import { writeFileSync, unlinkSync, existsSync } from "fs";
 import type { Request } from "express";
 import OpenAI from "openai";
-import { legalEngine, getClientIp, seedDefaultRules } from "./legal-compliance";
-import { debtScoringEngine, seedDefaultWeights } from "./debt-scoring";
-import { communicationEngine, seedDefaultTimeline } from "./communication-engine";
-import { analyticsEngine } from "./analytics-engine";
 
 function getSession(req: Request): UserSession {
   if (!req.session.platinumAuth) {
@@ -7016,11 +7012,6 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
       if (!requireDebtPermission(session, DEBT_PERMISSIONS.PROCESS_SECTION129, res)) return;
       const data = await platinumPost(session, "/api/BillingDebt/section129-trial-run", injectAuditFields(session, req.body));
       handlePlatinumResult(res, data);
-      legalEngine.logComplianceAction({
-        actionType: 'TRIAL_RUN', entityType: 'SECTION129_RUN', entityId: req.body.runId?.toString() || req.body.billingCycle || 'unknown',
-        processStage: 'TRIAL_RUN_SUBMITTED', userId: session.userData?.user_ID?.toString(), userName: session.userData?.userName,
-        ipAddress: getClientIp(req), metadata: { finYear: req.body.finYear, billingCycle: req.body.billingCycle, distributionType: req.body.distributionType },
-      }).catch(e => console.error('[LegalCompliance] Log failed:', e.message));
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
@@ -7032,11 +7023,6 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
       if (!requireDebtPermission(session, DEBT_PERMISSIONS.PROCESS_SECTION129, res)) return;
       const data = await platinumPost(session, "/api/BillingDebt/section129-trial-review-submit", injectAuditFields(session, req.body, { isReview: true }));
       handlePlatinumResult(res, data);
-      legalEngine.logComplianceAction({
-        actionType: 'TRIAL_REVIEW', entityType: 'SECTION129_RUN', entityId: req.body.runId?.toString() || 'unknown',
-        processStage: 'TRIAL_REVIEW_SUBMITTED', userId: session.userData?.user_ID?.toString(), userName: session.userData?.userName,
-        ipAddress: getClientIp(req), metadata: { runId: req.body.runId, selectedAccountIds: req.body.selectedAccountIds },
-      }).catch(e => console.error('[LegalCompliance] Log failed:', e.message));
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
@@ -7048,11 +7034,6 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
       if (!requireDebtPermission(session, DEBT_PERMISSIONS.AUTHORISE_SECTION129, res)) return;
       const data = await platinumPost(session, "/api/BillingDebt/section129-authorize", injectAuditFields(session, req.body, { isReview: true }));
       handlePlatinumResult(res, data);
-      legalEngine.logComplianceAction({
-        actionType: 'AUTHORIZATION', entityType: 'SECTION129_RUN', entityId: req.body.runId?.toString() || 'unknown',
-        processStage: 'AUTHORIZATION_GRANTED', userId: session.userData?.user_ID?.toString(), userName: session.userData?.userName,
-        ipAddress: getClientIp(req), metadata: { runId: req.body.runId, notes: req.body.notes },
-      }).catch(e => console.error('[LegalCompliance] Log failed:', e.message));
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
@@ -7064,12 +7045,6 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
       if (!requireDebtPermission(session, DEBT_PERMISSIONS.PROCESS_SECTION129, res)) return;
       const data = await platinumPost(session, "/api/BillingDebt/section129-final-run", injectAuditFields(session, req.body));
       handlePlatinumResult(res, data);
-      legalEngine.logComplianceAction({
-        actionType: 'FINAL_RUN', entityType: 'SECTION129_RUN', entityId: req.body.runId?.toString() || 'unknown',
-        processStage: 'FINAL_RUN_EXECUTED', userId: session.userData?.user_ID?.toString(), userName: session.userData?.userName,
-        ipAddress: getClientIp(req), proofOfDelivery: req.body.distributionType === 'sms' ? 'SMS_SENT' : req.body.distributionType === 'email' ? 'EMAIL_SENT' : 'PRINTED',
-        metadata: { runId: req.body.runId },
-      }).catch(e => console.error('[LegalCompliance] Log failed:', e.message));
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
@@ -7103,11 +7078,6 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
       if (!requireDebtPermission(session, DEBT_PERMISSIONS.HANDOVER_PROCESS, res)) return;
       const data = await platinumPost(session, "/api/BillingDebt/handover-submit", injectAuditFields(session, req.body));
       handlePlatinumResult(res, data);
-      legalEngine.logComplianceAction({
-        actionType: 'HANDOVER_SUBMITTED', entityType: 'HANDOVER', entityId: req.body.accountNo || req.body.billingCycle || 'unknown',
-        processStage: 'HANDOVER_SUBMITTED', userId: session.userData?.user_ID?.toString(), userName: session.userData?.userName,
-        ipAddress: getClientIp(req), metadata: { handoverOption: req.body.handoverOption, attorneyId: req.body.attorneyId },
-      }).catch(e => console.error('[LegalCompliance] Log failed:', e.message));
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
@@ -7119,11 +7089,6 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
       if (!requireDebtPermission(session, DEBT_PERMISSIONS.HANDOVER_PROCESS, res)) return;
       const data = await platinumPost(session, "/api/BillingDebt/handover-terminate", injectAuditFields(session, req.body, { isTermination: true }));
       handlePlatinumResult(res, data);
-      legalEngine.logComplianceAction({
-        actionType: 'TERMINATION', entityType: 'HANDOVER', entityId: req.body.handoverIds?.join(',') || 'unknown',
-        processStage: 'HANDOVER_TERMINATED', userId: session.userData?.user_ID?.toString(), userName: session.userData?.userName,
-        ipAddress: getClientIp(req), metadata: { handoverIds: req.body.handoverIds, reason: req.body.reason },
-      }).catch(e => console.error('[LegalCompliance] Log failed:', e.message));
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
@@ -7210,11 +7175,6 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
       if (!requireDebtPermission(session, DEBT_PERMISSIONS.PROCESS_SECTION129, res)) return;
       const data = await platinumPost(session, "/api/BillingDebt/section129-config-save", injectAuditFields(session, req.body));
       handlePlatinumResult(res, data);
-      legalEngine.logComplianceAction({
-        actionType: 'CONFIG_CHANGE', entityType: 'CONFIG', entityId: req.body.finYear || 'unknown',
-        processStage: 'CONFIG_SAVED', userId: session.userData?.user_ID?.toString(), userName: session.userData?.userName,
-        ipAddress: getClientIp(req), metadata: { finYear: req.body.finYear, enabled: req.body.enabled },
-      }).catch(e => console.error('[LegalCompliance] Log failed:', e.message));
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
@@ -7333,10 +7293,8 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
   });
 
   // =====================================================
-  // LEGAL COMPLIANCE ENGINE ROUTES
+  // LEGAL COMPLIANCE ROUTES (Platinum API Proxy)
   // =====================================================
-
-  seedDefaultRules().catch(e => console.error("[LegalCompliance] Seed failed:", e.message));
 
   function requireLegalAdmin(session: UserSession, res: any): boolean {
     const userData = session.userData || {};
@@ -7354,12 +7312,10 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
   app.get("/api/legal/rules", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const category = req.query.category as string | undefined;
-      const isActive = req.query.isActive === 'true' ? true : req.query.isActive === 'false' ? false : undefined;
-      const rules = await legalEngine.getAllRules({ category, isActive });
-      res.json(rules);
+      const data = await platinumGet(session, "/api/BillingDebt/legal-rules", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to fetch legal rules", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
@@ -7367,20 +7323,10 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
     try {
       const session = requireAuth(req, res); if (!session) return;
       if (!requireLegalAdmin(session, res)) return;
-      const rule = await legalEngine.createRule(req.body);
-      await legalEngine.logComplianceAction({
-        actionType: 'CONFIG_CHANGE',
-        entityType: 'LEGAL_RULE',
-        entityId: String(rule.id),
-        processStage: 'RULE_CREATED',
-        userId: session.userData?.user_ID?.toString(),
-        userName: session.userData?.userName,
-        ipAddress: getClientIp(req),
-        metadata: { ruleCode: rule.ruleCode, title: rule.title },
-      });
-      res.json(rule);
+      const data = await platinumPost(session, "/api/BillingDebt/legal-rules", injectAuditFields(session, req.body));
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to create legal rule", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
@@ -7388,22 +7334,10 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
     try {
       const session = requireAuth(req, res); if (!session) return;
       if (!requireLegalAdmin(session, res)) return;
-      const id = parseInt(req.params.id);
-      const rule = await legalEngine.updateRule(id, req.body);
-      if (!rule) { res.status(404).json({ message: "Rule not found" }); return; }
-      await legalEngine.logComplianceAction({
-        actionType: 'CONFIG_CHANGE',
-        entityType: 'LEGAL_RULE',
-        entityId: String(id),
-        processStage: 'RULE_UPDATED',
-        userId: session.userData?.user_ID?.toString(),
-        userName: session.userData?.userName,
-        ipAddress: getClientIp(req),
-        metadata: { ruleCode: rule.ruleCode, changes: req.body },
-      });
-      res.json(rule);
+      const data = await platinumPost(session, "/api/BillingDebt/legal-rules-update", injectAuditFields(session, { ...req.body, id: parseInt(req.params.id) }));
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to update legal rule", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
@@ -7411,52 +7345,30 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
     try {
       const session = requireAuth(req, res); if (!session) return;
       if (!requireLegalAdmin(session, res)) return;
-      const id = parseInt(req.params.id);
-      const rule = await legalEngine.deactivateRule(id);
-      if (!rule) { res.status(404).json({ message: "Rule not found" }); return; }
-      await legalEngine.logComplianceAction({
-        actionType: 'CONFIG_CHANGE',
-        entityType: 'LEGAL_RULE',
-        entityId: String(id),
-        processStage: 'RULE_DEACTIVATED',
-        userId: session.userData?.user_ID?.toString(),
-        userName: session.userData?.userName,
-        ipAddress: getClientIp(req),
-        metadata: { ruleCode: rule.ruleCode },
-      });
-      res.json(rule);
+      const data = await platinumPost(session, "/api/BillingDebt/legal-rules-deactivate", injectAuditFields(session, { id: parseInt(req.params.id) }));
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to deactivate legal rule", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
   app.get("/api/legal/compliance-log", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const logs = await legalEngine.getComplianceLogs({
-        actionType: req.query.actionType as string,
-        entityType: req.query.entityType as string,
-        entityId: req.query.entityId as string,
-        accountNo: req.query.accountNo as string,
-        userId: req.query.userId as string,
-        dateFrom: req.query.dateFrom as string,
-        dateTo: req.query.dateTo as string,
-        limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
-        offset: req.query.offset ? parseInt(req.query.offset as string) : undefined,
-      });
-      res.json(logs);
+      const data = await platinumGet(session, "/api/BillingDebt/compliance-log", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to fetch compliance logs", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
   app.get("/api/legal/compliance-log/:entityId", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const logs = await legalEngine.getComplianceLogs({ entityId: req.params.entityId });
-      res.json(logs);
+      const data = await platinumGet(session, "/api/BillingDebt/compliance-log", { entityId: req.params.entityId });
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to fetch compliance logs", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
@@ -7464,118 +7376,94 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
     try {
       const session = requireAuth(req, res); if (!session) return;
       if (!requireLegalAdmin(session, res)) return;
-      const { accountNo } = req.body;
-      if (!accountNo) { res.status(400).json({ message: "accountNo is required" }); return; }
-      const generatedBy = session.userData?.userName || session.userData?.user_ID?.toString() || 'system';
-      const bundle = await legalEngine.generateEvidenceBundle(accountNo, generatedBy);
-      res.json(bundle);
+      const data = await platinumPost(session, "/api/BillingDebt/evidence-bundle", injectAuditFields(session, req.body));
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to generate evidence bundle", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
   app.get("/api/legal/evidence-bundles", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const bundles = await legalEngine.getEvidenceBundles({
-        accountNo: req.query.accountNo as string,
-        limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
-      });
-      res.json(bundles);
+      const data = await platinumGet(session, "/api/BillingDebt/evidence-bundles", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to fetch evidence bundles", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
   app.get("/api/legal/evidence-bundle/:id", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const bundle = await legalEngine.getEvidenceBundle(parseInt(req.params.id));
-      if (!bundle) { res.status(404).json({ message: "Bundle not found" }); return; }
-      res.json(bundle);
+      const data = await platinumGet(session, "/api/BillingDebt/evidence-bundle", { id: req.params.id });
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to fetch evidence bundle", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
   app.post("/api/legal/validate-action", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const { actionType, entityType, metadata } = req.body;
-      const result = await legalEngine.validateAction(actionType, entityType, metadata);
-      res.json(result);
+      const data = await platinumPost(session, "/api/BillingDebt/validate-legal-action", injectAuditFields(session, req.body));
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to validate action", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
   // =====================================================
-  // INTELLIGENT DEBT QUALIFICATION & RISK SCORING ROUTES
+  // DEBT QUALIFICATION & RISK SCORING ROUTES (Platinum API Proxy)
   // =====================================================
-
-  seedDefaultWeights().catch(e => console.error("[DebtScoring] Seed weights failed:", e.message));
 
   app.post("/api/debt-scoring/score-account", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const accountData = req.body;
-      if (!accountData.accountNo) { res.status(400).json({ message: "accountNo is required" }); return; }
-      const scoredBy = session.userData?.userName || session.userData?.user_ID?.toString() || "system";
-      const result = await debtScoringEngine.scoreAccount(accountData, scoredBy);
-      res.json(result);
+      const data = await platinumPost(session, "/api/BillingDebt/score-account", injectAuditFields(session, req.body));
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to score account", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
   app.post("/api/debt-scoring/score-bulk", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const { accounts } = req.body;
-      if (!Array.isArray(accounts) || accounts.length === 0) { res.status(400).json({ message: "accounts array is required" }); return; }
-      const scoredBy = session.userData?.userName || session.userData?.user_ID?.toString() || "system";
-      const results = await debtScoringEngine.scoreBulk(accounts, scoredBy);
-      res.json(results);
+      const data = await platinumPost(session, "/api/BillingDebt/score-bulk", injectAuditFields(session, req.body));
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to score accounts in bulk", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
   app.get("/api/debt-scoring/scores", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const filters = {
-        riskCategory: req.query.riskCategory as string | undefined,
-        minScore: req.query.minScore ? parseFloat(req.query.minScore as string) : undefined,
-        maxScore: req.query.maxScore ? parseFloat(req.query.maxScore as string) : undefined,
-        limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
-        offset: req.query.offset ? parseInt(req.query.offset as string) : 0,
-      };
-      const result = await debtScoringEngine.getScores(filters);
-      res.json(result);
+      const data = await platinumGet(session, "/api/BillingDebt/risk-scores", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to fetch scores", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
   app.get("/api/debt-scoring/scores/:accountNo", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const score = await debtScoringEngine.getScoreByAccount(req.params.accountNo);
-      if (!score) { res.status(404).json({ message: "No score found for this account" }); return; }
-      res.json(score);
+      const data = await platinumGet(session, "/api/BillingDebt/risk-scores", { accountNo: req.params.accountNo });
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to fetch score", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
   app.get("/api/debt-scoring/weights", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const weights = await debtScoringEngine.getWeights();
-      res.json(weights);
+      const data = await platinumGet(session, "/api/BillingDebt/scoring-weights");
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to fetch weights", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
@@ -7583,33 +7471,30 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
     try {
       const session = requireAuth(req, res); if (!session) return;
       if (!requireLegalAdmin(session, res)) return;
-      await debtScoringEngine.updateWeights(req.body);
-      const weights = await debtScoringEngine.getWeights();
-      res.json(weights);
+      const data = await platinumPost(session, "/api/BillingDebt/scoring-weights", injectAuditFields(session, req.body));
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to update weights", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
   app.get("/api/debt-scoring/qualification-rules", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const activeOnly = req.query.activeOnly === "true";
-      const rules = await debtScoringEngine.getAllRules(activeOnly);
-      res.json(rules);
+      const data = await platinumGet(session, "/api/BillingDebt/qualification-rules", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to fetch qualification rules", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
   app.get("/api/debt-scoring/qualification-rules/:id", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const rule = await debtScoringEngine.getRule(parseInt(req.params.id));
-      if (!rule) { res.status(404).json({ message: "Rule not found" }); return; }
-      res.json(rule);
+      const data = await platinumGet(session, "/api/BillingDebt/qualification-rules", { id: req.params.id });
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to fetch qualification rule", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
@@ -7617,13 +7502,10 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
     try {
       const session = requireAuth(req, res); if (!session) return;
       if (!requireLegalAdmin(session, res)) return;
-      const rule = await debtScoringEngine.createRule({
-        ...req.body,
-        createdBy: session.userData?.userName || session.userData?.user_ID?.toString(),
-      });
-      res.json(rule);
+      const data = await platinumPost(session, "/api/BillingDebt/qualification-rules", injectAuditFields(session, req.body));
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to create qualification rule", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
@@ -7631,11 +7513,10 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
     try {
       const session = requireAuth(req, res); if (!session) return;
       if (!requireLegalAdmin(session, res)) return;
-      const rule = await debtScoringEngine.updateRule(parseInt(req.params.id), req.body);
-      if (!rule) { res.status(404).json({ message: "Rule not found" }); return; }
-      res.json(rule);
+      const data = await platinumPost(session, "/api/BillingDebt/qualification-rules-update", injectAuditFields(session, { ...req.body, id: parseInt(req.params.id) }));
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to update qualification rule", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
@@ -7643,62 +7524,44 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
     try {
       const session = requireAuth(req, res); if (!session) return;
       if (!requireLegalAdmin(session, res)) return;
-      await debtScoringEngine.deleteRule(parseInt(req.params.id));
-      res.json({ success: true });
+      const data = await platinumPost(session, "/api/BillingDebt/qualification-rules-delete", injectAuditFields(session, { id: parseInt(req.params.id) }));
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to delete qualification rule", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
   app.post("/api/debt-scoring/qualification-rules/:id/run", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const rule = await debtScoringEngine.getRule(parseInt(req.params.id));
-      if (!rule) { res.status(404).json({ message: "Rule not found" }); return; }
-      const { accounts } = req.body;
-      if (!Array.isArray(accounts) || accounts.length === 0) {
-        res.status(400).json({ message: "accounts array is required to evaluate against the rule" });
-        return;
-      }
-      const matched: any[] = [];
-      const unmatched: any[] = [];
-      for (const acc of accounts) {
-        if (debtScoringEngine.evaluateQualificationRule(rule, acc)) {
-          matched.push(acc);
-        } else {
-          unmatched.push(acc);
-        }
-      }
-      res.json({ rule: { id: rule.id, name: rule.name }, totalEvaluated: accounts.length, matchedCount: matched.length, unmatchedCount: unmatched.length, matched, unmatched });
+      const data = await platinumPost(session, "/api/BillingDebt/qualification-rules-run", injectAuditFields(session, { ...req.body, ruleId: parseInt(req.params.id) }));
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to run qualification rule", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
   // =====================================================
-  // ADVANCED COMMUNICATION ENGINE ROUTES
+  // COMMUNICATION ENGINE ROUTES (Platinum API Proxy)
   // =====================================================
-
-  seedDefaultTimeline().catch(e => console.error("[CommEngine] Seed failed:", e.message));
 
   app.get("/api/communications/timelines", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const timelines = await communicationEngine.getAllTimelines();
-      res.json(timelines);
+      const data = await platinumGet(session, "/api/BillingDebt/communication-timelines", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to fetch timelines", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
   app.get("/api/communications/timelines/:id", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const data = await communicationEngine.getTimeline(parseInt(req.params.id));
-      if (!data) { res.status(404).json({ message: "Timeline not found" }); return; }
-      res.json(data);
+      const data = await platinumGet(session, "/api/BillingDebt/communication-timelines", { id: req.params.id });
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to fetch timeline", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
@@ -7706,13 +7569,10 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
     try {
       const session = requireAuth(req, res); if (!session) return;
       if (!requireLegalAdmin(session, res)) return;
-      const timeline = await communicationEngine.createTimeline({
-        ...req.body,
-        createdBy: session.userData?.userName || session.userData?.user_ID?.toString(),
-      });
-      res.json(timeline);
+      const data = await platinumPost(session, "/api/BillingDebt/communication-timelines", injectAuditFields(session, req.body));
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to create timeline", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
@@ -7720,11 +7580,10 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
     try {
       const session = requireAuth(req, res); if (!session) return;
       if (!requireLegalAdmin(session, res)) return;
-      const timeline = await communicationEngine.updateTimeline(parseInt(req.params.id), req.body);
-      if (!timeline) { res.status(404).json({ message: "Timeline not found" }); return; }
-      res.json(timeline);
+      const data = await platinumPost(session, "/api/BillingDebt/communication-timelines-update", injectAuditFields(session, { ...req.body, id: parseInt(req.params.id) }));
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to update timeline", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
@@ -7732,10 +7591,10 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
     try {
       const session = requireAuth(req, res); if (!session) return;
       if (!requireLegalAdmin(session, res)) return;
-      await communicationEngine.deleteTimeline(parseInt(req.params.id));
-      res.json({ success: true });
+      const data = await platinumPost(session, "/api/BillingDebt/communication-timelines-delete", injectAuditFields(session, { id: parseInt(req.params.id) }));
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to delete timeline", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
@@ -7743,12 +7602,10 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
     try {
       const session = requireAuth(req, res); if (!session) return;
       if (!requireLegalAdmin(session, res)) return;
-      const { steps } = req.body;
-      if (!Array.isArray(steps)) { res.status(400).json({ message: "steps array is required" }); return; }
-      const created = await communicationEngine.setTimelineSteps(parseInt(req.params.id), steps);
-      res.json(created);
+      const data = await platinumPost(session, "/api/BillingDebt/communication-timeline-steps", injectAuditFields(session, { ...req.body, timelineId: parseInt(req.params.id) }));
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to set timeline steps", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
@@ -7756,15 +7613,10 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
     try {
       const session = requireAuth(req, res); if (!session) return;
       if (!requireLegalAdmin(session, res)) return;
-      const { accountNo, channel, recipient, subject, messageBody, metadata } = req.body;
-      if (!accountNo || !channel || !recipient || !messageBody) {
-        res.status(400).json({ message: "accountNo, channel, recipient, and messageBody are required" }); return;
-      }
-      const sentBy = session.userData?.userName || session.userData?.user_ID?.toString() || "system";
-      const logEntry = await communicationEngine.dispatch({ accountNo, channel, recipient, subject, messageBody, sentBy, metadata });
-      res.json(logEntry);
+      const data = await platinumPost(session, "/api/BillingDebt/communication-dispatch", injectAuditFields(session, req.body));
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to dispatch communication", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
@@ -7772,19 +7624,10 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
     try {
       const session = requireAuth(req, res); if (!session) return;
       if (!requireLegalAdmin(session, res)) return;
-      const { communications } = req.body;
-      if (!Array.isArray(communications) || communications.length === 0) {
-        res.status(400).json({ message: "communications array is required" }); return;
-      }
-      const sentBy = session.userData?.userName || session.userData?.user_ID?.toString() || "system";
-      const results: any[] = [];
-      for (const comm of communications) {
-        const logEntry = await communicationEngine.dispatch({ ...comm, sentBy });
-        results.push(logEntry);
-      }
-      res.json({ total: results.length, sent: results.filter(r => r.status === "SENT").length, failed: results.filter(r => r.status === "FAILED").length, results });
+      const data = await platinumPost(session, "/api/BillingDebt/communication-dispatch-bulk", injectAuditFields(session, req.body));
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to dispatch bulk communications", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
@@ -7792,12 +7635,10 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
     try {
       const session = requireAuth(req, res); if (!session) return;
       if (!requireLegalAdmin(session, res)) return;
-      const { accountNo, timelineId, startDate } = req.body;
-      if (!accountNo || !timelineId) { res.status(400).json({ message: "accountNo and timelineId are required" }); return; }
-      const scheduled = await communicationEngine.enrollAccountInTimeline(accountNo, timelineId, startDate ? new Date(startDate) : undefined);
-      res.json({ accountNo, timelineId, scheduledCount: scheduled.length, scheduled });
+      const data = await platinumPost(session, "/api/BillingDebt/communication-enroll", injectAuditFields(session, req.body));
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to enroll account in timeline", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
@@ -7805,71 +7646,55 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
     try {
       const session = requireAuth(req, res); if (!session) return;
       if (!requireLegalAdmin(session, res)) return;
-      const result = await communicationEngine.processScheduledCommunications();
-      res.json(result);
+      const data = await platinumPost(session, "/api/BillingDebt/communication-process-scheduled", injectAuditFields(session, {}));
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to process scheduled communications", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
   app.get("/api/communications/log", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const filters = {
-        accountNo: req.query.accountNo as string | undefined,
-        channel: req.query.channel as string | undefined,
-        status: req.query.status as string | undefined,
-        dateFrom: req.query.dateFrom as string | undefined,
-        dateTo: req.query.dateTo as string | undefined,
-        limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
-        offset: req.query.offset ? parseInt(req.query.offset as string) : 0,
-      };
-      const result = await communicationEngine.getCommunicationLog(filters);
-      res.json(result);
+      const data = await platinumGet(session, "/api/BillingDebt/communication-log", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to fetch communication log", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
   app.get("/api/communications/scheduled", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const filters = {
-        accountNo: req.query.accountNo as string | undefined,
-        timelineId: req.query.timelineId ? parseInt(req.query.timelineId as string) : undefined,
-        status: req.query.status as string | undefined,
-        limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
-        offset: req.query.offset ? parseInt(req.query.offset as string) : 0,
-      };
-      const result = await communicationEngine.getScheduledCommunications(filters);
-      res.json(result);
+      const data = await platinumGet(session, "/api/BillingDebt/communication-scheduled", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to fetch scheduled communications", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
   app.get("/api/communications/stats", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const stats = await communicationEngine.getDeliveryStats();
-      res.json(stats);
+      const data = await platinumGet(session, "/api/BillingDebt/communication-stats");
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to fetch delivery stats", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
   // =====================================================
-  // INTELLIGENCE & ANALYTICS ROUTES
+  // INTELLIGENCE & ANALYTICS ROUTES (Platinum API Proxy)
   // =====================================================
 
   app.get("/api/analytics/debt-overview", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
       if (!requireLegalAdmin(session, res)) return;
-      const data = await analyticsEngine.getDebtOverview(session);
-      res.json(data);
+      const data = await platinumGet(session, "/api/BillingDashboard/debt-overview", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to fetch debt overview", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
@@ -7877,10 +7702,10 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
     try {
       const session = requireAuth(req, res); if (!session) return;
       if (!requireLegalAdmin(session, res)) return;
-      const data = await analyticsEngine.getAgingAnalysis(session);
-      res.json(data);
+      const data = await platinumGet(session, "/api/BillingDashboard/aging-analysis", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to fetch aging analysis", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
@@ -7888,10 +7713,10 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
     try {
       const session = requireAuth(req, res); if (!session) return;
       if (!requireLegalAdmin(session, res)) return;
-      const data = await analyticsEngine.getRecoveryStats();
-      res.json(data);
+      const data = await platinumGet(session, "/api/BillingDashboard/recovery-stats", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to fetch recovery stats", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
@@ -7899,10 +7724,10 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
     try {
       const session = requireAuth(req, res); if (!session) return;
       if (!requireLegalAdmin(session, res)) return;
-      const data = await analyticsEngine.getLegalPipeline();
-      res.json(data);
+      const data = await platinumGet(session, "/api/BillingDashboard/legal-pipeline", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to fetch legal pipeline", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
@@ -7910,10 +7735,10 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
     try {
       const session = requireAuth(req, res); if (!session) return;
       if (!requireLegalAdmin(session, res)) return;
-      const data = await analyticsEngine.getAttorneyPerformance(session);
-      res.json(data);
+      const data = await platinumGet(session, "/api/BillingDashboard/attorney-performance", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to fetch attorney performance", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
@@ -7921,10 +7746,10 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
     try {
       const session = requireAuth(req, res); if (!session) return;
       if (!requireLegalAdmin(session, res)) return;
-      const data = await analyticsEngine.getRiskDistribution();
-      res.json(data);
+      const data = await platinumGet(session, "/api/BillingDashboard/risk-distribution", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to fetch risk distribution", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
@@ -7932,10 +7757,10 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
     try {
       const session = requireAuth(req, res); if (!session) return;
       if (!requireLegalAdmin(session, res)) return;
-      const data = await analyticsEngine.getPredictiveForecasting();
-      res.json(data);
+      const data = await platinumGet(session, "/api/BillingDashboard/predictive-forecasting", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to fetch predictive forecasting", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
@@ -7943,10 +7768,10 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
     try {
       const session = requireAuth(req, res); if (!session) return;
       if (!requireLegalAdmin(session, res)) return;
-      const data = await analyticsEngine.getGeographicDistribution(session);
-      res.json(data);
+      const data = await platinumGet(session, "/api/BillingDashboard/geographic-distribution", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(500).json({ message: "Failed to fetch geographic distribution", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 

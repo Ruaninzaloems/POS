@@ -1,0 +1,179 @@
+Update the project standards and folder structure so this project always stays Platinum API-only, Angular-ready, and deployment-ready.
+
+Non-negotiable project rules:
+
+Platinum APIs only.
+Use only Platinum APIs for all reads and writes.
+No local database.
+No SQLite.
+No JSON files as storage.
+No mock persistence.
+No fallback data in live flows.
+
+No business data may live only in frontend state.
+All important process results, statuses, files, audit entries, approvals, and run outputs must be persisted through Platinum APIs.
+
+Keep the frontend Angular-ready at all times.
+Even if the current UI is React, structure the app so migration to Angular is easy and low-risk.
+
+Always deployment-ready.
+The codebase must remain production-structured after every change.
+No temporary hacks.
+No dev-only shortcuts left behind.
+
+Project structure rules:
+
+Use feature-based folders:
+
+config
+
+section129
+
+handover
+
+enquiries
+
+reports
+
+dashboard
+
+shared
+
+core
+
+Put all API logic in centralized service files.
+
+Put all business rules in plain TypeScript services, not in components.
+
+Keep components presentational where possible.
+
+Keep models, DTOs, validation schemas, and permissions in reusable framework-neutral files.
+
+Keep routes centralized and feature-based.
+
+Keep environment config clean for dev, qa, uat, prod.
+
+Angular-ready rules:
+
+No React-only architecture decisions that are hard to migrate.
+
+Minimize custom hooks for business logic.
+
+Keep forms, validation, state, and API mapping framework-neutral.
+
+Use typed request and response models everywhere.
+
+Build screens as container + reusable child components.
+
+Keep shared UI primitives reusable and easy to recreate in Angular.
+
+Avoid React libraries that lock the project into React-specific patterns.
+
+API-only enforcement rules:
+
+Any feature that needs data must first check for a Platinum API.
+
+If the API does not exist, fail clearly and log it as a missing Platinum dependency.
+
+Never create a local database workaround.
+
+Never simulate successful processing if Platinum integration is missing.
+
+Never hardcode live business data.
+
+Deployment-ready rules:
+
+Ensure clean build with no warnings that affect production quality.
+
+Keep config externalized by environment.
+
+Ensure error handling is production-safe.
+
+Ensure loading, empty, error, and retry states exist on all API-backed screens.
+
+Ensure all routes, services, and modules can run in a production deployment without code changes.
+
+Remove dead code, unused files, and temporary test scaffolding after each change.
+
+Mandatory quality gate after every development task:
+
+After each change, run a compliance review and confirm all of the following:
+
+Platinum APIs only were used
+
+no local database was introduced
+
+no mock or fallback persistence was introduced
+
+Angular-ready structure was preserved
+
+deployment-ready structure was preserved
+
+business logic remains outside UI components
+
+API contracts remain typed
+
+environment handling still works correctly
+
+no feature was built in a way that blocks future Angular migration
+
+Required process after every task:
+
+Implement the change
+
+Review affected files
+
+Check for any local storage/database usage
+
+Check for any mock or fallback data
+
+Check Angular-readiness
+
+Check deployment-readiness
+
+Report compliance result
+
+Add a permanent project guardrail document in the repo, such as:
+PROJECT_IMPLEMENTATION_RULES.md
+
+It must state:
+
+Platinum API only
+
+no local database ever
+
+Angular-ready architecture always
+
+deployment-ready code always
+
+post-change compliance review required after every development task
+
+Also add a lightweight developer checklist file, such as:
+POST_CHANGE_CHECKLIST.md
+
+Checklist items:
+
+Used Platinum API only
+
+No local DB added
+
+No fallback data added
+
+Business logic kept out of UI
+
+Typed DTOs updated
+
+Angular-ready structure preserved
+
+Deployment-ready structure preserved
+
+Errors/loading states handled
+
+Dead code removed
+
+Compliance review completed
+
+Final instruction:
+
+From now on, treat these rules as permanent project standards.
+Before finishing any task, always verify the project still complies with all of them and report any violation immediately.
