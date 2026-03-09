@@ -225,12 +225,13 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
     this.postErrors.set([]);
     this.completedLines.set([]);
 
+    let virtualCashierId: number | null = null;
+
     try {
       const tx = this.transaction()!;
       const user = this.auth.user();
 
       this.postingStatus.set('Creating virtual session...');
-      let sessionId: number | null = null;
       try {
         const sessionResult: any = await firstValueFrom(
           this.api.post('/api/platinum/direct-deposit-allocation/create-virtual-session', {
@@ -238,60 +239,92 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
             userId: user?.user_ID || 0,
           })
         );
-        sessionId = sessionResult?.sessionId || sessionResult?.id || null;
+        virtualCashierId = sessionResult?.virtualCashierId || sessionResult?.sessionId || sessionResult?.id || null;
       } catch {}
 
       const allLines = this.lines();
-      const completed: any[] = [];
-      const errors: string[] = [];
+      const batchLines = allLines.map(line => ({
+        accountId: line.accountId,
+        accountNo: line.accountNo,
+        amount: line.amount,
+        allocationType: line.allocationType || 'ACCOUNT',
+        name: line.name,
+        description: line.description,
+      }));
 
-      for (let i = 0; i < allLines.length; i++) {
-        const line = allLines[i];
-        this.postingStatus.set(`Processing ${i + 1} of ${allLines.length}: ${line.accountNo}...`);
-        try {
-          const result: any = await firstValueFrom(
-            this.api.post('/api/dd-allocation/submit-batch', {
-              posItemId: tx.posItem_ID,
-              accountId: line.accountId,
-              accountNo: line.accountNo,
-              amount: line.amount,
-              allocationType: line.allocationType,
-              userId: user?.user_ID || 0,
-            })
-          );
-          completed.push({
-            ...line,
-            receiptNo: result?.receiptNo || result?.receiptNumber || null,
-            receiptId: result?.receiptId || null,
-          });
-        } catch (e: any) {
-          errors.push(`${line.accountNo}: ${e?.error?.message || e?.message || 'Allocation failed'}`);
+      this.postingStatus.set(`Submitting ${allLines.length} allocation line(s)...`);
+
+      const txDate = tx.dateOfTransaction || new Date().toISOString();
+      const now = new Date();
+      const finYear = now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear();
+
+      const result: any = await firstValueFrom(
+        this.api.post('/api/dd-allocation/submit-batch', {
+          posItemId: tx.posItem_ID,
+          reconId: tx.bankReconID,
+          financialYear: finYear,
+          transactionDate: txDate,
+          transactionNote: tx.note || tx.reference || '',
+          lines: batchLines,
+        })
+      );
+
+      const jobId = result?.jobId;
+      if (jobId) {
+        this.postingStatus.set('Processing allocation batch...');
+        const pollResult = await this.pollJobStatus(jobId);
+
+        if (pollResult.status === 'COMPLETED' || pollResult.status === 'PARTIAL') {
+          this.completedLines.set(pollResult.results || allLines.map(l => ({ ...l })));
+          this.postErrors.set(pollResult.errors || []);
+          this.postComplete.set(true);
+
+          if ((pollResult.errors || []).length === 0) {
+            this.toast.success(`Successfully allocated ${pollResult.completedLines || allLines.length} line(s)`);
+          } else {
+            this.toast.error(`Completed with ${(pollResult.errors || []).length} error(s)`);
+          }
+        } else {
+          this.postErrors.set(pollResult.errors || ['Batch processing failed']);
+          this.postComplete.set(true);
+          this.toast.error('Batch allocation failed');
         }
-      }
-
-      if (sessionId) {
-        try {
-          await firstValueFrom(
-            this.api.post('/api/platinum/direct-deposit-allocation/close-virtual-session', { sessionId })
-          );
-        } catch {}
-      }
-
-      this.completedLines.set(completed);
-      this.postErrors.set(errors);
-      this.postComplete.set(true);
-
-      if (errors.length === 0) {
-        this.toast.success(`Successfully allocated ${completed.length} line(s)`);
       } else {
-        this.toast.error(`Completed with ${errors.length} error(s)`);
+        this.completedLines.set(allLines.map(l => ({ ...l })));
+        this.postComplete.set(true);
+        this.toast.success(`Allocation submitted successfully`);
       }
     } catch (e: any) {
       this.toast.error(e?.error?.message || e?.message || 'Allocation failed');
     } finally {
+      if (virtualCashierId) {
+        try {
+          await firstValueFrom(
+            this.api.post('/api/platinum/direct-deposit-allocation/close-virtual-session', { sessionId: virtualCashierId })
+          );
+        } catch {}
+      }
       this.posting.set(false);
       this.postingStatus.set('');
     }
+  }
+
+  private async pollJobStatus(jobId: string, maxAttempts = 30, intervalMs = 2000): Promise<any> {
+    for (let i = 0; i < maxAttempts; i++) {
+      await new Promise(resolve => setTimeout(resolve, intervalMs));
+      try {
+        const status: any = await firstValueFrom(
+          this.api.get(`/api/dd-allocation/job/${jobId}`)
+        );
+        this.postingStatus.set(`Processing: ${status.completedLines || 0} of ${status.totalLines || '?'} lines...`);
+        if (status.status === 'COMPLETED' || status.status === 'PARTIAL' || status.status === 'FAILED') {
+          return status;
+        }
+      } catch {
+        break;
+      }
+    }
+    return { status: 'FAILED', errors: ['Job polling timed out'] };
   }
 
   goBack(): void {
