@@ -1542,6 +1542,15 @@ export async function platinumDDClearanceAutocomplete(searchTerm: string): Promi
     return platinumFetch(`/api/platinum/direct-deposit-allocation/get-clearance-autocomplete?searchTerm=${encodeURIComponent(searchTerm)}`);
 }
 
+export async function platinumBillingAutocomplete(search: string, type: string = 'accountNumber'): Promise<{ displayItem: string; accountId: number }[]> {
+    const data = await platinumFetch(`/api/platinum/billing-enquiry/autocomplete?search=${encodeURIComponent(search)}&type=${encodeURIComponent(type)}`);
+    if (Array.isArray(data)) return data;
+    if (data?.value && Array.isArray(data.value)) return data.value;
+    if (data?.results && Array.isArray(data.results)) return data.results;
+    if (data?.items && Array.isArray(data.items)) return data.items;
+    return [];
+}
+
 export async function platinumSearchClearanceIds(clearanceId: string): Promise<string[]> {
     return platinumFetch(`/api/platinum/billing-payment-clearance/get-clearanceids?clearanceId=${encodeURIComponent(clearanceId)}`);
 }

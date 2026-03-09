@@ -13,8 +13,8 @@ import { HelpTip } from '@/components/ui/help-tip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { platinumGetBankReconPosItemList, platinumCheckSelectedItemProcessed, platinumSearchAccountsPayment, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, fetchAccounts, fetchActiveFinYear, fetchBulkAllocationList, fetchBulkProgressJobAccountDetails, submitDDAllocationBatch, pollDDAllocationJob, searchByBankStatementNote, fetchMiscPaymentGroups, fetchInstitutions, platinumDDClearanceAutocomplete, platinumGetClearanceData } from '@/lib/external-api';
-import { autocomplete as billingAutocomplete, searchAccounts as billingEnquirySearch, getAccountBalance } from '@/lib/enquiries-service';
+import { platinumGetBankReconPosItemList, platinumCheckSelectedItemProcessed, platinumSearchAccountsPayment, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, fetchAccounts, fetchActiveFinYear, fetchBulkAllocationList, fetchBulkProgressJobAccountDetails, submitDDAllocationBatch, pollDDAllocationJob, searchByBankStatementNote, fetchMiscPaymentGroups, fetchInstitutions, platinumDDClearanceAutocomplete, platinumGetClearanceData, platinumBillingAutocomplete } from '@/lib/external-api';
+import { searchAccounts as billingEnquirySearch, getAccountBalance } from '@/lib/enquiries-service';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { usePos } from '@/lib/pos-state';
 import { useToast } from '@/hooks/use-toast';
@@ -1120,7 +1120,7 @@ async function searchForSuggestions(note: string, reference: string, transaction
     }
 
     searchPromises.push(
-      safe(() => billingAutocomplete(erf.erf.padStart(8, '0'), 'erfNumber')).then((items: any[]) => {
+      safe(() => platinumBillingAutocomplete(erf.erf.padStart(8, '0'), 'erfNumber')).then((items: any[]) => {
         for (const item of items.slice(0, 10)) {
           if (item.displayItem && !item.sgNumber) item.sgNumber = item.displayItem;
           if (item.displayItem) {
@@ -1243,7 +1243,7 @@ async function searchForSuggestions(note: string, reference: string, transaction
       })
     );
     searchPromises.push(
-      safe(() => billingAutocomplete(nameTerm, 'nameCompany')).then((suggestions: any[]) => {
+      safe(() => platinumBillingAutocomplete(nameTerm, 'nameCompany')).then((suggestions: any[]) => {
         const validSugs = (suggestions || []).filter((s: any) => s.accountId && s.accountId > 0);
         for (const sug of validSugs.slice(0, 5)) {
           const display = sug.displayItem || '';
@@ -1753,7 +1753,7 @@ async function searchForSuggestions(note: string, reference: string, transaction
           })
         );
         aiSearches.push(
-          safe(() => billingAutocomplete(name, 'nameCompany')).then((suggestions: any[]) => {
+          safe(() => platinumBillingAutocomplete(name, 'nameCompany')).then((suggestions: any[]) => {
             const validSugs = (suggestions || []).filter((s: any) => s.accountId && s.accountId > 0);
             for (const sug of validSugs.slice(0, 5)) {
               const display = sug.displayItem || '';

@@ -36,7 +36,9 @@ The unmatched queue page features bulk selection (checkboxes with Select All for
 
 **Comprehensive ERF Parsing**: 9 regex patterns handle: `ERF 234/12` (portion), `ERF158 PTN19 GEORGE` (PTN), `ERF 22468 UNIT 27 GE` (unit), `ERF 24982 - GEORG` (dash), `ERF69GEORGE` (glued area), `Erf: 19481` (colon), `ERF NO 14783` / `ERF NR 5031` (keywords), and `ACC NO- 31927 ERF 286` (combined). Area normalization maps abbreviations (GRG→George, HB→Herold Bay, HA→Haarlem, GE→George, PACALTS→Pacaltsdorp, BLANC→Blanco) and strips trailing noise (DEPOSIT/DEPO/WATER/DEP/CONN). Multi-word areas detected: Le Grand Estate, Herold Bay. Tested against 202 real bank descriptions.
 
-**ERF Search Timeout Handling**: `fetchAccounts` (BillingEnquiry/EnquiryResults) wrapped in `timedFetchAccounts` with 10s timeout (returns `[]` on timeout). `platinumSearchAccountsPayment` runs in parallel as faster alternative. History enrichment calls `addResult` immediately with raw data, then attempts 5s-bounded enrichment asynchronously. Overall 15s search timeout bounds all searches.
+**ERF Search Timeout Handling**: `fetchAccounts` (BillingEnquiry/EnquiryResults) wrapped in `timedFetchAccounts` with 20s timeout (returns `[]` on timeout). `platinumSearchAccountsPayment` runs in parallel as faster alternative. History enrichment calls `addResult` immediately with raw data, then attempts 10s-bounded enrichment asynchronously. Overall 45s search timeout bounds all searches.
+
+**Dual Fetch Pipelines**: The codebase has two fetch systems: `enquiries-service.ts` (`fetchWithTimeout`, 15s AbortController) used by the General Enquiries page, and `external-api.ts` (`platinumFetch`, 60s timeout) used by DD auto-match and other operational calls. Auto-match must use `platinumBillingAutocomplete` from `external-api.ts` (not the `autocomplete` from `enquiries-service.ts`) because the browser's 6-connection-per-origin limit queues fast requests behind slow API calls, causing the 15s AbortController to fire before requests even start.
 
 Page/page-size changes abort any running auto-match searches and reset all state via `cancelAutoMatch()`.
 
