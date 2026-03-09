@@ -298,10 +298,10 @@ export function PaymentDrawer() {
            <p className="text-sm text-muted-foreground">Touch-enabled checkout</p>
         </div>
         <div className="flex gap-2">
-            <Button variant="outline" size="icon" onClick={() => setShowDropBox(true)} title="Drop Box" data-testid="button-drop-box">
+            <Button variant="outline" size="icon" onClick={() => setShowDropBox(true)} title="Drop Box" data-testid="button-drop-box" tabIndex={-1}>
                 <Box className="w-5 h-5 text-amber-600" />
             </Button>
-            <Button variant="outline" size="icon" onClick={() => setShowHistory(true)} title="Transaction History">
+            <Button variant="outline" size="icon" onClick={() => setShowHistory(true)} title="Transaction History" tabIndex={-1}>
                 <History className="w-5 h-5 text-muted-foreground" />
             </Button>
             <Button 
@@ -310,6 +310,7 @@ export function PaymentDrawer() {
                 onClick={() => setShowDayEnd(true)} 
                 title="Day End Reconciliation"
                 className={dayEndStatus === 'RECONCILED' ? 'opacity-50' : ''}
+                tabIndex={-1}
             >
                 <Lock className="w-5 h-5 text-muted-foreground" />
             </Button>
@@ -342,6 +343,7 @@ export function PaymentDrawer() {
               className="mt-1.5 h-7 text-xs border-current/30 hover:bg-current/5"
               onClick={() => setShowDropBox(true)}
               data-testid="button-drop-from-warning"
+              tabIndex={-1}
             >
               <Box className="w-3 h-3 mr-1" /> Do a Drop
             </Button>
@@ -1319,6 +1321,7 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
           <button
             onClick={() => setDesktopTab('items')}
             className={`flex-1 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5 relative ${desktopTab === 'items' ? 'bg-white shadow-sm text-[var(--pos-accent)]' : 'text-slate-500 hover:text-slate-700'}`}
+            tabIndex={-1}
           >
             Items ({transactionItems.length})
             {hasDirectIncomeIssues && <span className="w-2 h-2 bg-amber-400 rounded-full absolute -top-0.5 -right-0.5" />}
@@ -1327,6 +1330,7 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
           <button
             onClick={() => setDesktopTab('payment')}
             className={`flex-1 rounded-lg text-sm font-medium transition-all ${desktopTab === 'payment' ? 'bg-white shadow-sm text-[var(--pos-accent)]' : 'text-slate-500 hover:text-slate-700'}`}
+            tabIndex={-1}
           >
             Payment
           </button>
@@ -1456,6 +1460,7 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
                       onClick={() => setPerItemSplitMode(!perItemSplitMode)}
                       className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all border ${perItemSplitMode ? 'bg-violet-50 border-violet-300 text-violet-700' : 'bg-[#F7F7F7] border-[#D6D6D6] text-slate-500 hover:bg-[#F2F4F7]'}`}
                       data-testid="button-toggle-per-item-split"
+                      tabIndex={-1}
                     >
                       <span className="flex items-center gap-1.5">
                         <ArrowRight className="w-3.5 h-3.5" />
@@ -1547,6 +1552,7 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
                     onClick={handlePayExact}
                     className="w-full h-10 gap-2 text-sm font-semibold"
                     data-testid="button-pay-exact-desktop"
+                    tabIndex={-1}
                   >
                     <Coins className="w-4 h-4" />
                     Pay Exact Amount (R {Math.max(0, totalDue - (activeInput === 'cash' ? payment.cardAmount : payment.cashAmount)).toFixed(2)})
