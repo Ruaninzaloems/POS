@@ -1104,7 +1104,7 @@ export async function registerRoutes(
   app.post("/api/platinum/billing-payment/search-accounts", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const data = await platinumPost(session, "/api/billing-payment/search-accounts", req.body, undefined, { timeout: 55000 });
+      const data = await platinumPost(session, "/api/billing-payment/search-accounts", req.body, undefined, { timeout: 20000 });
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2293,7 +2293,7 @@ export async function registerRoutes(
         if (erfNumber) {
           console.log(`[enquiry-results] Trying Platinum API with erfNumber...`);
           try {
-            const erfResult = await platinumPost(session, "/api/BillingEnquiry/EnquiryResults", { erfNumber });
+            const erfResult = await platinumPost(session, "/api/BillingEnquiry/EnquiryResults", { erfNumber }, undefined, { timeout: 12000 });
             const erfAccounts = Array.isArray(erfResult) ? erfResult : (erfResult && !erfResult._error ? [erfResult] : []);
             if (erfAccounts.length > 0) {
               console.log(`[enquiry-results] ERF search found ${erfAccounts.length} matching accounts`);
@@ -2319,7 +2319,7 @@ export async function registerRoutes(
         return res.json([]);
       }
       console.log(`[enquiry-results] Search body:`, JSON.stringify(searchBody));
-      const data = await platinumPost(session, "/api/BillingEnquiry/EnquiryResults", searchBody);
+      const data = await platinumPost(session, "/api/BillingEnquiry/EnquiryResults", searchBody, undefined, { timeout: 15000 });
       const count = Array.isArray(data) ? data.length : (data?._error ? 'ERROR' : '1');
       console.log(`[enquiry-results] Results: ${count}`);
       handlePlatinumResult(res, data);

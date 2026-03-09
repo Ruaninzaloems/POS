@@ -147,7 +147,7 @@ function isUserSpecificPath(path: string): boolean {
 }
 
 let activeRequests = 0;
-const MAX_CONCURRENT_REQUESTS = 6;
+const MAX_CONCURRENT_REQUESTS = 20;
 const requestQueue: Array<{ resolve: () => void }> = [];
 
 async function acquireSlot(): Promise<void> {
