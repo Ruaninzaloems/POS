@@ -273,7 +273,7 @@ export class ViewReceiptsComponent implements OnInit {
       const isMisc = (receipt as any).isMiscPayment === true || (receipt as any).isMiscPayment === 1;
       const endpoint = isMisc ? '/api/platinum/billing-payment/print-miscellaneous-receipt' : '/api/platinum/billing-payment/print-receipt';
       const res: any = await firstValueFrom(this.api.post(endpoint, {
-        serialNos: [Number(serialNo)], receiptNos: receiptNo ? [receiptNo] : [], reprint: true
+        ids: [Number(serialNo)], receiptNos: receiptNo ? [receiptNo] : [], isReprint: true
       }));
       if (res?.base64 || res?.fileContents) {
         const b64 = res.base64 || res.fileContents;
@@ -301,7 +301,7 @@ export class ViewReceiptsComponent implements OnInit {
     this.bankNoteSearching.set(true);
     this.bankNoteResults.set([]);
     try {
-      const results: any = await firstValueFrom(this.api.post('/api/platinum/bank-statement-notes', { search: this.bankNoteSearchText() }));
+      const results: any = await firstValueFrom(this.api.post('/api/platinum/view-receipt/search-by-eft-description', { description: this.bankNoteSearchText() }));
       const items = Array.isArray(results) ? results : (results?.items || []);
       this.bankNoteResults.set(items);
       if (items.length === 0) {
@@ -318,17 +318,17 @@ export class ViewReceiptsComponent implements OnInit {
 
   async handleEftSearch(): Promise<void> {
     if (!this.eftAccountSearch()) {
-      this.toast.error('Please enter an account ID for the EFT search.');
+      this.toast.error('Please enter an account number for the EFT search.');
       return;
     }
     this.eftSearching.set(true);
     this.eftResults.set([]);
     try {
-      const results: any = await firstValueFrom(this.api.post('/api/platinum/view-receipt/search-by-eft-description', { accountId: this.eftAccountSearch() }));
+      const results: any = await firstValueFrom(this.api.post('/api/platinum/view-receipt/search-by-eft-description', { description: this.eftAccountSearch() }));
       const items = Array.isArray(results) ? results : (results?.items || []);
       this.eftResults.set(items);
       if (items.length === 0) {
-        this.toast.info(`No EFT results found for account "${this.eftAccountSearch()}".`);
+        this.toast.info(`No EFT results found for "${this.eftAccountSearch()}".`);
       } else {
         this.toast.success(`Found ${items.length} EFT result${items.length !== 1 ? 's' : ''}.`);
       }
@@ -355,7 +355,7 @@ export class ViewReceiptsComponent implements OnInit {
     this.dataSource.set('none');
     try {
       const monthNum = parseInt(this.cashbookMonth(), 10);
-      const params: Record<string, string> = { search: this.cashbookSearchText() };
+      const params: Record<string, string> = { searchText: this.cashbookSearchText() };
       if (this.cashbookFinYear()) params['finYear'] = this.cashbookFinYear();
       if (monthNum) params['month'] = String(monthNum);
       const results: any = await firstValueFrom(this.api.get('/api/platinum/cashbook-transaction-trace/search', params));
@@ -393,25 +393,30 @@ export class ViewReceiptsComponent implements OnInit {
   }
 
   loadFromBankNote(item: any): void {
-    const receiptNo = item.receiptNo || item.receipt_No || '';
-    if (receiptNo) {
-      this.receiptFilter.set(String(receiptNo));
-      this.accountFilter.set('');
+    const description = item.description || item.note || '';
+    if (description) {
+      this.accountFilter.set(String(description));
+      this.receiptFilter.set('');
       this.cashierFilter.set('0');
       this.activeTab.set('receipt-search');
       setTimeout(() => this.handleSearch(1), 100);
+    } else {
+      this.toast.info('No description available to search.');
     }
   }
 
   loadFromEft(item: any): void {
-    const receiptNo = item.receiptNo || item.receipt_No || '';
+    const description = item.description || item.note || '';
     const accountNo = item.accountNumber || item.accountNo || item.accountId || '';
-    if (receiptNo) {
-      this.receiptFilter.set(String(receiptNo));
-      this.accountFilter.set('');
-    } else if (accountNo) {
+    if (accountNo) {
       this.accountFilter.set(String(accountNo));
       this.receiptFilter.set('');
+    } else if (description) {
+      this.accountFilter.set(String(description));
+      this.receiptFilter.set('');
+    } else {
+      this.toast.info('No account or description available to search.');
+      return;
     }
     this.cashierFilter.set('0');
     this.activeTab.set('receipt-search');

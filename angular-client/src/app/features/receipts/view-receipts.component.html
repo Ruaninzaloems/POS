@@ -168,14 +168,21 @@
         <h4>Bank Statement Results ({{ bankNoteResults()!.length }})</h4>
         <div class="table-container">
           <table>
-            <thead><tr><th>Reference</th><th>Amount</th><th>Date</th><th>Receipt No</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Description</th><th>Amount</th><th>Transaction Date</th><th>Date Allocated</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
               @for (item of bankNoteResults()!; track $index) {
                 <tr [attr.data-testid]="'row-banknote-' + $index">
-                  <td class="font-mono">{{ item.reference || item.bankReference || '-' }}</td>
+                  <td class="font-mono">{{ item.description || item.note || '-' }}</td>
                   <td class="amount-cell">{{ formatCurrency(item.amount || 0) }}</td>
-                  <td>{{ item.date || item.transactionDate || '-' }}</td>
-                  <td class="font-mono">{{ item.receiptNo || '-' }}</td>
+                  <td>{{ formatReceiptDate(item.dateOfTransaction || '') }}</td>
+                  <td>{{ item.dateAllocated ? formatReceiptDate(item.dateAllocated) : '-' }}</td>
+                  <td>
+                    @if (item.allocated) {
+                      <span class="badge badge-success">Allocated</span>
+                    } @else {
+                      <span class="badge badge-warning">Unallocated</span>
+                    }
+                  </td>
                   <td><button class="btn-outline btn-sm" (click)="loadFromBankNote(item)" [attr.data-testid]="'button-load-banknote-' + $index">Load Receipt</button></td>
                 </tr>
               }
@@ -190,14 +197,21 @@
         <h4>EFT Results ({{ eftResults()!.length }})</h4>
         <div class="table-container">
           <table>
-            <thead><tr><th>Reference</th><th>Amount</th><th>Date</th><th>Receipt No</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Description</th><th>Amount</th><th>Transaction Date</th><th>Date Allocated</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
               @for (item of eftResults()!; track $index) {
                 <tr [attr.data-testid]="'row-eft-' + $index">
-                  <td class="font-mono">{{ item.reference || item.bankReference || '-' }}</td>
+                  <td class="font-mono">{{ item.description || item.note || '-' }}</td>
                   <td class="amount-cell">{{ formatCurrency(item.amount || 0) }}</td>
-                  <td>{{ item.date || item.transactionDate || '-' }}</td>
-                  <td class="font-mono">{{ item.receiptNo || '-' }}</td>
+                  <td>{{ formatReceiptDate(item.dateOfTransaction || '') }}</td>
+                  <td>{{ item.dateAllocated ? formatReceiptDate(item.dateAllocated) : '-' }}</td>
+                  <td>
+                    @if (item.allocated) {
+                      <span class="badge badge-success">Allocated</span>
+                    } @else {
+                      <span class="badge badge-warning">Unallocated</span>
+                    }
+                  </td>
                   <td><button class="btn-outline btn-sm" (click)="loadFromEft(item)" [attr.data-testid]="'button-load-eft-' + $index">Load Receipt</button></td>
                 </tr>
               }
