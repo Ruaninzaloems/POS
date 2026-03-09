@@ -1937,78 +1937,73 @@ export default function UnmatchedQueue() {
 
   const allItemsCacheRef = useRef<BankReconPosItem[] | null>(null);
   const allItemsLoadingRef = useRef(false);
+  const initialLoadDone = useRef(false);
 
-  const loadData = useCallback(async (pageNum: number, ps?: number) => {
-    setLoading(true);
+  const loadAllItems = useCallback(async (showLoading = true, skipCache = false) => {
+    if (allItemsLoadingRef.current) return;
+    allItemsLoadingRef.current = true;
+    if (showLoading) setLoading(true);
     setError(null);
     try {
-      const result = await platinumGetBankReconPosItemList({
-        page: pageNum,
-        pageSize: ps ?? pageSize,
-        orderby: 'dateOfTransaction',
-        shortDirection: 'desc',
-      });
-      const data = result as any;
-      const fetchedItems: BankReconPosItem[] = Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : [];
-      setItems(fetchedItems);
-      setTotalCount(data?.totalCount ?? fetchedItems.length);
-    } catch (e: any) {
-      console.error("Failed to load bank recon POS items", e);
-      setError(e.message || "Failed to load data from Platinum API");
-    } finally {
-      setLoading(false);
-    }
-  }, [pageSize]);
-
-  const loadAllForSearch = useCallback(async () => {
-    if (allItemsCacheRef.current || allItemsLoadingRef.current) return;
-    allItemsLoadingRef.current = true;
-    setLoading(true);
-    try {
+      const fetchOpts = { page: 1, pageSize: 200, orderby: 'dateOfTransaction', shortDirection: 'desc' };
       const allItems: BankReconPosItem[] = [];
-      const firstResult = await platinumGetBankReconPosItemList({
-        page: 1,
-        pageSize: 200,
-        orderby: 'dateOfTransaction',
-        shortDirection: 'desc',
-      });
+      const firstResult = await platinumGetBankReconPosItemList(fetchOpts, skipCache);
       const firstData = firstResult as any;
       const firstBatch: BankReconPosItem[] = Array.isArray(firstData?.items) ? firstData.items : Array.isArray(firstData) ? firstData : [];
       allItems.push(...firstBatch);
       const total = firstData?.totalCount ?? firstBatch.length;
+
+      setItems(firstBatch);
+      setTotalCount(total);
+      if (showLoading) setLoading(false);
 
       if (total > 200) {
         const remainingPages = Math.ceil((total - 200) / 200);
         const pagePromises = [];
         for (let p = 2; p <= remainingPages + 1; p++) {
           pagePromises.push(
-            platinumGetBankReconPosItemList({
-              page: p,
-              pageSize: 200,
-              orderby: 'dateOfTransaction',
-              shortDirection: 'desc',
-            }).catch(() => ({ items: [] }))
+            platinumGetBankReconPosItemList({ ...fetchOpts, page: p }, skipCache).catch((err: any) => {
+              console.warn(`Failed to load page ${p}:`, err?.message);
+              return { items: [], _partial: true };
+            })
           );
         }
         const results = await Promise.all(pagePromises);
+        let hasPartial = false;
         for (const r of results) {
           const d = r as any;
+          if (d._partial) { hasPartial = true; continue; }
           const batch: BankReconPosItem[] = Array.isArray(d?.items) ? d.items : Array.isArray(d) ? d : [];
           allItems.push(...batch);
         }
+        if (hasPartial) {
+          console.warn(`[UnmatchedQueue] Some pages failed to load. Loaded ${allItems.length} of ${total} items.`);
+        }
       }
       allItemsCacheRef.current = allItems;
+      setItems(allItems);
+      setTotalCount(allItems.length);
     } catch (e: any) {
-      console.error("Failed to load all items for search", e);
+      console.error("Failed to load bank recon POS items", e);
+      setError(e.message || "Failed to load data from Platinum API");
     } finally {
       allItemsLoadingRef.current = false;
       setLoading(false);
     }
   }, []);
 
+  const reloadAllItems = useCallback(() => {
+    allItemsCacheRef.current = null;
+    allItemsLoadingRef.current = false;
+    loadAllItems(true, true);
+  }, [loadAllItems]);
+
   useEffect(() => {
-    loadData(page);
-  }, [page, pageSize, loadData]);
+    if (!initialLoadDone.current) {
+      initialLoadDone.current = true;
+      loadAllItems();
+    }
+  }, [loadAllItems]);
 
   const changePage = useCallback((newPage: number | ((prev: number) => number)) => {
     cancelAutoMatch();
@@ -2024,39 +2019,40 @@ export default function UnmatchedQueue() {
   }, [page, pageSize, cancelAutoMatch]);
 
   useEffect(() => {
-    if (searchTerm.trim().length >= 2 && !allItemsCacheRef.current) {
-      loadAllForSearch();
-    }
-  }, [searchTerm, loadAllForSearch]);
+    setPage(1);
+  }, [searchTerm]);
 
-  const sourceItems = searchTerm.trim().length >= 2 && allItemsCacheRef.current
-    ? allItemsCacheRef.current
-    : items;
-
-  const filtered = sourceItems.filter(item => {
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      const matchesSearch =
-        (item.note || '').toLowerCase().includes(term) ||
-        (item.reference || '').toLowerCase().includes(term) ||
-        item.amount.toString().includes(searchTerm) ||
-        item.posItem_ID.toString().includes(searchTerm) ||
-        ((item as any).dateOfTransaction || '').toLowerCase().includes(term);
-      if (!matchesSearch) return false;
-    }
-    if (txnDateFrom && txnDateTo) {
-      const date = new Date(item.dateOfTransaction);
-      if (isValid(date)) {
-        if (!isWithinInterval(date, {
-          start: startOfDay(txnDateFrom),
-          end: endOfDay(txnDateTo)
-        })) return false;
+  const filtered = useMemo(() => {
+    return items.filter(item => {
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        const matchesSearch =
+          (item.note || '').toLowerCase().includes(term) ||
+          (item.reference || '').toLowerCase().includes(term) ||
+          item.amount.toString().includes(searchTerm) ||
+          item.posItem_ID.toString().includes(searchTerm) ||
+          ((item as any).dateOfTransaction || '').toLowerCase().includes(term);
+        if (!matchesSearch) return false;
       }
-    }
-    return true;
-  });
+      if (txnDateFrom && txnDateTo) {
+        const date = new Date(item.dateOfTransaction);
+        if (isValid(date)) {
+          if (!isWithinInterval(date, {
+            start: startOfDay(txnDateFrom),
+            end: endOfDay(txnDateTo)
+          })) return false;
+        }
+      }
+      return true;
+    });
+  }, [items, searchTerm, txnDateFrom, txnDateTo]);
 
-  const unmatchedFiltered = useMemo(() => filtered.filter(i => !i.billingAllocated), [filtered]);
+  const paginatedFiltered = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, page, pageSize]);
+
+  const unmatchedFiltered = useMemo(() => paginatedFiltered.filter(i => !i.billingAllocated), [paginatedFiltered]);
   const allUnmatchedSelected = unmatchedFiltered.length > 0 && unmatchedFiltered.every(i => selectedIds.has(i.posItem_ID));
 
   const toggleSelectAll = () => {
@@ -2210,8 +2206,9 @@ export default function UnmatchedQueue() {
     setSearchTerm('');
   };
 
-  const isSearchActive = searchTerm.trim().length >= 2 && allItemsCacheRef.current !== null;
-  const totalPages = isSearchActive ? 1 : Math.ceil(totalCount / pageSize);
+  const isSearchActive = searchTerm.trim().length > 0;
+  const displayTotalCount = isSearchActive ? filtered.length : (allItemsCacheRef.current ? items.length : totalCount);
+  const totalPages = Math.ceil(displayTotalCount / pageSize);
 
   const handleAllocateClick = async (posItemId: number, e?: React.MouseEvent, preselectedAccount?: SuggestedMatch) => {
     if (e) e.stopPropagation();
@@ -2333,7 +2330,7 @@ export default function UnmatchedQueue() {
             toast({ title: 'Allocation Successful', description: `POS Item #${tx.posItem_ID} allocated to ${match.accountNo} — ${match.name}` });
             setQuickAllocItem(null);
             setQuickAllocStatus('');
-            loadData(page);
+            reloadAllItems();
             return;
           } else if (jobStatus.status === 'FAILED' || jobStatus.status === 'PARTIAL_FAILURE') {
             const errMsg = jobStatus.errors?.join(', ') || 'Allocation failed';
@@ -2544,7 +2541,7 @@ export default function UnmatchedQueue() {
     }
 
     setBulkAllocRunning(false);
-    loadData(page);
+    reloadAllItems();
   };
 
   const bulkAllocSuccessCount = bulkAllocItems.filter(i => i.status === 'success').length;
@@ -2646,11 +2643,11 @@ export default function UnmatchedQueue() {
   };
 
   const startItem = (page - 1) * pageSize + 1;
-  const endItem = Math.min(page * pageSize, totalCount);
+  const endItem = Math.min(page * pageSize, displayTotalCount);
 
-  const pageUnmatchedCount = filtered.filter(i => !i.billingAllocated).length;
-  const pageAllocatedCount = filtered.filter(i => i.billingAllocated).length;
-  const pageTotalAmount = filtered.reduce((sum, i) => sum + (i.amount || 0), 0);
+  const pageUnmatchedCount = paginatedFiltered.filter(i => !i.billingAllocated).length;
+  const pageAllocatedCount = paginatedFiltered.filter(i => i.billingAllocated).length;
+  const pageTotalAmount = paginatedFiltered.reduce((sum, i) => sum + (i.amount || 0), 0);
 
   return (
     <>
@@ -2664,7 +2661,7 @@ export default function UnmatchedQueue() {
               </div>
               <div>
                 <h1 className="text-base sm:text-xl font-bold text-[#2E2E2E]" data-testid="text-page-title">Direct Deposits: Manual Allocation <HelpTip text="Unallocated EFT and direct deposits awaiting manual allocation to consumer accounts." side="right" /></h1>
-                <p className="text-xs sm:text-sm text-[#6B6B6B] mt-0.5">Bank Recon POS Items <span className="font-mono font-medium">({totalCount.toLocaleString()} total)</span></p>
+                <p className="text-xs sm:text-sm text-[#6B6B6B] mt-0.5">Bank Recon POS Items <span className="font-mono font-medium">({displayTotalCount.toLocaleString()} total{allItemsLoadingRef.current && items.length > 0 ? ' — loading more...' : ''})</span></p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -2754,7 +2751,7 @@ export default function UnmatchedQueue() {
                 </PopoverContent>
              </Popover>
 
-             <Button variant="outline" size="sm" className="h-11 sm:h-10 px-3 gap-1.5 border-[#D6D6D6]" onClick={() => { allItemsCacheRef.current = null; loadData(page); if (searchTerm.trim().length >= 2) loadAllForSearch(); }} disabled={loading} data-testid="button-refresh">
+             <Button variant="outline" size="sm" className="h-11 sm:h-10 px-3 gap-1.5 border-[#D6D6D6]" onClick={() => reloadAllItems()} disabled={loading} data-testid="button-refresh">
                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
                  <span className="text-xs hidden sm:inline">Refresh</span>
              </Button>
@@ -2781,7 +2778,7 @@ export default function UnmatchedQueue() {
               <span>{pageAllocatedCount} allocated</span>
             </div>
             <div className="flex items-center gap-1.5 text-muted-foreground">
-              <span className="text-slate-400">{isSearchActive ? `${filtered.length} match${filtered.length !== 1 ? 'es' : ''} found` : `on this page (${filtered.length} of ${totalCount.toLocaleString()})`}</span>
+              <span className="text-slate-400">{isSearchActive ? `${filtered.length} match${filtered.length !== 1 ? 'es' : ''} found` : `on this page (${paginatedFiltered.length} of ${displayTotalCount.toLocaleString()})`}</span>
             </div>
             {!autoMatchRunning && pageUnmatchedCount > 0 && (() => {
               const unmatchedNotAnalyzed = unmatchedFiltered.filter(i => !suggestions[i.posItem_ID]).length;
@@ -2829,14 +2826,14 @@ export default function UnmatchedQueue() {
                   <Loader2 className="w-6 h-6 animate-spin text-[var(--pos-accent)] mb-2" />
                   <span className="text-xs text-muted-foreground">Loading deposits...</span>
                 </div>
-              ) : filtered.length === 0 ? (
+              ) : paginatedFiltered.length === 0 ? (
                 <div className="text-center py-16" data-testid="text-empty-state-mobile">
                   <div className="w-14 h-14 rounded-2xl bg-[#F2F4F7] flex items-center justify-center mx-auto mb-3">
                     <Banknote className="w-6 h-6 text-slate-400" />
                   </div>
                   <p className="text-sm text-muted-foreground">{items.length === 0 ? 'No bank deposits found.' : 'No items match your search.'}</p>
                 </div>
-              ) : filtered.map(tx => {
+              ) : paginatedFiltered.map(tx => {
                 const bestMatch = !tx.billingAllocated ? getBestMatch(tx.posItem_ID) : null;
                 const matchInd = !tx.billingAllocated ? getMatchIndicator(tx.posItem_ID) : 'none';
                 const isSelected = selectedIds.has(tx.posItem_ID);
@@ -3054,7 +3051,7 @@ export default function UnmatchedQueue() {
                         <span className="text-xs text-muted-foreground">Loading deposits...</span>
                       </td>
                     </tr>
-                  ) : filtered.length === 0 ? (
+                  ) : paginatedFiltered.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="py-16 text-center" data-testid="text-empty-state">
                         <div className="w-14 h-14 rounded-2xl bg-[#F2F4F7] flex items-center justify-center mx-auto mb-3">
@@ -3063,7 +3060,7 @@ export default function UnmatchedQueue() {
                         <p className="text-sm text-muted-foreground">{items.length === 0 ? 'No bank deposits found.' : 'No items match your search.'}</p>
                       </td>
                     </tr>
-                  ) : filtered.map(tx => {
+                  ) : paginatedFiltered.map(tx => {
                     const matchIndicator = !tx.billingAllocated ? getMatchIndicator(tx.posItem_ID) : 'none';
                     const bestMatch = !tx.billingAllocated ? getBestMatch(tx.posItem_ID) : null;
                     const isSelected = selectedIds.has(tx.posItem_ID);
@@ -3346,7 +3343,7 @@ export default function UnmatchedQueue() {
                       ))}
                     </div>
                     <span className="text-[11px] text-slate-400 hidden lg:inline">
-                      Showing {startItem}–{endItem} of {totalCount.toLocaleString()}
+                      Showing {startItem}–{endItem} of {displayTotalCount.toLocaleString()}
                     </span>
                   </div>
                   {totalPages > 1 && (
@@ -3409,7 +3406,7 @@ export default function UnmatchedQueue() {
                       ))}
                     </div>
                   </div>
-                  <span className="text-[11px] text-slate-400">{startItem}–{endItem} of {totalCount.toLocaleString()}</span>
+                  <span className="text-[11px] text-slate-400">{startItem}–{endItem} of {displayTotalCount.toLocaleString()}</span>
                 </div>
                 {totalPages > 1 && (
                   <div className="flex items-center justify-center gap-1">
@@ -3851,7 +3848,7 @@ export default function UnmatchedQueue() {
                 </Button>
               )}
               {!bulkAllocRunning && bulkAllocDone > 0 && (
-                <Button className="gap-2 flex-1 sm:flex-none h-10 px-6 font-semibold text-sm text-white" style={{ background: bulkAllocFailCount > 0 ? '#f59e0b' : 'var(--pos-accent, #10b981)' }} onClick={() => { setBulkAllocOpen(false); setSelectedIds(new Set()); loadData(page); }} data-testid="bulk-alloc-done">
+                <Button className="gap-2 flex-1 sm:flex-none h-10 px-6 font-semibold text-sm text-white" style={{ background: bulkAllocFailCount > 0 ? '#f59e0b' : 'var(--pos-accent, #10b981)' }} onClick={() => { setBulkAllocOpen(false); setSelectedIds(new Set()); reloadAllItems(); }} data-testid="bulk-alloc-done">
                   <CheckSquare className="w-4 h-4" />
                   {bulkAllocFailCount > 0 ? `Done — ${bulkAllocSuccessCount} Allocated, ${bulkAllocFailCount} Failed` : `Done — ${bulkAllocSuccessCount} Allocated`}
                 </Button>
@@ -3862,7 +3859,7 @@ export default function UnmatchedQueue() {
       </DialogContent>
     </Dialog>
 
-    <Dialog open={allocateDialogPosItemId !== null} onOpenChange={(open) => { if (!open) { setAllocateDialogPosItemId(null); loadData(page); } }}>
+    <Dialog open={allocateDialogPosItemId !== null} onOpenChange={(open) => { if (!open) { setAllocateDialogPosItemId(null); reloadAllItems(); } }}>
       <DialogContent hideCloseButton className="max-w-[100vw] sm:max-w-6xl w-[98vw] h-[100dvh] sm:h-[92vh] sm:max-h-[92vh] overflow-hidden flex flex-col p-0 rounded-none sm:rounded-xl border-0 sm:border bg-white">
         <div className="sr-only"><DialogTitle>Allocate Transaction</DialogTitle><DialogDescription>Allocate direct deposit to accounts</DialogDescription></div>
         {allocateDialogPosItemId && (
@@ -3870,8 +3867,8 @@ export default function UnmatchedQueue() {
             key={allocateDialogKey}
             dialogMode
             dialogPosItemId={allocateDialogPosItemId}
-            onDialogClose={() => { setAllocateDialogPosItemId(null); loadData(page); }}
-            onDialogComplete={() => { setAllocateDialogPosItemId(null); loadData(page); }}
+            onDialogClose={() => { setAllocateDialogPosItemId(null); reloadAllItems(); }}
+            onDialogComplete={() => { setAllocateDialogPosItemId(null); reloadAllItems(); }}
           />
         )}
       </DialogContent>

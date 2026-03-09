@@ -42,6 +42,8 @@ The unmatched queue page features bulk selection (checkboxes with Select All for
 
 Page/page-size changes abort any running auto-match searches and reset all state via `cancelAutoMatch()`.
 
+**Unmatched Queue Performance Optimization**: All items are preloaded into memory on page mount — page 1 (200 items) is shown immediately while remaining pages load in parallel in the background. Once loaded, all filtering, searching, and pagination happens client-side from the in-memory cache (no API calls on page change or search). Server-side caching (30s TTL, scoped by siteId + userId) reduces Platinum API load for repeated fetches. `reloadAllItems()` bypasses cache via `x-skip-cache` header. The `platinumGetBankReconPosItemList` function in `external-api.ts` accepts a `skipCache` parameter. Partial page load failures are logged but don't block the rest.
+
 #### Account Enquiry
 A reusable `AccountEnquiryDialog` component provides comprehensive account enquiry functionalities, integrating various account-related tabs and accessible from different parts of the application.
 

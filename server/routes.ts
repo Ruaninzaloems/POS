@@ -3370,14 +3370,39 @@ export async function registerRoutes(
 
   // --- Direct Deposit Allocation endpoints ---
 
+  const bankReconCache = new Map<string, { data: any; ts: number }>();
+  const BANK_RECON_CACHE_TTL = 30_000;
+
   app.post("/api/platinum/direct-deposit-allocation/get-bank-recon-positem-list", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
+      const siteId = (session as any).siteId || (session as any).site?.id || 'default';
+      const userId = (session as any).userId || (session as any).user?.id || 'anon';
+      const cacheKey = `${siteId}:${userId}:${JSON.stringify(req.body)}`;
+      const skipCache = req.headers['x-skip-cache'] === '1';
+      const cached = !skipCache && bankReconCache.get(cacheKey);
+      if (cached && Date.now() - cached.ts < BANK_RECON_CACHE_TTL) {
+        res.json(cached.data);
+        return;
+      }
       const data = await platinumPost(session, "/api/billing-direct-deposit-allocation/get-bank-recon-positem-list", req.body);
+      if (data && !data._error) {
+        bankReconCache.set(cacheKey, { data, ts: Date.now() });
+        if (bankReconCache.size > 20) {
+          const oldest = [...bankReconCache.entries()].sort((a, b) => a[1].ts - b[1].ts);
+          for (let i = 0; i < 5; i++) bankReconCache.delete(oldest[i][0]);
+        }
+      }
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
+  });
+
+  app.post("/api/platinum/direct-deposit-allocation/invalidate-bank-recon-cache", (req, res) => {
+    const session = requireAuth(req, res); if (!session) return;
+    bankReconCache.clear();
+    res.json({ cleared: true });
   });
 
   app.get("/api/platinum/direct-deposit-allocation/check-selected-item-processed", async (req, res) => {

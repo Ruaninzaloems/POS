@@ -1450,10 +1450,12 @@ export async function platinumPerOfficePrintDepositSlip(data: any): Promise<any>
 
 // --- Direct Deposit Allocation ---
 
-export async function platinumGetBankReconPosItemList(data: any): Promise<any> {
+export async function platinumGetBankReconPosItemList(data: any, skipCache = false): Promise<any> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (skipCache) headers['x-skip-cache'] = '1';
     return platinumFetch(`/api/platinum/direct-deposit-allocation/get-bank-recon-positem-list`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(data),
     });
 }
