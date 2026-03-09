@@ -35,6 +35,7 @@ import HandoverTermination from "@/pages/debt/handover-termination";
 import Section129Config from "@/pages/debt/section129-config";
 import Section129Report from "@/pages/debt/section129-report";
 import HandoverReport from "@/pages/debt/handover-report";
+import SmsLogReport from "@/pages/debt/sms-log-report";
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   constructor(props: { children: ReactNode }) {
@@ -115,6 +116,7 @@ function Router() {
       <Route path="/debt/section129/config" component={Section129Config} />
       <Route path="/debt/section129-report" component={Section129Report} />
       <Route path="/debt/handover-report" component={HandoverReport} />
+      <Route path="/debt/sms-log-report" component={SmsLogReport} />
 
       <Route component={NotFound} />
     </Switch>

@@ -131,6 +131,7 @@ const FRIENDLY_LABELS: Record<string, string> = {
     repaymentPlansAwaitingTerminationAuthorisation: 'Repayment Plans Awaiting Termination Authorisation',
     cutoffHistory: 'Cut-Off History',
     section129ProcessHandovers: 'Section 129 – Process Handovers',
+    handoverTerminationPending: 'Handover Termination Pending',
     declinedJournals: 'Declined Journals',
     journalsPendingReview: 'Journals Pending Review',
     notLinkedService: 'Not Linked Service',
@@ -189,6 +190,7 @@ const SUB_ITEM_ENDPOINT_MAP: Record<string, string> = {
     repaymentPlansAwaitingTerminationAuthorisation: '/api/BillingDashboard/get-repayment-plans-awaiting-termination-authorisation',
     cutoffHistory: '/api/BillingDashboard/get-cutoff-history',
     section129ProcessHandovers: '/api/BillingDashboard/get-section129-process-handovers',
+    handoverTerminationPending: '/api/BillingDashboard/get-handover-termination-pending',
     // Billing sub-items
     billingCyclePreparation: '/api/BillingDashboard/get-billing-cycle-preparation-alerts-table-data',
     consumerBillingRunApprovalPending: '/api/BillingDashboard/get-billing-run-progress-table-data',

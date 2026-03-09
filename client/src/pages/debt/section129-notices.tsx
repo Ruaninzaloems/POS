@@ -29,6 +29,7 @@ import {
   ChevronRight,
   Info,
   Eye,
+  Play,
 } from 'lucide-react';
 import {
   fetchSection129Config,
@@ -37,11 +38,20 @@ import {
   submitSection129FinalRun,
   fetchBillingCycles,
   fetchTowns,
+  fetchSection129RunFiles,
+  downloadSection129File,
   type Section129Config,
   type Section129Run,
+  type Section129RunFile,
 } from '@/lib/external-api';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
-type RunType = 'trial-review' | 'trial-run' | 'final';
+type RunType = 'trial-review' | 'trial-run';
 type HandoverOption = 'account' | 'bulk' | 'rotation';
 type DistributionType = 'email' | 'sms' | 'whatsapp' | 'print' | 'all';
 
@@ -88,6 +98,13 @@ export default function Section129Notices() {
   const [submitting, setSubmitting] = useState(false);
   const [gridPage, setGridPage] = useState(1);
   const gridPageSize = 10;
+
+  const [fileModalOpen, setFileModalOpen] = useState(false);
+  const [fileModalRunId, setFileModalRunId] = useState<number | null>(null);
+  const [runFiles, setRunFiles] = useState<Section129RunFile[]>([]);
+  const [filesLoading, setFilesLoading] = useState(false);
+  const [downloadingFileId, setDownloadingFileId] = useState<number | null>(null);
+  const [finalRunningId, setFinalRunningId] = useState<number | null>(null);
 
   const loadData = useCallback(async () => {
     const results = await Promise.allSettled([
@@ -153,14 +170,9 @@ export default function Section129Notices() {
         mustEmailBePrinted: distributionType === 'email' ? mustEmailBePrinted : undefined,
         handoverOption,
       };
-      let result;
-      if (runType === 'final') {
-        result = await submitSection129FinalRun(params);
-      } else {
-        result = await submitSection129TrialRun(params);
-      }
-      toast({ title: 'Run Submitted', description: `Section 129 ${runType} run #${result.runId} has been submitted successfully.` });
-      setRuns(prev => [result, ...prev]);
+      const result = await submitSection129TrialRun(params);
+      toast({ title: 'Run Submitted', description: `Section 129 ${runType} run has been submitted successfully.` });
+      await loadData();
     } catch (err: any) {
       toast({ title: 'Submission Failed', description: err.message || 'Failed to submit Section 129 run.', variant: 'destructive' });
     } finally {
@@ -186,6 +198,54 @@ export default function Section129Notices() {
     setContactEmail('');
     setDistributionType('email');
     setMustEmailBePrinted(false);
+  };
+
+  const handleOpenFileModal = async (runId: number) => {
+    setFileModalRunId(runId);
+    setFileModalOpen(true);
+    setFilesLoading(true);
+    setRunFiles([]);
+    try {
+      const files = await fetchSection129RunFiles(runId);
+      setRunFiles(files);
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to load run files.', variant: 'destructive' });
+    } finally {
+      setFilesLoading(false);
+    }
+  };
+
+  const handleDownloadFile = async (fileId: number) => {
+    setDownloadingFileId(fileId);
+    try {
+      await downloadSection129File(fileId);
+      toast({ title: 'Download Started', description: 'File download has started.' });
+    } catch (err: any) {
+      toast({ title: 'Download Failed', description: err.message || 'Failed to download file.', variant: 'destructive' });
+    } finally {
+      setDownloadingFileId(null);
+    }
+  };
+
+  const handleFinalRun = async (runId: number) => {
+    setFinalRunningId(runId);
+    try {
+      await submitSection129FinalRun({ runId });
+      toast({ title: 'Final Run Submitted', description: `Section 129 final run for run #${runId} has been submitted successfully.` });
+      await loadData();
+    } catch (err: any) {
+      toast({ title: 'Final Run Failed', description: err.message || 'Failed to submit final run.', variant: 'destructive' });
+    } finally {
+      setFinalRunningId(null);
+    }
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   };
 
   const handleRowClick = (run: Section129Run) => {
@@ -294,7 +354,6 @@ export default function Section129Notices() {
                 <SelectContent>
                   <SelectItem value="trial-review">Trial Review</SelectItem>
                   <SelectItem value="trial-run">Trial Run</SelectItem>
-                  <SelectItem value="final">Final</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -712,10 +771,28 @@ export default function Section129Notices() {
                                     <Eye className="w-3.5 h-3.5" />
                                   </Button>
                                 )}
+                                {(run.status?.toLowerCase().includes('authorized') || run.status?.toLowerCase().includes('approved')) && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                                    onClick={() => handleFinalRun(run.runId)}
+                                    disabled={finalRunningId === run.runId}
+                                    data-testid={`button-final-run-${run.runId}`}
+                                    title="Execute Final Run"
+                                  >
+                                    {finalRunningId === run.runId ? (
+                                      <RotateCcw className="w-3.5 h-3.5 animate-spin" />
+                                    ) : (
+                                      <Play className="w-3.5 h-3.5" />
+                                    )}
+                                  </Button>
+                                )}
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   className="h-7 px-2 text-slate-400 hover:text-white hover:bg-slate-600/30"
+                                  onClick={() => handleOpenFileModal(run.runId)}
                                   data-testid={`button-download-${run.runId}`}
                                 >
                                   <Download className="w-3.5 h-3.5" />
@@ -810,6 +887,68 @@ export default function Section129Notices() {
           </div>
         </div>
       </div>
+
+      <Dialog open={fileModalOpen} onOpenChange={setFileModalOpen}>
+        <DialogContent className="bg-slate-900 border-slate-700 text-white max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <Download className="w-4 h-4 text-cyan-400" />
+              Run #{fileModalRunId} — Files
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[400px] overflow-y-auto">
+            {filesLoading ? (
+              <div className="flex items-center gap-2 text-slate-400 text-sm py-6 justify-center">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Loading files...
+              </div>
+            ) : runFiles.length === 0 ? (
+              <div className="text-center py-6 text-slate-500 text-sm" data-testid="text-no-files">
+                No files found for this run.
+              </div>
+            ) : (
+              runFiles.map((file) => (
+                <div
+                  key={file.fileId}
+                  className="flex items-center justify-between p-3 rounded-lg bg-slate-800/60 border border-slate-700/40"
+                  data-testid={`file-item-${file.fileId}`}
+                >
+                  <div className="flex-1 min-w-0 mr-3">
+                    <p className="text-sm text-white font-medium truncate" data-testid={`text-filename-${file.fileId}`}>
+                      {file.fileName}
+                    </p>
+                    <div className="flex items-center gap-3 mt-1">
+                      <Badge variant="outline" className="text-[10px] border-slate-600 text-slate-400" data-testid={`badge-filetype-${file.fileId}`}>
+                        {file.fileType}
+                      </Badge>
+                      <span className="text-[10px] text-slate-500" data-testid={`text-filesize-${file.fileId}`}>
+                        {formatFileSize(file.fileSize)}
+                      </span>
+                      <span className="text-[10px] text-slate-500" data-testid={`text-filedate-${file.fileId}`}>
+                        {file.dateCreated ? new Date(file.dateCreated).toLocaleDateString() : '—'}
+                      </span>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-3 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 shrink-0"
+                    onClick={() => handleDownloadFile(file.fileId)}
+                    disabled={downloadingFileId === file.fileId}
+                    data-testid={`button-download-file-${file.fileId}`}
+                  >
+                    {downloadingFileId === file.fileId ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Download className="w-3.5 h-3.5" />
+                    )}
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </PosLayout>
   );
 }

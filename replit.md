@@ -45,17 +45,26 @@ A full debt recovery workflow under the "Debt" sidebar group covers Section 129 
 
 **Section 129 Configuration** (`/debt/section129/config`): Admin page for configuring Section 129 notice parameters per financial year. Supports templates (letter + SMS), lapse days (14-99 workdays), notices per file, additional billing cost grid, and attorney rotation with percentage allocation (debtor count or handover amount, must sum to 100%). Landing page with search grid + detail page for add/view.
 
-**Debt Reports**: Two report pages under the Debt sidebar group (dark slate theme):
+**Section 129 Configuration Enforcement**: One-enabled-config-per-FY enforcement with client-side validation and server-side re-check on save.
+
+**Debt Reports**: Three report pages under the Debt sidebar group (dark slate theme):
 - Section 129 Notices Report (`/debt/section129-report`): Filter by FY, month, billing cycle, account, ageing (30-180+ days), amount threshold
 - Handover Report (`/debt/handover-report`): Filter by FY, month, billing cycle, attorney, account
+- SMS Log Report (`/debt/sms-log-report`): Filter by FY, month, billing cycle, account, date range, status (Sent/Failed/Pending). Grid shows date, account, mobile, template, status, message, sent by.
 
-**General Enquiries – Debt Tabs**: Account Enquiry Dialog has Section 129 and Handover tabs in the OTHER group. Section 129 tab shows notices per billing period with FY filter, status badges, and paginated table. Handover tab shows handover list with FY filter and transaction detail.
+**Run File Management**: Section 129 Notices page includes per-run file listing modal with individual download/reprint buttons. Download route uses binary passthrough (not JSON proxy) for file streaming.
 
-**Dashboard Debt Notification**: "Section 129 – Process Handovers" alert added to billing dashboard under Debt category. Uses `get-section129-process-handovers` endpoint. Severity classified as 'warning'.
+**General Enquiries – Debt Tabs**: Account Enquiry Dialog has Section 129 and Handover tabs in the OTHER group. Section 129 tab shows notices per billing period with FY + month filter, status badges, paginated table, and download/reprint buttons per notice. Handover tab shows handover list with FY + month filter and transaction detail.
 
-**API Gap Analysis**: Comprehensive mapping of all spec operations to Platinum API endpoints completed. 24 operations fully covered, 11 need new Platinum endpoints (config save/update, templates, file management, S129 report), 10 need backend processing rules, 4 need database schema changes. Gap analysis documented in `.local/session_plan.md`.
+**Dashboard Debt Notifications**: Two Debt category notifications on billing dashboard:
+- "Section 129 – Process Handovers" (`get-section129-process-handovers`, warning severity)
+- "Handover Termination Pending" (`get-handover-termination-pending`, warning severity)
 
-**Debt Proxy Routes** (server/routes.ts under `/api/platinum/billing-debt/*`): section129-config, section129-config-list, section129-config-save, section129-templates, section129-sms-templates, additional-billing-types, section129-runs, section129-trial-run, section129-trial-review-submit, section129-authorize, section129-final-run, section129-run-accounts, section129-report, handover-list, handover-submit, handover-terminate, handover-report, attorney-list, billing-cycles, towns.
+**Permissions & Audit**: All debt POST routes enforce `requireDebtPermission()` server-side (PROCESS_SECTION129, AUTHORISE_SECTION129, HANDOVER_PROCESS). Audit fields (capturerID, dateCaptured, modifierID, dateModified, reviewerID, reviewDate, statusID, comment) are auto-injected via `injectAuditFields()` on all write payloads.
+
+**Final Run Workflow**: Final run is triggered per-row in the runs grid (authorized runs only), not from the submission form. Play button appears on authorized runs.
+
+**Debt Proxy Routes** (server/routes.ts under `/api/platinum/billing-debt/*`): section129-config, section129-config-list, section129-config-save, section129-templates, section129-sms-templates, additional-billing-types, section129-runs, section129-trial-run, section129-trial-review-submit, section129-authorize, section129-final-run, section129-run-accounts, section129-run-files, section129-download-file, section129-report, sms-log-report, handover-list, handover-submit, handover-terminate, handover-report, attorney-list, billing-cycles, towns.
 
 ## External Dependencies
 

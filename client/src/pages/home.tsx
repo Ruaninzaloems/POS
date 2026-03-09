@@ -27,6 +27,7 @@ import {
   Settings2,
   FileText,
   ClipboardList,
+  MessageSquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HelpTip } from '@/components/ui/help-tip';
@@ -57,6 +58,7 @@ const debtChildren: MenuItem[] = [
   { label: 'Handover Termination', href: '/debt/handover/terminate', icon: XCircle, description: 'Terminate active handovers', helpTip: 'Terminate handed-over accounts when debt is settled, written off, or settled via arrangement' },
   { label: 'Section 129 Report', href: '/debt/section129-report', icon: FileText, description: 'Section 129 Notices Report', helpTip: 'Generate reports on Section 129 notices by financial year, billing cycle, ageing, and amount' },
   { label: 'Handover Report', href: '/debt/handover-report', icon: ClipboardList, description: 'Handover Report', helpTip: 'Generate reports on account handovers by financial year, billing cycle, attorney, and account' },
+  { label: 'SMS Log Report', href: '/debt/sms-log-report', icon: MessageSquare, description: 'SMS Log Report', helpTip: 'View SMS notification logs for Section 129 notices and debt recovery communications' },
 ];
 
 const menuEntries: MenuEntry[] = [

@@ -3169,6 +3169,49 @@ export async function fetchSection129Report(params?: {
     return Array.isArray(data) ? data : [];
 }
 
+export interface Section129RunFile {
+    fileId: number;
+    fileName: string;
+    fileType: string;
+    fileSize: number;
+    dateCreated: string;
+}
+
+export async function fetchSection129RunFiles(runId: number): Promise<Section129RunFile[]> {
+    const res = await apiFetch(`/api/platinum/billing-debt/section129-run-files?runId=${runId}`);
+    if (!res.ok) {
+        throw new Error(`Failed to fetch Section 129 run files (status ${res.status})`);
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+}
+
+export async function fetchSmsLogReport(params?: {
+    finYear?: string;
+    finMonth?: string;
+    billingCycle?: string;
+    accountNo?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    status?: string;
+}): Promise<any[]> {
+    const searchParams = new URLSearchParams();
+    if (params?.finYear) searchParams.append('finYear', params.finYear);
+    if (params?.finMonth) searchParams.append('finMonth', params.finMonth);
+    if (params?.billingCycle) searchParams.append('billingCycle', params.billingCycle);
+    if (params?.accountNo) searchParams.append('accountNo', params.accountNo);
+    if (params?.dateFrom) searchParams.append('dateFrom', params.dateFrom);
+    if (params?.dateTo) searchParams.append('dateTo', params.dateTo);
+    if (params?.status) searchParams.append('status', params.status);
+    const qs = searchParams.toString();
+    const res = await apiFetch(`/api/platinum/billing-debt/sms-log-report${qs ? '?' + qs : ''}`);
+    if (!res.ok) {
+        throw new Error(`Failed to fetch SMS log report (status ${res.status})`);
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+}
+
 export async function fetchHandoverReport(params?: {
     attorneyId?: number;
     dateFrom?: string;
@@ -3194,4 +3237,28 @@ export async function fetchHandoverReport(params?: {
         throw new Error(`Failed to fetch handover report (status ${res.status})`);
     }
     return res.json();
+}
+
+export async function downloadSection129File(fileId: number | string): Promise<void> {
+    const res = await apiFetch(`/api/platinum/billing-debt/section129-download-file?fileId=${fileId}`);
+    if (!res.ok) {
+        throw new Error(`Failed to download Section 129 file (status ${res.status})`);
+    }
+    const blob = await res.blob();
+    const contentDisposition = res.headers.get('content-disposition');
+    let filename = `section129-notice-${fileId}.pdf`;
+    if (contentDisposition) {
+        const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (match && match[1]) {
+            filename = match[1].replace(/['"]/g, '');
+        }
+    }
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
 }

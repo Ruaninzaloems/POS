@@ -237,6 +237,14 @@ export default function Section129Config() {
     if (!smsTemplate) return 'Please supply a value for SMS Notification Template.';
     if (lapseDays < 14 || lapseDays > 99) return 'The Section 129 – Letter of Demand lapse days must be > 0 and < 100.';
     if (noticesPerFile < 1) return 'The No-of-notices-per-file cannot be less than 1.';
+    if (enabled && isNewEntry) {
+      const existingEnabled = configEntries.find(
+        (entry) => entry.finYear === selectedFinYear && entry.enabled && entry.id !== selectedEntry?.id
+      );
+      if (existingEnabled) {
+        return 'An enabled configuration already exists for this financial year. Please disable it first.';
+      }
+    }
     if (activateRotation && attorneyRotation.length > 0) {
       const totalDebtor = attorneyRotation.reduce((sum, a) => sum + a.percentDebtorCount, 0);
       const totalHandover = attorneyRotation.reduce((sum, a) => sum + a.percentHandoverAmount, 0);
@@ -255,6 +263,19 @@ export default function Section129Config() {
     if (err) {
       toast({ title: 'Validation Error', description: err, variant: 'destructive' });
       return;
+    }
+    if (enabled && isNewEntry && selectedFinYear !== finYear) {
+      try {
+        const fyEntries = await fetchSection129ConfigList(selectedFinYear);
+        const existingEnabled = Array.isArray(fyEntries) && fyEntries.find(
+          (entry: Section129ConfigEntry) => entry.enabled && entry.id !== selectedEntry?.id
+        );
+        if (existingEnabled) {
+          toast({ title: 'Validation Error', description: 'An enabled configuration already exists for this financial year. Please disable it first.', variant: 'destructive' });
+          return;
+        }
+      } catch (e) {
+      }
     }
     setSaving(true);
     try {

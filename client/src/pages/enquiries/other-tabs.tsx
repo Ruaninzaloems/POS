@@ -25,7 +25,7 @@ import {
 } from '@/lib/enquiries-service';
 import { LoadingSkeleton, EmptyState, ErrorState, PaginatedTable, FieldRow, getFinYearOptions } from './shared';
 import { generateStatementPdf } from '@/lib/statement-pdf';
-import { fetchMunicipalityInfo, type MunicipalityInfo } from '@/lib/external-api';
+import { fetchMunicipalityInfo, type MunicipalityInfo, downloadSection129File } from '@/lib/external-api';
 import { generateSection49Letter, generateSection78Letter, generateValuationCertificate } from '@/lib/property-letters-pdf';
 
 function TransferOfOwnershipSection({ transfers, fmt, fmtDate }: { transfers: any[]; fmt: (v: any) => string; fmtDate: (v: any) => string }) {
@@ -824,11 +824,15 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
   );
 }
 
+const FY_MONTHS = ['All', 'July', 'August', 'September', 'October', 'November', 'December', 'January', 'February', 'March', 'April', 'May', 'June'];
+const MONTH_INDEX_MAP: Record<string, number> = { 'January': 0, 'February': 1, 'March': 2, 'April': 3, 'May': 4, 'June': 5, 'July': 6, 'August': 7, 'September': 8, 'October': 9, 'November': 10, 'December': 11 };
+
 export function HandoverTab({ accountId }: { accountId: number }) {
   const [data, setData] = useState<any>(null);
   const [enquiry, setEnquiry] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [selectedYear, setSelectedYear] = useState(getFinYearOptions()[0]);
+  const [selectedMonth, setSelectedMonth] = useState('All');
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -891,7 +895,12 @@ export function HandoverTab({ accountId }: { accountId: number }) {
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return true;
     const fy = d.getMonth() >= 6 ? d.getFullYear() : d.getFullYear() - 1;
-    return fy === (yearStart < 100 ? 2000 + yearStart : yearStart);
+    if (fy !== (yearStart < 100 ? 2000 + yearStart : yearStart)) return false;
+    if (selectedMonth !== 'All') {
+      const monthIdx = MONTH_INDEX_MAP[selectedMonth];
+      if (monthIdx !== undefined && d.getMonth() !== monthIdx) return false;
+    }
+    return true;
   });
 
   const totalRecords = allHandovers.length;
@@ -909,7 +918,7 @@ export function HandoverTab({ accountId }: { accountId: number }) {
           <h3 className="text-xs sm:text-sm font-semibold text-slate-800" data-testid="text-handover-title">Handover List per Billing Period</h3>
         </div>
 
-        <div className="flex justify-center py-3 border-b border-[#D6D6D6] bg-white">
+        <div className="flex justify-center py-3 border-b border-[#D6D6D6] bg-white gap-3">
           <select
             value={selectedYear}
             onChange={(e) => { setSelectedYear(e.target.value); setCurrentPage(1); }}
@@ -917,6 +926,14 @@ export function HandoverTab({ accountId }: { accountId: number }) {
             data-testid="select-handover-year"
           >
             {getFinYearOptions().map(yr => <option key={yr} value={yr}>{yr}</option>)}
+          </select>
+          <select
+            value={selectedMonth}
+            onChange={(e) => { setSelectedMonth(e.target.value); setCurrentPage(1); }}
+            className="text-sm border border-[#BFBFBF] rounded px-4 py-1.5 bg-white focus:ring-2 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] outline-none min-w-[140px] text-center"
+            data-testid="select-handover-month"
+          >
+            {FY_MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
         </div>
 
@@ -1930,8 +1947,10 @@ export function Section129Tab({ accountId }: { accountId: number }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedYear, setSelectedYear] = useState(getFinYearOptions()[0]);
+  const [selectedMonth, setSelectedMonth] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(50);
+  const [downloadingFileId, setDownloadingFileId] = useState<string | number | null>(null);
   const loaded = useRef(false);
 
   const load = useCallback(async () => {
@@ -1970,8 +1989,26 @@ export function Section129Tab({ accountId }: { accountId: number }) {
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return true;
     const fy = d.getMonth() >= 6 ? d.getFullYear() : d.getFullYear() - 1;
-    return fy === (yearStart < 100 ? 2000 + yearStart : yearStart);
+    if (fy !== (yearStart < 100 ? 2000 + yearStart : yearStart)) return false;
+    if (selectedMonth !== 'All') {
+      const monthIdx = MONTH_INDEX_MAP[selectedMonth];
+      if (monthIdx !== undefined && d.getMonth() !== monthIdx) return false;
+    }
+    return true;
   });
+
+  const handleDownloadNotice = async (item: any) => {
+    const fileId = item.fileId ?? item.file_ID ?? item.noticeFileId ?? item.id ?? item.notice_ID;
+    if (!fileId) { alert('No file available for this notice'); return; }
+    setDownloadingFileId(fileId);
+    try {
+      await downloadSection129File(fileId);
+    } catch (e: any) {
+      alert('Failed to download notice: ' + (e.message || 'Unknown error'));
+    } finally {
+      setDownloadingFileId(null);
+    }
+  };
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
   const safePage = Math.min(currentPage, totalPages);
@@ -1995,7 +2032,7 @@ export function Section129Tab({ accountId }: { accountId: number }) {
           <h3 className="text-xs sm:text-sm font-semibold text-slate-800" data-testid="text-section129-title">Section 129 Notices per Billing Period</h3>
         </div>
 
-        <div className="flex justify-center py-3 border-b border-[#D6D6D6] bg-white">
+        <div className="flex justify-center py-3 border-b border-[#D6D6D6] bg-white gap-3">
           <select
             value={selectedYear}
             onChange={(e) => { setSelectedYear(e.target.value); setCurrentPage(1); }}
@@ -2003,6 +2040,14 @@ export function Section129Tab({ accountId }: { accountId: number }) {
             data-testid="select-section129-year"
           >
             {getFinYearOptions().map(yr => <option key={yr} value={yr}>{yr}</option>)}
+          </select>
+          <select
+            value={selectedMonth}
+            onChange={(e) => { setSelectedMonth(e.target.value); setCurrentPage(1); }}
+            className="text-sm border border-[#BFBFBF] rounded px-4 py-1.5 bg-white focus:ring-2 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] outline-none min-w-[140px] text-center"
+            data-testid="select-section129-month"
+          >
+            {FY_MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
         </div>
 
@@ -2016,6 +2061,17 @@ export function Section129Tab({ accountId }: { accountId: number }) {
               <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Amount</span><span className="text-slate-800 font-semibold font-mono">{fmt(item.amount ?? item.noticeAmount ?? 0)}</span></div>
               <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Status</span><span>{getStatusBadge(item.status ?? item.noticeStatus ?? '')}</span></div>
               <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Lapse Date</span><span className="text-slate-800 font-semibold">{fmtDate(item.lapseDate ?? item.expiryDate)}</span></div>
+              <div className="pt-1">
+                <button
+                  onClick={() => handleDownloadNotice(item)}
+                  disabled={downloadingFileId !== null}
+                  className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-[var(--pos-accent)] border border-[var(--pos-accent)]/30 rounded hover:bg-[var(--pos-accent-tint)] transition-colors disabled:opacity-40"
+                  data-testid={`button-section129-download-${i}`}
+                >
+                  {downloadingFileId === (item.fileId ?? item.file_ID ?? item.noticeFileId ?? item.id ?? item.notice_ID) ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+                  Download
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -2031,11 +2087,12 @@ export function Section129Tab({ accountId }: { accountId: number }) {
                 <th className={thCls} style={{ minWidth: 120 }}>Status</th>
                 <th className={thCls} style={{ minWidth: 110 }}>Lapse Date</th>
                 <th className={thCls} style={{ minWidth: 130 }}>Days Outstanding</th>
+                <th className={thCls} style={{ minWidth: 90 }}>Action</th>
               </tr>
             </thead>
             <tbody>
               {pageItems.length === 0 ? (
-                <tr><td colSpan={7} className="text-center text-slate-400 py-6 italic">No Section 129 notices found for this period.</td></tr>
+                <tr><td colSpan={8} className="text-center text-slate-400 py-6 italic">No Section 129 notices found for this period.</td></tr>
               ) : pageItems.map((item: any, i: number) => (
                 <tr key={i} className="border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)] transition-colors" data-testid={`row-section129-${i}`}>
                   <td className="py-2 px-3 text-xs">{fmtDate(item.noticeDate ?? item.dateCreated ?? item.runDate)}</td>
@@ -2045,6 +2102,17 @@ export function Section129Tab({ accountId }: { accountId: number }) {
                   <td className="py-2 px-3 text-xs">{getStatusBadge(item.status ?? item.noticeStatus ?? '')}</td>
                   <td className="py-2 px-3 text-xs">{fmtDate(item.lapseDate ?? item.expiryDate)}</td>
                   <td className="py-2 px-3 text-xs font-mono">{item.daysOutstanding ?? item.outstandingDays ?? '-'}</td>
+                  <td className="py-2 px-3 text-xs">
+                    <button
+                      onClick={() => handleDownloadNotice(item)}
+                      disabled={downloadingFileId !== null}
+                      className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-[var(--pos-accent)] border border-[var(--pos-accent)]/30 rounded hover:bg-[var(--pos-accent-tint)] transition-colors disabled:opacity-40"
+                      data-testid={`button-section129-download-${i}`}
+                    >
+                      {downloadingFileId === (item.fileId ?? item.file_ID ?? item.noticeFileId ?? item.id ?? item.notice_ID) ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+                      Download
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
