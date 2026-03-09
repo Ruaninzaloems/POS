@@ -3424,3 +3424,83 @@ export async function runQualificationRule(id: number, accounts: Record<string, 
     if (!res.ok) throw new Error(`Failed to run qualification rule (status ${res.status})`);
     return res.json();
 }
+
+export async function fetchCommunicationTimelines(): Promise<any[]> {
+    const res = await apiFetch('/api/communications/timelines');
+    if (!res.ok) throw new Error(`Failed to fetch timelines (status ${res.status})`);
+    return res.json();
+}
+
+export async function fetchCommunicationTimeline(id: number): Promise<any> {
+    const res = await apiFetch(`/api/communications/timelines/${id}`);
+    if (!res.ok) throw new Error(`Failed to fetch timeline (status ${res.status})`);
+    return res.json();
+}
+
+export async function createCommunicationTimeline(data: Record<string, any>): Promise<any> {
+    const res = await apiFetch('/api/communications/timelines', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    if (!res.ok) throw new Error(`Failed to create timeline (status ${res.status})`);
+    return res.json();
+}
+
+export async function updateCommunicationTimeline(id: number, data: Record<string, any>): Promise<any> {
+    const res = await apiFetch(`/api/communications/timelines/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    if (!res.ok) throw new Error(`Failed to update timeline (status ${res.status})`);
+    return res.json();
+}
+
+export async function deleteCommunicationTimeline(id: number): Promise<any> {
+    const res = await apiFetch(`/api/communications/timelines/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(`Failed to delete timeline (status ${res.status})`);
+    return res.json();
+}
+
+export async function setTimelineSteps(timelineId: number, steps: Record<string, any>[]): Promise<any> {
+    const res = await apiFetch(`/api/communications/timelines/${timelineId}/steps`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ steps }) });
+    if (!res.ok) throw new Error(`Failed to set timeline steps (status ${res.status})`);
+    return res.json();
+}
+
+export async function dispatchCommunication(data: Record<string, any>): Promise<any> {
+    const res = await apiFetch('/api/communications/dispatch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    if (!res.ok) throw new Error(`Failed to dispatch communication (status ${res.status})`);
+    return res.json();
+}
+
+export async function dispatchBulkCommunications(communications: Record<string, any>[]): Promise<any> {
+    const res = await apiFetch('/api/communications/dispatch-bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ communications }) });
+    if (!res.ok) throw new Error(`Failed to dispatch bulk communications (status ${res.status})`);
+    return res.json();
+}
+
+export async function enrollInTimeline(accountNo: string, timelineId: number, startDate?: string): Promise<any> {
+    const res = await apiFetch('/api/communications/enroll', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accountNo, timelineId, startDate }) });
+    if (!res.ok) throw new Error(`Failed to enroll account in timeline (status ${res.status})`);
+    return res.json();
+}
+
+export async function processScheduledCommunications(): Promise<any> {
+    const res = await apiFetch('/api/communications/process-scheduled', { method: 'POST' });
+    if (!res.ok) throw new Error(`Failed to process scheduled communications (status ${res.status})`);
+    return res.json();
+}
+
+export async function fetchCommunicationLog(params?: Record<string, string>): Promise<{ logs: any[]; total: number }> {
+    const searchParams = new URLSearchParams(params || {});
+    const res = await apiFetch(`/api/communications/log?${searchParams.toString()}`);
+    if (!res.ok) throw new Error(`Failed to fetch communication log (status ${res.status})`);
+    return res.json();
+}
+
+export async function fetchScheduledCommunications(params?: Record<string, string>): Promise<{ scheduled: any[]; total: number }> {
+    const searchParams = new URLSearchParams(params || {});
+    const res = await apiFetch(`/api/communications/scheduled?${searchParams.toString()}`);
+    if (!res.ok) throw new Error(`Failed to fetch scheduled communications (status ${res.status})`);
+    return res.json();
+}
+
+export async function fetchCommunicationStats(): Promise<any> {
+    const res = await apiFetch('/api/communications/stats');
+    if (!res.ok) throw new Error(`Failed to fetch communication stats (status ${res.status})`);
+    return res.json();
+}

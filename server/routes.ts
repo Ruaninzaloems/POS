@@ -7,6 +7,7 @@ import type { Request } from "express";
 import OpenAI from "openai";
 import { legalEngine, getClientIp, seedDefaultRules } from "./legal-compliance";
 import { debtScoringEngine, seedDefaultWeights } from "./debt-scoring";
+import { communicationEngine, seedDefaultTimeline } from "./communication-engine";
 
 function getSession(req: Request): UserSession {
   if (!req.session.platinumAuth) {
@@ -7630,6 +7631,189 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
       res.json({ rule: { id: rule.id, name: rule.name }, totalEvaluated: accounts.length, matchedCount: matched.length, unmatchedCount: unmatched.length, matched, unmatched });
     } catch (e: any) {
       res.status(500).json({ message: "Failed to run qualification rule", detail: e.message });
+    }
+  });
+
+  // =====================================================
+  // ADVANCED COMMUNICATION ENGINE ROUTES
+  // =====================================================
+
+  seedDefaultTimeline().catch(e => console.error("[CommEngine] Seed failed:", e.message));
+
+  app.get("/api/communications/timelines", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const timelines = await communicationEngine.getAllTimelines();
+      res.json(timelines);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to fetch timelines", detail: e.message });
+    }
+  });
+
+  app.get("/api/communications/timelines/:id", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await communicationEngine.getTimeline(parseInt(req.params.id));
+      if (!data) { res.status(404).json({ message: "Timeline not found" }); return; }
+      res.json(data);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to fetch timeline", detail: e.message });
+    }
+  });
+
+  app.post("/api/communications/timelines", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const timeline = await communicationEngine.createTimeline({
+        ...req.body,
+        createdBy: session.userData?.userName || session.userData?.user_ID?.toString(),
+      });
+      res.json(timeline);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to create timeline", detail: e.message });
+    }
+  });
+
+  app.put("/api/communications/timelines/:id", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const timeline = await communicationEngine.updateTimeline(parseInt(req.params.id), req.body);
+      if (!timeline) { res.status(404).json({ message: "Timeline not found" }); return; }
+      res.json(timeline);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to update timeline", detail: e.message });
+    }
+  });
+
+  app.delete("/api/communications/timelines/:id", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      await communicationEngine.deleteTimeline(parseInt(req.params.id));
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to delete timeline", detail: e.message });
+    }
+  });
+
+  app.put("/api/communications/timelines/:id/steps", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const { steps } = req.body;
+      if (!Array.isArray(steps)) { res.status(400).json({ message: "steps array is required" }); return; }
+      const created = await communicationEngine.setTimelineSteps(parseInt(req.params.id), steps);
+      res.json(created);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to set timeline steps", detail: e.message });
+    }
+  });
+
+  app.post("/api/communications/dispatch", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const { accountNo, channel, recipient, subject, messageBody, metadata } = req.body;
+      if (!accountNo || !channel || !recipient || !messageBody) {
+        res.status(400).json({ message: "accountNo, channel, recipient, and messageBody are required" }); return;
+      }
+      const sentBy = session.userData?.userName || session.userData?.user_ID?.toString() || "system";
+      const logEntry = await communicationEngine.dispatch({ accountNo, channel, recipient, subject, messageBody, sentBy, metadata });
+      res.json(logEntry);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to dispatch communication", detail: e.message });
+    }
+  });
+
+  app.post("/api/communications/dispatch-bulk", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const { communications } = req.body;
+      if (!Array.isArray(communications) || communications.length === 0) {
+        res.status(400).json({ message: "communications array is required" }); return;
+      }
+      const sentBy = session.userData?.userName || session.userData?.user_ID?.toString() || "system";
+      const results: any[] = [];
+      for (const comm of communications) {
+        const logEntry = await communicationEngine.dispatch({ ...comm, sentBy });
+        results.push(logEntry);
+      }
+      res.json({ total: results.length, sent: results.filter(r => r.status === "SENT").length, failed: results.filter(r => r.status === "FAILED").length, results });
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to dispatch bulk communications", detail: e.message });
+    }
+  });
+
+  app.post("/api/communications/enroll", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const { accountNo, timelineId, startDate } = req.body;
+      if (!accountNo || !timelineId) { res.status(400).json({ message: "accountNo and timelineId are required" }); return; }
+      const scheduled = await communicationEngine.enrollAccountInTimeline(accountNo, timelineId, startDate ? new Date(startDate) : undefined);
+      res.json({ accountNo, timelineId, scheduledCount: scheduled.length, scheduled });
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to enroll account in timeline", detail: e.message });
+    }
+  });
+
+  app.post("/api/communications/process-scheduled", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireLegalAdmin(session, res)) return;
+      const result = await communicationEngine.processScheduledCommunications();
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to process scheduled communications", detail: e.message });
+    }
+  });
+
+  app.get("/api/communications/log", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const filters = {
+        accountNo: req.query.accountNo as string | undefined,
+        channel: req.query.channel as string | undefined,
+        status: req.query.status as string | undefined,
+        dateFrom: req.query.dateFrom as string | undefined,
+        dateTo: req.query.dateTo as string | undefined,
+        limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
+        offset: req.query.offset ? parseInt(req.query.offset as string) : 0,
+      };
+      const result = await communicationEngine.getCommunicationLog(filters);
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to fetch communication log", detail: e.message });
+    }
+  });
+
+  app.get("/api/communications/scheduled", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const filters = {
+        accountNo: req.query.accountNo as string | undefined,
+        timelineId: req.query.timelineId ? parseInt(req.query.timelineId as string) : undefined,
+        status: req.query.status as string | undefined,
+        limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
+        offset: req.query.offset ? parseInt(req.query.offset as string) : 0,
+      };
+      const result = await communicationEngine.getScheduledCommunications(filters);
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to fetch scheduled communications", detail: e.message });
+    }
+  });
+
+  app.get("/api/communications/stats", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const stats = await communicationEngine.getDeliveryStats();
+      res.json(stats);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to fetch delivery stats", detail: e.message });
     }
   });
 

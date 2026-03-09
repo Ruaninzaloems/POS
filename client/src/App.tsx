@@ -38,6 +38,8 @@ import HandoverReport from "@/pages/debt/handover-report";
 import SmsLogReport from "@/pages/debt/sms-log-report";
 import RiskScoring from "@/pages/debt/risk-scoring";
 import QualificationRules from "@/pages/debt/qualification-rules";
+import CommunicationTimeline from "@/pages/debt/communication-timeline";
+import CommunicationDashboard from "@/pages/debt/communication-dashboard";
 import ComplianceAuditTrail from "@/pages/legal/audit-trail";
 import LegalRulesPage from "@/pages/legal/rules";
 import EvidenceBundlePage from "@/pages/legal/evidence-bundle";
@@ -124,6 +126,8 @@ function Router() {
       <Route path="/debt/sms-log-report" component={SmsLogReport} />
       <Route path="/debt/risk-scoring" component={RiskScoring} />
       <Route path="/debt/qualification-rules" component={QualificationRules} />
+      <Route path="/debt/communication-timelines" component={CommunicationTimeline} />
+      <Route path="/debt/communication-dashboard" component={CommunicationDashboard} />
 
       {/* Legal Compliance Module */}
       <Route path="/legal/rules" component={LegalRulesPage} />

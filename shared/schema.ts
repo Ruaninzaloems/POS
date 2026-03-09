@@ -191,3 +191,71 @@ export const insertDebtScoringWeightSchema = createInsertSchema(debtScoringWeigh
 
 export type InsertDebtScoringWeight = z.infer<typeof insertDebtScoringWeightSchema>;
 export type DebtScoringWeight = typeof debtScoringWeights.$inferSelect;
+
+export const communicationTimelines = pgTable("communication_timelines", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertCommunicationTimelineSchema = createInsertSchema(communicationTimelines).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertCommunicationTimeline = z.infer<typeof insertCommunicationTimelineSchema>;
+export type CommunicationTimeline = typeof communicationTimelines.$inferSelect;
+
+export const communicationTimelineSteps = pgTable("communication_timeline_steps", {
+  id: serial("id").primaryKey(),
+  timelineId: integer("timeline_id").notNull(),
+  dayOffset: integer("day_offset").notNull(),
+  channel: text("channel").notNull(),
+  templateName: text("template_name"),
+  templateBody: text("template_body"),
+  subject: text("subject"),
+  isAutomated: boolean("is_automated").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const insertCommunicationTimelineStepSchema = createInsertSchema(communicationTimelineSteps).omit({ id: true });
+export type InsertCommunicationTimelineStep = z.infer<typeof insertCommunicationTimelineStepSchema>;
+export type CommunicationTimelineStep = typeof communicationTimelineSteps.$inferSelect;
+
+export const communicationLog = pgTable("communication_log", {
+  id: serial("id").primaryKey(),
+  accountNo: text("account_no").notNull(),
+  channel: text("channel").notNull(),
+  recipient: text("recipient"),
+  subject: text("subject"),
+  messageBody: text("message_body"),
+  status: text("status").notNull().default("PENDING"),
+  deliveryStatus: text("delivery_status"),
+  deliveryTimestamp: timestamp("delivery_timestamp"),
+  errorMessage: text("error_message"),
+  timelineId: integer("timeline_id"),
+  timelineStepId: integer("timeline_step_id"),
+  sentBy: text("sent_by"),
+  sentAt: timestamp("sent_at").notNull().defaultNow(),
+  metadata: jsonb("metadata"),
+});
+
+export const insertCommunicationLogSchema = createInsertSchema(communicationLog).omit({ id: true, sentAt: true });
+export type InsertCommunicationLog = z.infer<typeof insertCommunicationLogSchema>;
+export type CommunicationLog = typeof communicationLog.$inferSelect;
+
+export const scheduledCommunications = pgTable("scheduled_communications", {
+  id: serial("id").primaryKey(),
+  accountNo: text("account_no").notNull(),
+  timelineId: integer("timeline_id").notNull(),
+  timelineStepId: integer("timeline_step_id").notNull(),
+  scheduledDate: timestamp("scheduled_date").notNull(),
+  status: text("status").notNull().default("PENDING"),
+  processedAt: timestamp("processed_at"),
+  communicationLogId: integer("communication_log_id"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertScheduledCommunicationSchema = createInsertSchema(scheduledCommunications).omit({ id: true, createdAt: true });
+export type InsertScheduledCommunication = z.infer<typeof insertScheduledCommunicationSchema>;
+export type ScheduledCommunication = typeof scheduledCommunications.$inferSelect;

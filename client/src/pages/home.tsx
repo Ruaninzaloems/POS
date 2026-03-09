@@ -32,6 +32,8 @@ import {
   FileStack,
   Target,
   Filter,
+  Send,
+  Clock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HelpTip } from '@/components/ui/help-tip';
@@ -65,6 +67,8 @@ const debtChildren: MenuItem[] = [
   { label: 'SMS Log Report', href: '/debt/sms-log-report', icon: MessageSquare, description: 'SMS Log Report', helpTip: 'View SMS notification logs for Section 129 notices and debt recovery communications' },
   { label: 'Risk Scoring', href: '/debt/risk-scoring', icon: Target, description: 'Intelligent debt risk scoring engine', helpTip: 'Score debtor accounts 0-100 based on payment history, arrear age, debt size, indigent status, and more — drives handover priority and legal escalation' },
   { label: 'Qualification Rules', href: '/debt/qualification-rules', icon: Filter, description: 'Smart qualification rules builder', helpTip: 'Define complex multi-condition rules to qualify accounts for debt recovery, handover, or legal action' },
+  { label: 'Communication Timelines', href: '/debt/communication-timelines', icon: Clock, description: 'Automated escalation timelines', helpTip: 'Configure automated communication timelines with multi-channel escalation steps for debt recovery' },
+  { label: 'Communication Dashboard', href: '/debt/communication-dashboard', icon: Send, description: 'Omni-channel communication hub', helpTip: 'Monitor delivery status across SMS, Email, WhatsApp, and printed letters — track scheduled communications and dispatch ad-hoc messages' },
 ];
 
 const complianceChildren: MenuItem[] = [
