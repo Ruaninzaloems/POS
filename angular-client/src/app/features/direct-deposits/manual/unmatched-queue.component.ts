@@ -125,23 +125,51 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
     this.error.set('');
     this.hasSearched.set(true);
     try {
-      const params: Record<string, string> = {};
-      if (this.fromDate()) params['fromDate'] = new Date(this.fromDate()).toISOString();
-      if (this.toDate()) params['toDate'] = new Date(this.toDate()).toISOString();
+      const allItems: BankReconPosItem[] = [];
+      let currentPage = 1;
+      const pageSize = 200;
+      const maxPages = 10;
 
-      const result: any = await firstValueFrom(
-        this.api.post('/api/platinum/direct-deposit-allocation/get-bank-recon-positem-list', params)
-      );
+      while (currentPage <= maxPages) {
+        const result: any = await firstValueFrom(
+          this.api.post('/api/platinum/direct-deposit-allocation/get-bank-recon-positem-list', {
+            page: currentPage,
+            pageSize,
+            orderby: 'dateOfTransaction',
+            shortDirection: 'desc',
+          })
+        );
 
-      let items: BankReconPosItem[] = [];
-      if (Array.isArray(result)) {
-        items = result;
-      } else if (result?.items) {
-        items = result.items;
-      } else if (result?.value) {
-        items = result.value;
-      } else if (result?.data) {
-        items = result.data;
+        const pageItems: BankReconPosItem[] = Array.isArray(result?.items)
+          ? result.items
+          : Array.isArray(result)
+            ? result
+            : Array.isArray(result?.value)
+              ? result.value
+              : Array.isArray(result?.data)
+                ? result.data
+                : [];
+
+        if (pageItems.length === 0) break;
+        allItems.push(...pageItems);
+
+        const totalCount = result?.totalCount ?? pageItems.length;
+        if (allItems.length >= totalCount) break;
+        currentPage++;
+      }
+
+      let items = allItems;
+      const from = this.fromDate() ? new Date(this.fromDate()).getTime() : null;
+      const to = this.toDate() ? new Date(this.toDate() + 'T23:59:59').getTime() : null;
+
+      if (from || to) {
+        items = items.filter(item => {
+          const txDate = new Date(item.dateOfTransaction || '').getTime();
+          if (isNaN(txDate)) return true;
+          if (from && txDate < from) return false;
+          if (to && txDate > to) return false;
+          return true;
+        });
       }
 
       this.items.set(items);
