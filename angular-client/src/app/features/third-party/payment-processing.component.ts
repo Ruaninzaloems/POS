@@ -208,9 +208,15 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
 
     this.giLoadingCashOffices.set(true);
     try {
-      const offices: any = await firstValueFrom(this.api.get('/api/platinum/receipt-prepaid/cash-offices'));
+      const user = this.auth.user();
+      const offices: any = await firstValueFrom(this.api.get('/api/platinum/receipt-prepaid/cash-offices', {
+        finYear: user?.finYear || ''
+      }));
       if (Array.isArray(offices) && offices.length > 0) {
-        this.giCashOffices.set(offices.map((o: any) => ({ id: o.id, name: o.name })));
+        this.giCashOffices.set(offices.map((o: any) => ({
+          id: String(o.cashOffice_ID || o.id || ''),
+          name: o.cashOfficeDesc || o.name || `Office ${o.cashOffice_ID || o.id}`
+        })));
       }
     } catch {}
     this.giLoadingCashOffices.set(false);
