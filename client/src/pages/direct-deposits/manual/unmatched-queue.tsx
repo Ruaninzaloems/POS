@@ -700,6 +700,8 @@ async function searchForSuggestions(note: string, reference: string, transaction
   const safe = (fn: () => Promise<any>) => fn().catch((err) => { console.error('[AutoMatch]', err); return []; });
   const unwrap = (rawData: any) => Array.isArray(rawData) ? rawData : rawData?.value || rawData?.results || [];
 
+  console.log(`[AutoMatch] Searching "${note}" — ERFs:`, clues.erfNumbers, 'AccNums:', clues.accountNumbers, 'Names:', clues.nameSearchTerms, 'Meters:', clues.meterNumbers);
+
   const searchPromises: Promise<void>[] = [];
 
   const descFp = getDescFingerprint(`${note || ''} ${reference || ''}`);
@@ -794,7 +796,7 @@ async function searchForSuggestions(note: string, reference: string, transaction
             ].filter(Boolean),
           );
 
-          const enrichTimeout = new Promise<null>(resolve => setTimeout(() => resolve(null), 5000));
+          const enrichTimeout = new Promise<null>(resolve => setTimeout(() => resolve(null), 10000));
           const enrichCandidates = [padded12];
           if (rawAccountNo && rawAccountNo !== '0' && rawAccountNo !== idStr && rawAccountNo !== padded12) {
             enrichCandidates.unshift(rawAccountNo);
@@ -1023,7 +1025,7 @@ async function searchForSuggestions(note: string, reference: string, transaction
     return terms;
   };
 
-  const timedFetchAccounts = (criteria: any, timeoutMs = 10000): Promise<any[]> =>
+  const timedFetchAccounts = (criteria: any, timeoutMs = 20000): Promise<any[]> =>
     Promise.race([
       fetchAccounts(criteria),
       new Promise<any[]>(resolve => setTimeout(() => resolve([]), timeoutMs)),
@@ -1519,7 +1521,7 @@ async function searchForSuggestions(note: string, reference: string, transaction
   searchPromises.push(
     safe(async () => {
       const aiAbort = new AbortController();
-      const aiTimeout = setTimeout(() => aiAbort.abort(), 8000);
+      const aiTimeout = setTimeout(() => aiAbort.abort(), 15000);
       const aiResp = await fetch('/api/ai/parse-description', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1846,10 +1848,11 @@ async function searchForSuggestions(note: string, reference: string, transaction
 
   await Promise.race([
     Promise.all(searchPromises),
-    new Promise(resolve => setTimeout(resolve, 15000)),
+    new Promise(resolve => setTimeout(resolve, 45000)),
   ]);
 
   const top = suggestions.sort((a, b) => b.confidence - a.confidence).slice(0, 5);
+  console.log(`[AutoMatch] "${note}" — ${suggestions.length} total suggestions, top ${top.length}:`, top.map(s => `${s.accountNo} (${s.confidence}% ${s.matchType} "${s.matchDetail}")`));
 
   const extractBal = (obj: any): number => {
     const v = obj?.totalOutStanding ?? obj?.totalOutstanding ?? obj?.totalBalance ?? obj?.outStandingAmt ?? obj?.outstandingAmount ?? obj?.balance;
