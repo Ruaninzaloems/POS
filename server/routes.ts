@@ -7061,6 +7061,17 @@ Be thorough - find ALL possible identifiers. Err on the side of including possib
     }
   });
 
+  app.post("/api/platinum/billing-debt/section129-delete-run", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireDebtPermission(session, DEBT_PERMISSIONS.PROCESS_SECTION129, res)) return;
+      const data = await platinumPost(session, "/api/BillingDebt/section129-delete-run", injectAuditFields(session, req.body));
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   // requiredPermission: HANDOVER_PROCESS
   app.get("/api/platinum/billing-debt/handover-list", async (req, res) => {
     try {

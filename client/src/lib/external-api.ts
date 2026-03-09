@@ -2980,6 +2980,19 @@ export async function fetchSection129RunAccounts(runId: number): Promise<Section
     return Array.isArray(data) ? data : [];
 }
 
+export async function deleteSection129Run(runId: number): Promise<{ success: boolean; message: string }> {
+    const res = await apiFetch('/api/platinum/billing-debt/section129-delete-run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ runId }),
+    });
+    if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(text || `Failed to delete Section 129 run (status ${res.status})`);
+    }
+    return res.json();
+}
+
 export async function fetchHandoverList(): Promise<HandoverRecord[]> {
     const res = await apiFetch('/api/platinum/billing-debt/handover-list');
     if (!res.ok) {

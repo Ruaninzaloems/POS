@@ -1,21 +1,17 @@
 # Phase 1 — Blockers Action List
 
-> 4 items must be resolved before the API team starts Phase 1 work.
+> 3 open items remain. G-01 has been resolved (frontend side). API team still needs to build the Platinum endpoint.
 
 ---
 
-## G-01: Delete Run API Does Not Exist
+## G-01: Delete Run API Does Not Exist — ✅ FRONTEND RESOLVED
 
 | Field | Detail |
 |-------|--------|
 | **Blocker ID** | G-01 |
-| **Description** | The Remove (trash icon) button exists on every row in the Generated Notice Files grid, but it has no click handler and no API endpoint exists to delete a run. |
-| **Why It Blocks Phase 1** | Users can create trial runs but cannot remove incorrect or abandoned ones. The grid will accumulate junk data with no cleanup path. The button is visible and clickable — doing nothing is a UX defect. |
-| **DB Change Needed** | None — uses existing `Billing_Section129LetterOFDemand` and `Billing_Section129LetterOFDemandDetails` tables. Either hard-delete both records or soft-delete via a status flag. |
-| **API Impact** | New endpoint required: `DELETE /api/BillingDebt/section129-delete-run` (or `POST` with `{ runId, action: 'delete' }` if DELETE methods are not preferred). Must validate: run exists, run status is not Authorized/Approved/Final Running/Final Complete. Permission: `PROCESS_SECTION129`. |
-| **Frontend Impact** | Wire the existing trash button to call the new endpoint. Add confirmation dialog before delete. Refresh runs grid after success. |
-| **Owner** | API Team (endpoint) + Frontend (handler) |
-| **Decision Needed** | Hard delete (remove rows from both tables) or soft delete (add a `IsDeleted BIT` column or set status to a "Deleted" value)? Hard delete is simpler and appropriate since unprocessed trial runs have no audit value. |
+| **Status** | **Frontend resolved** — trash button wired with confirmation dialog, proxy route added (`POST /api/platinum/billing-debt/section129-delete-run`), API function created (`deleteSection129Run`). Non-deletable statuses (Approved, Authorized, Final Running, Final Complete) are enforced client-side. |
+| **Remaining** | API Team must build `POST /api/BillingDebt/section129-delete-run` on Platinum. Accepts `{ runId }`. Validates run exists and status is deletable. Hard-deletes from `Billing_Section129LetterOFDemand` and `Billing_Section129LetterOFDemandDetails`. Returns `{ success: true, message: '...' }`. |
+| **Decision** | Recommend hard delete — unprocessed trial runs have no audit value. |
 
 ---
 

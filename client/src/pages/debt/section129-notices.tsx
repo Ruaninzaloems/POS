@@ -36,6 +36,7 @@ import {
   fetchSection129Runs,
   submitSection129TrialRun,
   submitSection129FinalRun,
+  deleteSection129Run,
   fetchBillingCycles,
   fetchTowns,
   fetchPropertyCategories,
@@ -54,6 +55,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import type { RunType, HandoverOption, DistributionType } from '@/models/debt.models';
 import { formatFileSize, getFinancialYearList } from '@/services/format.service';
 import { getStatusColor } from '@/services/validation.service';
@@ -112,6 +123,8 @@ export default function Section129Notices() {
   const [filesLoading, setFilesLoading] = useState(false);
   const [downloadingFileId, setDownloadingFileId] = useState<number | null>(null);
   const [finalRunningId, setFinalRunningId] = useState<number | null>(null);
+  const [deleteConfirmRunId, setDeleteConfirmRunId] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const loadData = useCallback(async () => {
     const results = await Promise.allSettled([
@@ -263,6 +276,27 @@ export default function Section129Notices() {
     }
   };
 
+
+  const handleDeleteRun = async () => {
+    if (!deleteConfirmRunId) return;
+    setIsDeleting(true);
+    try {
+      await deleteSection129Run(deleteConfirmRunId);
+      toast({ title: 'Run Deleted', description: `Section 129 run #${deleteConfirmRunId} has been removed.` });
+      setDeleteConfirmRunId(null);
+      await loadData();
+    } catch (err: any) {
+      toast({ title: 'Delete Failed', description: err.message || 'Failed to delete run.', variant: 'destructive' });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const NON_DELETABLE_STATUSES = ['Approved', 'Authorized', 'Final Running', 'Final Complete'];
+
+  const canDeleteRun = (run: Section129Run): boolean => {
+    return !NON_DELETABLE_STATUSES.includes(run.status);
+  };
 
   const handleRowClick = (run: Section129Run) => {
     if (run.status === 'Trial Run Review' || run.status === 'Trial Review') {
@@ -795,6 +829,12 @@ export default function Section129Notices() {
                                   size="sm"
                                   className="h-7 px-2 text-red-400 hover:text-red-300 hover:bg-red-500/10"
                                   data-testid={`button-remove-${run.runId}`}
+                                  disabled={!canDeleteRun(run)}
+                                  title={canDeleteRun(run) ? 'Delete this run' : 'Cannot delete approved or finalized runs'}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeleteConfirmRunId(run.runId);
+                                  }}
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </Button>
@@ -942,6 +982,28 @@ export default function Section129Notices() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={deleteConfirmRunId !== null} onOpenChange={(open) => { if (!open) setDeleteConfirmRunId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Section 129 Run</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete run #{deleteConfirmRunId}? This action cannot be undone. The run and all associated detail records will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting} data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteRun}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+              data-testid="button-confirm-delete"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete Run'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PosLayout>
   );
 }
