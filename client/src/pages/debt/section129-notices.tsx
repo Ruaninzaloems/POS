@@ -43,7 +43,7 @@ import {
 
 type RunType = 'trial-review' | 'trial-run' | 'final';
 type HandoverOption = 'account' | 'bulk' | 'rotation';
-type DistributionType = 'email' | 'sms' | 'print' | 'all';
+type DistributionType = 'email' | 'sms' | 'whatsapp' | 'print' | 'all';
 
 export default function Section129Notices() {
   const { toast } = useToast();
@@ -589,6 +589,10 @@ export default function Section129Notices() {
                   <div className="flex items-center gap-2">
                     <RadioGroupItem value="sms" id="dist-sms" data-testid="radio-dist-sms" />
                     <Label htmlFor="dist-sms" className="text-sm text-slate-300 cursor-pointer">SMS</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="whatsapp" id="dist-whatsapp" data-testid="radio-dist-whatsapp" />
+                    <Label htmlFor="dist-whatsapp" className="text-sm text-slate-300 cursor-pointer">WhatsApp</Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <RadioGroupItem value="print" id="dist-print" data-testid="radio-dist-print" />
