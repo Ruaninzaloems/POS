@@ -254,6 +254,18 @@
 .tab-panel { padding: 1rem; }
 @media (min-width: 640px) { .tab-panel { padding: 1.25rem; } }
 
+.tab-error-banner {
+  padding: 0.625rem 0.875rem;
+  margin-bottom: 0.75rem;
+  background: #fef3cd;
+  border: 1px solid #f0d78e;
+  border-radius: 0.375rem;
+  color: #856404;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
 .tab-loading { display: flex; flex-direction: column; align-items: center; gap: 1rem; padding: 3rem; color: var(--pos-text-muted); }
 .tab-error { padding: 1.5rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0.75rem; margin: 1rem; }
 

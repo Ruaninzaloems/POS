@@ -1529,15 +1529,20 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           break;
 
         case 'transactions':
-          const receiptResult = await firstValueFrom(
-            this.api.get<any>(`/api/platinum/billing-enquiry/payment-amount-by-account-ids/${accountId}`)
-          );
-          const receiptArr = this.normalizeArray(receiptResult);
-          if (receiptArr.length > 0) {
-            console.log('[transactions] API response keys:', Object.keys(receiptArr[0]));
-            console.log('[transactions] Sample row:', JSON.stringify(receiptArr[0]).substring(0, 500));
+          try {
+            const receiptResult = await firstValueFrom(
+              this.api.get<any>(`/api/platinum/billing-enquiry/payment-amount-by-account-ids/${accountId}`)
+            );
+            const receiptArr = this.normalizeArray(receiptResult);
+            if (receiptArr.length > 0) {
+              console.log('[transactions] API response keys:', Object.keys(receiptArr[0]));
+              console.log('[transactions] Sample row:', JSON.stringify(receiptArr[0]).substring(0, 500));
+            }
+            data = { transactions: receiptArr };
+          } catch (e: any) {
+            console.error('[transactions] API failed:', e?.message);
+            data = { transactions: [], _error: e?.message || 'Failed to load receipts' };
           }
-          data = { transactions: receiptArr };
           break;
 
         case 'payment-plans':
@@ -1576,47 +1581,72 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           break;
 
         case 'statements':
-          const stmtResult = await firstValueFrom(
-            this.api.get<any>(`/api/platinum/billing-enquiry/generated-statements/${accountId}`)
-          );
-          const stmtArr = this.normalizeArray(stmtResult);
-          if (stmtArr.length > 0) {
-            console.log('[statements] API response keys:', Object.keys(stmtArr[0]));
-            console.log('[statements] Sample row:', JSON.stringify(stmtArr[0]).substring(0, 500));
-          } else {
-            console.log('[statements] No statement history returned');
+          try {
+            const stmtResult = await firstValueFrom(
+              this.api.get<any>(`/api/platinum/billing-enquiry/generated-statements/${accountId}`)
+            );
+            const stmtArr = this.normalizeArray(stmtResult);
+            if (stmtArr.length > 0) {
+              console.log('[statements] API response keys:', Object.keys(stmtArr[0]));
+              console.log('[statements] Sample row:', JSON.stringify(stmtArr[0]).substring(0, 500));
+            } else {
+              console.log('[statements] No statement history returned');
+            }
+            data = { statements: stmtArr };
+            this.stmtGenerated.set(null);
+            this.stmtSendMode.set(null);
+            this.initStmtYears(stmtArr);
+          } catch (e: any) {
+            console.error('[statements] API failed:', e?.message);
+            data = { statements: [], _error: e?.message || 'Failed to load statements' };
+            this.stmtGenerated.set(null);
+            this.stmtSendMode.set(null);
           }
-          data = { statements: stmtArr };
-          this.stmtGenerated.set(null);
-          this.stmtSendMode.set(null);
-          this.initStmtYears(stmtArr);
           break;
 
         case 'clearance':
-          const clearResult = await firstValueFrom(
-            this.api.get<any>(`/api/platinum/billing-enquiry/clearance-inquiries/${accountId}`)
-          );
-          data = { clearances: this.normalizeArray(clearResult) };
+          try {
+            const clearResult = await firstValueFrom(
+              this.api.get<any>(`/api/platinum/billing-enquiry/clearance-inquiries/${accountId}`)
+            );
+            data = { clearances: this.normalizeArray(clearResult) };
+          } catch (e: any) {
+            console.error('[clearance] API failed:', e?.message);
+            data = { clearances: [], _error: e?.message || 'Failed to load clearance data' };
+          }
           break;
 
         case 'debtor-notes':
-          const notesResult = await firstValueFrom(
-            this.api.get<any>(`/api/platinum/billing-enquiry/debtor-note-lists/${accountId}`)
-          );
-          data = { notes: this.normalizeArray(notesResult) };
+          try {
+            const notesResult = await firstValueFrom(
+              this.api.get<any>(`/api/platinum/billing-enquiry/debtor-note-lists/${accountId}`)
+            );
+            data = { notes: this.normalizeArray(notesResult) };
+          } catch (e: any) {
+            console.error('[debtor-notes] API failed:', e?.message);
+            data = { notes: [], _error: e?.message || 'Failed to load debtor notes' };
+          }
           break;
 
         case 'section129':
-          const s129Result = await firstValueFrom(
-            this.api.get<any>(`/api/platinum/billing-enquiry/section129-account-enquiry/${accountId}`)
-          );
-          const s129Arr = this.normalizeArray(s129Result);
-          data = { section129: s129Arr };
-          this.s129FinYear.set('');
-          this.s129Month.set('');
-          this.s129Filtered.set(s129Arr);
-          this.initS129Years(s129Arr);
-          this.computeS129Insights(s129Arr);
+          try {
+            const s129Result = await firstValueFrom(
+              this.api.get<any>(`/api/platinum/billing-enquiry/section129-account-enquiry/${accountId}`)
+            );
+            const s129Arr = this.normalizeArray(s129Result);
+            data = { section129: s129Arr };
+            this.s129FinYear.set('');
+            this.s129Month.set('');
+            this.s129Filtered.set(s129Arr);
+            this.initS129Years(s129Arr);
+            this.computeS129Insights(s129Arr);
+          } catch (e: any) {
+            console.error('[section129] API failed:', e?.message);
+            data = { section129: [], _error: e?.message || 'Failed to load Section 129 data' };
+            this.s129FinYear.set('');
+            this.s129Month.set('');
+            this.s129Filtered.set([]);
+          }
           break;
 
         case 'linked-accounts':
@@ -1682,12 +1712,18 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           break;
 
         case 'indigent':
-          const indigentResult = await firstValueFrom(
-            this.api.get<any>(`/api/platinum/billing-enquiry/attp-application-history/${accountId}`)
-          );
-          const indHistory = this.normalizeArray(indigentResult);
-          data = { indigentHistory: indHistory };
-          this.indigentInsights.set(this.computeIndigentInsights(indHistory));
+          try {
+            const indigentResult = await firstValueFrom(
+              this.api.get<any>(`/api/platinum/billing-enquiry/attp-application-history/${accountId}`)
+            );
+            const indHistory = this.normalizeArray(indigentResult);
+            data = { indigentHistory: indHistory };
+            this.indigentInsights.set(this.computeIndigentInsights(indHistory));
+          } catch (e: any) {
+            console.error('[indigent] API failed:', e?.message);
+            data = { indigentHistory: [], _error: e?.message || 'Failed to load indigent subsidy data' };
+            this.indigentInsights.set(null);
+          }
           break;
 
         case 'services-meters':

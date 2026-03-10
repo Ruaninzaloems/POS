@@ -1365,6 +1365,9 @@
         <!-- Generic data table tabs -->
         @if (activeTab() === 'transactions') {
           <div class="tab-panel" data-testid="transactions-tab">
+            @if (tabData()?._error) {
+              <div class="tab-error-banner">⚠️ {{ tabData()._error }}</div>
+            }
             @if ((tabData()?.transactions || []).length > 0) {
               <div class="export-toolbar">
                 <button class="export-btn export-csv" (click)="exportReceiptsCsv()" data-testid="button-export-receipts-csv">📥 Excel/CSV</button>
@@ -2198,6 +2201,9 @@
 
         @if (activeTab() === 'statements') {
           <div class="tab-panel" data-testid="statements-tab">
+            @if (tabData()?._error) {
+              <div class="tab-error-banner">⚠️ {{ tabData()._error }}</div>
+            }
 
             <div class="stmt-generator" data-testid="stmt-generator">
               <div class="stmt-gen-header">
@@ -2326,6 +2332,9 @@
 
         @if (activeTab() === 'clearance') {
           <div class="tab-panel" data-testid="clearance-tab">
+            @if (tabData()?._error) {
+              <div class="tab-error-banner">⚠️ {{ tabData()._error }}</div>
+            }
             @if ((tabData()?.clearances || []).length > 0) {
               <div class="export-toolbar">
                 <button class="export-btn export-csv" (click)="exportClearanceCsv()" data-testid="button-export-clearance-csv">📥 Excel/CSV</button>
@@ -2366,6 +2375,9 @@
 
         @if (activeTab() === 'debtor-notes') {
           <div class="tab-panel" data-testid="debtor-notes-tab">
+            @if (tabData()?._error) {
+              <div class="tab-error-banner">⚠️ {{ tabData()._error }}</div>
+            }
             @if ((tabData()?.notes || []).length > 0) {
               <div class="export-toolbar">
                 <button class="export-btn export-csv" (click)="exportDebtorNotesCsv()" data-testid="button-export-notes-csv">📥 Excel/CSV</button>
@@ -2406,6 +2418,9 @@
 
         @if (activeTab() === 'section129') {
           <div class="tab-panel" data-testid="section129-tab">
+            @if (tabData()?._error) {
+              <div class="tab-error-banner">⚠️ {{ tabData()._error }}</div>
+            }
             <div class="export-toolbar">
               <button class="export-btn export-csv" (click)="exportSection129Csv()" data-testid="button-export-s129-csv">📥 Excel/CSV</button>
               <button class="export-btn export-pdf" (click)="exportSection129Pdf()" data-testid="button-export-s129-pdf">🖨️ Print/PDF</button>
@@ -2876,6 +2891,9 @@
 
         @if (activeTab() === 'indigent') {
           <div class="tab-panel" data-testid="indigent-tab">
+            @if (tabData()?._error) {
+              <div class="tab-error-banner">⚠️ {{ tabData()._error }}</div>
+            }
             <div class="export-toolbar">
               <button class="export-btn export-csv" (click)="exportIndigentCsv()" data-testid="button-export-indigent-csv">📥 Excel/CSV</button>
             </div>
