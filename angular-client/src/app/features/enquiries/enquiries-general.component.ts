@@ -914,8 +914,12 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           break;
 
         case 'balance':
-          const balResult = await this.fetchAccountBalance(accountId);
-          data = { balance: Array.isArray(balResult) ? balResult : balResult ? [balResult] : [] };
+          try {
+            const balResult = await this.fetchAccountBalance(accountId);
+            data = { balance: Array.isArray(balResult) ? balResult : balResult ? [balResult] : [] };
+          } catch {
+            data = { balance: [] };
+          }
           break;
 
         case 'services':
