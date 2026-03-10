@@ -3128,8 +3128,8 @@
                                 <table class="debt-table" data-testid="table-conv-meter-history">
                                   <thead>
                                     <tr>
+                                      <th class="debt-th-desc">Month</th>
                                       <th class="debt-th-desc">Date</th>
-                                      <th class="debt-th-desc">Type</th>
                                       <th class="debt-th-amt">Previous</th>
                                       <th class="debt-th-amt">Current</th>
                                       <th class="debt-th-amt">Consumption</th>
@@ -3139,10 +3139,10 @@
                                   <tbody>
                                     @for (r of meterConvHistory(); track $index) {
                                       <tr [class.cons-row-spike]="isConvAnomaly(r, $index) === 'spike'" [class.cons-row-drop]="isConvAnomaly(r, $index) === 'drop'" [class.cons-row-zero]="isConvAnomaly(r, $index) === 'zero'">
-                                        <td class="debt-td-desc">{{ formatDate(r.readingDate || r.billingDate || r.date) }}</td>
-                                        <td class="debt-td-desc">{{ r.readingType || r.type || '-' }}</td>
-                                        <td class="debt-td-amt mono">{{ r.previousReading || r.prevReading || '-' }}</td>
-                                        <td class="debt-td-amt mono">{{ r.currentReading || r.reading || '-' }}</td>
+                                        <td class="debt-td-desc">{{ r.billingmonth || r.billingMonth || '-' }}</td>
+                                        <td class="debt-td-desc">{{ formatDate(r.reading2Date || r.reading1Date || r.readingDate || r.date) }}</td>
+                                        <td class="debt-td-amt mono">{{ r.reading1 || r.previousReading || r.prevReading || '-' }}</td>
+                                        <td class="debt-td-amt mono">{{ r.reading2 || r.currentReading || r.reading || '-' }}</td>
                                         <td class="debt-td-amt mono bold">{{ getConsumptionVal(r) | number:'1.0-0' }}</td>
                                         <td class="debt-td-desc">
                                           @if (isConvAnomaly(r, $index) === 'spike') { <span class="cons-flag cons-flag-spike">⚠️ Spike</span> }
@@ -3507,30 +3507,30 @@
                           <table class="debt-table cons-full-table" data-testid="table-meter-history">
                             <thead>
                               <tr>
-                                <th class="debt-th-desc">Reading Date</th>
-                                <th class="debt-th-desc">Billing Date</th>
-                                <th class="debt-th-desc">Reading Type</th>
-                                <th class="debt-th-amt">Previous Reading</th>
-                                <th class="debt-th-amt">Current Reading</th>
-                                <th class="debt-th-amt">Consumption</th>
-                                <th class="debt-th-amt">Average Daily</th>
+                                <th class="debt-th-desc">Billing Month</th>
+                                <th class="debt-th-desc">Old Reading Date</th>
+                                <th class="debt-th-amt">Old Reading</th>
+                                <th class="debt-th-desc">New Reading Date</th>
+                                <th class="debt-th-amt">New Reading</th>
                                 <th class="debt-th-desc">Days</th>
-                                <th class="debt-th-desc">Status</th>
+                                <th class="debt-th-amt">Consumption</th>
                                 <th class="debt-th-desc">Flag</th>
+                                <th class="debt-th-desc">Reading Status</th>
+                                <th class="debt-th-desc">Alert</th>
                               </tr>
                             </thead>
                             <tbody>
                               @for (r of consumptionHistory(); track $index) {
                                 <tr [class.cons-row-spike]="isAnomalyReading(r, $index) === 'spike'" [class.cons-row-drop]="isAnomalyReading(r, $index) === 'drop'" [class.cons-row-zero]="isAnomalyReading(r, $index) === 'zero'">
-                                  <td class="debt-td-desc">{{ formatDate(r.readingDate || r.date) }}</td>
-                                  <td class="debt-td-desc">{{ formatDate(r.billingDate || r.transactionDate) }}</td>
-                                  <td class="debt-td-desc">{{ r.readingType || r.type || r.meterReadingType || '-' }}</td>
-                                  <td class="debt-td-amt mono">{{ r.previousReading || r.prevReading || r.previousMeterReading || '-' }}</td>
-                                  <td class="debt-td-amt mono">{{ r.currentReading || r.reading || r.meterReading || r.currentMeterReading || '-' }}</td>
+                                  <td class="debt-td-desc">{{ r.billingmonth || r.billingMonth || '-' }}</td>
+                                  <td class="debt-td-desc">{{ formatDate(r.reading1Date || r.readingDate) }}</td>
+                                  <td class="debt-td-amt mono">{{ r.reading1 || r.previousReading || r.prevReading || '-' }}</td>
+                                  <td class="debt-td-desc">{{ formatDate(r.reading2Date || r.date) }}</td>
+                                  <td class="debt-td-amt mono">{{ r.reading2 || r.currentReading || r.reading || '-' }}</td>
+                                  <td class="debt-td-desc">{{ r.readingdays || r.readingDays || r.days || r.numberOfDays || '-' }}</td>
                                   <td class="debt-td-amt mono bold">{{ getConsumptionVal(r) | number:'1.0-0' }}</td>
-                                  <td class="debt-td-amt mono">{{ getAvgDailyConsumption(r) }}</td>
-                                  <td class="debt-td-desc">{{ r.days || r.numberOfDays || r.readingDays || '-' }}</td>
-                                  <td class="debt-td-desc">{{ r.status || r.readingStatus || r.meterStatus || '-' }}</td>
+                                  <td class="debt-td-desc">{{ r.flag || '-' }}</td>
+                                  <td class="debt-td-desc">{{ r.readingStatus || r.status || r.meterStatus || '-' }}</td>
                                   <td class="debt-td-desc">
                                     @if (isAnomalyReading(r, $index) === 'spike') {
                                       <span class="cons-flag cons-flag-spike">⚠️ Spike</span>
@@ -3561,8 +3561,8 @@
                             <div class="acct-field"><span class="acct-field-label">Meter Status</span><span class="acct-field-value">{{ consumptionSelectedMeter()?.serviceStatus || consumptionSelectedMeter()?.meterStatus || '-' }}</span></div>
                           </div>
                           <div class="acct-col">
-                            <div class="acct-field"><span class="acct-field-label">Latest Reading</span><span class="acct-field-value mono">{{ consumptionHistory()[0]?.currentReading || consumptionHistory()[0]?.reading || consumptionHistory()[0]?.meterReading || '-' }}</span></div>
-                            <div class="acct-field"><span class="acct-field-label">Latest Date</span><span class="acct-field-value">{{ formatDate(consumptionHistory()[0]?.readingDate || consumptionHistory()[0]?.billingDate || consumptionHistory()[0]?.date) }}</span></div>
+                            <div class="acct-field"><span class="acct-field-label">Latest Reading</span><span class="acct-field-value mono">{{ consumptionHistory()[0]?.reading2 || consumptionHistory()[0]?.currentReading || consumptionHistory()[0]?.reading || '-' }}</span></div>
+                            <div class="acct-field"><span class="acct-field-label">Latest Date</span><span class="acct-field-value">{{ formatDate(consumptionHistory()[0]?.reading2Date || consumptionHistory()[0]?.readingDate || consumptionHistory()[0]?.billingDate) }}</span></div>
                             <div class="acct-field"><span class="acct-field-label">Latest Consumption</span><span class="acct-field-value mono bold">{{ getConsumptionVal(consumptionHistory()[0]) | number:'1.0-0' }}</span></div>
                             <div class="acct-field"><span class="acct-field-label">Total Records</span><span class="acct-field-value">{{ consumptionAllHistory().length }}</span></div>
                           </div>
