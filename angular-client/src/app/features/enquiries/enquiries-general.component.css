@@ -1093,6 +1093,25 @@
 .stmt-act-send:hover { background: rgba(37,99,235,0.08); }
 .stmt-act-email:hover { background: rgba(37,99,235,0.06); }
 .stmt-act-sms:hover { background: rgba(5,150,105,0.06); }
+.dtl-export-group {
+  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+}
+.dtl-export-range {
+  display: flex; align-items: center; gap: 0.35rem;
+}
+.dtl-range-label {
+  font-size: 0.75rem; font-weight: 600; color: var(--platinum-primary, #0f2b46); white-space: nowrap;
+}
+.dtl-range-sep {
+  font-size: 0.75rem; color: var(--pos-text-muted, #64748b); padding: 0 0.1rem;
+}
+.dtl-select-sm {
+  font-size: 0.78rem !important; padding: 0.25rem 0.4rem !important; min-width: 90px;
+}
+.dtl-spin {
+  display: inline-block; animation: dtl-spin-anim 1s linear infinite;
+}
+@keyframes dtl-spin-anim { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .stmt-actions-group { align-self: flex-end; }
 
 .acct-section-card {

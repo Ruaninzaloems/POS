@@ -125,6 +125,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   detailTxnData = signal<any>(null);
   detailTxnLoading = signal(false);
   detailMonths: string[] = ['July','August','September','October','November','December','January','February','March','April','May','June'];
+  exportFromMonth = signal('July');
+  exportToMonth = signal('June');
+  exportingCsv = signal(false);
 
   consumptionSelectedMeter = signal<any>(null);
   consumptionHistory = signal<any[]>([]);
@@ -1520,6 +1523,8 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           const matchMonth = finMonths.find(m => m === currentMonth);
           if (matchMonth) {
             this.detailMonth.set(matchMonth);
+            this.exportFromMonth.set('July');
+            this.exportToMonth.set(matchMonth);
           }
           this.loadDetailedTransactions();
           data = { _detailTab: true };
@@ -2219,30 +2224,133 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     return '';
   }
 
-  exportDetailedTransactionsExcel() {
-    const txns = this.detailTransactions();
-    if (!txns.length) return;
-    const headers = ['Transaction Date', 'Transaction Description', 'Receipt ID / Doc Transaction ID', 'Document Number', 'Tariff', 'Amount', 'Interest', 'VAT', 'Total'];
-    const rows = txns.map((t: any) => [
-      this.formatDate(t.transactionDate || t.date),
-      t.transactionDescription || t.description || '',
-      t.receiptId || t.receiptNo || t.receipt_ID || t.documentTransactionId || '',
-      t.documentNumber || t.docNumber || '',
-      t.tariff || '',
-      t.amount ?? t.debitAmount ?? 0,
-      t.interest ?? 0,
-      t.vat ?? 0,
-      t.total ?? t.totalAmount ?? 0,
-    ]);
-    const csv = [headers.join(','), ...rows.map(r => r.map((v: any) => `"${String(v).replace(/"/g, '""')}"`).join(','))].join('\n');
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    const acct = this.selectedAccount();
-    a.download = `Detailed_Transactions_${acct?.['accountNo'] || acct?.['accountId'] || 'export'}_${this.detailFinYear()}_${this.detailMonth() || 'All'}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  getExportMonthRange(): string[] {
+    const from = this.exportFromMonth();
+    const to = this.exportToMonth();
+    const fromIdx = this.detailMonths.indexOf(from);
+    const toIdx = this.detailMonths.indexOf(to);
+    if (fromIdx < 0 || toIdx < 0) return this.detailMonths;
+    if (fromIdx <= toIdx) return this.detailMonths.slice(fromIdx, toIdx + 1);
+    return [...this.detailMonths.slice(fromIdx), ...this.detailMonths.slice(0, toIdx + 1)];
+  }
+
+  async exportDetailedTransactionsExcel() {
+    const account = this.selectedAccount();
+    if (!account) return;
+    const accountId = this.getAccountId(account);
+    const finYear = this.detailFinYear() || this.userFinYear();
+    if (!finYear) return;
+
+    const months = this.getExportMonthRange();
+    if (!months.length) return;
+
+    this.exportingCsv.set(true);
+
+    try {
+      const monthResults = await Promise.allSettled(
+        months.map(m => firstValueFrom(
+          this.api.get<any>(`/api/platinum/billing-enquiry/get-billing-period-transactions`, {
+            accountId: String(accountId), finYear, billingMonth: m, balanceType: '3'
+          })
+        ))
+      );
+
+      const basic = this.getAccountBasic();
+      const prop = this.getAccountProp();
+      const acctNo = account['accountNumber'] || account['accountNo'] || String(accountId);
+      const acctName = account['name'] || account['surname_Company'] || basic?.fullNAME || basic?.fullName || '';
+      const acctStatus = basic?.accountStatus || account['accountStatus'] || '';
+      const propertyId = basic?.propertyID || prop?.propertyID || prop?.property_ID || '';
+      const address = basic?.deliveryAddress || prop?.physicalAddress || prop?.address || '';
+      const creditStatus = basic?.creditStatusDesc || '';
+      const fromMonth = this.exportFromMonth();
+      const toMonth = this.exportToMonth();
+      const exportDate = new Date();
+      const exportDateStr = `${String(exportDate.getDate()).padStart(2,'0')}/${String(exportDate.getMonth()+1).padStart(2,'0')}/${exportDate.getFullYear()}`;
+      const exportTimeStr = `${String(exportDate.getHours()).padStart(2,'0')}:${String(exportDate.getMinutes()).padStart(2,'0')}`;
+
+      const csvLines: string[] = [];
+
+      csvLines.push('"GEORGE MUNICIPALITY - DETAILED TRANSACTION REPORT"');
+      csvLines.push('""');
+      csvLines.push(`"Account Number:","${this.csvEsc(acctNo)}","","Account Holder:","${this.csvEsc(acctName)}"`);
+      csvLines.push(`"Account Status:","${this.csvEsc(acctStatus)}","","Credit Status:","${this.csvEsc(creditStatus)}"`);
+      csvLines.push(`"Property ID:","${this.csvEsc(propertyId)}","","Address:","${this.csvEsc(address)}"`);
+      csvLines.push(`"Financial Year:","${this.csvEsc(finYear)}","","Period:","${this.csvEsc(fromMonth)} to ${this.csvEsc(toMonth)}"`);
+      csvLines.push(`"Export Date:","${exportDateStr}","","Time:","${exportTimeStr}"`);
+      csvLines.push('""');
+
+      const dataHeaders = ['Transaction Date', 'Transaction Description', 'Receipt ID / Doc Transaction ID', 'Document Number', 'Tariff', 'Amount', 'Interest', 'VAT', 'Total'];
+
+      let grandTotalAmount = 0;
+      let grandTotalInterest = 0;
+      let grandTotalVat = 0;
+      let grandTotal = 0;
+
+      for (let mi = 0; mi < months.length; mi++) {
+        const res = monthResults[mi];
+        const txns = res.status === 'fulfilled' ? this.normalizeArray(res.value) : [];
+
+        csvLines.push(`"${months[mi].toUpperCase()}",,,,,,,,`);
+        csvLines.push(dataHeaders.map(h => `"${h}"`).join(','));
+
+        if (txns.length === 0) {
+          csvLines.push('"No transactions","","","","","","","",""');
+        } else {
+          let monthAmount = 0, monthInterest = 0, monthVat = 0, monthTotal = 0;
+          for (const t of txns) {
+            const amt = t.amount ?? t.debitAmount ?? 0;
+            const int = t.interest ?? 0;
+            const vat = t.vat ?? 0;
+            const tot = t.total ?? t.totalAmount ?? 0;
+            monthAmount += Number(amt) || 0;
+            monthInterest += Number(int) || 0;
+            monthVat += Number(vat) || 0;
+            monthTotal += Number(tot) || 0;
+            csvLines.push([
+              this.formatDate(t.transactionDate || t.date),
+              t.transactionDescription || t.description || '',
+              t.receiptId || t.receiptNo || t.receipt_ID || t.documentTransactionId || '',
+              t.documentNumber || t.docNumber || '',
+              t.tariff || '',
+              amt, int, vat, tot,
+            ].map((v: any) => `"${this.csvEsc(String(v))}"`).join(','));
+          }
+          csvLines.push(`"","","","","Month Total:","${monthAmount.toFixed(2)}","${monthInterest.toFixed(2)}","${monthVat.toFixed(2)}","${monthTotal.toFixed(2)}"`);
+          grandTotalAmount += monthAmount;
+          grandTotalInterest += monthInterest;
+          grandTotalVat += monthVat;
+          grandTotal += monthTotal;
+        }
+        csvLines.push('""');
+      }
+
+      if (months.length > 1) {
+        csvLines.push(`"","","","","GRAND TOTAL:","${grandTotalAmount.toFixed(2)}","${grandTotalInterest.toFixed(2)}","${grandTotalVat.toFixed(2)}","${grandTotal.toFixed(2)}"`);
+        csvLines.push('""');
+      }
+
+      csvLines.push(`"--- End of Report ---"`);
+
+      const csv = csvLines.join('\n');
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const safeName = acctName.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '_').substring(0, 30);
+      a.download = `Transaction_Report_${acctNo}_${safeName}_${finYear.replace('/', '-')}_${fromMonth}-${toMonth}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      this.toast.show(`Exported ${months.length} month(s) of transactions`, 'success');
+    } catch (e: any) {
+      this.toast.show('Failed to export transactions', 'error');
+    } finally {
+      this.exportingCsv.set(false);
+    }
+  }
+
+  csvEsc(val: string): string {
+    return String(val || '').replace(/"/g, '""');
   }
 
   async selectConsumptionMeter(meter: any) {

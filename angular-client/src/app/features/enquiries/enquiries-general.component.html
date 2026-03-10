@@ -3417,9 +3417,29 @@
                       }
                     </select>
                   </div>
-                  <button class="dtl-btn dtl-btn-export" (click)="exportDetailedTransactionsExcel()" [disabled]="!detailTransactions().length" data-testid="button-export-detail-csv">
-                    <span class="dtl-btn-icon">📥</span> Export
-                  </button>
+                  <div class="dtl-export-group">
+                    <div class="dtl-export-range">
+                      <label class="dtl-range-label">Export Range:</label>
+                      <select class="dtl-select dtl-select-sm" [value]="exportFromMonth()" (change)="exportFromMonth.set($any($event.target).value)" data-testid="select-export-from">
+                        @for (m of detailMonths; track m) {
+                          <option [value]="m">{{ m }}</option>
+                        }
+                      </select>
+                      <span class="dtl-range-sep">to</span>
+                      <select class="dtl-select dtl-select-sm" [value]="exportToMonth()" (change)="exportToMonth.set($any($event.target).value)" data-testid="select-export-to">
+                        @for (m of detailMonths; track m) {
+                          <option [value]="m">{{ m }}</option>
+                        }
+                      </select>
+                    </div>
+                    <button class="dtl-btn dtl-btn-export" (click)="exportDetailedTransactionsExcel()" [disabled]="exportingCsv()" data-testid="button-export-detail-csv">
+                      @if (exportingCsv()) {
+                        <span class="dtl-btn-icon dtl-spin">⏳</span> Exporting...
+                      } @else {
+                        <span class="dtl-btn-icon">📥</span> Export
+                      }
+                    </button>
+                  </div>
                 </div>
               </div>
 
