@@ -246,6 +246,119 @@
                 </div>
               </div>
             </div>
+
+            <div class="linked-section">
+              <div class="linked-header">
+                <div class="linked-header-left">
+                  <span class="linked-header-title">Other Accounts Linked to the Same Address</span>
+                  @if (!linkedAccountsLoading() && linkedAccounts().length > 0) {
+                    <span class="linked-count-badge">{{ linkedAccounts().length }} account{{ linkedAccounts().length !== 1 ? 's' : '' }}</span>
+                  }
+                </div>
+                @if (!linkedAccountsLoading() && linkedAccounts().length > 0) {
+                  <div class="linked-summary-badges">
+                    <div class="linked-badge linked-badge-total" [class.has-debt]="linkedTotalOutstanding() > 0">
+                      <span class="linked-badge-label">Combined Outstanding</span>
+                      <span class="linked-badge-value">R {{ formatCurrency(linkedTotalOutstanding()) }}</span>
+                    </div>
+                  </div>
+                }
+              </div>
+
+              @if (linkedAccountsLoading()) {
+                <div class="linked-loading">
+                  <div class="search-spinner"></div>
+                  <span>Loading linked accounts...</span>
+                </div>
+              } @else if (linkedAccounts().length === 0) {
+                <div class="linked-empty">No other accounts linked to this address</div>
+              } @else {
+                <div class="linked-table-wrap">
+                  <table class="data-table linked-table" data-testid="table-linked-accounts">
+                    <thead>
+                      <tr>
+                        <th style="width:32px"></th>
+                        <th>Account</th>
+                        <th>Acc Status</th>
+                        <th>Acc Type</th>
+                        <th>Person/Company</th>
+                        <th>Tariff Code</th>
+                        <th>Tariff Desc</th>
+                        <th class="text-right">Outstanding</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (la of linkedAccounts(); track getLinkedAcctId(la); let li = $index) {
+                        <tr class="linked-row" [class.linked-row-expanded]="linkedExpandedAcct() === getLinkedAcctId(la)" (click)="toggleLinkedExpand(getLinkedAcctId(la), la.account_ID || la.accountID || la.accountNumber)" [attr.data-testid]="'linked-row-' + li">
+                          <td class="text-center">
+                            <span class="expand-chevron linked-chevron" [class.expanded]="linkedExpandedAcct() === getLinkedAcctId(la)">▶</span>
+                          </td>
+                          <td class="mono">{{ la.accountNumber || la.account || '-' }}</td>
+                          <td><span class="inline-badge" [class.active]="(la.accountStatus || la.statusDesc || '').toLowerCase().includes('active')">{{ la.accountStatus || la.statusDesc || '-' }}</span></td>
+                          <td>{{ la.accountType || la.accountDesc || la.accType || '-' }}</td>
+                          <td>{{ la.name || la.surname_Company || la.personCompany || '-' }}</td>
+                          <td class="mono muted">{{ la.tariffCode || la.tariff_Code || '-' }}</td>
+                          <td>{{ la.tariffDesc || la.tariffDescription || la.tariff_Desc || '-' }}</td>
+                          <td class="text-right">
+                            <span class="mono bold" [class.positive]="(+(la.outStandingAmount || la.outStandingAmt || la.totalOutstanding || la.balance || 0)) > 0">
+                              R {{ formatCurrency(+(la.outStandingAmount || la.outStandingAmt || la.totalOutstanding || la.balance || 0)) }}
+                            </span>
+                          </td>
+                        </tr>
+                        @if (linkedExpandedAcct() === getLinkedAcctId(la)) {
+                          <tr>
+                            <td colspan="8" class="linked-services-cell">
+                              @if (linkedServicesLoading() === getLinkedAcctId(la)) {
+                                <div class="linked-svc-loading">
+                                  <div class="search-spinner"></div>
+                                  <span>Loading services...</span>
+                                </div>
+                              } @else {
+                                @if ((linkedServicesMap()[getLinkedAcctId(la)] || []).length > 0) {
+                                  <div class="linked-svc-container">
+                                    <div class="linked-svc-title">Services for {{ la.accountNumber || la.account }}</div>
+                                    <table class="data-table linked-svc-table">
+                                      <thead>
+                                        <tr>
+                                          <th>Service</th>
+                                          <th>Service Status</th>
+                                          <th>Tariff Code</th>
+                                          <th>Tariff Desc</th>
+                                          <th>Physical Meter No</th>
+                                          <th>Meter No</th>
+                                          <th>Meter Classification</th>
+                                          <th>Meter Status</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        @for (svc of linkedServicesMap()[getLinkedAcctId(la)] || []; track $index) {
+                                          <tr [attr.data-testid]="'linked-svc-' + li + '-' + $index">
+                                            <td>{{ svc.serviceDescription || svc.serviceDesc || svc.service || '-' }}</td>
+                                            <td><span class="inline-badge" [class.active]="(svc.serviceStatus || svc.status || '').toLowerCase().includes('active')">{{ svc.serviceStatus || svc.status || '-' }}</span></td>
+                                            <td class="mono muted">{{ svc.tariffCode || svc.tariff_Code || '-' }}</td>
+                                            <td>{{ svc.tariffDesc || svc.tariffDescription || svc.tariff_Desc || '-' }}</td>
+                                            <td class="mono">{{ svc.physicalMeterNo || svc.physicalMeterNumber || '-' }}</td>
+                                            <td class="mono">{{ svc.meterNo || svc.meterNumber || '-' }}</td>
+                                            <td>{{ svc.meterClassification || svc.meterClass || '-' }}</td>
+                                            <td><span class="inline-badge" [class.active]="(svc.meterStatus || '').toLowerCase().includes('active')">{{ svc.meterStatus || '-' }}</span></td>
+                                          </tr>
+                                        }
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                } @else {
+                                  <div class="linked-svc-empty">No services found for this account</div>
+                                }
+                              }
+                            </td>
+                          </tr>
+                        }
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+            </div>
           </div>
         }
 

@@ -162,6 +162,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   stmtAvailableYears = signal<string[]>([]);
   stmtMonths: string[] = ['', 'July', 'August', 'September', 'October', 'November', 'December', 'January', 'February', 'March', 'April', 'May', 'June'];
 
+  linkedAccounts = signal<any[]>([]);
+  linkedAccountsLoading = signal(false);
+  linkedTotalOutstanding = signal(0);
+  linkedExpandedAcct = signal<string | null>(null);
+  linkedServicesMap = signal<Record<string, any[]>>({});
+  linkedServicesLoading = signal<string | null>(null);
+
   advancedSuggestions = signal<{ displayItem: string; accountId: number }[]>([]);
   activeFieldKey = signal<string | null>(null);
   advancedFieldLoading = signal(false);
@@ -1004,6 +1011,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             accountInfo: airVal,
             property: acctPropVal,
           };
+          this.loadLinkedAccounts(accountId);
           break;
 
         case 'balance':
@@ -2255,5 +2263,74 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       result += `, ${parsed.town}`;
     }
     return result;
+  }
+
+  private linkedRequestToken = 0;
+
+  async loadLinkedAccounts(accountId: number) {
+    const token = ++this.linkedRequestToken;
+    this.linkedAccountsLoading.set(true);
+    this.linkedAccounts.set([]);
+    this.linkedTotalOutstanding.set(0);
+    this.linkedExpandedAcct.set(null);
+    this.linkedServicesMap.set({});
+    try {
+      const result = await firstValueFrom(
+        this.api.get<any>(`/api/platinum/billing-enquiry/linked-accounts-on-property/${accountId}`)
+      );
+      if (this.linkedRequestToken !== token) return;
+      const arr = this.normalizeArray(result);
+      const currentAcctNum = this.selectedAccount()?.['accountNumber'] || '';
+      const linked = arr.filter((a: any) => {
+        const num = a.accountNumber || a.account || '';
+        return num !== currentAcctNum;
+      });
+      if (linked.length > 0) {
+        console.log('[linked-accounts] keys:', Object.keys(linked[0]));
+      }
+      this.linkedAccounts.set(linked);
+      const total = linked.reduce((sum: number, a: any) => {
+        return sum + (Number(a.outStandingAmount) || Number(a.outStandingAmt) || Number(a.totalOutstanding) || Number(a.balance) || 0);
+      }, 0);
+      this.linkedTotalOutstanding.set(total);
+    } catch (e) {
+      if (this.linkedRequestToken !== token) return;
+      console.error('[linked-accounts] Failed to load:', e);
+      this.linkedAccounts.set([]);
+    } finally {
+      if (this.linkedRequestToken === token) {
+        this.linkedAccountsLoading.set(false);
+      }
+    }
+  }
+
+  async toggleLinkedExpand(acctKey: string, accountId: number | string) {
+    if (this.linkedExpandedAcct() === acctKey) {
+      this.linkedExpandedAcct.set(null);
+      return;
+    }
+    this.linkedExpandedAcct.set(acctKey);
+    const map = this.linkedServicesMap();
+    if (map[acctKey]) return;
+    this.linkedServicesLoading.set(acctKey);
+    try {
+      const result = await firstValueFrom(
+        this.api.get<any>(`/api/platinum/billing-enquiry/all-services/${accountId}`)
+      );
+      const services = this.normalizeArray(result);
+      if (services.length > 0) {
+        console.log('[linked-services] keys:', Object.keys(services[0]));
+      }
+      this.linkedServicesMap.set({ ...this.linkedServicesMap(), [acctKey]: services });
+    } catch (e) {
+      console.error('[linked-services] Failed:', e);
+      this.linkedServicesMap.set({ ...this.linkedServicesMap(), [acctKey]: [] });
+    } finally {
+      this.linkedServicesLoading.set(null);
+    }
+  }
+
+  getLinkedAcctId(acct: any): string {
+    return String(acct.account_ID || acct.accountID || acct.accountNumber || acct.account || '');
   }
 }
