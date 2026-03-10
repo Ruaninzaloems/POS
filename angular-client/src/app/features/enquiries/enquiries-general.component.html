@@ -1228,38 +1228,121 @@
 
         @if (activeTab() === 'section129') {
           <div class="tab-panel" data-testid="section129-tab">
-            @if ((tabData()?.section129 || []).length > 0) {
-              <div class="detail-section">
-                <div class="section-header-bar">⚠️ Section 129 History</div>
-                <div class="data-table-wrapper">
-                  <table class="data-table" data-testid="table-section129">
-                    <thead>
-                      <tr>
-                        <th>Date</th>
-                        <th>Status</th>
-                        <th>Description</th>
-                        <th class="text-right">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (s of tabData()?.section129 || []; track $index) {
-                        <tr [attr.data-testid]="'row-s129-' +  $index  + ''">
-                          <td>{{ formatDate(s.noticeDate || s.date || s.createdDate) }}</td>
-                          <td><span class="inline-badge">{{ s.status || s.noticeStatus || '-' }}</span></td>
-                          <td>{{ s.description || s.noticeDescription || '-' }}</td>
-                          <td class="text-right mono">R {{ formatCurrency(s.amount || s.noticeAmount || 0) }}</td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
+
+            @if (s129Insights()) {
+              <div class="cons-insights-row" style="margin-bottom: 1rem;">
+                <div class="cons-insight-card s129-card">
+                  <div class="cons-insight-label">Total Notices</div>
+                  <div class="cons-insight-value">{{ s129Insights().totalNotices }}</div>
+                  <div class="cons-insight-sub">in selection</div>
+                </div>
+                <div class="cons-insight-card s129-card">
+                  <div class="cons-insight-label">Qualifying Amount</div>
+                  <div class="cons-insight-value pp-amount" style="font-size: 0.95rem;">R {{ formatCurrency(s129Insights().totalAmount) }}</div>
+                  <div class="cons-insight-sub">total value</div>
+                </div>
+                <div class="cons-insight-card s129-card">
+                  <div class="cons-insight-label">Delivered</div>
+                  <div class="cons-insight-value cons-insight-low">{{ s129Insights().deliveredCount }}</div>
+                  <div class="cons-insight-sub">proof received</div>
+                </div>
+                <div class="cons-insight-card s129-card">
+                  <div class="cons-insight-label">Pending</div>
+                  <div class="cons-insight-value" [class.cons-insight-high]="s129Insights().pendingCount > 0">{{ s129Insights().pendingCount }}</div>
+                  <div class="cons-insight-sub">awaiting delivery</div>
+                </div>
+                <div class="cons-insight-card s129-card">
+                  <div class="cons-insight-label">Authorised</div>
+                  <div class="cons-insight-value">{{ s129Insights().authorizedCount }}</div>
+                  <div class="cons-insight-sub">approved notices</div>
+                </div>
+                <div class="cons-insight-card s129-card">
+                  <div class="cons-insight-label">Attorneys</div>
+                  <div class="cons-insight-value">{{ s129Insights().attorneyCount }}</div>
+                  <div class="cons-insight-sub">{{ s129Insights().attorneys?.length > 0 ? s129Insights().attorneys[0] : 'none assigned' }}</div>
                 </div>
               </div>
-            } @else {
-              <div class="empty-state">
-                <div class="empty-icon">⚠️</div>
-                <p class="empty-text">No Section 129 records found</p>
-              </div>
             }
+
+            <div class="stmt-generator" style="margin-bottom: 1rem;">
+              <div class="stmt-gen-header s129-gen-header">
+                <span class="stmt-gen-title">⚠️ Section 129 Notices List per Billing Period</span>
+              </div>
+              <div class="stmt-gen-body">
+                <div class="stmt-controls-row">
+                  <div class="stmt-control-group">
+                    <label class="stmt-label">Financial Year</label>
+                    <select class="stmt-select" [ngModel]="s129FinYear()" (ngModelChange)="s129FinYear.set($event); filterS129()" data-testid="select-s129-finyear">
+                      <option value="">-- All Years --</option>
+                      @for (y of s129AvailableYears(); track y) {
+                        <option [value]="y">{{ y }}</option>
+                      }
+                    </select>
+                  </div>
+                  <div class="stmt-control-group">
+                    <label class="stmt-label">Month</label>
+                    <select class="stmt-select" [ngModel]="s129Month()" (ngModelChange)="s129Month.set($event); filterS129()" data-testid="select-s129-month">
+                      @for (m of stmtMonths; track m) {
+                        <option [value]="m">{{ m || '-- All Months --' }}</option>
+                      }
+                    </select>
+                  </div>
+                  <div class="stmt-control-group">
+                    <label class="stmt-label">&nbsp;</label>
+                    <span class="s129-filter-count">{{ s129Filtered().length }} of {{ (tabData()?.section129 || []).length }} records</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="debt-table-section">
+              <div class="debt-table-header s129-tbl-header">
+                <span class="debt-table-title">Section 129 Notices</span>
+                <span class="debt-table-count">{{ s129Filtered().length }} notice{{ s129Filtered().length !== 1 ? 's' : '' }}</span>
+              </div>
+              <div class="debt-table-wrapper">
+                <table class="debt-table" data-testid="table-section129">
+                  <thead>
+                    <tr>
+                      <th class="debt-th-desc">Final Run Id</th>
+                      <th class="debt-th-desc">Distribution Type</th>
+                      <th class="debt-th-amt">Qualifying Amount</th>
+                      <th class="debt-th-desc">Issue Date</th>
+                      <th class="debt-th-desc">Attorney</th>
+                      <th class="debt-th-desc">Rotation Attorney</th>
+                      <th class="debt-th-desc">Proof of Delivery Date</th>
+                      <th class="debt-th-desc">Proof of Delivery Status</th>
+                      <th class="debt-th-desc">Proof of Delivery Message</th>
+                      <th class="debt-th-desc">Actioned By</th>
+                      <th class="debt-th-desc">Date Created</th>
+                      <th class="debt-th-desc">Authorised By</th>
+                      <th class="debt-th-desc">Date Authorised</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (s of s129Filtered(); track $index) {
+                      <tr [attr.data-testid]="'row-s129-' + $index">
+                        <td class="debt-td-desc mono">{{ s.finalRunId || s.runId || s.id || '-' }}</td>
+                        <td class="debt-td-desc">{{ s.distributionType || s.type || '-' }}</td>
+                        <td class="debt-td-amt mono bold">{{ formatDebtAmt(s.qualifyingAmount || s.amount || s.noticeAmount || 0) }}</td>
+                        <td class="debt-td-desc">{{ formatDate(s.issueDate || s.noticeDate || s.date) }}</td>
+                        <td class="debt-td-desc">{{ s.attorney || '-' }}</td>
+                        <td class="debt-td-desc">{{ s.rotationAttorney || '-' }}</td>
+                        <td class="debt-td-desc">{{ formatDate(s.proofOfDeliveryDate || s.podDate) }}</td>
+                        <td class="debt-td-desc"><span class="s129-pod-badge" [class.s129-pod-delivered]="(s.proofOfDeliveryStatus || '').toLowerCase().includes('deliver') || (s.proofOfDeliveryStatus || '').toLowerCase().includes('success')" [class.s129-pod-pending]="!(s.proofOfDeliveryStatus || '') || (s.proofOfDeliveryStatus || '').toLowerCase().includes('pend')" [class.s129-pod-failed]="(s.proofOfDeliveryStatus || '').toLowerCase().includes('fail') || (s.proofOfDeliveryStatus || '').toLowerCase().includes('reject')">{{ s.proofOfDeliveryStatus || '-' }}</span></td>
+                        <td class="debt-td-desc ind-reason-cell">{{ s.proofOfDeliveryMessage || s.podMessage || '-' }}</td>
+                        <td class="debt-td-desc">{{ s.actionedBy || s.createdBy || '-' }}</td>
+                        <td class="debt-td-desc">{{ formatDate(s.dateCreated || s.createdDate || s.createDate) }}</td>
+                        <td class="debt-td-desc">{{ s.authorisedBy || s.authorizedBy || '-' }}</td>
+                        <td class="debt-td-desc">{{ formatDate(s.dateAuthorised || s.dateAuthorized || s.authorisedDate) }}</td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="13" class="debt-td-desc" style="text-align:center; color: var(--pos-text-muted); padding: 1rem;">No records to display</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         }
 

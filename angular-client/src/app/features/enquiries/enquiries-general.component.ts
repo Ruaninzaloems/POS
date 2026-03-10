@@ -143,6 +143,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
   indigentInsights = signal<any>(null);
 
+  s129FinYear = signal('');
+  s129Month = signal('');
+  s129Loading = signal(false);
+  s129Filtered = signal<any[]>([]);
+  s129Insights = signal<any>(null);
+  s129AvailableYears = signal<string[]>([]);
+
   stmtType = signal<'standard' | 'detailed'>('standard');
   stmtFinYear = signal('');
   stmtMonth = signal('');
@@ -1159,7 +1166,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           const s129Result = await firstValueFrom(
             this.api.get<any>(`/api/platinum/billing-enquiry/section129-account-enquiry/${accountId}`)
           );
-          data = { section129: this.normalizeArray(s129Result) };
+          const s129Arr = this.normalizeArray(s129Result);
+          data = { section129: s129Arr };
+          this.s129FinYear.set('');
+          this.s129Month.set('');
+          this.s129Filtered.set(s129Arr);
+          this.initS129Years(s129Arr);
+          this.computeS129Insights(s129Arr);
           break;
 
         case 'linked-accounts':
@@ -1829,6 +1842,72 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const date = r.readingDate || r.billingDate || r.date || '';
     if (!date) return '-';
     return this.formatDate(date);
+  }
+
+  initS129Years(records: any[]) {
+    const currentYear = new Date().getFullYear();
+    const years: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      years.push(`${currentYear - i}/${currentYear - i + 1}`);
+    }
+    const fromRecords = records
+      .map((r: any) => r.financialYear || r.billingPeriod || '')
+      .filter((y: string) => y && y.includes('/'));
+    const allYears = [...new Set([...years, ...fromRecords])].sort().reverse();
+    this.s129AvailableYears.set(allYears);
+    if (!this.s129FinYear() && allYears.length > 0) {
+      this.s129FinYear.set(allYears[0]);
+    }
+  }
+
+  computeS129Insights(records: any[]) {
+    if (!records || records.length === 0) {
+      this.s129Insights.set(null);
+      return;
+    }
+    const totalNotices = records.length;
+    const totalAmount = records.reduce((sum: number, r: any) => sum + (Number(r.qualifyingAmount || r.amount || r.noticeAmount || 0) || 0), 0);
+    const delivered = records.filter((r: any) => (r.proofOfDeliveryStatus || '').toLowerCase().includes('deliver') || (r.proofOfDeliveryStatus || '').toLowerCase().includes('success'));
+    const pending = records.filter((r: any) => !(r.proofOfDeliveryStatus || '') || (r.proofOfDeliveryStatus || '').toLowerCase().includes('pend'));
+    const authorized = records.filter((r: any) => r.authorisedBy || r.authorizedBy || r.dateAuthorised || r.dateAuthorized);
+    const attorneys = [...new Set(records.map((r: any) => r.attorney || '').filter((a: string) => a))];
+    this.s129Insights.set({
+      totalNotices,
+      totalAmount,
+      deliveredCount: delivered.length,
+      pendingCount: pending.length,
+      authorizedCount: authorized.length,
+      attorneyCount: attorneys.length,
+      attorneys,
+    });
+  }
+
+  filterS129() {
+    const all = this.tabData()?.section129 || [];
+    const fy = this.s129FinYear();
+    const month = this.s129Month();
+    let filtered = all;
+    if (fy) {
+      filtered = filtered.filter((r: any) => {
+        const recFy = r.financialYear || r.billingPeriod || '';
+        return !recFy || recFy === fy;
+      });
+    }
+    if (month) {
+      filtered = filtered.filter((r: any) => {
+        const recMonth = (r.month || r.billingMonth || '').toLowerCase();
+        const issueDate = r.issueDate || r.noticeDate || r.date || r.createdDate || '';
+        if (recMonth && recMonth === month.toLowerCase()) return true;
+        if (issueDate) {
+          const d = new Date(issueDate);
+          const monthNames = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+          if (!isNaN(d.getTime()) && monthNames[d.getMonth()] === month.toLowerCase()) return true;
+        }
+        return !recMonth && !issueDate;
+      });
+    }
+    this.s129Filtered.set(filtered);
+    this.computeS129Insights(filtered);
   }
 
   initStmtYears(statements: any[]) {

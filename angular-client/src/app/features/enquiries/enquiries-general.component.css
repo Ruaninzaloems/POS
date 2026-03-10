@@ -1060,6 +1060,28 @@
 .stmt-act-sms:hover { background: rgba(5,150,105,0.06); }
 .stmt-actions-group { align-self: flex-end; }
 
+.s129-card { border-top: 3px solid rgba(245,158,11,0.3); }
+.s129-gen-header { background: linear-gradient(135deg, rgba(15,43,70,0.06) 0%, rgba(245,158,11,0.10) 100%) !important; }
+.s129-tbl-header { background: linear-gradient(135deg, rgba(15,43,70,0.06) 0%, rgba(245,158,11,0.06) 100%) !important; }
+.s129-filter-count {
+  font-size: 0.8rem;
+  color: var(--pos-text-muted);
+  font-weight: 500;
+  padding: 0.5rem 0;
+}
+.s129-pod-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: #F2F4F7;
+  color: var(--pos-text-muted);
+}
+.s129-pod-badge.s129-pod-delivered { background: rgba(34,197,94,0.12); color: #15803d; }
+.s129-pod-badge.s129-pod-pending { background: rgba(245,158,11,0.12); color: #92400e; }
+.s129-pod-badge.s129-pod-failed { background: rgba(239,68,68,0.10); color: #b91c1c; }
+
 .ind-header { background: linear-gradient(135deg, rgba(15,43,70,0.06) 0%, rgba(34,197,94,0.08) 100%) !important; }
 .ind-card { border-top: 3px solid rgba(34,197,94,0.3); }
 .ind-dnc-active { border-color: rgba(34,197,94,0.5); background: rgba(34,197,94,0.04); }
