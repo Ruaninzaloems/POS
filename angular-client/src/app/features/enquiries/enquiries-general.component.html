@@ -164,6 +164,13 @@
                 @if (safeStr(getAccountBasic()['deliveryAddress'] || getAccountAir()['deliverAddress'] || getAccountBasic()['fullAddress']) !== '-') {
                   <span class="hero-footer-item">📍 {{ safeStr(getAccountBasic()['deliveryAddress'] || getAccountAir()['deliverAddress'] || getAccountBasic()['fullAddress']) }}</span>
                 }
+                <button class="rebuild-account-btn" (click)="rebuildFullAccount()" [disabled]="rebuildingAccount()" data-testid="button-rebuild-account">
+                  @if (rebuildingAccount()) {
+                    <span class="rebuild-spinner"></span> Rebuilding...
+                  } @else {
+                    🔄 Rebuild Account
+                  }
+                </button>
               </div>
             </div>
 
@@ -2195,6 +2202,41 @@
                 </table>
               </div>
             </div>
+
+            @if ((tabData()?.bankStatementNotes || []).length > 0) {
+              <div class="debt-table-section" style="margin-top: 1.5rem;">
+                <div class="debt-table-header">
+                  <span class="debt-table-title">EFT Bank Statement Notes</span>
+                  <span class="debt-table-count">{{ (tabData()?.bankStatementNotes || []).length }} record{{ (tabData()?.bankStatementNotes || []).length !== 1 ? 's' : '' }}</span>
+                </div>
+                <div class="debt-table-wrapper">
+                  <table class="debt-table" data-testid="table-bank-statement-notes">
+                    <thead>
+                      <tr>
+                        <th class="debt-th-desc">Date</th>
+                        <th class="debt-th-amt">Amount</th>
+                        <th class="debt-th-desc">Description</th>
+                        <th class="debt-th-desc">Reference</th>
+                        <th class="debt-th-desc">Bank</th>
+                        <th class="debt-th-desc">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (note of tabData()?.bankStatementNotes || []; track $index) {
+                        <tr [attr.data-testid]="'row-bank-note-' + $index">
+                          <td class="debt-td-desc">{{ formatDate(note.transactionDate || note.date || note.capturedDate) }}</td>
+                          <td class="debt-td-amt">{{ formatDebtAmt(note.amount ?? note.transactionAmount ?? 0) }}</td>
+                          <td class="debt-td-desc">{{ note.description || note.bankStatementNote || note.narrative || '-' }}</td>
+                          <td class="debt-td-desc mono">{{ note.reference || note.bankReference || '-' }}</td>
+                          <td class="debt-td-desc">{{ note.bank || note.bankName || '-' }}</td>
+                          <td class="debt-td-desc">{{ note.status || note.allocationStatus || '-' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            }
           </div>
         }
 

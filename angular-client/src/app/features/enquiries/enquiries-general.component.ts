@@ -239,6 +239,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   proofLoading = signal(false);
   selectedOccupierIdx = signal<number | null>(null);
   expandedClearanceRow = signal<number | null>(null);
+  rebuildingAccount = signal(false);
   clearanceLinkedAccounts = signal<any[]>([]);
 
   handoverYear = signal('');
@@ -1488,12 +1489,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           break;
 
         case 'contact':
-          const [contactDetails, contactHistory, deliveryHistory, contactBasic, contactAir] = await Promise.allSettled([
+          const [contactDetails, contactHistory, deliveryHistory, contactBasic, contactAir, additionalEmailsResult] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/contact-details/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/contact-details-history/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/delivery-address-history/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/basic-account-details/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-info-result/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-account-management/get-additional-emails`, { accountId: String(accountId) })),
           ]);
           const contactObj = contactDetails.status === 'fulfilled' ? (Array.isArray(contactDetails.value) ? contactDetails.value[0] : contactDetails.value) : {};
           const cBasic = contactBasic.status === 'fulfilled' ? (Array.isArray(contactBasic.value) ? contactBasic.value[0] : contactBasic.value) : null;
@@ -1521,10 +1523,20 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
               if (lines.length > 1 && !mergedContact['town']) mergedContact['town'] = lines[lines.length > 3 ? lines.length - 2 : 1];
             }
           }
+          const additionalEmails = additionalEmailsResult.status === 'fulfilled' ? this.normalizeArray(additionalEmailsResult.value) : [];
+          if (additionalEmails.length > 0) {
+            additionalEmails.forEach((e: any, i: number) => {
+              const email = e.emailAddress || e.email || e.emailId || '';
+              if (email && !mergedContact[`additionalEmail${i + 1}`]) {
+                mergedContact[`additionalEmail${i + 1}`] = email;
+              }
+            });
+          }
           data = {
             contact: mergedContact,
             history: contactHistory.status === 'fulfilled' ? this.normalizeArray(contactHistory.value) : [],
             deliveryHistory: deliveryHistory.status === 'fulfilled' ? this.normalizeArray(deliveryHistory.value) : [],
+            additionalEmails,
           };
           break;
 
@@ -1600,12 +1612,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           break;
 
         case 'deposits':
-          const [depositsResult, depositAmtResult, refundsResult, reversalsResult, bankGuaranteeResult] = await Promise.allSettled([
+          const [depositsResult, depositAmtResult, refundsResult, reversalsResult, bankGuaranteeResult, bankStmtNotesResult] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/deposits/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/deposit-amount/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/refunds/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/payment-reversals/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/deposit-bank-guarantee/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/get-eft-bank-statement-notes`, { accountId: String(accountId) })),
           ]);
           data = {
             deposits: depositsResult.status === 'fulfilled' ? this.normalizeArray(depositsResult.value) : [],
@@ -1613,6 +1626,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             refunds: refundsResult.status === 'fulfilled' ? this.normalizeArray(refundsResult.value) : [],
             reversals: reversalsResult.status === 'fulfilled' ? this.normalizeArray(reversalsResult.value) : [],
             bankGuarantees: bankGuaranteeResult.status === 'fulfilled' ? this.normalizeArray(bankGuaranteeResult.value) : [],
+            bankStatementNotes: bankStmtNotesResult.status === 'fulfilled' ? this.normalizeArray(bankStmtNotesResult.value) : [],
           };
           break;
 
@@ -1699,8 +1713,11 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         case 'clearance':
           this.expandedClearanceRow.set(null);
           try {
+            const basic = this.getAccountBasic();
+            const clearPropertyId = basic['propertyID'] || basic['property_ID'] || basic['propertyId'] || '';
+            const clearQueryId = clearPropertyId || accountId;
             const [clearResult, linkedResult] = await Promise.allSettled([
-              firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/clearance-inquiries/${accountId}`)),
+              firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/clearance-inquiries/${clearQueryId}`)),
               firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/linked-accounts-on-property/${accountId}`)),
             ]);
             const clearArr = clearResult.status === 'fulfilled' ? this.normalizeArray(clearResult.value) : [];
@@ -5016,6 +5033,24 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   onHandoverPageSizeChange(size: number): void {
     this.handoverPageSize.set(size);
     this.handoverPage.set(1);
+  }
+
+  async rebuildFullAccount(): Promise<void> {
+    const account = this.selectedAccount();
+    if (!account) return;
+    const accountId = this.getAccountId(account);
+    if (!accountId) return;
+    this.rebuildingAccount.set(true);
+    try {
+      await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/rebuild-full-account`, { accountId: String(accountId) }));
+      this.toast.show('Account rebuilt successfully', 'success');
+      await this.loadTabData('account', accountId);
+    } catch (e: any) {
+      console.error('[rebuildFullAccount] Error:', e?.message);
+      this.toast.show(e?.message || 'Failed to rebuild account', 'error');
+    } finally {
+      this.rebuildingAccount.set(false);
+    }
   }
 
   toggleLinkedRow(idx: number): void {

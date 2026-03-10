@@ -54,6 +54,12 @@ export class BillingDashboardComponent implements OnInit {
 
   showZeroCounts = signal(false);
 
+  chartLoading = signal(false);
+  paymentByTypeData = signal<any[]>([]);
+  debtChartData = signal<any[]>([]);
+  meterChartData = signal<any[]>([]);
+  billingCyclesData = signal<any[]>([]);
+
   categories: CategoryConfig[] = [
     { key: 'account', label: 'Account', gradient: 'grad-accent', hasItemCountFn: true },
     { key: 'indigentsubsidy', label: 'Indigent Subsidy', gradient: 'grad-teal', hasItemCountFn: true },
@@ -325,7 +331,11 @@ export class BillingDashboardComponent implements OnInit {
     this.activeCategory.set(key);
     this.expandedItem.set(null);
     this.detailItems.set([]);
-    this.loadSubItems(key);
+    if (key === 'graphs') {
+      this.loadChartData();
+    } else {
+      this.loadSubItems(key);
+    }
   }
 
   async loadSubItems(categoryKey: string): Promise<void> {
@@ -359,6 +369,59 @@ export class BillingDashboardComponent implements OnInit {
           endpoint: this.endpointMap[key],
         };
       });
+  }
+
+  async loadChartData(): Promise<void> {
+    if (this.paymentByTypeData().length > 0 || this.debtChartData().length > 0 || this.meterChartData().length > 0) return;
+    this.chartLoading.set(true);
+    try {
+      const [pbt, dc, mc, bc] = await Promise.allSettled([
+        firstValueFrom(this.api.get('/api/platinum/billing-dashboard/get-billing-payment-by-type-of-use')),
+        firstValueFrom(this.api.get('/api/platinum/billing-dashboard/get-debt-arrangement-summary-chart')),
+        firstValueFrom(this.api.get('/api/platinum/billing-dashboard/get-meterreading-progress-chart')),
+        firstValueFrom(this.api.get('/api/platinum/billing-dashboard/get-billing-dashboard-billing-cycles')),
+      ]);
+      if (pbt.status === 'fulfilled') {
+        const rows = this.extractTableRows(pbt.value);
+        this.paymentByTypeData.set(Array.isArray(pbt.value) ? pbt.value : rows);
+      }
+      if (dc.status === 'fulfilled') {
+        const rows = this.extractTableRows(dc.value);
+        this.debtChartData.set(rows.length > 0 ? rows : (dc.value ? [dc.value] : []));
+      }
+      if (mc.status === 'fulfilled') {
+        const rows = this.extractTableRows(mc.value);
+        this.meterChartData.set(rows.length > 0 ? rows : (mc.value ? [mc.value] : []));
+      }
+      if (bc.status === 'fulfilled') {
+        const rows = this.extractTableRows(bc.value);
+        this.billingCyclesData.set(rows.length > 0 ? rows : (bc.value ? [bc.value] : []));
+      }
+    } catch {
+    } finally {
+      this.chartLoading.set(false);
+    }
+  }
+
+  getChartColumns(data: any[]): string[] {
+    if (!data || data.length === 0) return [];
+    return Object.keys(data[0]).filter(k => !k.startsWith('_') && k !== 'id' && k !== 'Id');
+  }
+
+  formatChartCellValue(val: any, key: string): string {
+    if (val === null || val === undefined) return '\u2014';
+    if (typeof val === 'boolean') return val ? 'Yes' : 'No';
+    if (typeof val === 'number') {
+      if (/amount|balance|total|value/i.test(key) && val % 1 !== 0) {
+        return val.toLocaleString('en-ZA', { minimumFractionDigits: 2 });
+      }
+      return val.toLocaleString('en-ZA');
+    }
+    return String(val);
+  }
+
+  hasAnyChartData(): boolean {
+    return this.paymentByTypeData().length > 0 || this.debtChartData().length > 0 || this.meterChartData().length > 0 || this.billingCyclesData().length > 0;
   }
 
   toggleSubItem(itemKey: string): void {

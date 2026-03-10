@@ -48,7 +48,7 @@ export class ViewReceiptsComponent implements OnInit {
 
   loading = signal(false);
   error = signal('');
-  activeTab = signal<'receipt-search' | 'bank-statement' | 'eft-account' | 'cashbook-trace'>('receipt-search');
+  activeTab = signal<'receipt-search' | 'bank-statement' | 'eft-account' | 'cashbook-trace' | 'eft-description'>('receipt-search');
 
   cashiers = signal<ViewReceiptCashier[]>([]);
   loadingCashiers = signal(false);
@@ -66,6 +66,19 @@ export class ViewReceiptsComponent implements OnInit {
   printingReceiptId = signal<string | number | null>(null);
   selectedReceipt = signal<ViewReceiptItem | null>(null);
   dataSource = signal<'none' | 'platinum'>('none');
+
+  accountSuggestions = signal<string[]>([]);
+  receiptSuggestions = signal<string[]>([]);
+  showAccountDropdown = signal(false);
+  showReceiptDropdown = signal(false);
+  private accountDebounceTimer: any = null;
+  private receiptDebounceTimer: any = null;
+
+  eftDescriptionSearch = signal('');
+  eftDescriptionSearching = signal(false);
+  eftDescriptionResults = signal<any[] | null>(null);
+  eftDescriptionSortField = signal<string | null>(null);
+  eftDescriptionSortDir = signal<SortDir>('desc');
 
   quickSearch = signal('');
   filterPaymentMethod = signal('__all__');
@@ -338,7 +351,12 @@ export class ViewReceiptsComponent implements OnInit {
     this.sortField.set(null);
     this.bankNoteResults.set(null);
     this.eftResults.set(null);
+    this.eftDescriptionResults.set(null);
     this.cashbookResults.set(null);
+    this.accountSuggestions.set([]);
+    this.receiptSuggestions.set([]);
+    this.showAccountDropdown.set(false);
+    this.showReceiptDropdown.set(false);
     this.dataSource.set('none');
   }
 
@@ -798,6 +816,121 @@ export class ViewReceiptsComponent implements OnInit {
       }
       case 'serialNo': return r.serialNo || receipt.receiptId || r.id || '';
       default: return '';
+    }
+  }
+
+  filteredEftDescriptionResults = computed(() => {
+    let results = this.eftDescriptionResults();
+    if (!results) return [];
+    const sf = this.eftDescriptionSortField();
+    if (sf) {
+      const dir = this.eftDescriptionSortDir();
+      results = [...results].sort((a: any, b: any) => {
+        let va = a[sf] ?? '';
+        let vb = b[sf] ?? '';
+        if (sf === 'amount') { va = Number(va) || 0; vb = Number(vb) || 0; return dir === 'asc' ? va - vb : vb - va; }
+        if (sf.includes('Date') || sf.includes('date')) { return dir === 'asc' ? new Date(va).getTime() - new Date(vb).getTime() : new Date(vb).getTime() - new Date(va).getTime(); }
+        return dir === 'asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+      });
+    }
+    return results;
+  });
+
+  handleAccountFilterChange(value: string): void {
+    this.accountFilter.set(value);
+    if (this.accountDebounceTimer) clearTimeout(this.accountDebounceTimer);
+    if (value.length >= 3) {
+      this.accountDebounceTimer = setTimeout(async () => {
+        try {
+          const data: any = await firstValueFrom(this.api.get('/api/platinum/view-receipt/search-account-numbers', { query: value }));
+          const items = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : Array.isArray(data?.value) ? data.value : Array.isArray(data?.data) ? data.data : [];
+          this.accountSuggestions.set(items);
+          this.showAccountDropdown.set(items.length > 0);
+        } catch {
+          this.accountSuggestions.set([]);
+          this.showAccountDropdown.set(false);
+        }
+      }, 300);
+    } else {
+      this.accountSuggestions.set([]);
+      this.showAccountDropdown.set(false);
+    }
+  }
+
+  selectAccountSuggestion(value: string): void {
+    this.accountFilter.set(value);
+    this.showAccountDropdown.set(false);
+    this.accountSuggestions.set([]);
+  }
+
+  handleReceiptFilterChange(value: string): void {
+    this.receiptFilter.set(value);
+    if (this.receiptDebounceTimer) clearTimeout(this.receiptDebounceTimer);
+    if (value.length >= 3) {
+      this.receiptDebounceTimer = setTimeout(async () => {
+        try {
+          const data: any = await firstValueFrom(this.api.get('/api/platinum/view-receipt/search-receipt-numbers', { query: value }));
+          const items = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : Array.isArray(data?.value) ? data.value : Array.isArray(data?.data) ? data.data : [];
+          this.receiptSuggestions.set(items);
+          this.showReceiptDropdown.set(items.length > 0);
+        } catch {
+          this.receiptSuggestions.set([]);
+          this.showReceiptDropdown.set(false);
+        }
+      }, 300);
+    } else {
+      this.receiptSuggestions.set([]);
+      this.showReceiptDropdown.set(false);
+    }
+  }
+
+  selectReceiptSuggestion(value: string): void {
+    this.receiptFilter.set(value);
+    this.showReceiptDropdown.set(false);
+    this.receiptSuggestions.set([]);
+  }
+
+  hideAccountDropdown(): void {
+    setTimeout(() => this.showAccountDropdown.set(false), 200);
+  }
+
+  hideReceiptDropdown(): void {
+    setTimeout(() => this.showReceiptDropdown.set(false), 200);
+  }
+
+  async handleEftDescriptionSearch(): Promise<void> {
+    if (!this.eftDescriptionSearch() || this.eftDescriptionSearch().length < 3) {
+      this.toast.error('Please enter at least 3 characters for the EFT description search.');
+      return;
+    }
+    this.eftDescriptionSearching.set(true);
+    this.eftDescriptionResults.set(null);
+    this.eftDescriptionSortField.set(null);
+    try {
+      const results: any = await firstValueFrom(this.api.post('/api/platinum/view-receipt/search-by-eft-description', {
+        description: this.eftDescriptionSearch()
+      }));
+      const items = results?.results || results?.items || (Array.isArray(results) ? results : []);
+      this.eftDescriptionResults.set(items);
+      if (items.length === 0) {
+        this.toast.info(`No EFT transactions found matching "${this.eftDescriptionSearch()}".`);
+      } else {
+        this.toast.success(`Found ${items.length} matching EFT transaction${items.length !== 1 ? 's' : ''}.`);
+      }
+    } catch (e: any) {
+      this.toast.error('EFT description search failed: ' + (e?.message || ''));
+    } finally {
+      this.eftDescriptionSearching.set(false);
+    }
+  }
+
+  handleEftDescriptionSort(field: string): void {
+    if (this.eftDescriptionSortField() === field) {
+      if (this.eftDescriptionSortDir() === 'desc') this.eftDescriptionSortDir.set('asc');
+      else { this.eftDescriptionSortField.set(null); this.eftDescriptionSortDir.set('desc'); }
+    } else {
+      this.eftDescriptionSortField.set(field);
+      this.eftDescriptionSortDir.set('desc');
     }
   }
 

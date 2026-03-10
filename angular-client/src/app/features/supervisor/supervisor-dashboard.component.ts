@@ -101,6 +101,9 @@ export class SupervisorDashboardComponent implements OnInit {
   perOfficeSubmitting = signal(false);
   perOfficeVerifying = signal<number | null>(null);
   perOfficeStaged = signal(false);
+  perOfficeCashierStatuses = signal<Record<number, any>>({});
+
+  posCashierData = signal<any[]>([]);
 
   directCancelId = signal<number | null>(null);
   directCancelReason = signal('');
@@ -135,6 +138,7 @@ export class SupervisorDashboardComponent implements OnInit {
   ngOnInit(): void {
     this.loadCashierList();
     this.loadPendingCancelRequests();
+    this.loadPosCashierData();
   }
 
   formatCurrency(amount: number): string {
@@ -262,7 +266,7 @@ export class SupervisorDashboardComponent implements OnInit {
     this.reviewData.set(null);
     this.reviewTab.set('cash');
     try {
-      const [details, reconcile, cashRes, cardRes, chequeRes, postalRes, dropboxRes, offlineRes] = await Promise.all([
+      const [details, reconcile, cashRes, cardRes, chequeRes, postalRes, dropboxRes, offlineRes, sysVsCashierRes] = await Promise.all([
         firstValueFrom(this.api.get('/api/platinum/auth-day-end/cashier-details', { id: String(shift.id) })).catch(() => null),
         firstValueFrom(this.api.get('/api/platinum/auth-day-end/cashier-reconcile-by-cashierid', { cashierId: String(shift.id) })).catch(() => null),
         firstValueFrom(this.api.post(`/api/platinum/auth-day-end/cashier-receipt-cash-list?id=${shift.id}`, this.pagerBody)).catch(() => []),
@@ -271,6 +275,7 @@ export class SupervisorDashboardComponent implements OnInit {
         firstValueFrom(this.api.post(`/api/platinum/auth-day-end/cashier-receipt-postal-order-list?id=${shift.id}`, this.pagerBody)).catch(() => []),
         firstValueFrom(this.api.post(`/api/platinum/auth-day-end/cashier-receipt-drop-box-list?id=${shift.id}`, this.pagerBody)).catch(() => []),
         firstValueFrom(this.api.post(`/api/platinum/auth-day-end/cashier-receipt-offline-data-list?id=${shift.id}`, this.pagerBody)).catch(() => []),
+        firstValueFrom(this.api.post(`/api/platinum/auth-day-end/system-vs-cashier-data-list?id=${shift.id}`, this.pagerBody)).catch(() => []),
       ]);
       this.reviewData.set({
         details, reconcile,
@@ -280,7 +285,7 @@ export class SupervisorDashboardComponent implements OnInit {
         postalReceipts: this.extractItems(postalRes),
         dropboxReceipts: this.extractItems(dropboxRes),
         offlineReceipts: this.extractItems(offlineRes),
-        systemVsCashier: [],
+        systemVsCashier: this.extractItems(sysVsCashierRes),
       });
     } catch (e: any) {
       this.toast.error('Failed to load review data: ' + (e?.message || 'Unknown error'));
@@ -493,6 +498,7 @@ export class SupervisorDashboardComponent implements OnInit {
         allVerified: data?.allVerified === true,
         validationResult: data?.validationResult,
       });
+      this.loadAllPerOfficeCashierStatuses();
     } catch (e: any) {
       this.toast.error('Failed to load office data: ' + (e?.message || ''));
     } finally {
@@ -585,6 +591,48 @@ export class SupervisorDashboardComponent implements OnInit {
     } catch (e: any) {
       this.toast.error('Cancel receipt failed: ' + (e?.message || ''));
     }
+  }
+
+  async loadPosCashierData(): Promise<void> {
+    try {
+      const data: any = await firstValueFrom(this.api.get('/api/platinum/auth-day-end/pos-cashier'));
+      const items = this.extractItems(data);
+      this.posCashierData.set(items);
+    } catch (e: any) {
+      this.posCashierData.set([]);
+    }
+  }
+
+  async loadPerOfficeCashierReconcileStatus(cashierId: number, cashOfficeId: number): Promise<any> {
+    try {
+      const data: any = await firstValueFrom(this.api.get('/api/platinum/auth-day-end-per-office/cashier-reconcile-status', {
+        cashierId: String(cashierId),
+        cashOfficeId: String(cashOfficeId),
+      }));
+      this.perOfficeCashierStatuses.update(prev => ({ ...prev, [cashierId]: data }));
+      return data;
+    } catch (e: any) {
+      return null;
+    }
+  }
+
+  async loadAllPerOfficeCashierStatuses(): Promise<void> {
+    const officeId = this.perOfficeSelectedId();
+    const summary = this.perOfficeData()?.cashierSummary || [];
+    if (!officeId || summary.length === 0) return;
+    const results: Record<number, any> = {};
+    await Promise.all(summary.map(async (cs: any) => {
+      const cid = cs.cashierId || cs.id || cs.cashier_ID;
+      if (!cid) return;
+      try {
+        const data: any = await firstValueFrom(this.api.get('/api/platinum/auth-day-end-per-office/cashier-reconcile-status', {
+          cashierId: String(cid),
+          cashOfficeId: String(officeId),
+        }));
+        results[cid] = data;
+      } catch {}
+    }));
+    this.perOfficeCashierStatuses.set(results);
   }
 
   switchReconMode(mode: 'PER_CASHIER' | 'CASH_OFFICE'): void {

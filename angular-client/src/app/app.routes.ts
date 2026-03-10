@@ -21,7 +21,7 @@ export const routes: Routes = [
       { path: 'direct-deposits/auto', loadComponent: () => import('./features/direct-deposits/auto/auto-allocation.component').then(m => m.AutoAllocationComponent) },
       { path: 'bulk-allocation', loadComponent: () => import('./features/bulk-allocation/bulk-allocation-progress.component').then(m => m.BulkAllocationProgressComponent) },
       { path: 'third-party/processing', loadComponent: () => import('./features/third-party/payment-processing.component').then(m => m.PaymentProcessingComponent) },
-      { path: 'third-party', loadComponent: () => import('./features/home/placeholder.component').then(m => m.PlaceholderComponent), data: { title: 'Third Party Payments', description: 'Integration with third party payment providers' } },
+      { path: 'third-party', redirectTo: 'third-party/processing', pathMatch: 'full' },
       { path: 'view-receipts', loadComponent: () => import('./features/receipts/view-receipts.component').then(m => m.ViewReceiptsComponent) },
       { path: 'billing-dashboard', loadComponent: () => import('./features/billing/billing-dashboard.component').then(m => m.BillingDashboardComponent) },
       { path: 'enquiries/general', loadComponent: () => import('./features/enquiries/enquiries-general.component').then(m => m.EnquiriesGeneralComponent) },

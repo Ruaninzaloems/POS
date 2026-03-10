@@ -181,14 +181,27 @@
                   </thead>
                   <tbody>
                     @for (cs of perOfficeData().cashierSummary; track $index) {
-                      <tr>
+                      <tr [attr.data-testid]="'row-office-cashier-' + (cs.cashierId || cs.id || $index)">
                         <td>{{ cs.cashierName || cs.name || 'Cashier' }}</td>
-                        <td>{{ cs.status || cs.reconcileStatus || '-' }}</td>
+                        <td>
+                          @if (perOfficeCashierStatuses()[cs.cashierId || cs.id || cs.cashier_ID]) {
+                            <span class="badge" [ngClass]="getStatusBadgeClass(perOfficeCashierStatuses()[cs.cashierId || cs.id || cs.cashier_ID]?.status || '')">
+                              {{ perOfficeCashierStatuses()[cs.cashierId || cs.id || cs.cashier_ID]?.status || cs.status || cs.reconcileStatus || '-' }}
+                            </span>
+                          } @else {
+                            {{ cs.status || cs.reconcileStatus || '-' }}
+                          }
+                        </td>
                         <td class="amount-cell">{{ formatCurrency(cs.totalAmount || cs.total || 0) }}</td>
                         <td>
-                          <button class="btn-outline btn-sm" (click)="handlePerOfficeSelect(perOfficeSelectedId()!)" data-testid="button-verify-cashier">
-                            Verify
-                          </button>
+                          <div class="action-buttons">
+                            <button class="btn-outline btn-sm" (click)="handlePerOfficeVerifyCashier(cs.cashierId || cs.id || cs.cashier_ID)" [disabled]="perOfficeVerifying() === (cs.cashierId || cs.id || cs.cashier_ID)" [attr.data-testid]="'button-verify-cashier-' + (cs.cashierId || cs.id || $index)">
+                              @if (perOfficeVerifying() === (cs.cashierId || cs.id || cs.cashier_ID)) { <span class="spinner spinner-sm"></span> } @else { Verify }
+                            </button>
+                            <button class="btn-outline btn-sm" (click)="loadPerOfficeCashierReconcileStatus(cs.cashierId || cs.id || cs.cashier_ID, perOfficeSelectedId()!)" [attr.data-testid]="'button-status-cashier-' + (cs.cashierId || cs.id || $index)">
+                              Status
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     }
@@ -294,6 +307,7 @@
             <div class="tab-list review-tabs">
               <button class="tab-item" [class.active]="reviewTab() === 'cash'" (click)="reviewTab.set('cash')">Cash Receipts ({{ reviewData()!.cashReceipts.length }})</button>
               <button class="tab-item" [class.active]="reviewTab() === 'card'" (click)="reviewTab.set('card')">Card Receipts ({{ reviewData()!.cardReceipts.length }})</button>
+              <button class="tab-item" [class.active]="reviewTab() === 'system-vs-cashier'" (click)="reviewTab.set('system-vs-cashier')" data-testid="tab-system-vs-cashier">System vs Cashier ({{ reviewData()!.systemVsCashier.length }})</button>
             </div>
 
             <div class="receipt-list">
@@ -347,6 +361,30 @@
                             <td class="font-mono">{{ r.accountNumber || r.accountId || '-' }}</td>
                             <td class="amount-cell">{{ formatCurrency(r.amount || r.totalAmount || 0) }}</td>
                             <td>{{ formatDate(r.receiptDate || r.date || '') }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
+              }
+              @if (reviewTab() === 'system-vs-cashier') {
+                @if (reviewData()!.systemVsCashier.length === 0) {
+                  <p class="text-muted" style="text-align:center;padding:1rem">No system vs cashier comparison data</p>
+                } @else {
+                  <div class="table-container">
+                    <table>
+                      <thead><tr><th>#</th><th>Description</th><th>System Amount</th><th>Cashier Amount</th><th>Variance</th></tr></thead>
+                      <tbody>
+                        @for (r of reviewData()!.systemVsCashier; track $index) {
+                          <tr [attr.data-testid]="'row-sys-vs-cashier-' + $index">
+                            <td>{{ $index + 1 }}</td>
+                            <td>{{ r.description || r.paymentType || r.type || r.name || '-' }}</td>
+                            <td class="amount-cell">{{ formatCurrency(r.systemAmount || r.systemTotal || r.system || 0) }}</td>
+                            <td class="amount-cell">{{ formatCurrency(r.cashierAmount || r.cashierTotal || r.cashier || 0) }}</td>
+                            <td class="amount-cell" [class.variance-negative]="(r.variance || r.difference || 0) < 0" [class.variance-positive]="(r.variance || r.difference || 0) > 0">
+                              {{ formatCurrency(r.variance || r.difference || 0) }}
+                            </td>
                           </tr>
                         }
                       </tbody>

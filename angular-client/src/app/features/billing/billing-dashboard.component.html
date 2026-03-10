@@ -56,9 +56,131 @@
         </div>
 
         @if (activeCategory() === 'graphs') {
-          <div class="graphs-placeholder">
-            <p class="text-muted">Graph data panels — connected to Platinum API</p>
-          </div>
+          @if (chartLoading()) {
+            <div class="loading-state">
+              <div class="spinner"></div>
+              <p>Loading charts...</p>
+            </div>
+          } @else if (!hasAnyChartData()) {
+            <div class="empty-state">
+              <p>No chart data available</p>
+            </div>
+          } @else {
+            <div class="charts-container">
+              @if (paymentByTypeData().length > 0) {
+                <div class="chart-section" data-testid="chart-payment-by-type">
+                  <div class="chart-header">
+                    <div class="chart-icon chart-icon-purple">📊</div>
+                    <h4 class="chart-title">Payments by Type of Use</h4>
+                  </div>
+                  <div class="table-container chart-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          @for (col of getChartColumns(paymentByTypeData()); track col) {
+                            <th>{{ getFriendlyLabel(col) }}</th>
+                          }
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (row of paymentByTypeData(); track $index) {
+                          <tr>
+                            @for (col of getChartColumns(paymentByTypeData()); track col) {
+                              <td>{{ formatChartCellValue(row[col], col) }}</td>
+                            }
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              }
+              @if (debtChartData().length > 0) {
+                <div class="chart-section" data-testid="chart-debt-arrangement">
+                  <div class="chart-header">
+                    <div class="chart-icon chart-icon-red">📉</div>
+                    <h4 class="chart-title">Debt Arrangement Summary</h4>
+                  </div>
+                  <div class="table-container chart-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          @for (col of getChartColumns(debtChartData()); track col) {
+                            <th>{{ getFriendlyLabel(col) }}</th>
+                          }
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (row of debtChartData(); track $index) {
+                          <tr>
+                            @for (col of getChartColumns(debtChartData()); track col) {
+                              <td>{{ formatChartCellValue(row[col], col) }}</td>
+                            }
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              }
+              @if (meterChartData().length > 0) {
+                <div class="chart-section" data-testid="chart-meter-reading">
+                  <div class="chart-header">
+                    <div class="chart-icon chart-icon-cyan">📈</div>
+                    <h4 class="chart-title">Meter Reading Progress</h4>
+                  </div>
+                  <div class="table-container chart-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          @for (col of getChartColumns(meterChartData()); track col) {
+                            <th>{{ getFriendlyLabel(col) }}</th>
+                          }
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (row of meterChartData(); track $index) {
+                          <tr>
+                            @for (col of getChartColumns(meterChartData()); track col) {
+                              <td>{{ formatChartCellValue(row[col], col) }}</td>
+                            }
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              }
+              @if (billingCyclesData().length > 0) {
+                <div class="chart-section" data-testid="chart-billing-cycles">
+                  <div class="chart-header">
+                    <div class="chart-icon chart-icon-amber">🔄</div>
+                    <h4 class="chart-title">Billing Cycles</h4>
+                  </div>
+                  <div class="table-container chart-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          @for (col of getChartColumns(billingCyclesData()); track col) {
+                            <th>{{ getFriendlyLabel(col) }}</th>
+                          }
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (row of billingCyclesData(); track $index) {
+                          <tr>
+                            @for (col of getChartColumns(billingCyclesData()); track col) {
+                              <td>{{ formatChartCellValue(row[col], col) }}</td>
+                            }
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              }
+            </div>
+          }
         } @else if (isSubItemsLoading()) {
           <div class="loading-state">
             <div class="spinner"></div>
