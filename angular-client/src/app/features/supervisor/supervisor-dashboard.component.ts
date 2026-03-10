@@ -298,7 +298,7 @@ export class SupervisorDashboardComponent implements OnInit {
 
       const shift = this.selectedShift();
       const details = this.reviewData()?.details;
-      const cashierOfficeId = shift?.cashOfficeId || details?.cashierOfficeId || 1;
+      const cashierOfficeId = shift?.cashOfficeId || details?.cashierOfficeId || 0;
       let cashBookId = details?.cashBookId || details?.cashbookId || 0;
       if (!cashBookId) {
         try {
@@ -306,13 +306,9 @@ export class SupervisorDashboardComponent implements OnInit {
           const books = Array.isArray(cashbooks) ? cashbooks : [];
           if (books.length > 0) {
             const match = books.find((b: any) => Number(b.cashOfficeId || b.cashOffice_ID) === Number(cashierOfficeId));
-            cashBookId = match?.id || match?.cashBookId || books[0]?.id || 1;
-          } else {
-            cashBookId = 1;
+            cashBookId = match?.id || match?.cashBookId || books[0]?.id || 0;
           }
-        } catch {
-          cashBookId = 1;
-        }
+        } catch {}
       }
 
       await firstValueFrom(this.api.post('/api/platinum/auth-day-end/submit-day-auth-reconcile', {

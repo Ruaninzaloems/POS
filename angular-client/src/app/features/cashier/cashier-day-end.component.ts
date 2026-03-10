@@ -296,14 +296,24 @@ export class CashierDayEndComponent implements OnInit {
       const cashierOfficeId = this.sessionOfficeId() || Number(
         this.cashierDetails()?.officeId ||
         this.cashierDetails()?.cashOffice_ID ||
-        this.cashierDetails()?.const_CashOffice?.cashOffice_ID || 1
+        this.cashierDetails()?.const_CashOffice?.cashOffice_ID || 0
       );
+
+      let cashBookId = 0;
+      try {
+        const cashbooks: any = await firstValueFrom(this.api.get('/api/platinum/auth-day-end/cashbook-list'));
+        const books = Array.isArray(cashbooks) ? cashbooks : [];
+        if (books.length > 0) {
+          const match = books.find((b: any) => Number(b.cashOfficeId || b.cashOffice_ID) === Number(cashierOfficeId));
+          cashBookId = match?.id || match?.cashBookId || books[0]?.id || 0;
+        }
+      } catch {}
 
       try {
         await firstValueFrom(
           this.api.post(`/api/platinum/auth-day-end/submit-day-auth-reconcile?cashierId=${cashierId}`, {
             cashierId,
-            cashBookId: 1,
+            cashBookId: Number(cashBookId),
             cashierOfficeId,
           })
         );

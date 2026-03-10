@@ -42,26 +42,6 @@ export function registerSupervisorRoutes(app: Express, httpServer: Server): void
       const accountId = req.query.accountId as string;
       const data = await platinumGet(session, "/api/BillingEnquiry/TotalBalanceDebtInquiry", { accountId });
       
-      // If no data or error, fallback to enquiry results which might have some info
-      if (!data || data._error || (Array.isArray(data) && data.length === 0)) {
-         const enquiryData = await platinumPost(session, "/api/BillingEnquiry/EnquiryResults", { accountID: accountId });
-         if (enquiryData && !enquiryData._error) {
-            const results = Array.isArray(enquiryData) ? enquiryData : (enquiryData.results || [enquiryData]);
-            const match = results.find((r: any) => String(r.accountID) === accountId);
-            if (match) {
-               console.warn(`[total-balance-debt] TotalBalanceDebtInquiry returned no data for accountId=${accountId}, using synthetic fallback from EnquiryResults`);
-               return res.json([{
-                  serviceDescription: "Balance B/F",
-                  totalOutStanding: match.outStandingAmount || 0,
-                  currentAccount: match.outStandingAmount || 0,
-                  newCharge: 0,
-                  days30: 0, days60: 0, days90: 0, days120: 0, days150: 0, untill360: 0,
-                  _synthetic: true
-               }]);
-            }
-         }
-      }
-      
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -96,8 +76,7 @@ export function registerSupervisorRoutes(app: Express, httpServer: Server): void
                   return { accNo, name, address };
                 }
               }
-            } catch (e: any) {
-              console.warn(`[batch-account-names] Lookup failed for account ${accNo}:`, e.message);
+            } catch {
             }
             return null;
           })

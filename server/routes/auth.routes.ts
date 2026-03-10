@@ -159,8 +159,8 @@ export function registerAuthRoutes(app: Express, httpServer: Server): void {
       const topLevelReconcileStatus = String(vcData.reconcileStatusDescription || vcData.reconcileStatusCode || '').toLowerCase().trim();
       const topLevelIsReturned = topLevelReconcileStatus.includes('return');
       if (topLevelIsReturned && !cashierReconcile) {
-        console.log(`[active-cashier] Top-level reconcileStatus indicates RETURNED ("${vcData.reconcileStatusDescription}") but cashierReconcile is null — synthesizing reconcile record`);
-        cashierReconcile = { status: vcData.reconcileStatusDescription || 'Returned', reason: vcData.returnReason || '', _synthetic: true };
+        console.log(`[active-cashier] Top-level reconcileStatus indicates RETURNED ("${vcData.reconcileStatusDescription}") but cashierReconcile is null — using top-level fields`);
+        cashierReconcile = { status: vcData.reconcileStatusDescription || '', reason: vcData.returnReason || '' };
       }
 
       let sessionFromCache = false;
