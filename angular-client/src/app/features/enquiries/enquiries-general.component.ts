@@ -207,6 +207,26 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   relatedAccountsLoading = signal(false);
   relatedAccountsSearched = signal(false);
 
+  occupiersList = signal<any[]>([]);
+  occupierAddName = signal('');
+  occupierAddId = signal('');
+  occupierAddLoading = signal(false);
+  occupierRemoveLoading = signal<number | null>(null);
+  showAddOccupierModal = signal(false);
+  showProofModal = signal(false);
+  proofData = signal<any>(null);
+  proofLoading = signal(false);
+  selectedOccupierIdx = signal<number | null>(null);
+
+  generatingPropertyLetter = signal<string | null>(null);
+
+  nbeLoading = signal(false);
+  nbeCalculated = signal(false);
+  nbeError = signal<string | null>(null);
+  nbeLineItems = signal<any[]>([]);
+  nbeBillingMonth = signal('');
+  nbeWarnings = signal<string[]>([]);
+
   advancedSuggestions = signal<{ displayItem: string; accountId: number }[]>([]);
   activeFieldKey = signal<string | null>(null);
   advancedFieldLoading = signal(false);
@@ -261,7 +281,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         { value: 'transactions', label: 'Receipts', icon: '🧾' },
         { value: 'deposits', label: 'Deposits', icon: '💵' },
         { value: 'payment-plans', label: 'Payment Plans', icon: '📅' },
+        { value: 'extensions', label: 'Extensions', icon: '📆' },
         { value: 'billed-vs-paid', label: 'Billed vs Paid', icon: '📊' },
+        { value: 'next-bill', label: 'Next Bill Estimate', icon: '🧮' },
       ],
     },
     {
@@ -278,6 +300,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         { value: 'clearance', label: 'Clearance', icon: '🛡️' },
         { value: 'debtor-notes', label: 'Debtor Notes', icon: '📝' },
         { value: 'section129', label: 'Section 129', icon: '⚠️' },
+        { value: 'occupiers', label: 'Occupiers', icon: '🏘️' },
       ],
     },
     {
@@ -363,7 +386,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   formatCurrency(v: any): string {
     if (v === null || v === undefined || v === '') return '-';
     const n = typeof v === 'number' ? v : parseFloat(v);
-    if (isNaN(n)) return String(v);
+    if (isNaN(n)) return '-';
     return n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
@@ -1827,6 +1850,36 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             billedVsPaid: bvpArr,
             balance: balArr,
           };
+          break;
+
+        case 'occupiers':
+          try {
+            const occResult = await firstValueFrom(
+              this.api.get<any>(`/api/platinum/billing-enquiry/add-occupiers/${accountId}`)
+            );
+            const occArr = this.normalizeArray(occResult);
+            data = { occupiers: occArr };
+            this.occupiersList.set(occArr);
+            this.selectedOccupierIdx.set(null);
+          } catch (e: any) {
+            data = { occupiers: [], _error: e?.message || 'Failed to load occupiers' };
+            this.occupiersList.set([]);
+          }
+          break;
+
+        case 'extensions':
+          try {
+            const extResult = await firstValueFrom(
+              this.api.get<any>(`/api/platinum/billing-enquiry/payment-extension-search-results/${accountId}`)
+            );
+            data = { extensions: this.normalizeArray(extResult) };
+          } catch (e: any) {
+            data = { extensions: [], _error: e?.message || 'Failed to load payment extensions' };
+          }
+          break;
+
+        case 'next-bill':
+          data = { _nextBillTab: true };
           break;
 
         default:
@@ -4387,5 +4440,405 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     ]);
     this.exportService.exportCsv(this.getExportOpts('Indigent_Subsidy', 'INDIGENT SUBSIDY REPORT'), headers, rows);
     this.toast.show('Indigent data exported', 'success');
+  }
+
+  async addOccupier(): Promise<void> {
+    const name = this.occupierAddName().trim();
+    if (!name) return;
+    const accountId = this.getAccountId(this.selectedAccount());
+    if (!accountId) return;
+    this.occupierAddLoading.set(true);
+    try {
+      await firstValueFrom(this.api.post('/api/platinum/billing-enquiry/add-occupier', {
+        accountId, name, idNumber: this.occupierAddId().trim(),
+      }));
+      this.occupierAddName.set('');
+      this.occupierAddId.set('');
+      this.showAddOccupierModal.set(false);
+      this.toast.show('Occupier added successfully', 'success');
+      this.loadTabData('occupiers', accountId);
+    } catch (e: any) {
+      this.toast.show(e?.error?.message || 'Failed to add occupier', 'error');
+    } finally {
+      this.occupierAddLoading.set(false);
+    }
+  }
+
+  async removeOccupier(occupier: any): Promise<void> {
+    const id = occupier.occupierId || occupier.id || occupier.occupier_ID;
+    if (!id) { this.toast.show('Cannot identify occupier to remove', 'error'); return; }
+    if (!confirm(`Remove occupier "${occupier.name || occupier.occupierName || 'this person'}"?`)) return;
+    this.occupierRemoveLoading.set(id);
+    try {
+      await firstValueFrom(this.api.delete('/api/platinum/billing-enquiry/add-occupier', { occupierId: String(id) }));
+      const accountId = this.getAccountId(this.selectedAccount());
+      this.toast.show('Occupier removed', 'success');
+      this.loadTabData('occupiers', accountId);
+    } catch (e: any) {
+      this.toast.show(e?.error?.message || 'Failed to remove occupier', 'error');
+    } finally {
+      this.occupierRemoveLoading.set(null);
+    }
+  }
+
+  async generateProofOfResidence(): Promise<void> {
+    const accountId = this.getAccountId(this.selectedAccount());
+    if (!accountId) return;
+    this.proofLoading.set(true);
+    try {
+      const [propSettled, nameSettled] = await Promise.allSettled([
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/name-info/${accountId}`)),
+      ]);
+      const propResp = propSettled.status === 'fulfilled' ? (Array.isArray(propSettled.value) ? propSettled.value[0] : propSettled.value) : null;
+      const nameResp = nameSettled.status === 'fulfilled' ? (Array.isArray(nameSettled.value) ? nameSettled.value[0] : nameSettled.value) : null;
+      this.proofData.set({ property: propResp, nameInfo: nameResp });
+      this.showProofModal.set(true);
+    } catch (err) {
+      this.toast.show('Failed to load property details for proof of residence', 'error');
+    } finally {
+      this.proofLoading.set(false);
+    }
+  }
+
+  private escHtml(str: any): string {
+    if (str === null || str === undefined) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  printProofOfResidence(): void {
+    const data = this.proofData();
+    if (!data) return;
+    const acct = this.selectedAccount();
+    const accountNumber = this.escHtml(this.getAccountNum(acct));
+    const ownerName = this.escHtml(data.nameInfo?.name || data.nameInfo?.surname_Company || acct?.name || '');
+    const idNumber = this.escHtml(data.nameInfo?.idRegistrationNumber || data.nameInfo?.idNumber || acct?.idRegistrationNumber || '');
+    const address = this.escHtml(data.property?.propertyStreet || data.property?.streetName || acct?.locationAddress || '');
+    const suburb = this.escHtml(data.property?.suburb || data.property?.subSuburb || '');
+    const town = this.escHtml(data.property?.town || '');
+    const erf = this.escHtml(data.property?.erfNumber || '');
+    const today = new Date();
+    const dateStr = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Proof of Residence</title><style>
+      body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+      .proof-container { max-width: 700px; margin: 0 auto; border: 1px solid #333; padding: 30px; }
+      .header { border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px; text-align: center; }
+      .header h2 { margin: 0; font-size: 18px; }
+      .header p { margin: 4px 0; font-size: 12px; }
+      .date-line { text-align: right; margin: 10px 0 25px; font-weight: bold; }
+      .title { font-size: 18px; font-weight: bold; margin: 20px 0; text-decoration: underline; }
+      .detail { margin: 8px 0 8px 40px; font-size: 14px; }
+      .detail-label { font-weight: bold; display: inline; }
+      .address-block { margin: 15px 0 15px 40px; line-height: 1.8; font-size: 14px; }
+      .body-text { font-size: 14px; margin: 15px 0; line-height: 1.6; }
+      .footer { margin-top: 80px; font-weight: bold; font-size: 14px; }
+      @media print { body { margin: 0; } .proof-container { border: none; } }
+    </style></head><body>
+      <div class="proof-container">
+        <div class="header">
+          <h2>GEORGE MUNICIPALITY</h2>
+          <p>PO Box 19, George, 6530</p>
+          <p>Tel: 044 801 9111 | www.george.gov.za</p>
+        </div>
+        <div class="date-line">Date: ${dateStr}</div>
+        <div class="title">PROOF OF RESIDENCE</div>
+        <div class="body-text">This letter serves to confirm that the following person resides at the address as indicated below:</div>
+        <div class="detail"><span class="detail-label">Full Name:</span> ${ownerName}</div>
+        <div class="detail"><span class="detail-label">ID Number:</span> ${idNumber}</div>
+        <div class="detail"><span class="detail-label">Account Number:</span> ${accountNumber}</div>
+        <div class="address-block">
+          <strong>Physical Address:</strong><br>
+          ${address}<br>
+          ${suburb ? suburb + '<br>' : ''}${town ? town : ''}${erf ? '<br>Erf: ' + erf : ''}
+        </div>
+        <div class="body-text">This confirmation is based on the municipal records at the time of issuing this letter and does not constitute any form of guarantee.</div>
+        <div class="footer">
+          <p>_________________________</p>
+          <p>Authorised Official</p>
+          <p>George Municipality</p>
+        </div>
+      </div>
+    </body></html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => { printWindow.print(); }, 300);
+  }
+
+  async generatePropertyLetter(type: 'section49' | 'section78' | 'valuation'): Promise<void> {
+    const accountId = this.getAccountId(this.selectedAccount());
+    if (!accountId) return;
+    this.generatingPropertyLetter.set(type);
+    try {
+      const [propRes, consUnitRes, valRes] = await Promise.allSettled([
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/consumption-units/${accountId}`)),
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/supplementary-valuations`, { propertyId: String(accountId) })),
+      ]);
+      const prop = propRes.status === 'fulfilled' ? (Array.isArray(propRes.value) ? propRes.value[0] : propRes.value) : null;
+      const consUnit = consUnitRes.status === 'fulfilled' ? (Array.isArray(consUnitRes.value) ? consUnitRes.value[0] : consUnitRes.value) : null;
+      const vals = valRes.status === 'fulfilled' ? this.normalizeArray(valRes.value) : [];
+      const acct = this.selectedAccount();
+      const ownerName = this.escHtml(prop?.name || prop?.owner || consUnit?.ownerName || acct?.name || '');
+      const address = this.escHtml(prop?.propertyStreet || prop?.streetName || acct?.locationAddress || '');
+      const sgNumber = this.escHtml(prop?.sgNumber || consUnit?.sgNumber || acct?.sgNumber || '');
+      const erfNumber = this.escHtml(prop?.erfNumber || '');
+      const suburb = this.escHtml(prop?.suburb || prop?.subSuburb || '');
+      const town = this.escHtml(prop?.town || '');
+      const marketValue = prop?.marketValue || consUnit?.marketValue || 0;
+      const standSize = this.escHtml(prop?.standSize || consUnit?.standSize || '');
+      const zoning = this.escHtml(prop?.typeOfUse || prop?.typeofUse || prop?.townPlanningZoneType || '');
+      const today = new Date();
+      const dateStr = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
+
+      let title = '';
+      let bodyContent = '';
+      if (type === 'section49') {
+        title = 'SECTION 49 LETTER — RATES CLEARANCE';
+        bodyContent = `
+          <div class="body-text">This serves to confirm that the following property has been assessed for rates clearance as required under Section 49 of the Local Government: Municipal Property Rates Act, No. 6 of 2004.</div>
+          <div class="detail"><span class="detail-label">Owner:</span> ${ownerName}</div>
+          <div class="detail"><span class="detail-label">Property Address:</span> ${address}${suburb ? ', ' + suburb : ''}${town ? ', ' + town : ''}</div>
+          <div class="detail"><span class="detail-label">SG Number:</span> ${sgNumber}</div>
+          <div class="detail"><span class="detail-label">Erf Number:</span> ${erfNumber}</div>
+          <div class="detail"><span class="detail-label">Market Value:</span> R ${this.formatCurrency(marketValue)}</div>
+          <div class="detail"><span class="detail-label">Account Number:</span> ${this.escHtml(this.getAccountNum(acct))}</div>
+          <div class="body-text">All rates and taxes as at the date of this certificate have been checked. Please contact the municipality for the current outstanding balance.</div>`;
+      } else if (type === 'section78') {
+        title = 'SECTION 78 LETTER — PROPERTY INFORMATION';
+        bodyContent = `
+          <div class="body-text">In terms of Section 78 of the Local Government: Municipal Property Rates Act, No. 6 of 2004, the following property information is provided:</div>
+          <div class="detail"><span class="detail-label">Owner:</span> ${ownerName}</div>
+          <div class="detail"><span class="detail-label">Property Address:</span> ${address}${suburb ? ', ' + suburb : ''}${town ? ', ' + town : ''}</div>
+          <div class="detail"><span class="detail-label">SG Number:</span> ${sgNumber}</div>
+          <div class="detail"><span class="detail-label">Erf Number:</span> ${erfNumber}</div>
+          <div class="detail"><span class="detail-label">Stand Size:</span> ${standSize ? standSize + ' m²' : '-'}</div>
+          <div class="detail"><span class="detail-label">Zoning / Land Use:</span> ${zoning || '-'}</div>
+          <div class="detail"><span class="detail-label">Market Value:</span> R ${this.formatCurrency(marketValue)}</div>
+          <div class="detail"><span class="detail-label">Account Number:</span> ${this.escHtml(this.getAccountNum(acct))}</div>
+          <div class="body-text">This information is extracted from the municipal valuation roll and property register as at the date of this letter.</div>`;
+      } else {
+        title = 'VALUATION CERTIFICATE';
+        bodyContent = `
+          <div class="body-text">This certificate confirms the property valuation details as recorded in the Municipal Valuation Roll:</div>
+          <div class="detail"><span class="detail-label">Owner:</span> ${ownerName}</div>
+          <div class="detail"><span class="detail-label">Property Address:</span> ${address}${suburb ? ', ' + suburb : ''}${town ? ', ' + town : ''}</div>
+          <div class="detail"><span class="detail-label">SG Number:</span> ${sgNumber}</div>
+          <div class="detail"><span class="detail-label">Erf Number:</span> ${erfNumber}</div>
+          <div class="detail"><span class="detail-label">Market Value:</span> R ${this.formatCurrency(marketValue)}</div>
+          <div class="detail"><span class="detail-label">Stand Size:</span> ${standSize ? standSize + ' m²' : '-'}</div>
+          <div class="detail"><span class="detail-label">Zoning:</span> ${zoning || '-'}</div>`;
+        if (vals.length > 0) {
+          bodyContent += `<table class="val-table"><thead><tr><th>Fin Year</th><th>Market Value</th><th>Category</th><th>Status</th></tr></thead><tbody>`;
+          for (const v of vals) {
+            bodyContent += `<tr><td>${this.escHtml(v.financialYear || '-')}</td><td>R ${this.formatCurrency(v.standMarketValue || v.marketValue || 0)}</td><td>${this.escHtml(v.valuationCategory || v.category || '-')}</td><td>${this.escHtml(v.valuationStatus || v.status || '-')}</td></tr>`;
+          }
+          bodyContent += `</tbody></table>`;
+        }
+        bodyContent += `<div class="body-text">This valuation is as per the current General Valuation Roll and/or Supplementary Valuation Roll.</div>`;
+      }
+
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) { this.toast.show('Could not open print window', 'error'); return; }
+      printWindow.document.write(`<!DOCTYPE html><html><head><title>${title}</title><style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+        .letter-container { max-width: 700px; margin: 0 auto; border: 1px solid #333; padding: 30px; }
+        .header { border-bottom: 2px solid #0f2b46; padding-bottom: 15px; margin-bottom: 20px; text-align: center; }
+        .header h2 { margin: 0; font-size: 18px; color: #0f2b46; }
+        .header p { margin: 4px 0; font-size: 12px; color: #555; }
+        .date-line { text-align: right; margin: 10px 0 20px; font-weight: bold; font-size: 13px; }
+        .title { font-size: 16px; font-weight: bold; margin: 20px 0; text-decoration: underline; color: #0f2b46; }
+        .detail { margin: 8px 0 8px 20px; font-size: 13px; }
+        .detail-label { font-weight: bold; display: inline; }
+        .body-text { font-size: 13px; margin: 15px 0; line-height: 1.6; }
+        .val-table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 12px; }
+        .val-table th { background: #0f2b46; color: white; padding: 6px 10px; text-align: left; }
+        .val-table td { border: 1px solid #ddd; padding: 5px 10px; }
+        .footer { margin-top: 60px; font-size: 13px; }
+        @media print { body { margin: 0; } .letter-container { border: none; } }
+      </style></head><body>
+        <div class="letter-container">
+          <div class="header"><h2>GEORGE MUNICIPALITY</h2><p>PO Box 19, George, 6530</p><p>Tel: 044 801 9111 | www.george.gov.za</p></div>
+          <div class="date-line">Date: ${dateStr}</div>
+          <div class="title">${title}</div>
+          ${bodyContent}
+          <div class="footer"><p>_________________________</p><p>Authorised Official</p><p>George Municipality</p></div>
+        </div>
+      </body></html>`);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => { printWindow.print(); }, 300);
+    } catch (e: any) {
+      this.toast.show(`Failed to generate ${type} letter: ${e?.message || 'Unknown error'}`, 'error');
+    } finally {
+      this.generatingPropertyLetter.set(null);
+    }
+  }
+
+  async calculateNextBillEstimate(): Promise<void> {
+    const accountId = this.getAccountId(this.selectedAccount());
+    if (!accountId) return;
+    this.nbeLoading.set(true);
+    this.nbeError.set(null);
+    this.nbeWarnings.set([]);
+    this.nbeLineItems.set([]);
+    this.nbeCalculated.set(false);
+    const warns: string[] = [];
+
+    try {
+      const now = new Date();
+      const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      this.nbeBillingMonth.set(`${monthNames[now.getMonth()]} ${now.getFullYear()}`);
+
+      const finYearMonths = ['July','August','September','October','November','December','January','February','March','April','May','June'];
+      const [svcRes, meteredRes, ratesRes, addBillingRes] = await Promise.allSettled([
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/services-search-results/${accountId}`)),
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/metered-services-on-account/${accountId}`)),
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-rates-details/${accountId}`)),
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/additional-billing-search-results/${accountId}`)),
+      ]);
+      const services = svcRes.status === 'fulfilled' ? this.normalizeArray(svcRes.value) : [];
+      const meters = meteredRes.status === 'fulfilled' ? this.normalizeArray(meteredRes.value) : [];
+      const ratesDetail = ratesRes.status === 'fulfilled' ? (Array.isArray(ratesRes.value) ? ratesRes.value[0] : ratesRes.value) : null;
+      const addBilling = addBillingRes.status === 'fulfilled' ? this.normalizeArray(addBillingRes.value) : [];
+
+      const activeServices = services.filter((s: any) => {
+        const status = (s.serviceStatus || s.statusDesc || s.status || '').toLowerCase();
+        return !status.includes('inactive') && !status.includes('terminated') && !status.includes('closed');
+      });
+
+      if (!activeServices.length && !meters.length) {
+        this.nbeError.set('No active services found on this account.');
+        this.nbeLoading.set(false);
+        return;
+      }
+
+      const items: any[] = [];
+      const processedKeys = new Set<string>();
+
+      for (const svc of activeServices) {
+        const desc = svc.serviceDescription || svc.serviceDesc || svc.tariffType || svc.description || 'Service';
+        const key = desc.toLowerCase();
+        if (processedKeys.has(key)) continue;
+        processedKeys.add(key);
+
+        const isPrepaid = key.includes('prepaid') || key.includes('pre-paid') || key.includes('token');
+        if (isPrepaid) continue;
+
+        const amount = parseFloat(svc.amount || svc.currentAmount || svc.tariffAmount || svc.monthlyCharge || 0);
+        const isMetered = key.includes('metered') || key.includes('consumption');
+
+        if (isMetered) {
+          const matchedMeter = meters.find((m: any) => {
+            const mDesc = (m.serviceDesc || m.serviceDescription || '').toLowerCase();
+            return mDesc === key || mDesc.includes(key.split(' ')[0]);
+          });
+          if (matchedMeter) {
+            try {
+              const meterNo = matchedMeter.meterNumber || matchedMeter.meterNo || '';
+              if (meterNo) {
+                const readings: any = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history/${accountId}`, { meterNo }));
+                const readingsArr = this.normalizeArray(readings);
+                if (readingsArr.length >= 2) {
+                  const sorted = readingsArr.sort((a: any, b: any) => new Date(b.readingDate || b.date || 0).getTime() - new Date(a.readingDate || a.date || 0).getTime());
+                  const latest = sorted[0];
+                  const prev = sorted[1];
+                  const consumption = Math.abs(parseFloat(latest.consumption || latest.units || 0) || parseFloat(prev.consumption || prev.units || 0) || 0);
+                  const rate = amount > 0 ? amount : parseFloat(svc.tariffRate || svc.rate || '1');
+                  const estimated = consumption * (rate > 0 ? rate : 1);
+                  items.push({ service: desc, type: 'metered', amount: estimated, consumption, rate, meter: meterNo });
+                } else {
+                  warns.push(`${desc}: insufficient meter readings for estimate`);
+                  if (amount > 0) items.push({ service: desc, type: 'estimated', amount });
+                }
+              } else if (amount > 0) {
+                items.push({ service: desc, type: 'estimated', amount });
+              }
+            } catch {
+              warns.push(`${desc}: could not fetch meter readings`);
+              if (amount > 0) items.push({ service: desc, type: 'estimated', amount });
+            }
+          } else if (amount > 0) {
+            items.push({ service: desc, type: 'fixed', amount });
+          }
+        } else {
+          if (amount > 0) items.push({ service: desc, type: 'fixed', amount });
+          else warns.push(`${desc}: no amount available`);
+        }
+      }
+
+      for (const ab of addBilling) {
+        const desc = ab.description || ab.serviceDescription || ab.additionalBillingDescription || 'Additional Billing';
+        const amt = parseFloat(ab.amount || ab.billingAmount || 0);
+        if (amt > 0 && !processedKeys.has(desc.toLowerCase())) {
+          processedKeys.add(desc.toLowerCase());
+          items.push({ service: desc, type: 'additional', amount: amt });
+        }
+      }
+
+      if (ratesDetail && !ratesDetail._error) {
+        const rateAmt = parseFloat(ratesDetail.monthlyRate || ratesDetail.monthlyAmount || ratesDetail.rateAmount || 0);
+        if (rateAmt > 0 && !processedKeys.has('property rates')) {
+          processedKeys.add('property rates');
+          items.push({ service: 'Property Rates', type: 'rates', amount: rateAmt });
+        }
+      }
+
+      if (items.length === 0) {
+        this.nbeError.set('Could not estimate any services. Insufficient data available.');
+        this.nbeLoading.set(false);
+        return;
+      }
+
+      this.nbeLineItems.set(items);
+      this.nbeWarnings.set(warns);
+      this.nbeCalculated.set(true);
+    } catch (e: any) {
+      this.nbeError.set(e?.message || 'Failed to calculate estimate');
+    } finally {
+      this.nbeLoading.set(false);
+    }
+  }
+
+  get nbeSubtotal(): number {
+    return this.nbeLineItems().reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
+  }
+
+  get nbeVat(): number {
+    return this.nbeSubtotal * 0.15;
+  }
+
+  get nbeTotal(): number {
+    return this.nbeSubtotal + this.nbeVat;
+  }
+
+  exportOccupiersCsv(): void {
+    const occupiers = this.occupiersList();
+    if (!occupiers.length) { this.toast.show('No occupiers to export', 'error'); return; }
+    const headers = ['Name', 'ID Number'];
+    const rows = occupiers.map((o: any) => [
+      o.name || o.occupierName || o.surname || '',
+      o.idNumber || o.idRegistrationNumber || o.idNo || '',
+    ]);
+    this.exportService.exportCsv(this.getExportOpts('Occupiers', 'OCCUPIERS REPORT'), headers, rows);
+    this.toast.show('Occupiers exported', 'success');
+  }
+
+  exportExtensionsCsv(): void {
+    const extensions = this.tabData()?.extensions || [];
+    if (!extensions.length) { this.toast.show('No extension data to export', 'error'); return; }
+    const headers = ['Extension Status', 'Description', 'Commencement Date', 'Termination Date', 'Captured By', 'Capture Date'];
+    const rows = extensions.map((e: any) => [
+      e.extensionStatus || e.status || e.statusDesc || '',
+      e.extensionDescription || e.description || e.extensionType || e.type || '',
+      this.formatDate(e.commencementDate || e.startDate),
+      this.formatDate(e.terminationDate || e.endDate),
+      e.capturedBy || e.capturerName || e.capturer || '',
+      this.formatDate(e.captureDate || e.dateCaptured),
+    ]);
+    this.exportService.exportCsv(this.getExportOpts('Payment_Extensions', 'PAYMENT EXTENSIONS REPORT'), headers, rows);
+    this.toast.show('Extensions exported', 'success');
   }
 }

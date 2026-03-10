@@ -947,6 +947,21 @@
                 </div>
               }
 
+              <div class="acct-section-card">
+                <div class="acct-section-header">📄 Property Letters &amp; Certificates</div>
+                <div class="prop-letters-row">
+                  <button class="prop-letter-btn" (click)="generatePropertyLetter('section49')" [disabled]="generatingPropertyLetter() !== null" data-testid="btn-section49">
+                    @if (generatingPropertyLetter() === 'section49') { <span class="stmt-spinner"></span> Generating... } @else { 📋 Section 49 Letter }
+                  </button>
+                  <button class="prop-letter-btn" (click)="generatePropertyLetter('section78')" [disabled]="generatingPropertyLetter() !== null" data-testid="btn-section78">
+                    @if (generatingPropertyLetter() === 'section78') { <span class="stmt-spinner"></span> Generating... } @else { 📋 Section 78 Letter }
+                  </button>
+                  <button class="prop-letter-btn" (click)="generatePropertyLetter('valuation')" [disabled]="generatingPropertyLetter() !== null" data-testid="btn-valuation-cert">
+                    @if (generatingPropertyLetter() === 'valuation') { <span class="stmt-spinner"></span> Generating... } @else { 📜 Valuation Certificate }
+                  </button>
+                </div>
+              </div>
+
               @if ((tabData()?.transfers || []).length > 0) {
                 <div class="acct-section-card">
                   <div class="acct-section-header">📋 Transfer of Ownership History <span class="section-count-badge">{{ (tabData()?.transfers || []).length }}</span></div>
@@ -4026,18 +4041,263 @@
           </div>
         }
 
-        <!-- Fallback for any remaining tabs without templates -->
-        @if (['send-statements', 'occupiers'].includes(activeTab())) {
-          <div class="tab-panel" [attr.data-testid]="'tab-' + activeTab()">
-            <div class="detail-section">
-              <div class="section-header-bar">{{ currentTabIcon }} {{ currentTabLabel }}</div>
-              <div class="empty-state">
-                <div class="empty-icon">{{ currentTabIcon }}</div>
-                <p class="empty-text">{{ currentTabLabel }} — coming soon</p>
+        <!-- Occupiers Tab -->
+        @if (activeTab() === 'occupiers') {
+          <div class="tab-panel" data-testid="occupiers-tab">
+            @if (tabData()?._error) {
+              <div class="tab-error-banner">{{ tabData()._error }}</div>
+            }
+            <div class="occ-actions-row">
+              <button class="occ-action-btn" (click)="showAddOccupierModal.set(true)" data-testid="button-add-occupier">+ Add Occupier</button>
+              <button class="occ-action-btn occ-btn-secondary" (click)="generateProofOfResidence()" [disabled]="proofLoading()" data-testid="button-proof-of-residence">
+                @if (proofLoading()) { <span class="stmt-spinner"></span> Loading... } @else { 🏠 Proof of Residence }
+              </button>
+              <button class="export-btn export-csv" (click)="exportOccupiersCsv()" data-testid="button-export-occupiers-csv">📥 Export</button>
+            </div>
+
+            @if ((occupiersList()).length > 0) {
+              <div class="debt-table-section">
+                <div class="debt-table-header">
+                  <span class="debt-table-title">Registered Occupiers</span>
+                  <span class="debt-table-count">{{ occupiersList().length }} occupier{{ occupiersList().length !== 1 ? 's' : '' }}</span>
+                </div>
+                <div class="debt-table-wrapper">
+                  <table class="debt-table" data-testid="table-occupiers">
+                    <thead>
+                      <tr>
+                        <th class="debt-th-desc"></th>
+                        <th class="debt-th-desc">Name</th>
+                        <th class="debt-th-desc">ID Number</th>
+                        <th class="debt-th-desc">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (o of occupiersList(); track $index) {
+                        <tr [class.occ-selected]="selectedOccupierIdx() === $index" (click)="selectedOccupierIdx.set($index)" [attr.data-testid]="'row-occupier-' + $index">
+                          <td class="debt-td-desc"><input type="radio" [checked]="selectedOccupierIdx() === $index" (click)="selectedOccupierIdx.set($index)" /></td>
+                          <td class="debt-td-desc">{{ o.name || o.occupierName || o.surname || '-' }}</td>
+                          <td class="debt-td-desc mono">{{ o.idNumber || o.idRegistrationNumber || o.idNo || '-' }}</td>
+                          <td class="debt-td-desc">
+                            <button class="occ-remove-btn" (click)="removeOccupier(o); $event.stopPropagation()" [disabled]="occupierRemoveLoading() !== null" [attr.data-testid]="'btn-remove-occupier-' + $index">
+                              @if (occupierRemoveLoading() === (o.occupierId || o.id || o.occupier_ID)) { <span class="stmt-spinner"></span> } @else { Remove }
+                            </button>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
               </div>
+            } @else if (!tabLoading()) {
+              <div class="empty-state">
+                <div class="empty-icon">🏘️</div>
+                <p class="empty-text">No occupiers registered on this account</p>
+              </div>
+            }
+
+            @if (showAddOccupierModal()) {
+              <div class="occ-modal-backdrop" (click)="showAddOccupierModal.set(false)">
+                <div class="occ-modal" (click)="$event.stopPropagation()" data-testid="modal-add-occupier">
+                  <div class="occ-modal-header">
+                    <span>Add Occupier</span>
+                    <button class="occ-modal-close" (click)="showAddOccupierModal.set(false)">✕</button>
+                  </div>
+                  <div class="occ-modal-body">
+                    <div class="occ-form-group">
+                      <label class="occ-label">Full Name *</label>
+                      <input type="text" class="occ-input" [ngModel]="occupierAddName()" (ngModelChange)="occupierAddName.set($event)" placeholder="Enter full name" data-testid="input-occupier-name" />
+                    </div>
+                    <div class="occ-form-group">
+                      <label class="occ-label">ID Number</label>
+                      <input type="text" class="occ-input" [ngModel]="occupierAddId()" (ngModelChange)="occupierAddId.set($event)" placeholder="Enter ID number (optional)" data-testid="input-occupier-id" />
+                    </div>
+                  </div>
+                  <div class="occ-modal-footer">
+                    <button class="occ-action-btn occ-btn-secondary" (click)="showAddOccupierModal.set(false)">Cancel</button>
+                    <button class="occ-action-btn" (click)="addOccupier()" [disabled]="occupierAddLoading() || !occupierAddName().trim()" data-testid="btn-confirm-add-occupier">
+                      @if (occupierAddLoading()) { <span class="stmt-spinner"></span> Adding... } @else { Add Occupier }
+                    </button>
+                  </div>
+                </div>
+              </div>
+            }
+
+            @if (showProofModal()) {
+              <div class="occ-modal-backdrop" (click)="showProofModal.set(false)">
+                <div class="occ-modal occ-modal-lg" (click)="$event.stopPropagation()" data-testid="modal-proof-of-residence">
+                  <div class="occ-modal-header">
+                    <span>Proof of Residence</span>
+                    <button class="occ-modal-close" (click)="showProofModal.set(false)">✕</button>
+                  </div>
+                  <div class="occ-modal-body">
+                    <p style="margin-bottom: 0.75rem; color: var(--pos-text-muted); font-size: 0.85rem;">A proof of residence letter will be generated based on the account and property details on file.</p>
+                    @if (proofData()) {
+                      <div class="occ-proof-preview">
+                        <div class="occ-proof-field"><strong>Owner:</strong> {{ proofData()?.nameInfo?.name || proofData()?.nameInfo?.surname_Company || selectedAccount()?.name || '-' }}</div>
+                        <div class="occ-proof-field"><strong>ID:</strong> {{ proofData()?.nameInfo?.idRegistrationNumber || proofData()?.nameInfo?.idNumber || '-' }}</div>
+                        <div class="occ-proof-field"><strong>Address:</strong> {{ proofData()?.property?.propertyStreet || proofData()?.property?.streetName || selectedAccount()?.locationAddress || '-' }}</div>
+                        <div class="occ-proof-field"><strong>Account:</strong> {{ getAccountNum(selectedAccount()) }}</div>
+                      </div>
+                    }
+                  </div>
+                  <div class="occ-modal-footer">
+                    <button class="occ-action-btn occ-btn-secondary" (click)="showProofModal.set(false)">Close</button>
+                    <button class="occ-action-btn" (click)="printProofOfResidence()" data-testid="btn-print-proof">🖨️ Print Proof of Residence</button>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Extensions Tab -->
+        @if (activeTab() === 'extensions') {
+          <div class="tab-panel" data-testid="extensions-tab">
+            @if (tabData()?._error) {
+              <div class="tab-error-banner">{{ tabData()._error }}</div>
+            }
+            <div class="export-toolbar">
+              <button class="export-btn export-csv" (click)="exportExtensionsCsv()" data-testid="button-export-extensions-csv">📥 Excel/CSV</button>
+            </div>
+            <div class="debt-table-section">
+              <div class="debt-table-header">
+                <span class="debt-table-title">Payment Extension History</span>
+                <span class="debt-table-count">{{ (tabData()?.extensions || []).length }} record{{ (tabData()?.extensions || []).length !== 1 ? 's' : '' }}</span>
+              </div>
+              @if ((tabData()?.extensions || []).length > 0) {
+                <div class="debt-table-wrapper">
+                  <table class="debt-table" data-testid="table-extensions">
+                    <thead>
+                      <tr>
+                        <th class="debt-th-desc">Extension Status</th>
+                        <th class="debt-th-desc">Extension Description</th>
+                        <th class="debt-th-desc">Commencement Date</th>
+                        <th class="debt-th-desc">Termination Date</th>
+                        <th class="debt-th-desc">Captured By</th>
+                        <th class="debt-th-desc">Capture Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (ext of tabData()?.extensions || []; track $index) {
+                        <tr [attr.data-testid]="'row-extension-' + $index">
+                          <td class="debt-td-desc">
+                            <span class="inline-badge" [class.active]="(ext.extensionStatus || ext.status || '').toLowerCase() === 'active'">
+                              {{ ext.extensionStatus || ext.status || ext.statusDesc || '-' }}
+                            </span>
+                          </td>
+                          <td class="debt-td-desc">{{ ext.extensionDescription || ext.description || ext.extensionType || ext.type || '-' }}</td>
+                          <td class="debt-td-desc">{{ formatDate(ext.commencementDate || ext.startDate) }}</td>
+                          <td class="debt-td-desc">{{ formatDate(ext.terminationDate || ext.endDate) }}</td>
+                          <td class="debt-td-desc">{{ ext.capturedBy || ext.capturerName || ext.capturer || '-' }}</td>
+                          <td class="debt-td-desc">{{ formatDate(ext.captureDate || ext.dateCaptured) }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              } @else if (!tabLoading()) {
+                <div class="empty-state">
+                  <div class="empty-icon">📆</div>
+                  <p class="empty-text">No payment extension history found</p>
+                </div>
+              }
             </div>
           </div>
         }
+
+        <!-- Next Bill Estimate Tab -->
+        @if (activeTab() === 'next-bill') {
+          <div class="tab-panel" data-testid="next-bill-estimate-tab">
+            <div class="nbe-header">
+              <div class="nbe-title">🧮 Next Bill Estimate</div>
+              <p class="nbe-subtitle">Calculate an estimate of the next monthly bill based on current services, consumption trends, and tariffs.</p>
+            </div>
+
+            @if (!nbeCalculated() && !nbeLoading()) {
+              <div class="nbe-cta">
+                <button class="nbe-calculate-btn" (click)="calculateNextBillEstimate()" [disabled]="nbeLoading()" data-testid="btn-calculate-estimate">
+                  ⚡ Calculate Estimate
+                </button>
+                @if (nbeError()) {
+                  <div class="tab-error-banner" style="margin-top: 1rem;">{{ nbeError() }}</div>
+                }
+              </div>
+            }
+
+            @if (nbeLoading()) {
+              <div class="cons-loading"><div class="search-spinner-inline"></div><span>Calculating estimate... Fetching services, meters, and tariffs...</span></div>
+            }
+
+            @if (nbeCalculated()) {
+              <div class="nbe-result-panel" data-testid="nbe-results">
+                <div class="nbe-result-header">
+                  <span class="nbe-result-month">Estimated Bill for {{ nbeBillingMonth() }}</span>
+                </div>
+
+                @if (nbeWarnings().length > 0) {
+                  <div class="nbe-warnings">
+                    @for (w of nbeWarnings(); track $index) {
+                      <div class="nbe-warning-item">⚠️ {{ w }}</div>
+                    }
+                  </div>
+                }
+
+                <div class="debt-table-wrapper">
+                  <table class="debt-table" data-testid="table-nbe-items">
+                    <thead>
+                      <tr>
+                        <th class="debt-th-desc">Service</th>
+                        <th class="debt-th-desc">Type</th>
+                        <th class="debt-th-desc">Details</th>
+                        <th class="debt-th-amt">Estimated Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (item of nbeLineItems(); track $index) {
+                        <tr [attr.data-testid]="'row-nbe-' + $index">
+                          <td class="debt-td-desc">{{ item.service }}</td>
+                          <td class="debt-td-desc"><span class="nbe-type-badge" [attr.data-type]="item.type">{{ item.type }}</span></td>
+                          <td class="debt-td-desc">
+                            @if (item.type === 'metered' && item.consumption) {
+                              {{ item.consumption | number:'1.0-1' }} units &#64; R{{ formatCurrency(item.rate || 0) }}/unit
+                              @if (item.meter) { <span class="mono" style="font-size: 0.75rem; margin-left: 4px;">({{ item.meter }})</span> }
+                            } @else {
+                              Fixed charge
+                            }
+                          </td>
+                          <td class="debt-td-amt mono accent">R {{ formatCurrency(item.amount) }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                    <tfoot>
+                      <tr class="nbe-subtotal-row">
+                        <td colspan="3" class="debt-td-desc" style="text-align: right; font-weight: 600;">Subtotal (excl. VAT)</td>
+                        <td class="debt-td-amt mono">R {{ formatCurrency(nbeSubtotal) }}</td>
+                      </tr>
+                      <tr class="nbe-vat-row">
+                        <td colspan="3" class="debt-td-desc" style="text-align: right;">VAT (15%)</td>
+                        <td class="debt-td-amt mono">R {{ formatCurrency(nbeVat) }}</td>
+                      </tr>
+                      <tr class="nbe-total-row">
+                        <td colspan="3" class="debt-td-desc" style="text-align: right; font-weight: 700; font-size: 1rem;">Estimated Total</td>
+                        <td class="debt-td-amt mono accent" style="font-weight: 700; font-size: 1rem;">R {{ formatCurrency(nbeTotal) }}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+
+                <div class="nbe-disclaimer">
+                  This is an estimate only. Actual billing may differ based on meter readings, tariff changes, and other adjustments applied during the billing cycle.
+                </div>
+
+                <div class="nbe-recalculate">
+                  <button class="occ-action-btn occ-btn-secondary" (click)="nbeCalculated.set(false); nbeLineItems.set([]); nbeWarnings.set([])" data-testid="btn-recalculate">↻ Recalculate</button>
+                </div>
+              </div>
+            }
+          </div>
+        }
+
       }
     </div>
   </div>

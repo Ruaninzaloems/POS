@@ -26,7 +26,15 @@ export class ApiService {
     return this.http.put<T>(url, body || {}, { withCredentials: true });
   }
 
-  delete<T = any>(url: string, body?: any): Observable<T> {
-    return this.http.delete<T>(url, { body: body || undefined, withCredentials: true });
+  delete<T = any>(url: string, params?: Record<string, string>): Observable<T> {
+    let httpParams = new HttpParams();
+    if (params) {
+      Object.keys(params).forEach(key => {
+        if (params[key] !== undefined && params[key] !== null) {
+          httpParams = httpParams.set(key, params[key]);
+        }
+      });
+    }
+    return this.http.delete<T>(url, { params: httpParams, withCredentials: true });
   }
 }
