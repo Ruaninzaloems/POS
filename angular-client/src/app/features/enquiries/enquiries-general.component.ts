@@ -1317,7 +1317,12 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           const receiptResult = await firstValueFrom(
             this.api.get<any>(`/api/platinum/billing-enquiry/payment-amount-by-account-ids/${accountId}`)
           );
-          data = { transactions: this.normalizeArray(receiptResult) };
+          const receiptArr = this.normalizeArray(receiptResult);
+          if (receiptArr.length > 0) {
+            console.log('[transactions] API response keys:', Object.keys(receiptArr[0]));
+            console.log('[transactions] Sample row:', JSON.stringify(receiptArr[0]).substring(0, 500));
+          }
+          data = { transactions: receiptArr };
           break;
 
         case 'payment-plans':
@@ -1682,7 +1687,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       const pt = t.paymentType || 'Unknown';
       if (!map[pt]) map[pt] = { count: 0, total: 0 };
       map[pt].count++;
-      map[pt].total += Number(t.amount || t.tenderAmount || 0);
+      map[pt].total += Number(t.receiptAmount || t.amount || t.tenderAmount || 0);
     }
     return Object.entries(map).map(([type, v]) => ({ type, ...v })).sort((a, b) => b.total - a.total);
   }
@@ -1692,7 +1697,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     let total = 0, eftCount = 0, cashCount = 0, cardCount = 0, cancelledCount = 0;
     let latestDate = '', oldestDate = '';
     for (const t of txns) {
-      total += Number(t.amount || t.tenderAmount || 0);
+      total += Number(t.receiptAmount || t.amount || t.tenderAmount || 0);
       const pt = (t.paymentType || '').toLowerCase();
       if (pt === 'eft') eftCount++;
       else if (pt === 'cash') cashCount++;
@@ -1721,7 +1726,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     return entries.map(([month, receipts]) => ({ label: (receipts as any).__label, month, receipts }));
   }
 
-  sumReceiptAmounts = (sum: number, t: any) => sum + Number(t.amount || t.tenderAmount || 0);
+  sumReceiptAmounts = (sum: number, t: any) => sum + Number(t.receiptAmount || t.amount || t.tenderAmount || 0);
 
   getReceiptKey(txn: any): number {
     if (!txn) return 0;

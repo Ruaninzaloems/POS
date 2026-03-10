@@ -1249,7 +1249,7 @@
                                 {{ getReceiptPaymentIcon(txn.paymentType) }} {{ txn.paymentType || '-' }}
                               </span>
                             </td>
-                            <td class="text-right mono rcpt-td-amt">R {{ formatCurrency(txn.amount || txn.tenderAmount || txn.transactionAmount || 0) }}</td>
+                            <td class="text-right mono rcpt-td-amt">R {{ formatCurrency(txn.receiptAmount || txn.amount || txn.tenderAmount || txn.transactionAmount || 0) }}</td>
                             <td class="rcpt-td-cashier">{{ txn.cashier || txn.cashierName || '-' }}</td>
                             <td class="rcpt-td-bank">{{ txn.cashBook || '-' }}</td>
                             <td class="rcpt-td-detail">
@@ -1303,7 +1303,7 @@
                                       </div>
                                       <div class="rcpt-detail-field">
                                         <span class="rcpt-detail-label">Amount</span>
-                                        <span class="rcpt-detail-val mono rcpt-detail-amt">R {{ formatCurrency(txn.amount || txn.tenderAmount || 0) }}</span>
+                                        <span class="rcpt-detail-val mono rcpt-detail-amt">R {{ formatCurrency(txn.receiptAmount || txn.amount || txn.tenderAmount || 0) }}</span>
                                       </div>
                                       <div class="rcpt-detail-field">
                                         <span class="rcpt-detail-label">Cashier</span>
@@ -1420,7 +1420,7 @@
                             <div class="rcpt-tl-content">
                               <div class="rcpt-tl-top-row">
                                 <span class="rcpt-tl-date">{{ formatDate(txn.receiptDate || txn.transactionDate || txn.date) }}</span>
-                                <span class="rcpt-tl-amount mono">R {{ formatCurrency(txn.amount || txn.tenderAmount || 0) }}</span>
+                                <span class="rcpt-tl-amount mono">R {{ formatCurrency(txn.receiptAmount || txn.receiptAmount || txn.amount || txn.tenderAmount || 0) }}</span>
                               </div>
                               <div class="rcpt-tl-mid-row">
                                 <span class="rcpt-tl-receipt-no mono">{{ getReceiptNo(txn) || '-' }}</span>
@@ -1485,7 +1485,7 @@
                                     </div>
                                     <div class="rcpt-detail-field">
                                       <span class="rcpt-detail-label">Amount</span>
-                                      <span class="rcpt-detail-val mono rcpt-detail-amt">R {{ formatCurrency(txn.amount || txn.tenderAmount || 0) }}</span>
+                                      <span class="rcpt-detail-val mono rcpt-detail-amt">R {{ formatCurrency(txn.receiptAmount || txn.amount || txn.tenderAmount || 0) }}</span>
                                     </div>
                                     <div class="rcpt-detail-field">
                                       <span class="rcpt-detail-label">Cashier</span>
