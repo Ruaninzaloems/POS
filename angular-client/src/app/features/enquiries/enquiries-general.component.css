@@ -790,6 +790,7 @@
 
 .svc-sections { display: flex; flex-direction: column; gap: 0; }
 .svc-header-metered { background: linear-gradient(135deg, rgba(15,43,70,0.06) 0%, rgba(59,130,246,0.08) 100%) !important; }
+.svc-header-prepaid { background: linear-gradient(135deg, rgba(15,43,70,0.06) 0%, rgba(168,85,247,0.10) 100%) !important; }
 .svc-header-basic { background: linear-gradient(135deg, rgba(15,43,70,0.06) 0%, rgba(34,197,94,0.08) 100%) !important; }
 .svc-header-rates { background: linear-gradient(135deg, rgba(15,43,70,0.06) 0%, rgba(201,168,76,0.10) 100%) !important; }
 .svc-status-badge {

@@ -3432,8 +3432,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const type = (svc.serviceType || svc.serviceTypeDesc || svc.serviceDesc || svc.serviceDescription || svc.tariffType || '').toLowerCase();
     const tariff = (svc.tariff || svc.tariffDesc || '').toLowerCase();
     const combined = type + ' ' + tariff;
+    if (combined.includes('pre-paid') || combined.includes('pre paid') || combined.includes('prepaid')) return 'prepaid';
     if (combined.includes('property rate') || combined.includes('rates') && !combined.includes('water') && !combined.includes('elec') && !combined.includes('sewer') && !combined.includes('refuse')) return 'rates';
-    if (combined.includes('metered') || combined.includes('effluent') || combined.includes('pre-paid') || combined.includes('pre paid') || combined.includes('prepaid')) return 'metered';
+    if (combined.includes('metered') || combined.includes('effluent')) return 'metered';
     if (combined.includes('basic') || combined.includes('disposal') || combined.includes('refuse') || combined.includes('sanitation')) return 'basic';
     if (combined.includes('rate')) return 'rates';
     return 'other';
