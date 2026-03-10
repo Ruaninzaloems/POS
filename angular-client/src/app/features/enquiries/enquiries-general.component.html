@@ -1311,25 +1311,302 @@
 
         @if (activeTab() === 'services-meters') {
           <div class="tab-panel" data-testid="meters-tab">
-            @if ((tabData()?.meters || []).length > 0) {
-              <div class="services-grid">
-                @for (m of tabData()?.meters || []; track $index) {
-                  <div class="service-card" [attr.data-testid]="'meter-card-' +  $index  + ''">
-                    <div class="service-card-header">
-                      <span class="service-name">{{ m.serviceDesc || m.serviceDescription || 'Meter' }}</span>
-                      <span class="service-status" [class.active]="(m.serviceStatus || m.meterStatus || '').toLowerCase() === 'active'">
-                        {{ m.serviceStatus || m.meterStatus || '-' }}
-                      </span>
-                    </div>
-                    <div class="service-card-body">
-                      <div class="service-row"><span>Physical Meter No</span><span class="mono">{{ m.physicalMeterNo || m.physicalMeterNumber || '-' }}</span></div>
-                      <div class="service-row"><span>Meter No</span><span class="mono">{{ m.meterNo || m.meterNumber || '-' }}</span></div>
-                      <div class="service-row"><span>Connection Size</span><span>{{ m.meterConnectionSize || '-' }}</span></div>
-                      <div class="service-row"><span>Last Reading</span><span class="mono">{{ m.lastReading || m.previousReading || '-' }}</span></div>
-                      <div class="service-row"><span>Reading Date</span><span>{{ formatDate(m.lastReadingDate || m.readingDate) }}</span></div>
-                    </div>
+            @if ((tabData()?.meters || []).length > 0 || (tabData()?.prepaidMeters || []).length > 0) {
+              <div class="meter-sections">
+
+                <div class="debt-table-section">
+                  <div class="debt-table-header svc-header-metered">
+                    <span class="debt-table-title">Conventional Meters</span>
+                    <span class="debt-table-count">{{ (tabData()?.conventionalMeters || []).length }} meter{{ (tabData()?.conventionalMeters || []).length !== 1 ? 's' : '' }}</span>
                   </div>
-                }
+                  @if ((tabData()?.conventionalMeters || []).length > 0) {
+                    <div class="cons-layout" style="margin-top: 0.75rem;">
+                      <div class="cons-meter-sidebar">
+                        @for (m of tabData()?.conventionalMeters || []; track $index) {
+                          <div class="cons-meter-card" [class.cons-meter-active]="meterSelectedConv()?.physicalMeterNo === m.physicalMeterNo && meterSelectedConv()?.serviceDesc === m.serviceDesc" (click)="selectConvMeter(m)" [attr.data-testid]="'conv-meter-' + $index">
+                            <div class="cons-meter-icon">
+                              @if ((m.serviceDesc || '').toLowerCase().includes('water')) { 💧 }
+                              @else if ((m.serviceDesc || '').toLowerCase().includes('elec')) { ⚡ }
+                              @else if ((m.serviceDesc || '').toLowerCase().includes('sewer') || (m.serviceDesc || '').toLowerCase().includes('effluent')) { 🚿 }
+                              @else { 📊 }
+                            </div>
+                            <div class="cons-meter-info">
+                              <div class="cons-meter-name">{{ m.serviceDesc || m.serviceDescription || 'Meter' }}</div>
+                              <div class="cons-meter-no mono">{{ m.physicalMeterNo || m.meterNo || '-' }}</div>
+                              <div class="cons-meter-status">
+                                <span class="svc-status-badge" [class.svc-active]="(m.serviceStatus || m.meterStatus || '').toLowerCase() === 'active'">{{ m.serviceStatus || m.meterStatus || '-' }}</span>
+                              </div>
+                            </div>
+                          </div>
+                        }
+                      </div>
+
+                      <div class="cons-main-panel">
+                        @if (meterSelectedConv()) {
+                          <div class="cons-selected-header">
+                            <div class="cons-selected-title">
+                              <span class="cons-selected-svc">{{ meterSelectedConv().serviceDesc || 'Meter' }}</span>
+                              <span class="cons-selected-meter mono">Meter: {{ meterSelectedConv().physicalMeterNo || meterSelectedConv().meterNo || '-' }}</span>
+                            </div>
+                            @if (meterSelectedConv().meterConnectionSize) {
+                              <span class="cons-conn-badge">Connection: {{ meterSelectedConv().meterConnectionSize }}</span>
+                            }
+                          </div>
+
+                          @if (meterConvLoading()) {
+                            <div class="cons-loading"><div class="search-spinner-inline"></div><span>Loading reading history...</span></div>
+                          }
+
+                          @if (!meterConvLoading() && meterConvInsights()) {
+                            <div class="cons-insights-row">
+                              <div class="cons-insight-card">
+                                <div class="cons-insight-label">Average</div>
+                                <div class="cons-insight-value">{{ meterConvInsights().avg | number:'1.1-1' }}</div>
+                                <div class="cons-insight-sub">per period</div>
+                              </div>
+                              <div class="cons-insight-card">
+                                <div class="cons-insight-label">Min</div>
+                                <div class="cons-insight-value cons-insight-low">{{ meterConvInsights().min | number:'1.0-0' }}</div>
+                                <div class="cons-insight-sub">lowest</div>
+                              </div>
+                              <div class="cons-insight-card">
+                                <div class="cons-insight-label">Max</div>
+                                <div class="cons-insight-value cons-insight-high">{{ meterConvInsights().max | number:'1.0-0' }}</div>
+                                <div class="cons-insight-sub">highest</div>
+                              </div>
+                              <div class="cons-insight-card">
+                                <div class="cons-insight-label">Trend</div>
+                                <div class="cons-insight-value cons-insight-trend">
+                                  @if (meterConvInsights().trend === 'increasing') { ↑ Rising }
+                                  @else if (meterConvInsights().trend === 'decreasing') { ↓ Falling }
+                                  @else { → Stable }
+                                </div>
+                                <div class="cons-insight-sub">recent vs prior</div>
+                              </div>
+                              <div class="cons-insight-card cons-anomaly-card" [class.cons-has-anomalies]="meterConvInsights().anomalies.length > 0">
+                                <div class="cons-insight-label">Anomalies</div>
+                                <div class="cons-insight-value">{{ meterConvInsights().anomalies.length }}</div>
+                                <div class="cons-insight-sub">{{ meterConvInsights().anomalies.length === 0 ? 'all normal' : 'flagged' }}</div>
+                              </div>
+                            </div>
+
+                            @if (meterConvInsights().anomalies.length > 0) {
+                              <div class="cons-anomaly-alerts">
+                                <div class="cons-anomaly-title">Anomaly Alerts</div>
+                                @for (a of meterConvInsights().anomalies; track $index) {
+                                  <div class="cons-anomaly-item" [class.cons-anomaly-spike]="a.type === 'spike'" [class.cons-anomaly-drop]="a.type === 'drop'" [class.cons-anomaly-zero]="a.type === 'zero'">
+                                    <span class="cons-anomaly-icon">@if (a.type === 'spike') { ⚠️ } @else if (a.type === 'drop') { ⬇️ } @else { 🚫 }</span>
+                                    <span class="cons-anomaly-text">
+                                      @if (a.type === 'spike') { Spike: {{ a.value | number:'1.0-0' }} ({{ a.pctAbove }}% above avg) — {{ formatDate(a.date) }} }
+                                      @else if (a.type === 'drop') { Drop: {{ a.value | number:'1.0-0' }} ({{ a.pctBelow }}% below avg) — {{ formatDate(a.date) }} }
+                                      @else { Zero reading on {{ formatDate(a.date) }} }
+                                    </span>
+                                  </div>
+                                }
+                              </div>
+                            }
+                          }
+
+                          @if (!meterConvLoading() && meterConvHistory().length > 0) {
+                            <div class="cons-chart-section">
+                              <div class="cons-chart-title">Consumption Trend (Last {{ meterConvHistory().length }} Readings)</div>
+                              <div class="cons-chart-container">
+                                <div class="cons-chart-bars">
+                                  @for (r of meterConvHistory(); track $index) {
+                                    <div class="cons-chart-col">
+                                      <div class="cons-chart-val">{{ getConsumptionVal(r) | number:'1.0-0' }}</div>
+                                      <div class="cons-chart-bar-wrap">
+                                        <div class="cons-chart-bar" [style.height.%]="getConvMeterChartHeight(r)" [class.cons-bar-spike]="isConvAnomaly(r, $index) === 'spike'" [class.cons-bar-drop]="isConvAnomaly(r, $index) === 'drop'" [class.cons-bar-zero]="isConvAnomaly(r, $index) === 'zero'"></div>
+                                      </div>
+                                      <div class="cons-chart-label">{{ getConsumptionChartLabel(r) }}</div>
+                                    </div>
+                                  }
+                                </div>
+                              </div>
+                            </div>
+
+                            <div class="cons-history-section">
+                              <div class="debt-table-header">
+                                <span class="debt-table-title">Reading History</span>
+                                <span class="debt-table-count">{{ meterConvHistory().length }} readings</span>
+                              </div>
+                              <div class="debt-table-wrapper">
+                                <table class="debt-table" data-testid="table-conv-meter-history">
+                                  <thead>
+                                    <tr>
+                                      <th class="debt-th-desc">Date</th>
+                                      <th class="debt-th-desc">Type</th>
+                                      <th class="debt-th-amt">Previous</th>
+                                      <th class="debt-th-amt">Current</th>
+                                      <th class="debt-th-amt">Consumption</th>
+                                      <th class="debt-th-desc">Flag</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    @for (r of meterConvHistory(); track $index) {
+                                      <tr [class.cons-row-spike]="isConvAnomaly(r, $index) === 'spike'" [class.cons-row-drop]="isConvAnomaly(r, $index) === 'drop'" [class.cons-row-zero]="isConvAnomaly(r, $index) === 'zero'">
+                                        <td class="debt-td-desc">{{ formatDate(r.readingDate || r.billingDate || r.date) }}</td>
+                                        <td class="debt-td-desc">{{ r.readingType || r.type || '-' }}</td>
+                                        <td class="debt-td-amt mono">{{ r.previousReading || r.prevReading || '-' }}</td>
+                                        <td class="debt-td-amt mono">{{ r.currentReading || r.reading || '-' }}</td>
+                                        <td class="debt-td-amt mono bold">{{ getConsumptionVal(r) | number:'1.0-0' }}</td>
+                                        <td class="debt-td-desc">
+                                          @if (isConvAnomaly(r, $index) === 'spike') { <span class="cons-flag cons-flag-spike">⚠️ Spike</span> }
+                                          @else if (isConvAnomaly(r, $index) === 'drop') { <span class="cons-flag cons-flag-drop">⬇️ Drop</span> }
+                                          @else if (isConvAnomaly(r, $index) === 'zero') { <span class="cons-flag cons-flag-zero">🚫 Zero</span> }
+                                          @else { <span class="cons-flag cons-flag-normal">✓</span> }
+                                        </td>
+                                      </tr>
+                                    }
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          }
+
+                          @if (!meterConvLoading() && meterConvHistory().length === 0) {
+                            <div class="empty-state"><div class="empty-icon">📉</div><p class="empty-text">No reading history for this meter</p></div>
+                          }
+                        } @else {
+                          <div class="empty-state"><div class="empty-icon">👈</div><p class="empty-text">Select a conventional meter to view consumption trends</p></div>
+                        }
+                      </div>
+                    </div>
+                  } @else {
+                    <div style="padding: 1rem; color: var(--pos-text-muted); font-size: 0.85rem;">No conventional meters on this account</div>
+                  }
+                </div>
+
+                <div class="debt-table-section" style="margin-top: 1.5rem;">
+                  <div class="debt-table-header svc-header-prepaid">
+                    <span class="debt-table-title">Prepaid Meters</span>
+                    <span class="debt-table-count">{{ (tabData()?.prepaidMeters || []).length }} meter{{ (tabData()?.prepaidMeters || []).length !== 1 ? 's' : '' }}</span>
+                  </div>
+                  @if ((tabData()?.prepaidMeters || []).length > 0) {
+                    <div class="cons-layout" style="margin-top: 0.75rem;">
+                      <div class="cons-meter-sidebar">
+                        @for (m of tabData()?.prepaidMeters || []; track $index) {
+                          <div class="cons-meter-card" [class.cons-meter-active]="meterSelectedPrepaid()?.physicalMeterNo === m.physicalMeterNo || (meterSelectedPrepaid()?.meter_ID && meterSelectedPrepaid()?.meter_ID === m.meter_ID)" (click)="selectPrepaidMeter(m)" [attr.data-testid]="'prepaid-meter-' + $index">
+                            <div class="cons-meter-icon">⚡</div>
+                            <div class="cons-meter-info">
+                              <div class="cons-meter-name">{{ m.serviceDesc || m.serviceDescription || 'Prepaid' }}</div>
+                              <div class="cons-meter-no mono">{{ m.physicalMeterNo || m.meterNo || m.meter_ID || '-' }}</div>
+                              <div class="cons-meter-status">
+                                <span class="svc-status-badge" [class.svc-active]="(m.serviceStatus || m.meterStatus || '').toLowerCase() === 'active'">{{ m.serviceStatus || m.meterStatus || '-' }}</span>
+                              </div>
+                            </div>
+                          </div>
+                        }
+                      </div>
+
+                      <div class="cons-main-panel">
+                        @if (meterSelectedPrepaid()) {
+                          <div class="cons-selected-header pp-header">
+                            <div class="cons-selected-title">
+                              <span class="cons-selected-svc">{{ meterSelectedPrepaid().serviceDesc || meterSelectedPrepaid().serviceDescription || 'Prepaid Meter' }}</span>
+                              <span class="cons-selected-meter mono">Meter: {{ meterSelectedPrepaid().physicalMeterNo || meterSelectedPrepaid().meterNo || meterSelectedPrepaid().meter_ID || '-' }}</span>
+                            </div>
+                          </div>
+
+                          @if (meterPrepaidLoading()) {
+                            <div class="cons-loading"><div class="search-spinner-inline"></div><span>Loading prepaid sales...</span></div>
+                          }
+
+                          @if (!meterPrepaidLoading() && meterPrepaidStats()) {
+                            <div class="cons-insights-row">
+                              <div class="cons-insight-card pp-card">
+                                <div class="cons-insight-label">Total Purchases</div>
+                                <div class="cons-insight-value">{{ meterPrepaidStats().totalSales }}</div>
+                                <div class="cons-insight-sub">transactions</div>
+                              </div>
+                              <div class="cons-insight-card pp-card">
+                                <div class="cons-insight-label">Total Spend</div>
+                                <div class="cons-insight-value pp-amount">R {{ formatCurrency(meterPrepaidStats().totalSpend) }}</div>
+                                <div class="cons-insight-sub">all time</div>
+                              </div>
+                              <div class="cons-insight-card pp-card">
+                                <div class="cons-insight-label">Avg Purchase</div>
+                                <div class="cons-insight-value">R {{ formatCurrency(meterPrepaidStats().avgSpend) }}</div>
+                                <div class="cons-insight-sub">per transaction</div>
+                              </div>
+                              <div class="cons-insight-card pp-card">
+                                <div class="cons-insight-label">Total Units</div>
+                                <div class="cons-insight-value">{{ meterPrepaidStats().totalUnits | number:'1.1-1' }}</div>
+                                <div class="cons-insight-sub">purchased</div>
+                              </div>
+                              <div class="cons-insight-card pp-card">
+                                <div class="cons-insight-label">Last Purchase</div>
+                                <div class="cons-insight-value pp-date">{{ formatDate(meterPrepaidStats().lastPurchase) }}</div>
+                                <div class="cons-insight-sub">R {{ formatCurrency(meterPrepaidStats().lastAmount) }}</div>
+                              </div>
+                              @if (meterPrepaidStats().cancelled > 0) {
+                                <div class="cons-insight-card cons-anomaly-card cons-has-anomalies">
+                                  <div class="cons-insight-label">Cancelled</div>
+                                  <div class="cons-insight-value">{{ meterPrepaidStats().cancelled }}</div>
+                                  <div class="cons-insight-sub">reversed sales</div>
+                                </div>
+                              }
+                            </div>
+                          }
+
+                          @if (!meterPrepaidLoading() && meterPrepaidSales().length > 0) {
+                            <div class="cons-history-section">
+                              <div class="debt-table-header svc-header-prepaid">
+                                <span class="debt-table-title">Prepaid Sales History</span>
+                                <span class="debt-table-count">{{ meterPrepaidSales().length }} sale{{ meterPrepaidSales().length !== 1 ? 's' : '' }}</span>
+                              </div>
+                              <div class="debt-table-wrapper">
+                                <table class="debt-table" data-testid="table-prepaid-sales">
+                                  <thead>
+                                    <tr>
+                                      <th class="debt-th-desc">Receipt Date</th>
+                                      <th class="debt-th-desc">Receipt No</th>
+                                      <th class="debt-th-amt">Amount</th>
+                                      <th class="debt-th-amt">VAT Amount</th>
+                                      <th class="debt-th-amt">Total</th>
+                                      <th class="debt-th-amt">Prepaid Unit</th>
+                                      <th class="debt-th-desc">Type</th>
+                                      <th class="debt-th-desc">Prepaid Token No</th>
+                                      <th class="debt-th-desc">Cancelled Status</th>
+                                      <th class="debt-th-desc">Reason For Cancel</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    @for (s of meterPrepaidSales(); track $index) {
+                                      <tr [class.pp-row-cancelled]="(s.canceledStatus || s.cancelledStatus || '').toLowerCase() === 'yes'">
+                                        <td class="debt-td-desc">{{ formatDate(s.receiptDate || s.date || s.transactionDate) }}</td>
+                                        <td class="debt-td-desc mono">{{ s.receiptNo || s.receiptNumber || '-' }}</td>
+                                        <td class="debt-td-amt mono">{{ formatDebtAmt(s.amount || s.receiptAmount || 0) }}</td>
+                                        <td class="debt-td-amt mono">{{ formatDebtAmt(s.vatAmount || s.vat || 0) }}</td>
+                                        <td class="debt-td-amt mono bold">{{ formatDebtAmt(s.total || s.totalAmount || 0) }}</td>
+                                        <td class="debt-td-amt mono">{{ s.prepaidUnit || s.units || s.prepaidUnits || '-' }}</td>
+                                        <td class="debt-td-desc">{{ s.type || s.prepaidType || s.paymentType || '-' }}</td>
+                                        <td class="debt-td-desc mono pp-token">{{ s.prepaidTokenNo || s.tokenNo || s.token || '-' }}</td>
+                                        <td class="debt-td-desc">
+                                          <span class="svc-status-badge" [class.svc-active]="(s.canceledStatus || s.cancelledStatus || '').toLowerCase() !== 'yes'" [class.svc-blocked]="(s.canceledStatus || s.cancelledStatus || '').toLowerCase() === 'yes'">{{ s.canceledStatus || s.cancelledStatus || 'No' }}</span>
+                                        </td>
+                                        <td class="debt-td-desc">{{ s.reasonForCancel || s.cancelReason || '-' }}</td>
+                                      </tr>
+                                    }
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          }
+
+                          @if (!meterPrepaidLoading() && meterPrepaidSales().length === 0) {
+                            <div class="empty-state"><div class="empty-icon">🔌</div><p class="empty-text">No prepaid sales history for this meter</p></div>
+                          }
+                        } @else {
+                          <div class="empty-state"><div class="empty-icon">👈</div><p class="empty-text">Select a prepaid meter to view sales history</p></div>
+                        }
+                      </div>
+                    </div>
+                  } @else {
+                    <div style="padding: 1rem; color: var(--pos-text-muted); font-size: 0.85rem;">No prepaid meters on this account</div>
+                  }
+                </div>
+
               </div>
             } @else {
               <div class="empty-state">

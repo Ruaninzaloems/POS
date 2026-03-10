@@ -132,6 +132,15 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   consumptionChartData = signal<any[]>([]);
   consumptionInsights = signal<any>(null);
 
+  meterSelectedConv = signal<any>(null);
+  meterConvHistory = signal<any[]>([]);
+  meterConvLoading = signal(false);
+  meterConvInsights = signal<any>(null);
+  meterSelectedPrepaid = signal<any>(null);
+  meterPrepaidSales = signal<any[]>([]);
+  meterPrepaidLoading = signal(false);
+  meterPrepaidStats = signal<any>(null);
+
   advancedSuggestions = signal<{ displayItem: string; accountId: number }[]>([]);
   activeFieldKey = signal<string | null>(null);
   advancedFieldLoading = signal(false);
@@ -1172,14 +1181,34 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           break;
 
         case 'services-meters':
-          const [meteredSvc, meterReadings] = await Promise.allSettled([
+          const [meteredSvc, meterReadings, prepaidMeters] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/metered-services-on-account/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-service-meter-per-property/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/prepaid-meter-services-for-account`, { accountId: String(accountId) })),
           ]);
+          const allMeters = meteredSvc.status === 'fulfilled' ? this.normalizeArray(meteredSvc.value) : [];
+          const prepaidList = prepaidMeters.status === 'fulfilled' ? this.normalizeArray(prepaidMeters.value) : [];
+          const convMeters = allMeters.filter((m: any) => !this.isPrepaidMeter(m));
+          const ppMeters = allMeters.filter((m: any) => this.isPrepaidMeter(m));
+          const finalPrepaid = ppMeters.length > 0 ? ppMeters : prepaidList;
           data = {
-            meters: meteredSvc.status === 'fulfilled' ? this.normalizeArray(meteredSvc.value) : [],
+            meters: allMeters,
+            conventionalMeters: convMeters,
+            prepaidMeters: finalPrepaid,
             meterProperties: meterReadings.status === 'fulfilled' ? this.normalizeArray(meterReadings.value) : [],
           };
+          this.meterSelectedConv.set(null);
+          this.meterConvHistory.set([]);
+          this.meterConvInsights.set(null);
+          this.meterSelectedPrepaid.set(null);
+          this.meterPrepaidSales.set([]);
+          this.meterPrepaidStats.set(null);
+          if (convMeters.length > 0) {
+            this.selectConvMeter(convMeters[0]);
+          }
+          if (finalPrepaid.length > 0) {
+            this.selectPrepaidMeter(finalPrepaid[0]);
+          }
           break;
 
         case 'consumption':
@@ -1780,6 +1809,79 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const date = r.readingDate || r.billingDate || r.date || '';
     if (!date) return '-';
     return this.formatDate(date);
+  }
+
+  isPrepaidMeter(m: any): boolean {
+    const desc = (m.serviceDesc || m.serviceDescription || m.serviceType || m.tariffType || '').toLowerCase();
+    return desc.includes('prepaid') || desc.includes('pre-paid') || desc.includes('pre paid');
+  }
+
+  async selectConvMeter(meter: any) {
+    this.meterSelectedConv.set(meter);
+    this.meterConvLoading.set(true);
+    this.meterConvHistory.set([]);
+    this.meterConvInsights.set(null);
+    const account = this.selectedAccount();
+    const accountId = account?.['accountId'] || account?.['account_ID'];
+    const meterNo = meter.physicalMeterNo || meter.meterNo || meter.meterNumber || '';
+    try {
+      const res = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history`, { accountId: String(accountId), meterNo }));
+      const history = this.normalizeArray(res);
+      this.meterConvHistory.set(history);
+      this.meterConvInsights.set(this.computeConsumptionInsights(history));
+    } catch {
+      this.meterConvHistory.set([]);
+    }
+    this.meterConvLoading.set(false);
+  }
+
+  async selectPrepaidMeter(meter: any) {
+    this.meterSelectedPrepaid.set(meter);
+    this.meterPrepaidLoading.set(true);
+    this.meterPrepaidSales.set([]);
+    this.meterPrepaidStats.set(null);
+    const account = this.selectedAccount();
+    const accountId = account?.['accountId'] || account?.['account_ID'];
+    const meterNo = meter.physicalMeterNo || meter.meterNo || meter.meterNumber || meter.meter_ID || '';
+    try {
+      const res = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/prepaid-recharge-details-for-meter`, { accountId: String(accountId), meterNo }));
+      const sales = this.normalizeArray(res);
+      this.meterPrepaidSales.set(sales);
+      this.meterPrepaidStats.set(this.computePrepaidStats(sales));
+    } catch {
+      this.meterPrepaidSales.set([]);
+    }
+    this.meterPrepaidLoading.set(false);
+  }
+
+  computePrepaidStats(sales: any[]): any {
+    if (!sales || sales.length === 0) return null;
+    const amounts = sales.map((s: any) => Number(s.total || s.amount || s.receiptAmount || 0)).filter((v: number) => !isNaN(v) && v > 0);
+    const units = sales.map((s: any) => Number(s.prepaidUnit || s.units || s.prepaidUnits || 0)).filter((v: number) => !isNaN(v) && v > 0);
+    const dates = sales.map((s: any) => s.receiptDate || s.date || s.transactionDate || '').filter((d: string) => d);
+    const totalSpend = amounts.reduce((s: number, v: number) => s + v, 0);
+    const totalUnits = units.reduce((s: number, v: number) => s + v, 0);
+    const avgSpend = amounts.length > 0 ? totalSpend / amounts.length : 0;
+    const avgUnits = units.length > 0 ? totalUnits / units.length : 0;
+    const lastPurchase = dates.length > 0 ? dates[0] : null;
+    const lastAmount = amounts.length > 0 ? amounts[0] : 0;
+    const cancelled = sales.filter((s: any) => (s.canceledStatus || s.cancelledStatus || s.status || '').toLowerCase() === 'yes' || (s.canceledStatus || s.cancelledStatus || s.status || '').toLowerCase() === 'cancelled').length;
+    return { totalSales: sales.length, totalSpend, totalUnits, avgSpend: Math.round(avgSpend * 100) / 100, avgUnits: Math.round(avgUnits * 100) / 100, lastPurchase, lastAmount, cancelled };
+  }
+
+  getConvMeterChartHeight(r: any): number {
+    const history = this.meterConvHistory();
+    if (!history || history.length === 0) return 0;
+    const max = Math.max(...history.map((h: any) => this.getConsumptionVal(h)));
+    const val = this.getConsumptionVal(r);
+    return max > 0 ? (val / max) * 100 : 0;
+  }
+
+  isConvAnomaly(r: any, idx: number): string {
+    const insights = this.meterConvInsights();
+    if (!insights?.anomalies) return '';
+    const match = insights.anomalies.find((a: any) => a.index === idx);
+    return match ? match.type : '';
   }
 
   getFilteredServices(category: string): any[] {

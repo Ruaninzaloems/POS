@@ -910,6 +910,16 @@
 .cons-flag-zero { background: rgba(239,68,68,0.10); color: #b91c1c; }
 .cons-flag-normal { background: rgba(34,197,94,0.10); color: #15803d; }
 
+.meter-sections { display: flex; flex-direction: column; gap: 0; }
+.svc-header-prepaid { background: linear-gradient(135deg, rgba(15,43,70,0.06) 0%, rgba(245,158,11,0.10) 100%) !important; }
+.pp-header { background: linear-gradient(135deg, rgba(245,158,11,0.04) 0%, rgba(201,168,76,0.06) 100%); }
+.pp-card { border-left: 3px solid var(--platinum-accent, #c9a84c); }
+.pp-amount { font-size: 1rem; color: var(--platinum-accent, #c9a84c); }
+.pp-date { font-size: 0.85rem; }
+.pp-token { font-size: 0.72rem; word-break: break-all; }
+.pp-row-cancelled { background: rgba(239,68,68,0.04) !important; }
+.pp-row-cancelled td { color: var(--pos-text-muted) !important; text-decoration: line-through; }
+
 @media (max-width: 768px) {
   .cons-layout { flex-direction: column; }
   .cons-meter-sidebar { width: 100%; flex-direction: row; overflow-x: auto; gap: 0.5rem; }
