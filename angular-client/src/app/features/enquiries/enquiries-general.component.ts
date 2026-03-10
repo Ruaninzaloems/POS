@@ -435,12 +435,10 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       try {
         const id = item.account_ID || item.accountID;
         if (!id) return;
-        const bal = await this.withTimeout(
-          firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-balance/${id}`)), 6000
-        );
+        const bal = await this.withTimeout(this.fetchAccountBalance(id), 12000);
         if (this.quickSearchToken !== token) return;
         if (Array.isArray(bal)) {
-          const total = bal.reduce((sum: number, s: any) => sum + (s.totalOutStanding ?? s.totalOutstandingAmount ?? 0), 0);
+          const total = bal.reduce((sum: number, s: any) => sum + (s.totalOutStanding ?? s.totalOutstandingAmount ?? s.outstandingBalance ?? 0), 0);
           item.outStandingAmount = total;
         } else if (bal) {
           const amount = bal.totalOutStanding ?? bal.totalBalance ?? bal.balance ?? bal.outstandingAmount ?? bal.outStandingAmount;
@@ -546,15 +544,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       const id = acct.account_ID || acct.accountID;
       if (!id) continue;
       try {
-        const bal = await firstValueFrom(
-          this.api.get<any>(`/api/platinum/billing-enquiry/account-balance/${id}`)
-        );
+        const bal = await this.fetchAccountBalance(id);
         if (bal) {
           let total: number | undefined;
           if (Array.isArray(bal)) {
-            total = bal.reduce((sum: number, svc: any) => sum + (svc.totalOutStanding ?? svc.totalOutstanding ?? 0), 0);
+            total = bal.reduce((sum: number, svc: any) => sum + (svc.totalOutStanding ?? svc.totalOutstanding ?? svc.outstandingBalance ?? 0), 0);
           } else {
-            total = bal.totalBalance ?? bal.totalOutstanding ?? bal.outStandingAmount ?? bal.balance;
+            total = bal.totalBalance ?? bal.totalOutstanding ?? bal.outStandingAmount ?? bal.outstandingBalance ?? bal.balance;
           }
           if (total !== undefined && total !== null) {
             this.balanceCache.set(id, total);
@@ -732,7 +728,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.expandedRowLoading.set(true);
     try {
       const [balanceRes, contactRes, servicesRes] = await Promise.allSettled([
-        this.withTimeout(firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-balance/${accountId}`)), 12000),
+        this.withTimeout(this.fetchAccountBalance(accountId), 15000),
         this.withTimeout(firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/contact-details/${accountId}`)), 12000),
         this.withTimeout(firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/all-services/${accountId}`)), 12000),
       ]);
@@ -792,11 +788,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   async loadHeaderBalance(accountId: number): Promise<void> {
     this.headerBalance.set(null);
     try {
-      const bal = await firstValueFrom(
-        this.api.get<any>(`/api/platinum/billing-enquiry/account-balance/${accountId}`)
-      );
+      const bal = await this.fetchAccountBalance(accountId);
       if (Array.isArray(bal)) {
-        const total = bal.reduce((sum: number, s: any) => sum + (s.totalOutStanding ?? 0), 0);
+        const total = bal.reduce((sum: number, s: any) => sum + (s.totalOutStanding ?? s.outstandingBalance ?? 0), 0);
         this.headerBalance.set(total);
       } else {
         const total = bal?.totalBalance ?? bal?.totalDue ?? bal?.balance ?? bal?.outstandingBalance ?? null;
@@ -829,13 +823,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         }
       }).catch(() => {}),
 
-      firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-balance/${accountId}`)).then((bal: any) => {
+      this.fetchAccountBalance(accountId).then((bal: any) => {
         const items = Array.isArray(bal) ? bal : bal ? [bal] : [];
         if (!items.length) return;
         let totalArrears = 0;
         let totalOutstanding = 0;
         for (const item of items) {
-          totalOutstanding += item.totalOutStanding || item.totalOutstandingAmount || item.totalBalance || 0;
+          totalOutstanding += item.totalOutStanding || item.totalOutstandingAmount || item.totalBalance || item.outstandingBalance || 0;
           totalArrears += (item.days30 || 0) + (item.days60 || 0) + (item.days90 || 0) + (item.days120 || 0) + (item.days150 || 0) + (item.untill360 || 0);
         }
         if (totalArrears > 10000) {
@@ -920,9 +914,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           break;
 
         case 'balance':
-          const balResult = await firstValueFrom(
-            this.api.get<any>(`/api/platinum/billing-enquiry/account-balance/${accountId}`)
-          );
+          const balResult = await this.fetchAccountBalance(accountId);
           data = { balance: Array.isArray(balResult) ? balResult : balResult ? [balResult] : [] };
           break;
 
@@ -1142,7 +1134,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         case 'billed-vs-paid':
           const [billedVsPaid, billedBalance2] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/billed-vs-paid-amounts/${accountId}`)),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-balance/${accountId}`)),
+            this.fetchAccountBalance(accountId),
           ]);
           data = {
             billedVsPaid: billedVsPaid.status === 'fulfilled' ? this.normalizeArray(billedVsPaid.value) : [],
@@ -1159,6 +1151,22 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       this.tabError.set(e?.error?.message || e?.message || 'Failed to load tab data');
     } finally {
       this.tabLoading.set(false);
+    }
+  }
+
+  async fetchAccountBalance(accountId: number): Promise<any> {
+    try {
+      return await firstValueFrom(
+        this.api.get<any>(`/api/platinum/billing-enquiry/account-balance/${accountId}`)
+      );
+    } catch {
+      const finYear = this.userFinYear();
+      const params: Record<string, string> = { accountId: String(accountId) };
+      if (finYear) params['financialYear'] = finYear;
+      const svc = await firstValueFrom(
+        this.api.get<any>(`/api/platinum/billing-enquiry/service-type-balance/${accountId}`, params)
+      );
+      return Array.isArray(svc) ? svc : svc ? [svc] : [];
     }
   }
 
