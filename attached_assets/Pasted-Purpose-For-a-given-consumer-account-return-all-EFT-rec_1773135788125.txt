@@ -1,0 +1,48 @@
+Purpose: For a given consumer account, return all EFT receipt entries with their bank statement descriptions and dates.
+Parameters:
+Name	Type	Required	Description
+accountId	int	Yes	Consumer account ID
+Authentication: JWT Bearer Token
+SQL:
+SELECT     cr.ReceiptNo,    br.Note AS BankStatementNote,    br.Amount,    br.DateOfTransaction AS BankStatementDate,    cr.SystemDateCaptured AS BillingAllocationDateFROM POS_CashierReceipt crINNER JOIN Led_BankReconPOSItems br ON cr.BillId = br.POSItem_IDWHERE cr.AccountId = @accountId   AND cr.PaymentTypeId = 5   AND cr.BillId IS NOT NULL
+Response Model:
+[  {    "receiptNo": "string",    "bankStatementNote": "string",    "amount": 0.00,    "bankStatementDate": "2025-11-27T00:00:00",    "billingAllocationDate": "2025-11-27T00:00:00"  }]
+Implementation Notes:
+Only returns EFT receipts (PaymentTypeId = 5) with a linked bank recon item (BillId IS NOT NULL)
+Join: POS_CashierReceipt.BillId = Led_BankReconPOSItems.POSItem_ID
+bankStatementDate = original payment date into the bank
+billingAllocationDate = when the payment was allocated in billing
+API 2: Search Receipts by Bank Statement Note
+Endpoint:
+GET /api/BillingEnquiry/SearchByBankStatementNote?searchText={searchText}
+Purpose: Search across all bank statement items by description text and return receipt info, allocation status, cashbook details, and miscellaneous payment group info where applicable.
+Parameters:
+Name	Type	Required	Description
+searchText	string	Yes	Full or partial bank statement note to search (case-insensitive)
+Authentication: JWT Bearer Token
+SQL:
+SELECT     CASE         WHEN cr.BillId IS NULL THEN ''        WHEN cr.AccountId IS NOT NULL THEN cr.ReceiptNo        WHEN cr.AccountId IS NULL AND cr.BillType = 4 THEN mp.ReceiptNo        ELSE ''    END AS ReceiptNo,    ISNULL(cr.AccountId, 0) AS AccountId,    ISNULL(cr.PaidAmount, 0) AS PaidAmount,    ISNULL(cr.PaymentTypeId, 0) AS PaymentTypeId,    cr.DateCaptured,    cr.SystemDateCaptured AS BillingAllocationDate,    CASE         WHEN cr.BillId IS NULL THEN 'Not Allocated'        WHEN br.BillingAllocated = 0 THEN 'Not Allocated in Billing'        WHEN cr.AccountId IS NULL AND cr.BillType = 4 THEN 'Miscellaneous Allocation'        WHEN cr.AccountId IS NOT NULL THEN 'Account Allocation'        ELSE 'Not Allocated in Billing'    END AS AllocationStatus,    CASE         WHEN cr.AccountId IS NULL AND cr.BillType = 4 THEN mpg.MiscPaymentGroupDesc        ELSE NULL    END AS MiscPaymentGroupDescription,    br.Note AS BankStatementNote,    br.Amount AS BankAmount,    br.DateOfTransaction AS BankStatementDate,    br.BankReconID,    br.BillingAllocated,    br.CashbookTransactionID,    CAST(cb.DocTypeCode AS VARCHAR(20)) + '/' + CAST(cb.DocNumber AS VARCHAR(20)) AS CashbookDocumentNumber,    cb.CashbookID,    cc.CashbookDescriptionFROM Led_BankReconPOSItems brINNER JOIN Led_Cashbook cb ON cb.CashbookTransaction_ID = br.CashbookTransactionIDINNER JOIN Const_Cashbook cc ON cc.Cashbook_ID = cb.CashbookIDLEFT JOIN POS_CashierReceipt cr ON cr.BillId = br.POSItem_IDLEFT JOIN POS_MiscPayment mp ON mp.ReceiptNo = cr.ReceiptNo AND cr.BillType = 4LEFT JOIN Const_MiscPaymentGroup mpg ON mpg.MiscPaymentGroup_ID = mp.MiscPaymentGroupIDWHERE UPPER(br.Note) LIKE '%' + UPPER(@searchText) + '%'ORDER BY br.DateOfTransaction DESC
+Response Model:
+[  {    "receiptNo": "string",    "accountId": 0,    "paidAmount": 0.00,    "paymentTypeId": 0,    "dateCaptured": "2025-11-27T00:00:00",    "billingAllocationDate": "2025-11-27T00:00:00",    "allocationStatus": "string",    "miscPaymentGroupDescription": "string or null",    "bankStatementNote": "string",    "bankAmount": 0.00,    "bankStatementDate": "2025-11-27T00:00:00",    "bankReconID": 0,    "billingAllocated": 0,    "cashbookTransactionID": 0,    "cashbookDocumentNumber": "string",    "cashbookID": 0,    "cashbookDescription": "string"  }]
+Allocation Status Values:
+Status	Condition	Description
+Not Allocated	No matching BillId in POS_CashierReceipt	Bank item exists but has never been linked to any receipt
+Not Allocated in Billing	Match exists but BillingAllocated = 0	Linked but not yet processed in billing
+Account Allocation	AccountId is populated	Allocated to a consumer account
+Miscellaneous Allocation	AccountId is NULL, BillType = 4	Allocated as miscellaneous — receipt from POS_MiscPayment
+Implementation Notes:
+Uses UPPER() on both sides for case-insensitive matching
+LEFT JOIN to POS_CashierReceipt so unallocated bank items still return
+LEFT JOIN to POS_MiscPayment only when BillType = 4 for miscellaneous receipts
+LEFT JOIN to Const_MiscPaymentGroup for the miscellaneous group description
+Database Join Chain (for developer reference)
+Led_BankReconPOSItems (br)  ├── INNER JOIN Led_Cashbook (cb) ON cb.CashbookTransaction_ID = br.CashbookTransactionID  │     └── INNER JOIN Const_Cashbook (cc) ON cc.Cashbook_ID = cb.CashbookID  ├── LEFT JOIN POS_CashierReceipt (cr) ON cr.BillId = br.POSItem_ID  │     └── LEFT JOIN POS_MiscPayment (mp) ON mp.ReceiptNo = cr.ReceiptNo AND cr.BillType = 4  │           └── LEFT JOIN Const_MiscPaymentGroup (mpg) ON mpg.MiscPaymentGroup_ID = mp.MiscPaymentGroupID
+Swagger Configuration
+Both endpoints should be grouped under the BillingEnquiry controller with:
+Tag: BillingEnquiry
+Produces: application/json
+Security: Bearer token (same as existing BillingEnquiry endpoints)
+HTTP Method: GET
+Success Response: 200 with array of results
+Error Responses: 401 Unauthorized, 400 Bad Request (missing parameters), 500 Internal Server Error
+ 

@@ -178,6 +178,14 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   propDebtTotals = signal<any>(null);
   propDebtExpandedAcct = signal<string | null>(null);
 
+  receiptViewMode = signal<'list' | 'timeline'>('list');
+  receiptFilter = signal<string>('all');
+  receiptSortDir = signal<'desc' | 'asc'>('desc');
+  receiptSelectedTxn = signal<any>(null);
+  receiptDetailData = signal<any>(null);
+  receiptDetailLoading = signal(false);
+  receiptPrinting = signal<number | null>(null);
+
   advancedSuggestions = signal<{ displayItem: string; accountId: number }[]>([]);
   activeFieldKey = signal<string | null>(null);
   advancedFieldLoading = signal(false);
@@ -1574,6 +1582,194 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const searchSvc = data?.searchServices || [];
     const allSvc = data?.services || [];
     return searchSvc.length > 0 ? searchSvc : allSvc;
+  }
+
+  getFilteredReceipts(): any[] {
+    const txns = this.tabData()?.transactions || [];
+    const filter = this.receiptFilter();
+    const dir = this.receiptSortDir();
+    let filtered = txns;
+    if (filter !== 'all') {
+      filtered = txns.filter((t: any) => {
+        const pt = (t.paymentType || '').toLowerCase();
+        if (filter === 'eft') return pt === 'eft';
+        if (filter === 'cash') return pt === 'cash';
+        if (filter === 'card') return pt.includes('card') || pt.includes('credit') || pt.includes('debit');
+        if (filter === 'cancelled') return !!(t.isCancelled || t.cancelReson || t.cancelReason);
+        return true;
+      });
+    }
+    const sorted = [...filtered].sort((a: any, b: any) => {
+      const da = new Date(a.receiptDate || a.transactionDate || a.date || 0).getTime();
+      const db = new Date(b.receiptDate || b.transactionDate || b.date || 0).getTime();
+      return dir === 'desc' ? db - da : da - db;
+    });
+    return sorted;
+  }
+
+  getReceiptPaymentTypes(): { type: string; count: number; total: number }[] {
+    const txns = this.tabData()?.transactions || [];
+    const map: Record<string, { count: number; total: number }> = {};
+    for (const t of txns) {
+      const pt = t.paymentType || 'Unknown';
+      if (!map[pt]) map[pt] = { count: 0, total: 0 };
+      map[pt].count++;
+      map[pt].total += Number(t.amount || t.tenderAmount || 0);
+    }
+    return Object.entries(map).map(([type, v]) => ({ type, ...v })).sort((a, b) => b.total - a.total);
+  }
+
+  getReceiptStats(): { total: number; count: number; avgAmount: number; latestDate: string; oldestDate: string; eftCount: number; cashCount: number; cardCount: number; cancelledCount: number } {
+    const txns = this.tabData()?.transactions || [];
+    let total = 0, eftCount = 0, cashCount = 0, cardCount = 0, cancelledCount = 0;
+    let latestDate = '', oldestDate = '';
+    for (const t of txns) {
+      total += Number(t.amount || t.tenderAmount || 0);
+      const pt = (t.paymentType || '').toLowerCase();
+      if (pt === 'eft') eftCount++;
+      else if (pt === 'cash') cashCount++;
+      else if (pt.includes('card') || pt.includes('credit') || pt.includes('debit')) cardCount++;
+      if (t.isCancelled || t.cancelReson || t.cancelReason) cancelledCount++;
+      const d = t.receiptDate || t.transactionDate || t.date || '';
+      if (d && (!latestDate || d > latestDate)) latestDate = d;
+      if (d && (!oldestDate || d < oldestDate)) oldestDate = d;
+    }
+    return { total, count: txns.length, avgAmount: txns.length ? total / txns.length : 0, latestDate, oldestDate, eftCount, cashCount, cardCount, cancelledCount };
+  }
+
+  getReceiptTimelineGroups(): { label: string; month: string; receipts: any[] }[] {
+    const txns = this.getFilteredReceipts();
+    const groups: Record<string, any[]> = {};
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    for (const t of txns) {
+      const d = new Date(t.receiptDate || t.transactionDate || t.date || 0);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const label = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+      if (!groups[key]) groups[key] = [];
+      (groups[key] as any).__label = label;
+      groups[key].push(t);
+    }
+    const entries = Object.entries(groups).sort((a, b) => this.receiptSortDir() === 'desc' ? b[0].localeCompare(a[0]) : a[0].localeCompare(b[0]));
+    return entries.map(([month, receipts]) => ({ label: (receipts as any).__label, month, receipts }));
+  }
+
+  sumReceiptAmounts = (sum: number, t: any) => sum + Number(t.amount || t.tenderAmount || 0);
+
+  getReceiptKey(txn: any): number {
+    return Number(txn.receiptID || txn.receipt_ID || txn.receiptId || 0);
+  }
+
+  getReceiptNo(txn: any): string {
+    return txn.receiptNo || txn.receiptNumber || txn.receipt_No || '';
+  }
+
+  getReceiptPaymentIcon(type: string): string {
+    const t = (type || '').toLowerCase();
+    if (t === 'eft') return '🏦';
+    if (t === 'cash') return '💵';
+    if (t.includes('card') || t.includes('credit') || t.includes('debit')) return '💳';
+    return '📄';
+  }
+
+  getReceiptStatusClass(txn: any): string {
+    if (txn.isCancelled || txn.cancelReson || txn.cancelReason) return 'rcpt-cancelled';
+    const t = (txn.paymentType || '').toLowerCase();
+    if (t === 'eft') return 'rcpt-eft';
+    if (t === 'cash') return 'rcpt-cash';
+    if (t.includes('card') || t.includes('credit') || t.includes('debit')) return 'rcpt-card';
+    return '';
+  }
+
+  isEftReceipt(txn: any): boolean {
+    return (txn.paymentType || '').toLowerCase() === 'eft';
+  }
+
+  getEftBankDescription(txn: any): string {
+    const no = this.getReceiptNo(txn);
+    const bank = txn.cashBook || '';
+    const noUpper = no.toUpperCase();
+    if (!noUpper.startsWith('EFT')) {
+      if (bank) return `EFT via ${bank}`;
+      return 'EFT Payment';
+    }
+    const parts = no.substring(3).split('/');
+    const dateStr = parts[0] || '';
+    const ref = parts[1] || '';
+    let desc = `EFT`;
+    if (bank) desc += ` via ${bank}`;
+    if (dateStr.length === 8) {
+      const d = dateStr.substring(0, 2);
+      const m = dateStr.substring(2, 4);
+      const y = dateStr.substring(4, 8);
+      desc += ` | Processed: ${d}/${m}/${y}`;
+    }
+    if (ref) desc += ` | Ref: ${ref}`;
+    return desc;
+  }
+
+  async selectReceiptForDetail(txn: any): Promise<void> {
+    const key = this.getReceiptKey(txn);
+    if (this.getReceiptKey(this.receiptSelectedTxn()) === key && key > 0) {
+      this.receiptSelectedTxn.set(null);
+      this.receiptDetailData.set(null);
+      return;
+    }
+    this.receiptSelectedTxn.set(txn);
+    this.receiptDetailData.set(null);
+    this.receiptDetailLoading.set(true);
+    try {
+      const receiptId = key;
+      if (receiptId) {
+        const detail = await firstValueFrom(
+          this.api.get<any>(`/api/platinum/billing-enquiry/receipt-transaction-detail`, { receiptId: String(receiptId) })
+        );
+        const arr = this.normalizeArray(detail);
+        if (arr.length > 0) {
+          console.log('[receipt-detail] keys:', Object.keys(arr[0]));
+        }
+        this.receiptDetailData.set({ lines: arr });
+      }
+    } catch (e) {
+      console.error('[receipt-detail] Failed:', e);
+      this.receiptDetailData.set({ error: true });
+    } finally {
+      this.receiptDetailLoading.set(false);
+    }
+  }
+
+  async printReceipt(txn: any, event?: Event): Promise<void> {
+    if (event) { event.stopPropagation(); event.preventDefault(); }
+    const receiptId = this.getReceiptKey(txn);
+    if (!receiptId) {
+      this.toast.show('No receipt ID available for printing', 'error');
+      return;
+    }
+    this.receiptPrinting.set(receiptId);
+    try {
+      const response = await fetch('/api/platinum/billing-payment/print-receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [Number(receiptId)], receiptNos: [txn.receiptNo || ''], isReprint: true }),
+      });
+      if (!response.ok) throw new Error(`Print failed: ${response.status}`);
+      const blob = await response.blob();
+      if (blob.size < 200) {
+        this.toast.show('Receipt PDF is empty or unavailable', 'error');
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      const w = window.open(url, '_blank');
+      if (w) {
+        w.addEventListener('load', () => { setTimeout(() => { w.print(); }, 500); });
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      this.toast.show('Receipt opened for printing', 'success');
+    } catch (e: any) {
+      console.error('[print-receipt] Error:', e);
+      this.toast.show('Failed to print receipt: ' + (e.message || 'Unknown error'), 'error');
+    } finally {
+      this.receiptPrinting.set(null);
+    }
   }
 
   getAccountBasic(): any {

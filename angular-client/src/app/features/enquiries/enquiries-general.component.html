@@ -1159,37 +1159,414 @@
         @if (activeTab() === 'transactions') {
           <div class="tab-panel" data-testid="transactions-tab">
             @if ((tabData()?.transactions || []).length > 0) {
-              <div class="detail-section">
-                <div class="section-header-bar">🧾 Transaction / Receipt History</div>
-                <div class="data-table-wrapper">
-                  <table class="data-table" data-testid="table-transactions">
-                    <thead>
-                      <tr>
-                        <th>Date</th>
-                        <th>Receipt No</th>
-                        <th>Payment Type</th>
-                        <th>Payment Option</th>
-                        <th class="text-right">Amount</th>
-                        <th>Cashier</th>
-                        <th>Cash Book</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (txn of tabData()?.transactions || []; track $index) {
-                        <tr [attr.data-testid]="'row-txn-' + $index" [class.cancelled-row]="txn.isCancelled || txn.cancelReson || txn.cancelReason">
-                          <td>{{ formatDate(txn.receiptDate || txn.transactionDate || txn.date) }}</td>
-                          <td class="mono">{{ txn.receiptNo || txn.receiptNumber || txn.receipt_No || '-' }}</td>
-                          <td>{{ txn.paymentType || txn.transactionType || '-' }}</td>
-                          <td>{{ txn.paymentOption || '-' }}</td>
-                          <td class="text-right mono">R {{ formatCurrency(txn.amount || txn.tenderAmount || txn.transactionAmount || 0) }}</td>
-                          <td>{{ txn.cashier || txn.cashierName || '-' }}</td>
-                          <td>{{ txn.cashBook || '-' }}</td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
+              <!-- Stats Summary Cards -->
+              <div class="rcpt-stats-row">
+                <div class="rcpt-stat-card rcpt-stat-total">
+                  <div class="rcpt-stat-value">R {{ formatCurrency(getReceiptStats().total) }}</div>
+                  <div class="rcpt-stat-label">Total Received</div>
+                </div>
+                <div class="rcpt-stat-card">
+                  <div class="rcpt-stat-value">{{ getReceiptStats().count }}</div>
+                  <div class="rcpt-stat-label">Receipts</div>
+                </div>
+                <div class="rcpt-stat-card">
+                  <div class="rcpt-stat-value">R {{ formatCurrency(getReceiptStats().avgAmount) }}</div>
+                  <div class="rcpt-stat-label">Avg Payment</div>
+                </div>
+                @for (pt of getReceiptPaymentTypes(); track pt.type) {
+                  <div class="rcpt-stat-card rcpt-stat-method">
+                    <div class="rcpt-stat-value">
+                      <span class="rcpt-stat-icon">{{ getReceiptPaymentIcon(pt.type) }}</span>
+                      {{ pt.count }}
+                    </div>
+                    <div class="rcpt-stat-label">{{ pt.type }} (R {{ formatCurrency(pt.total) }})</div>
+                  </div>
+                }
+              </div>
+
+              <!-- Toolbar: View Toggle, Filters, Sort -->
+              <div class="rcpt-toolbar">
+                <div class="rcpt-toolbar-left">
+                  <div class="rcpt-view-toggle">
+                    <button class="rcpt-view-btn" [class.active]="receiptViewMode() === 'list'" (click)="receiptViewMode.set('list')" data-testid="button-receipt-list-view">
+                      <span class="rcpt-view-icon">☰</span> List
+                    </button>
+                    <button class="rcpt-view-btn" [class.active]="receiptViewMode() === 'timeline'" (click)="receiptViewMode.set('timeline')" data-testid="button-receipt-timeline-view">
+                      <span class="rcpt-view-icon">📅</span> Timeline
+                    </button>
+                  </div>
+                  <div class="rcpt-filter-chips">
+                    <button class="rcpt-chip" [class.active]="receiptFilter() === 'all'" (click)="receiptFilter.set('all')">All</button>
+                    @if (getReceiptStats().eftCount > 0) {
+                      <button class="rcpt-chip rcpt-chip-eft" [class.active]="receiptFilter() === 'eft'" (click)="receiptFilter.set('eft')">🏦 EFT ({{ getReceiptStats().eftCount }})</button>
+                    }
+                    @if (getReceiptStats().cashCount > 0) {
+                      <button class="rcpt-chip rcpt-chip-cash" [class.active]="receiptFilter() === 'cash'" (click)="receiptFilter.set('cash')">💵 Cash ({{ getReceiptStats().cashCount }})</button>
+                    }
+                    @if (getReceiptStats().cardCount > 0) {
+                      <button class="rcpt-chip rcpt-chip-card" [class.active]="receiptFilter() === 'card'" (click)="receiptFilter.set('card')">💳 Card ({{ getReceiptStats().cardCount }})</button>
+                    }
+                    @if (getReceiptStats().cancelledCount > 0) {
+                      <button class="rcpt-chip rcpt-chip-cancel" [class.active]="receiptFilter() === 'cancelled'" (click)="receiptFilter.set('cancelled')">❌ Cancelled ({{ getReceiptStats().cancelledCount }})</button>
+                    }
+                  </div>
+                </div>
+                <div class="rcpt-toolbar-right">
+                  <button class="rcpt-sort-btn" (click)="receiptSortDir.set(receiptSortDir() === 'desc' ? 'asc' : 'desc')" data-testid="button-receipt-sort">
+                    {{ receiptSortDir() === 'desc' ? '↓ Newest First' : '↑ Oldest First' }}
+                  </button>
+                  <span class="rcpt-result-count">{{ getFilteredReceipts().length }} of {{ (tabData()?.transactions || []).length }}</span>
                 </div>
               </div>
+
+              <!-- LIST VIEW -->
+              @if (receiptViewMode() === 'list') {
+                <div class="rcpt-list-container">
+                  <div class="data-table-wrapper">
+                    <table class="data-table rcpt-table" data-testid="table-transactions">
+                      <thead>
+                        <tr>
+                          <th class="rcpt-th-date">Date</th>
+                          <th class="rcpt-th-no">Receipt No</th>
+                          <th class="rcpt-th-type">Type</th>
+                          <th class="rcpt-th-amt text-right">Amount</th>
+                          <th class="rcpt-th-cashier">Cashier</th>
+                          <th class="rcpt-th-bank">Cash Book / Bank</th>
+                          <th class="rcpt-th-detail">Details</th>
+                          <th class="rcpt-th-actions">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (txn of getFilteredReceipts(); track $index) {
+                          <tr [attr.data-testid]="'row-txn-' + $index"
+                              [class]="getReceiptStatusClass(txn)"
+                              [class.rcpt-row-selected]="getReceiptKey(receiptSelectedTxn()) === getReceiptKey(txn)"
+                              (click)="selectReceiptForDetail(txn)">
+                            <td class="rcpt-td-date">{{ formatDate(txn.receiptDate || txn.transactionDate || txn.date) }}</td>
+                            <td class="mono rcpt-td-no">{{ getReceiptNo(txn) || '-' }}</td>
+                            <td class="rcpt-td-type">
+                              <span class="rcpt-type-badge" [class]="'rcpt-badge-' + (txn.paymentType || 'other').toLowerCase().replace(' ', '-')">
+                                {{ getReceiptPaymentIcon(txn.paymentType) }} {{ txn.paymentType || '-' }}
+                              </span>
+                            </td>
+                            <td class="text-right mono rcpt-td-amt">R {{ formatCurrency(txn.amount || txn.tenderAmount || txn.transactionAmount || 0) }}</td>
+                            <td class="rcpt-td-cashier">{{ txn.cashier || txn.cashierName || '-' }}</td>
+                            <td class="rcpt-td-bank">{{ txn.cashBook || '-' }}</td>
+                            <td class="rcpt-td-detail">
+                              @if (isEftReceipt(txn)) {
+                                <span class="rcpt-eft-desc">{{ getEftBankDescription(txn) }}</span>
+                              } @else if (txn.cardChequeDetail) {
+                                <span class="rcpt-card-detail">{{ txn.cardChequeDetail }}</span>
+                              } @else if (txn.cancelReson || txn.cancelReason) {
+                                <span class="rcpt-cancel-reason">{{ txn.cancelReson || txn.cancelReason }}</span>
+                              } @else {
+                                <span class="rcpt-no-detail">-</span>
+                              }
+                            </td>
+                            <td class="rcpt-td-actions">
+                              <button class="rcpt-action-btn rcpt-print-btn"
+                                      (click)="printReceipt(txn, $event)"
+                                      [disabled]="receiptPrinting() === getReceiptKey(txn)"
+                                      title="Print Receipt"
+                                      [attr.data-testid]="'button-print-receipt-' + $index">
+                                @if (receiptPrinting() === getReceiptKey(txn)) {
+                                  <span class="rcpt-spinner"></span>
+                                } @else {
+                                  🖨️
+                                }
+                              </button>
+                            </td>
+                          </tr>
+                          <!-- Inline Detail Panel -->
+                          @if (getReceiptKey(receiptSelectedTxn()) === getReceiptKey(txn)) {
+                            <tr class="rcpt-detail-row">
+                              <td colspan="8">
+                                <div class="rcpt-detail-panel">
+                                  <div class="rcpt-detail-header">
+                                    <span class="rcpt-detail-title">Receipt Detail — {{ getReceiptNo(txn) || 'N/A' }}</span>
+                                    <button class="rcpt-detail-close" (click)="receiptSelectedTxn.set(null); receiptDetailData.set(null)">✕</button>
+                                  </div>
+                                  <div class="rcpt-detail-body">
+                                    <!-- Receipt Summary -->
+                                    <div class="rcpt-detail-summary">
+                                      <div class="rcpt-detail-field">
+                                        <span class="rcpt-detail-label">Receipt No</span>
+                                        <span class="rcpt-detail-val mono">{{ getReceiptNo(txn) || '-' }}</span>
+                                      </div>
+                                      <div class="rcpt-detail-field">
+                                        <span class="rcpt-detail-label">Date</span>
+                                        <span class="rcpt-detail-val">{{ formatDate(txn.receiptDate || txn.transactionDate || txn.date) }}</span>
+                                      </div>
+                                      <div class="rcpt-detail-field">
+                                        <span class="rcpt-detail-label">Payment Type</span>
+                                        <span class="rcpt-detail-val">{{ getReceiptPaymentIcon(txn.paymentType) }} {{ txn.paymentType || '-' }}</span>
+                                      </div>
+                                      <div class="rcpt-detail-field">
+                                        <span class="rcpt-detail-label">Amount</span>
+                                        <span class="rcpt-detail-val mono rcpt-detail-amt">R {{ formatCurrency(txn.amount || txn.tenderAmount || 0) }}</span>
+                                      </div>
+                                      <div class="rcpt-detail-field">
+                                        <span class="rcpt-detail-label">Cashier</span>
+                                        <span class="rcpt-detail-val">{{ txn.cashier || txn.cashierName || '-' }}</span>
+                                      </div>
+                                      <div class="rcpt-detail-field">
+                                        <span class="rcpt-detail-label">Cash Book / Bank</span>
+                                        <span class="rcpt-detail-val">{{ txn.cashBook || '-' }}</span>
+                                      </div>
+                                      @if (txn.paymentOption) {
+                                        <div class="rcpt-detail-field">
+                                          <span class="rcpt-detail-label">Payment Option</span>
+                                          <span class="rcpt-detail-val">{{ txn.paymentOption }}</span>
+                                        </div>
+                                      }
+                                      @if (txn.cardChequeDetail) {
+                                        <div class="rcpt-detail-field">
+                                          <span class="rcpt-detail-label">Card / Cheque Detail</span>
+                                          <span class="rcpt-detail-val mono">{{ txn.cardChequeDetail }}</span>
+                                        </div>
+                                      }
+                                      @if (isEftReceipt(txn)) {
+                                        <div class="rcpt-detail-field rcpt-detail-full">
+                                          <span class="rcpt-detail-label">🏦 Bank Statement Description</span>
+                                          <span class="rcpt-detail-val rcpt-eft-highlight">{{ getEftBankDescription(txn) }}</span>
+                                        </div>
+                                      }
+                                      @if (txn.cancelReson || txn.cancelReason) {
+                                        <div class="rcpt-detail-field rcpt-detail-full">
+                                          <span class="rcpt-detail-label">❌ Cancel Reason</span>
+                                          <span class="rcpt-detail-val rcpt-cancel-text">{{ txn.cancelReson || txn.cancelReason }}</span>
+                                        </div>
+                                      }
+                                    </div>
+
+                                    <!-- Transaction Line Items -->
+                                    @if (receiptDetailLoading()) {
+                                      <div class="rcpt-detail-loading">
+                                        <span class="rcpt-spinner"></span> Loading transaction details...
+                                      </div>
+                                    } @else if (receiptDetailData()?.lines?.length > 0) {
+                                      <div class="rcpt-detail-lines">
+                                        <div class="rcpt-detail-lines-title">Service Breakdown</div>
+                                        <table class="rcpt-lines-table">
+                                          <thead>
+                                            <tr>
+                                              <th>Service</th>
+                                              <th>Description</th>
+                                              <th class="text-right">Amount</th>
+                                              <th class="text-right">VAT</th>
+                                              <th class="text-right">Total</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            @for (line of receiptDetailData()?.lines || []; track $index) {
+                                              <tr>
+                                                <td>{{ line.serviceDescription || line.billType || line.serviceName || '-' }}</td>
+                                                <td>{{ line.transactionDescription || line.description || line.narration || '-' }}</td>
+                                                <td class="text-right mono">R {{ formatCurrency(line.amount || 0) }}</td>
+                                                <td class="text-right mono">R {{ formatCurrency(line.vatAmount || line.vat || 0) }}</td>
+                                                <td class="text-right mono">R {{ formatCurrency((line.amount || 0) + (line.vatAmount || line.vat || 0)) }}</td>
+                                              </tr>
+                                            }
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    } @else if (receiptDetailData()?.error) {
+                                      <div class="rcpt-detail-note">Could not load transaction line items</div>
+                                    }
+
+                                    <div class="rcpt-detail-actions">
+                                      <button class="rcpt-action-lg rcpt-print-lg" (click)="printReceipt(txn, $event)"
+                                              [disabled]="receiptPrinting() === getReceiptKey(txn)"
+                                              data-testid="button-print-receipt-detail">
+                                        @if (receiptPrinting() === getReceiptKey(txn)) {
+                                          <span class="rcpt-spinner"></span> Printing...
+                                        } @else {
+                                          🖨️ Print Receipt
+                                        }
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          }
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              }
+
+              <!-- TIMELINE VIEW -->
+              @if (receiptViewMode() === 'timeline') {
+                <div class="rcpt-timeline-container">
+                  @for (group of getReceiptTimelineGroups(); track group.month) {
+                    <div class="rcpt-tl-group">
+                      <div class="rcpt-tl-month-header">
+                        <span class="rcpt-tl-month-label">{{ group.label }}</span>
+                        <span class="rcpt-tl-month-count">{{ group.receipts.length }} receipt{{ group.receipts.length !== 1 ? 's' : '' }}</span>
+                        <span class="rcpt-tl-month-total">R {{ formatCurrency(group.receipts.reduce(sumReceiptAmounts, 0)) }}</span>
+                      </div>
+                      <div class="rcpt-tl-items">
+                        @for (txn of group.receipts; track $index) {
+                          <div class="rcpt-tl-item" [class]="getReceiptStatusClass(txn)"
+                               [class.rcpt-tl-selected]="getReceiptKey(receiptSelectedTxn()) === getReceiptKey(txn)"
+                               (click)="selectReceiptForDetail(txn)"
+                               [attr.data-testid]="'tl-receipt-' + $index">
+                            <div class="rcpt-tl-dot-col">
+                              <div class="rcpt-tl-dot">{{ getReceiptPaymentIcon(txn.paymentType) }}</div>
+                              <div class="rcpt-tl-line"></div>
+                            </div>
+                            <div class="rcpt-tl-content">
+                              <div class="rcpt-tl-top-row">
+                                <span class="rcpt-tl-date">{{ formatDate(txn.receiptDate || txn.transactionDate || txn.date) }}</span>
+                                <span class="rcpt-tl-amount mono">R {{ formatCurrency(txn.amount || txn.tenderAmount || 0) }}</span>
+                              </div>
+                              <div class="rcpt-tl-mid-row">
+                                <span class="rcpt-tl-receipt-no mono">{{ getReceiptNo(txn) || '-' }}</span>
+                                <span class="rcpt-type-badge" [class]="'rcpt-badge-' + (txn.paymentType || 'other').toLowerCase().replace(' ', '-')">{{ txn.paymentType || '-' }}</span>
+                              </div>
+                              <div class="rcpt-tl-bottom-row">
+                                <span class="rcpt-tl-cashier">{{ txn.cashier || txn.cashierName || '-' }}</span>
+                                @if (txn.cashBook) {
+                                  <span class="rcpt-tl-bank">{{ txn.cashBook }}</span>
+                                }
+                              </div>
+                              @if (isEftReceipt(txn)) {
+                                <div class="rcpt-tl-eft-row">
+                                  <span class="rcpt-eft-desc">{{ getEftBankDescription(txn) }}</span>
+                                </div>
+                              }
+                              @if (txn.cardChequeDetail) {
+                                <div class="rcpt-tl-card-row">
+                                  <span class="rcpt-card-detail">{{ txn.cardChequeDetail }}</span>
+                                </div>
+                              }
+                              @if (txn.cancelReson || txn.cancelReason) {
+                                <div class="rcpt-tl-cancel-row">
+                                  <span class="rcpt-cancel-reason">❌ {{ txn.cancelReson || txn.cancelReason }}</span>
+                                </div>
+                              }
+                            </div>
+                            <div class="rcpt-tl-actions">
+                              <button class="rcpt-action-btn rcpt-print-btn"
+                                      (click)="printReceipt(txn, $event)"
+                                      [disabled]="receiptPrinting() === getReceiptKey(txn)"
+                                      title="Print Receipt">
+                                @if (receiptPrinting() === getReceiptKey(txn)) {
+                                  <span class="rcpt-spinner"></span>
+                                } @else {
+                                  🖨️
+                                }
+                              </button>
+                            </div>
+                          </div>
+                          <!-- Inline detail for timeline -->
+                          @if (getReceiptKey(receiptSelectedTxn()) === getReceiptKey(txn)) {
+                            <div class="rcpt-tl-detail-panel">
+                              <div class="rcpt-detail-panel">
+                                <div class="rcpt-detail-header">
+                                  <span class="rcpt-detail-title">Receipt Detail — {{ getReceiptNo(txn) || 'N/A' }}</span>
+                                  <button class="rcpt-detail-close" (click)="receiptSelectedTxn.set(null); receiptDetailData.set(null)">✕</button>
+                                </div>
+                                <div class="rcpt-detail-body">
+                                  <div class="rcpt-detail-summary">
+                                    <div class="rcpt-detail-field">
+                                      <span class="rcpt-detail-label">Receipt No</span>
+                                      <span class="rcpt-detail-val mono">{{ getReceiptNo(txn) || '-' }}</span>
+                                    </div>
+                                    <div class="rcpt-detail-field">
+                                      <span class="rcpt-detail-label">Date</span>
+                                      <span class="rcpt-detail-val">{{ formatDate(txn.receiptDate || txn.transactionDate || txn.date) }}</span>
+                                    </div>
+                                    <div class="rcpt-detail-field">
+                                      <span class="rcpt-detail-label">Payment Type</span>
+                                      <span class="rcpt-detail-val">{{ getReceiptPaymentIcon(txn.paymentType) }} {{ txn.paymentType || '-' }}</span>
+                                    </div>
+                                    <div class="rcpt-detail-field">
+                                      <span class="rcpt-detail-label">Amount</span>
+                                      <span class="rcpt-detail-val mono rcpt-detail-amt">R {{ formatCurrency(txn.amount || txn.tenderAmount || 0) }}</span>
+                                    </div>
+                                    <div class="rcpt-detail-field">
+                                      <span class="rcpt-detail-label">Cashier</span>
+                                      <span class="rcpt-detail-val">{{ txn.cashier || txn.cashierName || '-' }}</span>
+                                    </div>
+                                    <div class="rcpt-detail-field">
+                                      <span class="rcpt-detail-label">Cash Book / Bank</span>
+                                      <span class="rcpt-detail-val">{{ txn.cashBook || '-' }}</span>
+                                    </div>
+                                    @if (txn.cardChequeDetail) {
+                                      <div class="rcpt-detail-field">
+                                        <span class="rcpt-detail-label">Card / Cheque Detail</span>
+                                        <span class="rcpt-detail-val mono">{{ txn.cardChequeDetail }}</span>
+                                      </div>
+                                    }
+                                    @if (isEftReceipt(txn)) {
+                                      <div class="rcpt-detail-field rcpt-detail-full">
+                                        <span class="rcpt-detail-label">🏦 Bank Statement Description</span>
+                                        <span class="rcpt-detail-val rcpt-eft-highlight">{{ getEftBankDescription(txn) }}</span>
+                                      </div>
+                                    }
+                                    @if (txn.cancelReson || txn.cancelReason) {
+                                      <div class="rcpt-detail-field rcpt-detail-full">
+                                        <span class="rcpt-detail-label">❌ Cancel Reason</span>
+                                        <span class="rcpt-detail-val rcpt-cancel-text">{{ txn.cancelReson || txn.cancelReason }}</span>
+                                      </div>
+                                    }
+                                  </div>
+                                  @if (receiptDetailLoading()) {
+                                    <div class="rcpt-detail-loading">
+                                      <span class="rcpt-spinner"></span> Loading transaction details...
+                                    </div>
+                                  } @else if (receiptDetailData()?.lines?.length > 0) {
+                                    <div class="rcpt-detail-lines">
+                                      <div class="rcpt-detail-lines-title">Service Breakdown</div>
+                                      <table class="rcpt-lines-table">
+                                        <thead>
+                                          <tr>
+                                            <th>Service</th>
+                                            <th>Description</th>
+                                            <th class="text-right">Amount</th>
+                                            <th class="text-right">VAT</th>
+                                            <th class="text-right">Total</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          @for (line of receiptDetailData()?.lines || []; track $index) {
+                                            <tr>
+                                              <td>{{ line.serviceDescription || line.billType || line.serviceName || '-' }}</td>
+                                              <td>{{ line.transactionDescription || line.description || line.narration || '-' }}</td>
+                                              <td class="text-right mono">R {{ formatCurrency(line.amount || 0) }}</td>
+                                              <td class="text-right mono">R {{ formatCurrency(line.vatAmount || line.vat || 0) }}</td>
+                                              <td class="text-right mono">R {{ formatCurrency((line.amount || 0) + (line.vatAmount || line.vat || 0)) }}</td>
+                                            </tr>
+                                          }
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  } @else if (receiptDetailData()?.error) {
+                                    <div class="rcpt-detail-note">Could not load transaction line items</div>
+                                  }
+                                  <div class="rcpt-detail-actions">
+                                    <button class="rcpt-action-lg rcpt-print-lg" (click)="printReceipt(txn, $event)"
+                                            [disabled]="receiptPrinting() === getReceiptKey(txn)">
+                                      @if (receiptPrinting() === getReceiptKey(txn)) {
+                                        <span class="rcpt-spinner"></span> Printing...
+                                      } @else {
+                                        🖨️ Print Receipt
+                                      }
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          }
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
             } @else {
               <div class="empty-state">
                 <div class="empty-icon">🧾</div>
