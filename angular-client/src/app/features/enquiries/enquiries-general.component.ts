@@ -1880,6 +1880,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.summaryError.set(null);
     this.summaryData.set([]);
     this.summarySource.set('');
+    this._summaryFieldsLogged = false;
 
     const params: Record<string, string> = { financialYear: finYear };
     let loaded = false;
@@ -1891,13 +1892,34 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       const arr = this.normalizeArray(result);
       if (arr.length > 0 && !arr[0]._error) {
         console.log('[txn-summary] TransactionSummaryList keys:', Object.keys(arr[0]), 'count:', arr.length);
-        console.log('[txn-summary] sample:', JSON.stringify(arr[0]).substring(0, 600));
-        this.summaryData.set(arr);
-        this.summarySource.set('monthly');
-        loaded = true;
+        console.log('[txn-summary] FULL first row:', JSON.stringify(arr[0]));
+        if (arr.length > 1) console.log('[txn-summary] FULL second row:', JSON.stringify(arr[1]));
+
+        const hasMonthlyData = this.checkRowHasMonthData(arr[0]);
+        if (hasMonthlyData) {
+          this.summaryData.set(arr);
+          this.summarySource.set('monthly');
+          loaded = true;
+        } else {
+          console.log('[txn-summary] TransactionSummaryList returned data but no recognizable month fields, trying billing-period approach');
+        }
       }
     } catch {
       console.log('[txn-summary] TransactionSummaryList failed for', accountId);
+    }
+
+    if (!loaded) {
+      try {
+        const monthlyData = await this.buildSummaryFromBillingPeriods(accountId, finYear);
+        if (monthlyData.length > 0) {
+          this.summaryData.set(monthlyData);
+          this.summarySource.set('monthly');
+          loaded = true;
+          console.log('[txn-summary] Built from billing-period-transactions:', monthlyData.length, 'rows');
+        }
+      } catch (e: any) {
+        console.log('[txn-summary] billing-period approach failed:', e?.message);
+      }
     }
 
     if (!loaded) {
@@ -1907,10 +1929,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         );
         const arr = this.normalizeArray(result);
         if (arr.length > 0 && !arr[0]._error) {
-          console.log('[txn-summary-pivot] ServiceTypeBalance keys:', Object.keys(arr[0]), 'count:', arr.length);
-          const pivoted = this.pivotServiceTypeBalance(arr, finYear);
-          this.summaryData.set(pivoted);
-          this.summarySource.set('monthly');
+          console.log('[txn-summary-aging] ServiceTypeBalance keys:', Object.keys(arr[0]), 'count:', arr.length);
+          this.summaryData.set(arr);
+          this.summarySource.set('aging');
           loaded = true;
         }
       } catch {
@@ -1922,6 +1943,90 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       this.summaryError.set('Failed to load transaction summary');
     }
     this.summaryLoading.set(false);
+  }
+
+  private checkRowHasMonthData(row: any): boolean {
+    const monthKeys = ['july','august','september','october','november','december','january','february','march','april','may','june',
+      'July','August','September','October','November','December','January','February','March','April','May','June',
+      'month1','month2','month3','month4','month5','month6','month7','month8','month9','month10','month11','month12',
+      'period1','period2','period3','period4','period5','period6','period7','period8','period9','period10','period11','period12'];
+    const keys = Object.keys(row);
+    return keys.some(k => monthKeys.includes(k));
+  }
+
+  private async buildSummaryFromBillingPeriods(accountId: number, finYear: string): Promise<any[]> {
+    const months = this.detailMonths;
+    const monthFieldMap: Record<string, string> = {
+      'July': 'july', 'August': 'august', 'September': 'september', 'October': 'october',
+      'November': 'november', 'December': 'december', 'January': 'january', 'February': 'february',
+      'March': 'march', 'April': 'april', 'May': 'may', 'June': 'june'
+    };
+
+    const results = await Promise.allSettled(
+      months.map(m => firstValueFrom(
+        this.api.get<any>(`/api/platinum/billing-enquiry/get-billing-period-transactions`, {
+          accountId: String(accountId), finYear, billingMonth: m, balanceType: '3'
+        })
+      ))
+    );
+
+    const serviceMap = new Map<string, any>();
+    const totals: Record<string, number> = {};
+    months.forEach(m => totals[monthFieldMap[m]] = 0);
+
+    for (let mi = 0; mi < months.length; mi++) {
+      const res = results[mi];
+      if (res.status !== 'fulfilled') continue;
+      const txns = this.normalizeArray(res.value);
+
+      for (const t of txns) {
+        const desc = t.transactionDescription || t.description || '';
+        if (!desc) continue;
+        const descLower = desc.toLowerCase();
+        if (descLower.includes('open') && descLower.includes('balance')) continue;
+        if (descLower.includes('clos') && descLower.includes('balance')) continue;
+
+        const amount = Number(t.amount ?? t.debitAmount ?? t.total ?? t.totalAmount ?? 0) || 0;
+        const field = monthFieldMap[months[mi]];
+
+        let serviceDesc = desc;
+        if (desc.toLowerCase().startsWith('levy - ')) serviceDesc = desc.substring(7);
+        else if (desc.toLowerCase().startsWith('levy -')) serviceDesc = desc.substring(6);
+        if (descLower.includes('payment')) serviceDesc = 'Payment';
+
+        if (!serviceMap.has(serviceDesc)) {
+          const entry: any = { description: serviceDesc, financialYear: finYear };
+          months.forEach(m => entry[monthFieldMap[m]] = 0);
+          serviceMap.set(serviceDesc, entry);
+        }
+
+        serviceMap.get(serviceDesc)[field] += amount;
+        totals[field] += amount;
+      }
+    }
+
+    const pivotedRows = Array.from(serviceMap.values());
+    if (pivotedRows.length === 0) return [];
+
+    const openingRow: any = { description: 'Opening Balance', financialYear: finYear, _isSpecialRow: true };
+    months.forEach(m => openingRow[monthFieldMap[m]] = 0);
+    let running = 0;
+    for (const m of months) {
+      openingRow[monthFieldMap[m]] = running;
+      running += totals[monthFieldMap[m]];
+    }
+
+    const totalRow: any = { description: 'Total', financialYear: finYear, _isSpecialRow: true, _isTotalRow: true };
+    months.forEach(m => totalRow[monthFieldMap[m]] = totals[monthFieldMap[m]]);
+
+    const closingRow: any = { description: 'Closing Balance', financialYear: finYear, _isSpecialRow: true };
+    let closingBal = 0;
+    for (const m of months) {
+      closingBal += totals[monthFieldMap[m]];
+      closingRow[monthFieldMap[m]] = closingBal;
+    }
+
+    return [openingRow, ...pivotedRows, totalRow, closingRow];
   }
 
   private pivotServiceTypeBalance(rows: any[], finYear: string): any[] {
@@ -1988,27 +2093,38 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     }
   }
 
+  private _summaryFieldsLogged = false;
+
   getSummaryMonthValue(row: any, month: string): number {
     const fieldMap: Record<string, string[]> = {
-      'Jul': ['july', 'jul', 'month1'],
-      'Aug': ['august', 'aug', 'month2'],
-      'Sep': ['september', 'sep', 'month3'],
-      'Oct': ['october', 'oct', 'month4'],
-      'Nov': ['november', 'nov', 'month5'],
-      'Dec': ['december', 'dec', 'month6'],
-      'Jan': ['january', 'jan', 'month7'],
-      'Feb': ['february', 'feb', 'month8'],
-      'Mar': ['march', 'mar', 'month9'],
-      'Apr': ['april', 'apr', 'month10'],
-      'May': ['may', 'month11'],
-      'Jun': ['june', 'jun', 'month12'],
+      'Jul': ['july', 'July', 'jul', 'Jul', 'month1', 'period1', 'p1', 'month_07', 'month07', 'm1', 'col1', 'amount1', 'julAmount', 'julyAmount', 'julyAmt', 'JULY', 'JUL', 'period_1', 'billingPeriod1'],
+      'Aug': ['august', 'August', 'aug', 'Aug', 'month2', 'period2', 'p2', 'month_08', 'month08', 'm2', 'col2', 'amount2', 'augAmount', 'augustAmount', 'augAmt', 'AUGUST', 'AUG', 'period_2', 'billingPeriod2'],
+      'Sep': ['september', 'September', 'sep', 'Sep', 'month3', 'period3', 'p3', 'month_09', 'month09', 'm3', 'col3', 'amount3', 'sepAmount', 'septemberAmount', 'sepAmt', 'SEPTEMBER', 'SEP', 'period_3', 'billingPeriod3'],
+      'Oct': ['october', 'October', 'oct', 'Oct', 'month4', 'period4', 'p4', 'month_10', 'month10', 'm4', 'col4', 'amount4', 'octAmount', 'octoberAmount', 'octAmt', 'OCTOBER', 'OCT', 'period_4', 'billingPeriod4'],
+      'Nov': ['november', 'November', 'nov', 'Nov', 'month5', 'period5', 'p5', 'month_11', 'month11', 'm5', 'col5', 'amount5', 'novAmount', 'novemberAmount', 'novAmt', 'NOVEMBER', 'NOV', 'period_5', 'billingPeriod5'],
+      'Dec': ['december', 'December', 'dec', 'Dec', 'month6', 'period6', 'p6', 'month_12', 'month12', 'm6', 'col6', 'amount6', 'decAmount', 'decemberAmount', 'decAmt', 'DECEMBER', 'DEC', 'period_6', 'billingPeriod6'],
+      'Jan': ['january', 'January', 'jan', 'Jan', 'month7', 'period7', 'p7', 'month_01', 'month01', 'm7', 'col7', 'amount7', 'janAmount', 'januaryAmount', 'janAmt', 'JANUARY', 'JAN', 'period_7', 'billingPeriod7'],
+      'Feb': ['february', 'February', 'feb', 'Feb', 'month8', 'period8', 'p8', 'month_02', 'month02', 'm8', 'col8', 'amount8', 'febAmount', 'februaryAmount', 'febAmt', 'FEBRUARY', 'FEB', 'period_8', 'billingPeriod8'],
+      'Mar': ['march', 'March', 'mar', 'Mar', 'month9', 'period9', 'p9', 'month_03', 'month03', 'm9', 'col9', 'amount9', 'marAmount', 'marchAmount', 'marAmt', 'MARCH', 'MAR', 'period_9', 'billingPeriod9'],
+      'Apr': ['april', 'April', 'apr', 'Apr', 'month10', 'period10', 'p10', 'month_04', 'month04', 'm10', 'col10', 'amount10', 'aprAmount', 'aprilAmount', 'aprAmt', 'APRIL', 'APR', 'period_10', 'billingPeriod10'],
+      'May': ['may', 'May', 'month11', 'period11', 'p11', 'month_05', 'month05', 'm11', 'col11', 'amount11', 'mayAmount', 'mayAmt', 'MAY', 'period_11', 'billingPeriod11'],
+      'Jun': ['june', 'June', 'jun', 'Jun', 'month12', 'period12', 'p12', 'month_06', 'month06', 'm12', 'col12', 'amount12', 'junAmount', 'juneAmount', 'junAmt', 'JUNE', 'JUN', 'period_12', 'billingPeriod12'],
     };
     const candidates = fieldMap[month] || [];
     for (const key of candidates) {
       if (row[key] !== undefined && row[key] !== null) return Number(row[key]) || 0;
     }
     for (const k of Object.keys(row)) {
-      if (k.toLowerCase() === month.toLowerCase()) return Number(row[k]) || 0;
+      const kl = k.toLowerCase();
+      if (kl === month.toLowerCase()) return Number(row[k]) || 0;
+      const fullMonthMap: Record<string, string> = { 'jul': 'july', 'aug': 'august', 'sep': 'september', 'oct': 'october', 'nov': 'november', 'dec': 'december', 'jan': 'january', 'feb': 'february', 'mar': 'march', 'apr': 'april', 'may': 'may', 'jun': 'june' };
+      const fullMonth = fullMonthMap[month.toLowerCase()];
+      if (fullMonth && kl.includes(fullMonth)) return Number(row[k]) || 0;
+    }
+    if (!this._summaryFieldsLogged && month === 'Jul') {
+      console.log('[getSummaryMonthValue] Row keys:', Object.keys(row));
+      console.log('[getSummaryMonthValue] Row values:', JSON.stringify(row).substring(0, 1000));
+      this._summaryFieldsLogged = true;
     }
     return 0;
   }

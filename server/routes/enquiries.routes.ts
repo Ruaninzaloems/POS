@@ -427,7 +427,12 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
           const sample = Array.isArray(data) ? data[0] : data;
           console.log(`[billing-enquiry] ${mappedEndpoint} queryParams:`, JSON.stringify(queryParams));
           console.log(`[billing-enquiry] ${mappedEndpoint} response keys:`, sample ? Object.keys(sample) : 'empty/null', `count=${Array.isArray(data) ? data.length : 'single'}`);
-          if (sample) console.log(`[billing-enquiry] ${mappedEndpoint} sample:`, JSON.stringify(sample).substring(0, 500));
+          if (mappedEndpoint === 'transaction-summary-list' && sample) {
+            console.log(`[billing-enquiry] transaction-summary-list FULL ROW:`, JSON.stringify(sample));
+            if (Array.isArray(data) && data.length > 1) console.log(`[billing-enquiry] transaction-summary-list ROW2:`, JSON.stringify(data[1]));
+          } else if (sample) {
+            console.log(`[billing-enquiry] ${mappedEndpoint} sample:`, JSON.stringify(sample).substring(0, 500));
+          }
         }
         return handlePlatinumResult(res, data);
       }
