@@ -116,6 +116,16 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   summaryAvailableYears = signal<string[]>([]);
   summarySource = signal<'monthly' | 'aging' | ''>('');
 
+  detailFinYear = signal('');
+  detailMonth = signal('');
+  detailTransactions = signal<any[]>([]);
+  detailLoading = signal(false);
+  detailError = signal<string | null>(null);
+  detailSelectedTxn = signal<any>(null);
+  detailTxnData = signal<any>(null);
+  detailTxnLoading = signal(false);
+  detailMonths: string[] = ['July','August','September','October','November','December','January','February','March','April','May','June'];
+
   advancedSuggestions = signal<{ displayItem: string; accountId: number }[]>([]);
   activeFieldKey = signal<string | null>(null);
   advancedFieldLoading = signal(false);
@@ -1172,19 +1182,18 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           break;
 
         case 'txn-detailed':
-          try {
-            const finYearForDetail = this.userFinYear();
-            const txnDetailResult = await firstValueFrom(
-              this.api.get<any>(`/api/platinum/billing-enquiry/transaction-history/${accountId}`, finYearForDetail ? { finYear: finYearForDetail } : undefined)
-            );
-            const txnArr = this.normalizeArray(txnDetailResult);
-            if (txnArr.length > 0) {
-              console.log('[txn-detailed] sample keys:', Object.keys(txnArr[0]), 'sample:', JSON.stringify(txnArr[0]).substring(0, 500));
-            }
-            data = { transactions: txnArr };
-          } catch {
-            data = { transactions: [] };
+          this.initSummaryYears();
+          if (!this.detailFinYear()) {
+            this.detailFinYear.set(this.userFinYear() || this.getCurrentFinYear());
           }
+          const currentMonth = new Date().toLocaleString('en-US', { month: 'long' });
+          const finMonths = this.detailMonths;
+          const matchMonth = finMonths.find(m => m === currentMonth);
+          if (!this.detailMonth() && matchMonth) {
+            this.detailMonth.set(matchMonth);
+          }
+          this.loadDetailedTransactions();
+          data = { _detailTab: true };
           break;
 
         case 'txn-summary':
@@ -1486,6 +1495,174 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
     const formatted = intPart + '.' + parts[1];
     return val < 0 ? `(${formatted})` : formatted;
+  }
+
+  async loadDetailedTransactions() {
+    const account = this.selectedAccount();
+    if (!account) return;
+    const accountId = account['accountId'] || account['account_ID'];
+    const finYear = this.detailFinYear() || this.userFinYear();
+    const month = this.detailMonth();
+    if (!finYear) return;
+
+    this.detailLoading.set(true);
+    this.detailError.set(null);
+    this.detailTransactions.set([]);
+
+    try {
+      if (month) {
+        const result = await firstValueFrom(
+          this.api.get<any>(`/api/platinum/billing-enquiry/get-billing-period-transactions`, {
+            accountId: String(accountId), finYear, billingMonth: month, balanceType: '3'
+          })
+        );
+        const arr = this.normalizeArray(result);
+        if (arr.length > 0) console.log('[detail-txn] sample keys:', Object.keys(arr[0]));
+        this.detailTransactions.set(arr);
+      } else {
+        const months = this.detailMonths;
+        const results = await Promise.allSettled(
+          months.map(m => firstValueFrom(
+            this.api.get<any>(`/api/platinum/billing-enquiry/get-billing-period-transactions`, {
+              accountId: String(accountId), finYear, billingMonth: m, balanceType: '3'
+            })
+          ))
+        );
+        const allTxns = results.flatMap(r => r.status === 'fulfilled' ? this.normalizeArray(r.value) : []);
+        if (allTxns.length > 0) console.log('[detail-txn] all months sample keys:', Object.keys(allTxns[0]));
+        this.detailTransactions.set(allTxns);
+      }
+    } catch (e: any) {
+      this.detailError.set(e?.message || 'Failed to load transactions');
+    } finally {
+      this.detailLoading.set(false);
+    }
+  }
+
+  onDetailFinYearChange(year: string) {
+    this.detailFinYear.set(year);
+    this.loadDetailedTransactions();
+  }
+
+  onDetailMonthChange(month: string) {
+    this.detailMonth.set(month);
+    this.loadDetailedTransactions();
+  }
+
+  async onTxnRowClick(txn: any) {
+    this.detailSelectedTxn.set(txn);
+    this.detailTxnData.set(null);
+    this.detailTxnLoading.set(true);
+
+    const account = this.selectedAccount();
+    const accountId = account?.['accountId'] || account?.['account_ID'];
+    const drilldown = (txn.drilldown || '').toLowerCase();
+    const pId = txn.primaryId != null ? String(txn.primaryId) : null;
+    const pIdNum = pId ? parseInt(pId) : 0;
+    const bMonth = txn.billingMonth ?? txn.billingmonth;
+    const bMonthNum = bMonth != null ? parseInt(bMonth) : undefined;
+
+    try {
+      let detail: any = null;
+      const params: Record<string, string> = {};
+      if (pId) params['primaryId'] = pId;
+      if (bMonthNum !== undefined) params['billingMonth'] = String(bMonthNum);
+
+      if (drilldown === 'openbalance' && pId) {
+        detail = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/open-balance-detail`, params));
+      } else if (drilldown === 'closebalance' && pId) {
+        detail = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/close-balance-detail`, params));
+      } else if (drilldown === 'receipt' && pIdNum) {
+        detail = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/receipt-transaction-detail`, params));
+      } else if (drilldown === 'levy' && pIdNum) {
+        detail = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/levy-transaction-detail`, params));
+      } else if (drilldown === 'rebate' && pId) {
+        detail = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/rebate-transaction-detail`, params));
+      } else if (drilldown === 'interest') {
+        detail = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/interest-cons-payment-detail`, {
+          accountId: String(accountId), finYear: this.detailFinYear() || this.userFinYear()
+        }));
+      } else if (drilldown === 'journal' && pId) {
+        detail = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/journal-transaction-details`, {
+          primaryId: pId, accountId: String(accountId)
+        }));
+      }
+
+      if (typeof detail === 'string') {
+        this.detailTxnData.set(detail);
+      } else {
+        this.detailTxnData.set(this.normalizeArray(detail));
+      }
+    } catch (e: any) {
+      console.error('[txn-detail] error:', e?.message);
+      this.detailTxnData.set([]);
+    } finally {
+      this.detailTxnLoading.set(false);
+    }
+  }
+
+  closeTxnDetail() {
+    this.detailSelectedTxn.set(null);
+    this.detailTxnData.set(null);
+  }
+
+  getTxnDetailKeys(): string[] {
+    const data = this.detailTxnData();
+    if (!Array.isArray(data) || data.length === 0) return [];
+    return Object.keys(data[0]).filter(k => !k.startsWith('_') && k !== 'id').slice(0, 14);
+  }
+
+  formatDetailKey(key: string): string {
+    return key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim();
+  }
+
+  formatDetailVal(val: any): string {
+    if (val == null) return '-';
+    if (typeof val === 'number') return this.formatDebtAmt(val);
+    if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val)) return this.formatDate(val);
+    return String(val);
+  }
+
+  isDetailValNumeric(val: any): boolean {
+    return typeof val === 'number';
+  }
+
+  isDetailValNegative(val: any): boolean {
+    return typeof val === 'number' && val < 0;
+  }
+
+  getTxnRowClass(txn: any): string {
+    const desc = (txn.transactionDescription || txn.description || '').toLowerCase();
+    if (desc.includes('open balance') || desc.includes('opening balance')) return 'txn-row-opening';
+    if (desc.includes('clos') && desc.includes('balance')) return 'txn-row-closing';
+    if (desc.includes('payment') || txn.drilldown === 'receipt') return 'txn-row-payment';
+    return '';
+  }
+
+  exportDetailedTransactionsExcel() {
+    const txns = this.detailTransactions();
+    if (!txns.length) return;
+    const headers = ['Transaction Date', 'Transaction Description', 'Receipt ID / Doc Transaction ID', 'Document Number', 'Tariff', 'Amount', 'Interest', 'VAT', 'Total'];
+    const rows = txns.map((t: any) => [
+      this.formatDate(t.transactionDate || t.date),
+      t.transactionDescription || t.description || '',
+      t.receiptId || t.receiptNo || t.receipt_ID || t.documentTransactionId || '',
+      t.documentNumber || t.docNumber || '',
+      t.tariff || '',
+      t.amount ?? t.debitAmount ?? 0,
+      t.interest ?? 0,
+      t.vat ?? 0,
+      t.total ?? t.totalAmount ?? 0,
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.map((v: any) => `"${String(v).replace(/"/g, '""')}"`).join(','))].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const acct = this.selectedAccount();
+    a.download = `Detailed_Transactions_${acct?.['accountNo'] || acct?.['accountId'] || 'export'}_${this.detailFinYear()}_${this.detailMonth() || 'All'}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   getDepositPaidAmt(dep: any): number {

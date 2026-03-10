@@ -1255,43 +1255,183 @@
         <!-- Transaction Detail Tab -->
         @if (activeTab() === 'txn-detailed') {
           <div class="tab-panel" data-testid="tab-txn-detailed">
-            <div class="detail-section">
-              <div class="section-header-bar">📋 Transaction Detail</div>
-              @if (tabData()?.transactions?.length) {
-                <div class="table-container">
-                  <table class="data-table">
+            <div class="dtl-panel">
+              <div class="dtl-toolbar">
+                <div class="dtl-toolbar-left">
+                  <span class="dtl-toolbar-title">Detailed Transaction List per Billing Period</span>
+                </div>
+                <div class="dtl-toolbar-controls">
+                  <div class="dtl-filter-group">
+                    <select class="dtl-select" [value]="detailFinYear()" (change)="onDetailFinYearChange($any($event.target).value)" data-testid="select-detail-finyear">
+                      @for (yr of summaryAvailableYears(); track yr) {
+                        <option [value]="yr">{{ yr }}</option>
+                      }
+                      @if (!summaryAvailableYears().length && detailFinYear()) {
+                        <option [value]="detailFinYear()">{{ detailFinYear() }}</option>
+                      }
+                    </select>
+                    <select class="dtl-select" [value]="detailMonth()" (change)="onDetailMonthChange($any($event.target).value)" data-testid="select-detail-month">
+                      <option value="">All Months</option>
+                      @for (m of detailMonths; track m) {
+                        <option [value]="m">{{ m }}</option>
+                      }
+                    </select>
+                  </div>
+                  <button class="dtl-btn dtl-btn-export" (click)="exportDetailedTransactionsExcel()" [disabled]="!detailTransactions().length" data-testid="button-export-detail-csv">
+                    <span class="dtl-btn-icon">📥</span> Export
+                  </button>
+                </div>
+              </div>
+
+              @if (detailLoading()) {
+                <div class="dtl-loading">
+                  <div class="dtl-spinner"></div>
+                  <span>Loading transactions...</span>
+                </div>
+              } @else if (detailError()) {
+                <div class="dtl-error">
+                  <span>{{ detailError() }}</span>
+                  <button class="dtl-btn dtl-btn-retry" (click)="loadDetailedTransactions()">Retry</button>
+                </div>
+              } @else if (detailTransactions().length > 0) {
+                <div class="dtl-table-wrapper">
+                  <table class="dtl-table" data-testid="table-detailed-transactions">
                     <thead>
                       <tr>
-                        <th>Date</th>
-                        <th>Receipt No</th>
-                        <th>Description</th>
-                        <th>Type</th>
-                        <th class="amount-cell">Debit</th>
-                        <th class="amount-cell">Credit</th>
-                        <th class="amount-cell">Balance</th>
+                        <th class="dtl-th">Transaction Date</th>
+                        <th class="dtl-th">Transaction Description</th>
+                        <th class="dtl-th">Receipt ID/ Doc Transaction ID</th>
+                        <th class="dtl-th">Document Number</th>
+                        <th class="dtl-th">Tariff</th>
+                        <th class="dtl-th dtl-th-amt">Amount</th>
+                        <th class="dtl-th dtl-th-amt">Interest</th>
+                        <th class="dtl-th dtl-th-amt">VAT</th>
+                        <th class="dtl-th dtl-th-amt">Total</th>
                       </tr>
                     </thead>
                     <tbody>
-                      @for (txn of tabData()?.transactions; track $index) {
-                        <tr>
-                          <td>{{ formatDate(txn.transactionDate || txn.date || txn.txnDate) }}</td>
-                          <td class="font-mono">{{ safeStr(txn.receiptNo || txn.receipt_No || txn.receiptNumber) }}</td>
-                          <td>{{ safeStr(txn.description || txn.transactionDescription || txn.txnDescription) }}</td>
-                          <td>{{ safeStr(txn.transactionType || txn.txnType || txn.type) }}</td>
-                          <td class="amount-cell">{{ formatCurrency(txn.debitAmount || txn.debit || 0) }}</td>
-                          <td class="amount-cell">{{ formatCurrency(txn.creditAmount || txn.credit || 0) }}</td>
-                          <td class="amount-cell font-bold">{{ formatCurrency(txn.runningBalance || txn.balance || txn.totalBalance || 0) }}</td>
+                      @for (txn of detailTransactions(); track $index) {
+                        <tr class="dtl-row" [class]="getTxnRowClass(txn)" (click)="onTxnRowClick(txn)" [attr.data-testid]="'dtl-row-' + $index">
+                          <td class="dtl-td">{{ formatDate(txn.transactionDate || txn.date) }}</td>
+                          <td class="dtl-td dtl-td-desc">{{ txn.transactionDescription || txn.description || '-' }}</td>
+                          <td class="dtl-td mono">{{ txn.receiptId || txn.receiptNo || txn.receipt_ID || txn.documentTransactionId || '' }}</td>
+                          <td class="dtl-td mono">{{ txn.documentNumber || txn.docNumber || '' }}</td>
+                          <td class="dtl-td">{{ txn.tariff || '' }}</td>
+                          <td class="dtl-td dtl-td-amt" [class.dtl-neg]="(txn.amount || 0) < 0">{{ formatDebtAmt(txn.amount ?? 0) }}</td>
+                          <td class="dtl-td dtl-td-amt">{{ formatDebtAmt(txn.interest ?? 0) }}</td>
+                          <td class="dtl-td dtl-td-amt" [class.dtl-neg]="(txn.vat || 0) < 0">{{ formatDebtAmt(txn.vat ?? 0) }}</td>
+                          <td class="dtl-td dtl-td-amt dtl-td-total" [class.dtl-neg]="(txn.total || 0) < 0">{{ formatDebtAmt(txn.total ?? txn.totalAmount ?? 0) }}</td>
                         </tr>
                       }
                     </tbody>
                   </table>
                 </div>
+                <div class="dtl-footer">
+                  <span class="dtl-count">{{ detailTransactions().length }} transaction{{ detailTransactions().length !== 1 ? 's' : '' }}</span>
+                </div>
               } @else {
                 <div class="empty-state">
-                  <p class="empty-text">No detailed transaction data available</p>
+                  <div class="empty-icon">📋</div>
+                  <p class="empty-text">No transaction data for this period</p>
+                  <p class="empty-sub">Try selecting a different financial year or month</p>
                 </div>
               }
             </div>
+
+            @if (detailSelectedTxn()) {
+              <div class="dtl-overlay" (click)="closeTxnDetail()" data-testid="txn-detail-overlay">
+                <div class="dtl-dialog" (click)="$event.stopPropagation()">
+                  <div class="dtl-dialog-header">
+                    <div class="dtl-dialog-title-area">
+                      <span class="dtl-dialog-title">Detailed Transaction List per Billing Period</span>
+                    </div>
+                    <button class="dtl-dialog-close" (click)="closeTxnDetail()" data-testid="button-close-detail">&times;</button>
+                  </div>
+
+                  <div class="dtl-dialog-body">
+                    <div class="dtl-summary-section">
+                      <div class="dtl-summary-grid">
+                        <div class="dtl-summary-item">
+                          <span class="dtl-summary-label">Description</span>
+                          <span class="dtl-summary-val">{{ detailSelectedTxn().transactionDescription || detailSelectedTxn().description || '-' }}</span>
+                        </div>
+                        <div class="dtl-summary-item">
+                          <span class="dtl-summary-label">Date</span>
+                          <span class="dtl-summary-val mono">{{ formatDate(detailSelectedTxn().transactionDate || detailSelectedTxn().date) }}</span>
+                        </div>
+                        <div class="dtl-summary-item">
+                          <span class="dtl-summary-label">Receipt / Doc ID</span>
+                          <span class="dtl-summary-val mono">{{ detailSelectedTxn().receiptId || detailSelectedTxn().receiptNo || detailSelectedTxn().documentNumber || '-' }}</span>
+                        </div>
+                        <div class="dtl-summary-item">
+                          <span class="dtl-summary-label">Tariff</span>
+                          <span class="dtl-summary-val">{{ detailSelectedTxn().tariff || '-' }}</span>
+                        </div>
+                      </div>
+                      <div class="dtl-amounts-bar">
+                        <div class="dtl-amt-cell">
+                          <span class="dtl-amt-label">Amount</span>
+                          <span class="dtl-amt-val" [class.dtl-neg]="(detailSelectedTxn().amount || 0) < 0">{{ formatDebtAmt(detailSelectedTxn().amount ?? 0) }}</span>
+                        </div>
+                        <div class="dtl-amt-cell">
+                          <span class="dtl-amt-label">Interest</span>
+                          <span class="dtl-amt-val">{{ formatDebtAmt(detailSelectedTxn().interest ?? 0) }}</span>
+                        </div>
+                        <div class="dtl-amt-cell">
+                          <span class="dtl-amt-label">VAT</span>
+                          <span class="dtl-amt-val">{{ formatDebtAmt(detailSelectedTxn().vat ?? 0) }}</span>
+                        </div>
+                        <div class="dtl-amt-cell dtl-amt-total">
+                          <span class="dtl-amt-label">Total</span>
+                          <span class="dtl-amt-val" [class.dtl-neg]="(detailSelectedTxn().total || 0) < 0">{{ formatDebtAmt(detailSelectedTxn().total ?? 0) }}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="dtl-detail-section">
+                      <div class="dtl-detail-header">Detail & Ledger Postings</div>
+                      @if (detailTxnLoading()) {
+                        <div class="dtl-loading" style="padding: 2rem;">
+                          <div class="dtl-spinner"></div>
+                          <span>Loading detail...</span>
+                        </div>
+                      } @else if (detailTxnData() && typeof detailTxnData() === 'string') {
+                        <div class="dtl-html-detail" [innerHTML]="detailTxnData()"></div>
+                      } @else if (detailTxnData()?.length > 0) {
+                        <div class="dtl-table-wrapper" style="max-height: 350px; overflow-y: auto;">
+                          <table class="dtl-table dtl-detail-table">
+                            <thead>
+                              <tr>
+                                @for (key of getTxnDetailKeys(); track key) {
+                                  <th class="dtl-th">{{ formatDetailKey(key) }}</th>
+                                }
+                              </tr>
+                            </thead>
+                            <tbody>
+                              @for (row of detailTxnData(); track $index) {
+                                <tr>
+                                  @for (key of getTxnDetailKeys(); track key) {
+                                    <td class="dtl-td" [class.dtl-td-amt]="isDetailValNumeric(row[key])" [class.dtl-neg]="isDetailValNegative(row[key])">
+                                      {{ formatDetailVal(row[key]) }}
+                                    </td>
+                                  }
+                                </tr>
+                              }
+                            </tbody>
+                          </table>
+                        </div>
+                      } @else if (detailTxnData() !== null) {
+                        <div class="dtl-no-detail">No detail data available for this transaction</div>
+                      }
+                    </div>
+                  </div>
+
+                  <div class="dtl-dialog-footer">
+                    <button class="dtl-btn dtl-btn-close" (click)="closeTxnDetail()" data-testid="button-close-detail-bottom">Close</button>
+                  </div>
+                </div>
+              </div>
+            }
           </div>
         }
 
