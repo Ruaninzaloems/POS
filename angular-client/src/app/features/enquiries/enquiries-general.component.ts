@@ -360,6 +360,27 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     return n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
+  getBillingCycleDisplay(): string {
+    const p = this.getAccountProp();
+    const b = this.getAccountBasic();
+    const cycle = p['billingCycle'] || p['billingCycleDesc'] || b['billingCycle'] || b['billingCycleDesc'];
+    if (cycle) return cycle;
+    const cycleDesc = p['cycleDescription'] || b['cycleDescription'];
+    if (cycleDesc) return `1 ${cycleDesc}`;
+    const cycleId = p['billingCycleID'] || b['billingCycleID'];
+    if (cycleId) return `${cycleId} Consumer Account Cycle`;
+    return '-';
+  }
+
+  getRegistrationStatusDisplay(): string {
+    const p = this.getAccountProp();
+    const regStatus = p['registrationStatus'] || p['regStatus'];
+    if (regStatus === true || regStatus === 'true' || regStatus === 1 || regStatus === '1') return 'Registered';
+    if (typeof regStatus === 'string' && regStatus.length > 0) return regStatus;
+    if (p['rollNumber']) return 'Registered';
+    return '-';
+  }
+
   formatDepositDisplay(v: any): string {
     if (v === null || v === undefined || v === '') return '-';
     const n = typeof v === 'number' ? v : parseFloat(v);
@@ -1121,11 +1142,15 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             console.log('[account] consUnit data:', JSON.stringify(acctConsUnitVal));
             const cuKeys = ['propertyStatus', 'statusDesc', 'marketValue', 'propertyMarketValue', 'valuationCategory', 'valuationCat',
               'partitionDescription', 'partitionDesc', 'partitionMarketValue', 'partMarketValue',
-              'billingCycle', 'billingCycleDesc', 'allotmentArea', 'allotment', 'farmName', 'farm',
-              'magisterialDistrict', 'magDistrict', 'registrationStatus', 'regStatus',
-              'oldPropertyCode', 'oldPropCode', 'sectionalTitleScheme', 'sectionalTitle',
+              'billingCycle', 'billingCycleDesc', 'billingCycleID', 'cycleDescription',
+              'allotmentArea', 'allotment', 'town', 'farmName', 'farm',
+              'magisterialDistrict', 'magDistrict', 'ward',
+              'registrationStatus', 'regStatus',
+              'oldPropertyCode', 'oldPropCode', 'oldAccountCode',
+              'sectionalTitleScheme', 'sectionalTitle',
               'propertyCategory', 'category', 'propertyType', 'typeOfUse', 'typeofUse',
-              'accountableOwnerName', 'ownerName', 'name', 'owner'];
+              'accountableOwnerName', 'ownerName', 'name', 'owner',
+              'rollNumber'];
             for (const k of cuKeys) {
               if (acctConsUnitVal[k] != null && acctConsUnitVal[k] !== '' && !acctPropFinal[k]) acctPropFinal[k] = acctConsUnitVal[k];
             }
