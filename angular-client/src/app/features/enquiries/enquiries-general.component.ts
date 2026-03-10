@@ -2255,10 +2255,15 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const accountId = this.getAccountId(account);
     const meterNo = meter.physicalMeterNo || meter.meterNo || meter.meterNumber || '';
     try {
-      const res = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history`, { accountId: String(accountId), meterNo }));
-      const history = this.normalizeArray(res);
-      this.meterConvHistory.set(history);
-      this.meterConvInsights.set(this.computeConsumptionInsights(history));
+      const [historyRes, barRes] = await Promise.allSettled([
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history`, { accountId: String(accountId), meterNo })),
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history-barchart`, { accountId: String(accountId), meterNo })),
+      ]);
+      const history = historyRes.status === 'fulfilled' ? this.normalizeArray(historyRes.value) : [];
+      const barChart = barRes.status === 'fulfilled' ? this.normalizeArray(barRes.value) : [];
+      const primaryData = history.length > 0 ? history : barChart;
+      this.meterConvHistory.set(primaryData);
+      this.meterConvInsights.set(this.computeConsumptionInsights(primaryData));
     } catch {
       this.meterConvHistory.set([]);
     }
