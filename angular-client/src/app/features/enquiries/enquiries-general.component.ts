@@ -1070,7 +1070,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       let data: any = null;
       switch (tab) {
         case 'account':
-          const [basic, accountInfo, acctPropDetails, acctContactInfo, acctConsUnit, acctRates, acctDepositAmt] = await Promise.allSettled([
+          const [basic, accountInfo, acctPropDetails, acctContactInfo, acctConsUnit, acctRates, acctDepositAmt, acctMgmt, acctSectTitle] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/basic-account-details/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-info-result/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
@@ -1078,6 +1078,8 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/consumption-units/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-rates-details/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/deposit-amount`, { accountId: String(accountId) })),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-account-management/account-information`, { accountId: String(accountId) })),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/sectional-title-scheme`, { accountId: String(accountId) })),
           ]);
           const basicVal = basic.status === 'fulfilled' ? (Array.isArray(basic.value) ? basic.value[0] : basic.value) : null;
           const airVal = accountInfo.status === 'fulfilled' ? (Array.isArray(accountInfo.value) ? accountInfo.value[0] : accountInfo.value) : null;
@@ -1085,12 +1087,16 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           const acctContactVal = acctContactInfo.status === 'fulfilled' ? (Array.isArray(acctContactInfo.value) ? acctContactInfo.value[0] : acctContactInfo.value) : null;
           const acctConsUnitVal = acctConsUnit.status === 'fulfilled' ? (Array.isArray(acctConsUnit.value) ? acctConsUnit.value[0] : acctConsUnit.value) : null;
           const acctRatesVal = acctRates.status === 'fulfilled' ? (Array.isArray(acctRates.value) ? acctRates.value[0] : acctRates.value) : null;
+          const acctMgmtVal = acctMgmt.status === 'fulfilled' ? (Array.isArray(acctMgmt.value) ? acctMgmt.value[0] : acctMgmt.value) : null;
+          const acctSectTitleVal = acctSectTitle.status === 'fulfilled' ? (Array.isArray(acctSectTitle.value) ? acctSectTitle.value[0] : acctSectTitle.value) : null;
           if (basicVal) console.log('[account] basic keys:', Object.keys(basicVal));
           if (airVal) console.log('[account] accountInfo keys:', Object.keys(airVal));
           if (acctPropVal) console.log('[account] property keys:', Object.keys(acctPropVal));
           if (acctContactVal) console.log('[account] contact keys:', Object.keys(acctContactVal));
           if (acctConsUnitVal) console.log('[account] consUnit keys:', Object.keys(acctConsUnitVal));
           if (acctRatesVal) console.log('[account] rates keys:', Object.keys(acctRatesVal));
+          if (acctMgmtVal) console.log('[account] acctMgmt keys:', Object.keys(acctMgmtVal));
+          if (acctSectTitleVal) console.log('[account] sectionalTitle keys:', Object.keys(acctSectTitleVal));
           const mergedBasic = { ...basicVal, ...airVal };
           if (acctDepositAmt.status === 'fulfilled' && acctDepositAmt.value != null) {
             const depVal = acctDepositAmt.value;
@@ -1164,6 +1170,25 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             for (const k of rtKeys) {
               if (acctRatesVal[k] != null && acctRatesVal[k] !== '' && !acctPropFinal[k]) acctPropFinal[k] = acctRatesVal[k];
             }
+          }
+          if (acctMgmtVal && !acctMgmtVal._error) {
+            console.log('[account] acctMgmt data:', JSON.stringify(acctMgmtVal).substring(0, 800));
+            if (acctMgmtVal.cycleDescription && !acctPropFinal['cycleDescription']) {
+              acctPropFinal['cycleDescription'] = acctMgmtVal.cycleDescription;
+            }
+            if (acctMgmtVal.billingCycleID && !acctPropFinal['billingCycleID']) {
+              acctPropFinal['billingCycleID'] = acctMgmtVal.billingCycleID;
+            }
+          }
+          if (acctSectTitleVal && !acctSectTitleVal._error) {
+            console.log('[account] sectionalTitle data:', JSON.stringify(acctSectTitleVal).substring(0, 500));
+            const stName = acctSectTitleVal.schemeName || acctSectTitleVal.description || acctSectTitleVal.sectionalTitleSchemeName || acctSectTitleVal.name;
+            if (stName && !acctPropFinal['sectionalTitleScheme']) {
+              acctPropFinal['sectionalTitleScheme'] = stName;
+            }
+          }
+          if (airVal && !acctPropFinal['town'] && airVal.town) {
+            acctPropFinal['town'] = airVal.town;
           }
 
           const unitPartId = acctPropFinal['unitPartitionID'] || acctPropFinal['unitPartition_ID'] ||
