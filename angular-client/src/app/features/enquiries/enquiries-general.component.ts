@@ -1219,8 +1219,11 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     } catch {
       let svc: any;
       try {
+        const fy = this.userFinYear();
+        const params: Record<string, string> = {};
+        if (fy) params['financialYear'] = fy;
         svc = await firstValueFrom(
-          this.api.get<any>(`/api/platinum/billing-enquiry/service-type-balance/${accountId}`)
+          this.api.get<any>(`/api/platinum/billing-enquiry/service-type-balance/${accountId}`, params)
         );
       } catch {
         return [];

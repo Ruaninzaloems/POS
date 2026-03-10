@@ -1303,6 +1303,20 @@
                   R {{ formatCurrency(getOutstanding(account)) }}
                 </div>
               </div>
+              <div class="result-card-meta">
+                @if (account.sgNumber) {
+                  <span class="meta-tag"><span class="meta-label">SG:</span> {{ account.sgNumber }}</span>
+                }
+                @if (account.unitID) {
+                  <span class="meta-tag"><span class="meta-label">Unit:</span> {{ account.unitID }}</span>
+                }
+                @if (account.accountType || account.accountDesc) {
+                  <span class="meta-tag"><span class="meta-label">Type:</span> {{ account.accountType || account.accountDesc }}</span>
+                }
+                @if (account.oldAccountCode) {
+                  <span class="meta-tag"><span class="meta-label">Old:</span> {{ account.oldAccountCode }}</span>
+                }
+              </div>
               <div class="result-card-bottom">
                 <span class="inline-badge" [class.active]="isAccountActive(account)">{{ account.accountStatus || account.statusDesc || '-' }}</span>
                 <span class="result-address">{{ (account.locationAddress || account.address || '-').replace('\r\n', ', ') }}</span>
