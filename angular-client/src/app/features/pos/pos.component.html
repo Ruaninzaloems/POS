@@ -30,6 +30,10 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
         <span class="btn-label">Drop Box</span>
       </button>
+      <button class="header-btn" (click)="openCsvImport()" [disabled]="!sessionActive()" title="Import CSV/Excel File" data-testid="button-csv-import">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <span class="btn-label">Import</span>
+      </button>
       <button class="header-btn" (click)="openCancelDialog()" [disabled]="!sessionActive()" title="Cancel Receipt" data-testid="button-cancel-receipt">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
         <span class="btn-label">Cancel</span>
@@ -814,6 +818,248 @@
           <button class="process-btn danger-btn" (click)="submitCancelRequest()" [disabled]="cancellingReceipt()" data-testid="button-submit-cancel">
             @if (cancellingReceipt()) { <div class="spinner-sm"></div> Submitting... } @else { Submit Cancellation Request }
           </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <input type="file" #csvFileInput accept=".csv,.txt" style="display:none" (change)="onCsvFileSelected($event)" data-testid="input-csv-file" />
+
+  <!-- CSV IMPORT DIALOG -->
+  @if (csvImportOpen()) {
+    <div class="payment-overlay" (click)="closeCsvImport()">
+      <div class="csv-dialog-panel" (click)="$event.stopPropagation()" data-testid="csv-import-dialog">
+        <div class="dialog-header">
+          <h3>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Import Accounts from File
+          </h3>
+          <button class="close-btn" (click)="closeCsvImport()" data-testid="button-close-csv"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+        </div>
+
+        <div class="csv-step-indicator">
+          <div class="csv-step" [class.csv-step-active]="csvStep() === 'upload'" [class.csv-step-done]="csvStep() !== 'upload'">1. Upload</div>
+          <div class="csv-step-arrow">&rarr;</div>
+          <div class="csv-step" [class.csv-step-active]="csvStep() === 'preview'" [class.csv-step-done]="csvStep() === 'validate' || csvStep() === 'done'">2. Preview</div>
+          <div class="csv-step-arrow">&rarr;</div>
+          <div class="csv-step" [class.csv-step-active]="csvStep() === 'validate'" [class.csv-step-done]="csvStep() === 'done'">3. Validate</div>
+          <div class="csv-step-arrow">&rarr;</div>
+          <div class="csv-step" [class.csv-step-active]="csvStep() === 'done'">4. Add to Basket</div>
+        </div>
+
+        <div class="dialog-body csv-dialog-body">
+          <!-- UPLOAD STEP -->
+          @if (csvStep() === 'upload') {
+            <div class="csv-upload-zone" (click)="triggerCsvFileInput()" data-testid="csv-dropzone">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--platinum-primary)" stroke-width="1.5" opacity="0.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              <p class="csv-upload-title">Click to select a CSV file</p>
+              <p class="csv-upload-hint">Supported: .csv, .txt</p>
+            </div>
+            <div class="csv-format-info">
+              <h4>File Format</h4>
+              <p>Your file should contain at minimum two columns:</p>
+              <ul>
+                <li><strong>Account Number</strong> — The municipal account number</li>
+                <li><strong>Amount</strong> — Payment amount (e.g. 150.00)</li>
+                <li><strong>Receipt Date</strong> (optional) — Date for the receipt</li>
+              </ul>
+              <p>Headers are auto-detected. Comma, semicolon, and tab delimiters are supported.</p>
+              <button class="csv-template-btn" (click)="csvDownloadTemplate(); $event.stopPropagation()" data-testid="button-csv-template">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download Template
+              </button>
+            </div>
+          }
+
+          <!-- PREVIEW STEP -->
+          @if (csvStep() === 'preview') {
+            <div class="csv-preview-header">
+              <div class="csv-preview-stats">
+                <span class="csv-stat"><strong>{{ csvParsedRows().length }}</strong> row(s) found</span>
+                <span class="csv-stat">Total: <strong>R {{ formatCurrency(csvTotalImportAmount()) }}</strong></span>
+                <span class="csv-stat csv-file-label">{{ csvFileName() }}</span>
+              </div>
+              <button class="csv-change-file-btn" (click)="csvChangeFile()" data-testid="button-csv-change-file">Change File</button>
+            </div>
+            <div class="csv-table-wrap">
+              <table class="csv-table" data-testid="csv-preview-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Account Number</th>
+                    <th>Amount</th>
+                    @if (csvParsedRows()[0]?.receiptDate) { <th>Receipt Date</th> }
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of getCsvPreviewPage(); track row.accountNo + row.amount; let i = $index) {
+                    <tr>
+                      <td class="csv-row-num">{{ (csvPage() - 1) * csvPageSize + i + 1 }}</td>
+                      <td class="font-mono">{{ row.accountNo }}</td>
+                      <td class="font-mono text-right">R {{ formatCurrency(row.amount) }}</td>
+                      @if (csvParsedRows()[0]?.receiptDate) { <td>{{ formatDate(row.receiptDate) }}</td> }
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            @if (csvTotalPages() > 1) {
+              <div class="csv-pagination">
+                <button class="csv-page-btn" (click)="csvPrevPage()" [disabled]="csvPage() <= 1">&laquo; Prev</button>
+                <span>Page {{ csvPage() }} of {{ csvTotalPages() }}</span>
+                <button class="csv-page-btn" (click)="csvNextPage()" [disabled]="csvPage() >= csvTotalPages()">Next &raquo;</button>
+              </div>
+            }
+            <button class="process-btn csv-validate-btn" (click)="csvValidateAccounts()" data-testid="button-csv-validate">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              Validate {{ csvParsedRows().length }} Account(s) Against Platinum
+            </button>
+          }
+
+          <!-- VALIDATE STEP -->
+          @if (csvStep() === 'validate') {
+            <div class="csv-validation-header">
+              <div class="csv-progress-bar">
+                <div class="csv-progress-fill" [style.width.%]="csvValidationProgress()"></div>
+              </div>
+              <div class="csv-validation-status">
+                @if (csvValidating()) {
+                  <div class="spinner-sm"></div>
+                  <span>Validating... {{ csvValidationProgress() }}% ({{ csvFoundCount() }} found, {{ csvNotFoundCount() }} not found)</span>
+                  <button class="csv-cancel-btn" (click)="csvCancelValidation()" data-testid="button-csv-cancel-validate">Cancel</button>
+                } @else {
+                  <span>Validation complete — {{ csvFoundCount() }} found, {{ csvNotFoundCount() }} not found, {{ csvErrorCount() }} error(s)</span>
+                }
+              </div>
+            </div>
+            <div class="csv-table-wrap">
+              <table class="csv-table" data-testid="csv-validate-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Account</th>
+                    <th>Name</th>
+                    <th>Amount</th>
+                    <th>Outstanding</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of getCsvValidatedPage(); track row.accountNo; let i = $index) {
+                    <tr [class.csv-row-found]="row.status === 'found'" [class.csv-row-error]="row.status === 'not_found' || row.status === 'error'" [class.csv-row-dup]="row.status === 'duplicate'">
+                      <td class="csv-row-num">{{ (csvPage() - 1) * csvPageSize + i + 1 }}</td>
+                      <td class="font-mono">{{ row.accountNo }}</td>
+                      <td>{{ row.name || '-' }}</td>
+                      <td class="font-mono text-right">R {{ formatCurrency(row.amount) }}</td>
+                      <td class="font-mono text-right">
+                        @if (row.status === 'found') { R {{ formatCurrency(row.outstandingAmount) }} }
+                        @else { - }
+                      </td>
+                      <td>
+                        @if (row.status === 'pending') { <span class="csv-status-badge csv-badge-pending">Pending</span> }
+                        @else if (row.status === 'validating') { <span class="csv-status-badge csv-badge-validating"><div class="spinner-xs"></div> Checking</span> }
+                        @else if (row.status === 'found') { <span class="csv-status-badge csv-badge-found">&#10003; Found</span> }
+                        @else if (row.status === 'not_found') { <span class="csv-status-badge csv-badge-notfound">&#10007; Not Found</span> }
+                        @else if (row.status === 'error') { <span class="csv-status-badge csv-badge-error" [title]="row.errorMsg">&#9888; Error</span> }
+                        @else if (row.status === 'duplicate') { <span class="csv-status-badge csv-badge-dup">Duplicate</span> }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            @if (csvTotalPages() > 1) {
+              <div class="csv-pagination">
+                <button class="csv-page-btn" (click)="csvPrevPage()" [disabled]="csvPage() <= 1">&laquo; Prev</button>
+                <span>Page {{ csvPage() }} of {{ csvTotalPages() }}</span>
+                <button class="csv-page-btn" (click)="csvNextPage()" [disabled]="csvPage() >= csvTotalPages()">Next &raquo;</button>
+              </div>
+            }
+          }
+
+          <!-- DONE STEP -->
+          @if (csvStep() === 'done') {
+            <div class="csv-done-stats">
+              <div class="csv-stat-card csv-stat-found">
+                <span class="csv-stat-value">{{ csvFoundCount() }}</span>
+                <span class="csv-stat-label">Found</span>
+              </div>
+              <div class="csv-stat-card csv-stat-notfound">
+                <span class="csv-stat-value">{{ csvNotFoundCount() }}</span>
+                <span class="csv-stat-label">Not Found</span>
+              </div>
+              <div class="csv-stat-card csv-stat-errors">
+                <span class="csv-stat-value">{{ csvErrorCount() }}</span>
+                <span class="csv-stat-label">Errors</span>
+              </div>
+              @if (csvDuplicateCount() > 0) {
+                <div class="csv-stat-card csv-stat-dup">
+                  <span class="csv-stat-value">{{ csvDuplicateCount() }}</span>
+                  <span class="csv-stat-label">Already in Basket</span>
+                </div>
+              }
+            </div>
+
+            @if (csvFoundCount() > 0) {
+              <div class="csv-done-summary">
+                <p><strong>{{ csvFoundCount() }}</strong> valid account(s) ready to add to basket.</p>
+                <p>Total payment amount: <strong>R {{ formatCurrency(csvValidTotalAmount()) }}</strong></p>
+                <p class="csv-done-note">Amounts from the CSV will be pre-filled. You can adjust individual amounts in the basket before processing payment.</p>
+              </div>
+              <button class="process-btn csv-add-btn" (click)="csvAddToBasket()" data-testid="button-csv-add-to-basket">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+                Add {{ csvFoundCount() }} Account(s) to Basket
+              </button>
+            } @else {
+              <div class="csv-done-summary csv-done-empty">
+                <p>No valid accounts found in the imported file. Please check your file and try again.</p>
+              </div>
+            }
+
+            <div class="csv-table-wrap">
+              <table class="csv-table" data-testid="csv-done-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Account</th>
+                    <th>Name</th>
+                    <th>Amount</th>
+                    <th>Outstanding</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of getCsvValidatedPage(); track row.accountNo; let i = $index) {
+                    <tr [class.csv-row-found]="row.status === 'found'" [class.csv-row-error]="row.status === 'not_found' || row.status === 'error'" [class.csv-row-dup]="row.status === 'duplicate'">
+                      <td class="csv-row-num">{{ (csvPage() - 1) * csvPageSize + i + 1 }}</td>
+                      <td class="font-mono">{{ row.accountNo }}</td>
+                      <td>{{ row.name || (row.errorMsg || '-') }}</td>
+                      <td class="font-mono text-right">R {{ formatCurrency(row.amount) }}</td>
+                      <td class="font-mono text-right">
+                        @if (row.status === 'found') { R {{ formatCurrency(row.outstandingAmount) }} }
+                        @else { - }
+                      </td>
+                      <td>
+                        @if (row.status === 'found') { <span class="csv-status-badge csv-badge-found">&#10003; Valid</span> }
+                        @else if (row.status === 'not_found') { <span class="csv-status-badge csv-badge-notfound">&#10007; Not Found</span> }
+                        @else if (row.status === 'error') { <span class="csv-status-badge csv-badge-error" [title]="row.errorMsg">&#9888; Error</span> }
+                        @else if (row.status === 'duplicate') { <span class="csv-status-badge csv-badge-dup">In Basket</span> }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            @if (csvTotalPages() > 1) {
+              <div class="csv-pagination">
+                <button class="csv-page-btn" (click)="csvPrevPage()" [disabled]="csvPage() <= 1">&laquo; Prev</button>
+                <span>Page {{ csvPage() }} of {{ csvTotalPages() }}</span>
+                <button class="csv-page-btn" (click)="csvNextPage()" [disabled]="csvPage() >= csvTotalPages()">Next &raquo;</button>
+              </div>
+            }
+          }
         </div>
       </div>
     </div>

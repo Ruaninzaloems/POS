@@ -1,4 +1,4 @@
-import { Component, signal, computed, OnInit, OnDestroy, inject, ElementRef, ViewChild } from '@angular/core';
+import { Component, signal, computed, OnInit, OnDestroy, inject, ElementRef, ViewChild, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -38,6 +38,26 @@ interface ScoaItem {
   amount: number;
   isVatable: boolean;
   vatPercentage: number;
+}
+
+interface CsvImportRow {
+  accountNo: string;
+  amount: number;
+  receiptDate: string;
+  raw: string;
+}
+
+interface CsvValidatedRow {
+  accountNo: string;
+  amount: number;
+  receiptDate: string;
+  status: 'pending' | 'validating' | 'found' | 'not_found' | 'error' | 'duplicate';
+  accountId: number;
+  name: string;
+  outstandingAmount: number;
+  address: string;
+  errorMsg: string;
+  rawApiData: any;
 }
 
 type PaymentMode = 'account' | 'clearance' | 'prepaid' | 'misc';
@@ -251,6 +271,26 @@ export class PosComponent implements OnInit, OnDestroy {
       return (t.isTicked || t.enabled) && desc.includes('eft');
     });
   });
+
+  csvImportOpen = signal(false);
+  csvStep = signal<'upload' | 'preview' | 'validate' | 'done'>('upload');
+  csvFileName = signal('');
+  csvParsedRows = signal<CsvImportRow[]>([]);
+  csvValidatedRows = signal<CsvValidatedRow[]>([]);
+  csvValidating = signal(false);
+  csvValidationProgress = signal(0);
+  csvCancelled = signal(false);
+  csvPage = signal(1);
+  csvPageSize = 20;
+
+  @ViewChild('csvFileInput') csvFileInput!: ElementRef<HTMLInputElement>;
+
+  csvFoundCount = computed(() => this.csvValidatedRows().filter(r => r.status === 'found').length);
+  csvNotFoundCount = computed(() => this.csvValidatedRows().filter(r => r.status === 'not_found').length);
+  csvErrorCount = computed(() => this.csvValidatedRows().filter(r => r.status === 'error').length);
+  csvDuplicateCount = computed(() => this.csvValidatedRows().filter(r => r.status === 'duplicate').length);
+  csvTotalImportAmount = computed(() => this.csvParsedRows().reduce((sum, r) => sum + r.amount, 0));
+  csvValidTotalAmount = computed(() => this.csvValidatedRows().filter(r => r.status === 'found').reduce((sum, r) => sum + r.amount, 0));
 
   denominations = [200, 100, 50, 20, 10, 5, 2, 1, 0.50, 0.20, 0.10];
 
@@ -1656,5 +1696,340 @@ export class PosComponent implements OnInit, OnDestroy {
 
   absVal(n: number): number {
     return Math.abs(n);
+  }
+
+  openCsvImport(): void {
+    this.csvImportOpen.set(true);
+    this.csvStep.set('upload');
+    this.csvFileName.set('');
+    this.csvParsedRows.set([]);
+    this.csvValidatedRows.set([]);
+    this.csvValidating.set(false);
+    this.csvValidationProgress.set(0);
+    this.csvCancelled.set(false);
+    this.csvPage.set(1);
+  }
+
+  closeCsvImport(): void {
+    this.csvCancelled.set(true);
+    this.csvImportOpen.set(false);
+    this.csvValidating.set(false);
+  }
+
+  triggerCsvFileInput(): void {
+    this.csvFileInput?.nativeElement?.click();
+  }
+
+  onCsvFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input?.files?.[0];
+    if (!file) return;
+
+    const name = file.name.toLowerCase();
+    if (!name.endsWith('.csv') && !name.endsWith('.txt')) {
+      this.toast.error('Please select a CSV or text file (.csv, .txt)');
+      return;
+    }
+
+    this.csvFileName.set(file.name);
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      if (!text) {
+        this.toast.error('Could not read file');
+        return;
+      }
+      this.parseCsvContent(text);
+    };
+    reader.onerror = () => {
+      this.toast.error('Failed to read file');
+    };
+    reader.readAsText(file);
+
+    input.value = '';
+  }
+
+  private parseCsvContent(text: string): void {
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length === 0) {
+      this.toast.error('File is empty');
+      return;
+    }
+
+    let delimiter = ',';
+    if (lines[0].includes(';') && !lines[0].includes(',')) delimiter = ';';
+    else if (lines[0].includes('\t') && !lines[0].includes(',')) delimiter = '\t';
+
+    const allRows = lines.map(line => line.split(delimiter).map(c => c.trim().replace(/^["']|["']$/g, '')));
+
+    const firstCols = allRows[0].map(c => c.toLowerCase());
+    const hasHeader = firstCols.some(c => /^(account|acc|accno|account.?n)/.test(c))
+      && firstCols.some(c => /^(amount|amt|value|total|pay)/.test(c));
+
+    const dataRows = hasHeader ? allRows.slice(1) : allRows;
+
+    let accColIdx = 0;
+    let amtColIdx = 1;
+    let dateColIdx = -1;
+
+    if (hasHeader) {
+      accColIdx = firstCols.findIndex(c => /^(account|acc|accno|account.?n)/.test(c));
+      amtColIdx = firstCols.findIndex(c => /^(amount|amt|value|total|pay)/.test(c));
+      dateColIdx = firstCols.findIndex(c => /^(date|receipt.?date|trans.?date)/.test(c));
+      if (accColIdx < 0) accColIdx = 0;
+      if (amtColIdx < 0) amtColIdx = 1;
+    }
+
+    const parsed: CsvImportRow[] = [];
+    for (const cols of dataRows) {
+      if (cols.length < 2) continue;
+      const rawAccNo = (cols[accColIdx] || '').replace(/\s/g, '');
+      const rawAmt = (cols[amtColIdx] || '').replace(/\s/g, '').replace(/^R/i, '');
+      const rawDate = dateColIdx >= 0 ? (cols[dateColIdx] || '') : '';
+
+      if (!rawAccNo) continue;
+      const amount = parseFloat(rawAmt);
+      if (isNaN(amount) || amount <= 0) continue;
+
+      parsed.push({
+        accountNo: rawAccNo,
+        amount,
+        receiptDate: rawDate,
+        raw: cols.join(', '),
+      });
+    }
+
+    if (parsed.length === 0) {
+      this.toast.error('No valid rows found. Ensure your file has Account Number and Amount columns.');
+      return;
+    }
+
+    this.csvParsedRows.set(parsed);
+    this.csvStep.set('preview');
+    this.csvPage.set(1);
+    this.toast.success(`Parsed ${parsed.length} row(s) from ${this.csvFileName()}`);
+  }
+
+  async csvValidateAccounts(): Promise<void> {
+    const parsed = this.csvParsedRows();
+    if (parsed.length === 0) return;
+
+    this.csvCancelled.set(false);
+    this.csvValidating.set(true);
+    this.csvValidationProgress.set(0);
+    this.csvStep.set('validate');
+
+    const validated: CsvValidatedRow[] = parsed.map(r => ({
+      accountNo: r.accountNo,
+      amount: r.amount,
+      receiptDate: r.receiptDate,
+      status: 'pending' as const,
+      accountId: 0,
+      name: '',
+      outstandingAmount: 0,
+      address: '',
+      errorMsg: '',
+      rawApiData: null,
+    }));
+    this.csvValidatedRows.set([...validated]);
+
+    const existingAccNos = new Set(
+      this.basket.items()
+        .filter(i => i.type === 'account' && i.accountData)
+        .map(i => i.accountData!.accountNumber)
+    );
+
+    const seenInFile = new Set<string>();
+    for (let k = 0; k < validated.length; k++) {
+      const key = validated[k].accountNo;
+      if (existingAccNos.has(key)) {
+        validated[k].status = 'duplicate';
+        validated[k].errorMsg = 'Already in basket';
+      } else if (seenInFile.has(key)) {
+        validated[k].status = 'duplicate';
+        validated[k].errorMsg = 'Duplicate in file';
+      }
+      seenInFile.add(key);
+    }
+    this.csvValidatedRows.set([...validated]);
+
+    const batchSize = 5;
+    let completed = 0;
+
+    for (let i = 0; i < validated.length; i += batchSize) {
+      if (this.csvCancelled()) break;
+
+      const batch = validated.slice(i, Math.min(i + batchSize, validated.length));
+      const lookups = batch.map(async (row, batchIdx) => {
+        const idx = i + batchIdx;
+        if (this.csvCancelled()) return;
+
+        if (validated[idx].status === 'duplicate') return;
+
+        validated[idx].status = 'validating';
+        this.csvValidatedRows.set([...validated]);
+
+        try {
+          const searchResults: any = await firstValueFrom(
+            this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: row.accountNo })
+          );
+          const items = Array.isArray(searchResults) ? searchResults : searchResults?.value || [];
+
+          if (items.length === 0) {
+            validated[idx].status = 'not_found';
+            validated[idx].errorMsg = 'Account not found in Platinum';
+            return;
+          }
+
+          const acct = items[0];
+          const accountId = acct.account_ID || acct.accountID || acct.accountId || 0;
+          const accountNo = acct.accountNumber || acct.accountNo || row.accountNo;
+
+          let detailData: any = null;
+          try {
+            detailData = await firstValueFrom(
+              this.api.get('/api/platinum/receipt-prepaid/cons-account-details', { accountId: String(accountId || accountNo) })
+            );
+          } catch (e: any) {
+            console.warn(`[CsvImport] Detail lookup failed for ${accountNo}:`, e?.message);
+          }
+
+          const merged = { ...acct, ...(detailData && !detailData._error ? detailData : {}) };
+
+          validated[idx].status = 'found';
+          validated[idx].accountId = accountId;
+          validated[idx].name = merged.name || merged.accountName || merged.consumerName || merged.surname_Company ||
+            [merged.initials, merged.lastName].filter(Boolean).join(' ') || '';
+          validated[idx].outstandingAmount = Number(merged.outstandingAmount || merged.outStandingAmt || merged.balance || merged.totalDue || 0);
+          validated[idx].address = merged.address || merged.physicalAddress || merged.deliveryAddress || '';
+          validated[idx].rawApiData = merged;
+        } catch (e: any) {
+          validated[idx].status = 'error';
+          validated[idx].errorMsg = e?.error?.message || e?.message || 'API validation failed';
+        }
+      });
+
+      await Promise.all(lookups);
+      completed += batch.length;
+      this.csvValidationProgress.set(Math.round((completed / validated.length) * 100));
+      this.csvValidatedRows.set([...validated]);
+    }
+
+    this.csvValidating.set(false);
+    if (!this.csvCancelled()) {
+      this.csvStep.set('done');
+      const found = validated.filter(r => r.status === 'found').length;
+      this.toast.success(`Validation complete: ${found} of ${validated.length} account(s) found`);
+    }
+  }
+
+  csvCancelValidation(): void {
+    this.csvCancelled.set(true);
+  }
+
+  csvAddToBasket(): void {
+    const validRows = this.csvValidatedRows().filter(r => r.status === 'found');
+    if (validRows.length === 0) {
+      this.toast.error('No valid accounts to add');
+      return;
+    }
+
+    let addedCount = 0;
+    const existingAccNos = new Set(
+      this.basket.items()
+        .filter(i => i.type === 'account' && i.accountData)
+        .map(i => i.accountData!.accountNumber)
+    );
+
+    for (const row of validRows) {
+      const accNo = row.rawApiData?.accountNumber || row.rawApiData?.accountNo || row.accountNo;
+      if (existingAccNos.has(accNo)) continue;
+
+      const merged = row.rawApiData || {};
+      const meterNo = merged.meterNo || merged.prepaidMeterNo || merged.meter_No || '';
+
+      const item: BasketItem = {
+        id: crypto.randomUUID(),
+        type: 'account',
+        label: row.name,
+        description: `${accNo} — ${row.address}`,
+        amountDue: row.outstandingAmount,
+        amountToPay: row.amount,
+        accountData: {
+          accountId: row.accountId,
+          accountNumber: accNo,
+          name: row.name,
+          address: row.address,
+          billId: merged.billId || merged.bill_ID || 0,
+          cutOffID: merged.cutOffID || merged.cutoff_ID || 0,
+          cutOffAmount: merged.cutOffAmount || 0,
+          debtAmount: merged.debtAmount || 0,
+          debtArrangementId: merged.debtArrangementId || merged.debtArrangement_ID || 0,
+          sundryDebtorsId: merged.sundryDebtorsId || merged.sundryDebtors_ID || 0,
+          billingCycleId: merged.billingCycleId || merged.billingCycle_ID || 0,
+          hasPrepaidMeter: !!meterNo,
+          prepaidMeterNo: meterNo,
+          originalData: merged,
+        },
+      };
+
+      this.basket.addItem(item);
+      existingAccNos.add(accNo);
+      addedCount++;
+    }
+
+    this.toast.success(`Added ${addedCount} account(s) to basket with pre-filled amounts`);
+    this.closeCsvImport();
+  }
+
+  csvDownloadTemplate(): void {
+    const template = 'AccountNumber,Amount,ReceiptDate\n001234567,150.00,\n009876543,250.50,\n';
+    const blob = new Blob([template], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'pos_import_template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  csvChangeFile(): void {
+    this.csvStep.set('upload');
+    this.csvParsedRows.set([]);
+    this.csvValidatedRows.set([]);
+    this.csvPage.set(1);
+  }
+
+  getCsvPreviewPage(): CsvImportRow[] {
+    const start = (this.csvPage() - 1) * this.csvPageSize;
+    return this.csvParsedRows().slice(start, start + this.csvPageSize);
+  }
+
+  getCsvValidatedPage(): CsvValidatedRow[] {
+    const start = (this.csvPage() - 1) * this.csvPageSize;
+    return this.csvValidatedRows().slice(start, start + this.csvPageSize);
+  }
+
+  csvTotalPages(): number {
+    const rows = this.csvStep() === 'preview' ? this.csvParsedRows() : this.csvValidatedRows();
+    return Math.max(1, Math.ceil(rows.length / this.csvPageSize));
+  }
+
+  csvPrevPage(): void {
+    if (this.csvPage() > 1) this.csvPage.update(p => p - 1);
+  }
+
+  csvNextPage(): void {
+    if (this.csvPage() < this.csvTotalPages()) this.csvPage.update(p => p + 1);
+  }
+
+  formatDate(val: string | null): string {
+    if (!val) return '-';
+    try {
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return val;
+      return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+    } catch { return val; }
   }
 }
