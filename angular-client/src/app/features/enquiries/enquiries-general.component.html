@@ -3598,54 +3598,145 @@
         <!-- Billed vs Paid Tab -->
         @if (activeTab() === 'billed-vs-paid') {
           <div class="tab-panel" data-testid="tab-billed-vs-paid">
-            <div class="detail-section">
-              <div class="section-header-bar">📊 Billed vs Paid</div>
-              @if (tabData()?.billedVsPaid?.length) {
-                <div class="table-container">
-                  <table class="data-table">
-                    <thead>
-                      <tr>
-                        <th>Period</th>
-                        <th>Service</th>
-                        <th class="amount-cell">Billed</th>
-                        <th class="amount-cell">Paid</th>
-                        <th class="amount-cell">Variance</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (row of tabData()?.billedVsPaid; track $index) {
-                        <tr>
-                          <td>{{ safeStr(row.period || row.billingPeriod || row.month) }}</td>
-                          <td>{{ safeStr(row.serviceType || row.serviceTypeDesc || row.description) }}</td>
-                          <td class="amount-cell">{{ formatCurrency(row.billedAmount || row.billed || row.debit || 0) }}</td>
-                          <td class="amount-cell">{{ formatCurrency(row.paidAmount || row.paid || row.credit || 0) }}</td>
-                          <td class="amount-cell" [class.text-danger]="(row.billedAmount || row.billed || 0) - (row.paidAmount || row.paid || 0) > 0">
-                            {{ formatCurrency((row.billedAmount || row.billed || row.debit || 0) - (row.paidAmount || row.paid || row.credit || 0)) }}
-                          </td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
-              } @else if (tabData()?.balance?.length) {
-                <div class="detail-grid-2">
-                  @for (svc of tabData()?.balance; track $index) {
-                    <div class="detail-card">
-                      <div class="detail-card-title">{{ safeStr(svc.serviceTypeDesc || svc.serviceType || 'Service ' + ($index + 1)) }}</div>
-                      <div class="detail-row"><span class="detail-label">Current:</span><span class="detail-value font-mono">R {{ formatCurrency(svc.current || 0) }}</span></div>
-                      <div class="detail-row"><span class="detail-label">30 Days:</span><span class="detail-value font-mono">R {{ formatCurrency(svc.days30 || 0) }}</span></div>
-                      <div class="detail-row"><span class="detail-label">60 Days:</span><span class="detail-value font-mono">R {{ formatCurrency(svc.days60 || 0) }}</span></div>
-                      <div class="detail-row"><span class="detail-label">90+ Days:</span><span class="detail-value font-mono">R {{ formatCurrency((svc.days90 || 0) + (svc.days120 || 0) + (svc.days150 || 0)) }}</span></div>
-                      <div class="detail-row"><span class="detail-label">Total Outstanding:</span><span class="detail-value font-mono font-bold">R {{ formatCurrency(svc.totalOutStanding || svc.totalOutstanding || 0) }}</span></div>
+            @if (tabData()?.billedVsPaid?.length || tabData()?.balance?.length) {
+              <div class="bvp-dashboard">
+
+                <div class="bvp-hero-row">
+                  <div class="bvp-hero-card bvp-hero-billed">
+                    <div class="bvp-hero-icon">📤</div>
+                    <div class="bvp-hero-content">
+                      <span class="bvp-hero-label">Total Billed</span>
+                      <span class="bvp-hero-amount">R {{ formatCurrency(getBvpTotalBilled()) }}</span>
                     </div>
-                  }
+                  </div>
+                  <div class="bvp-hero-card bvp-hero-paid">
+                    <div class="bvp-hero-icon">📥</div>
+                    <div class="bvp-hero-content">
+                      <span class="bvp-hero-label">Total Paid</span>
+                      <span class="bvp-hero-amount">R {{ formatCurrency(getBvpTotalPaid()) }}</span>
+                    </div>
+                  </div>
+                  <div class="bvp-hero-card" [class.bvp-hero-surplus]="getBvpVariance() <= 0" [class.bvp-hero-deficit]="getBvpVariance() > 0">
+                    <div class="bvp-hero-icon">{{ getBvpVariance() > 0 ? '⚠️' : '✅' }}</div>
+                    <div class="bvp-hero-content">
+                      <span class="bvp-hero-label">{{ getBvpVariance() > 0 ? 'Outstanding Variance' : 'Surplus / Credit' }}</span>
+                      <span class="bvp-hero-amount">R {{ formatCurrency(Math.abs(getBvpVariance())) }}</span>
+                    </div>
+                  </div>
+                  <div class="bvp-hero-card bvp-hero-rate">
+                    <div class="bvp-hero-icon">📊</div>
+                    <div class="bvp-hero-content">
+                      <span class="bvp-hero-label">Collection Rate</span>
+                      <span class="bvp-hero-amount">{{ getBvpCollectionRate() }}%</span>
+                    </div>
+                    <div class="bvp-rate-bar-bg">
+                      <div class="bvp-rate-bar-fill" [style.width.%]="Math.min(getBvpCollectionRate(), 100)" [class.bvp-rate-good]="getBvpCollectionRate() >= 80" [class.bvp-rate-warn]="getBvpCollectionRate() >= 50 && getBvpCollectionRate() < 80" [class.bvp-rate-bad]="getBvpCollectionRate() < 50"></div>
+                    </div>
+                  </div>
                 </div>
-              } @else {
-                <div class="empty-state">
-                  <p class="empty-text">No billed vs paid data available</p>
-                </div>
-              }
-            </div>
+
+                @if (getBvpInsights().length) {
+                  <div class="bvp-insights">
+                    @for (insight of getBvpInsights(); track $index) {
+                      <div class="bvp-insight-item" [class.bvp-insight-warn]="insight.type === 'warning'" [class.bvp-insight-good]="insight.type === 'good'" [class.bvp-insight-info]="insight.type === 'info'">
+                        <span class="bvp-insight-icon">{{ insight.icon }}</span>
+                        <span class="bvp-insight-text">{{ insight.text }}</span>
+                      </div>
+                    }
+                  </div>
+                }
+
+                @if (tabData()?.billedVsPaid?.length) {
+                  <div class="bvp-section">
+                    <div class="bvp-section-title">Service Comparison</div>
+                    <div class="bvp-bars-grid">
+                      @for (row of tabData()?.billedVsPaid; track $index) {
+                        <div class="bvp-bar-card" [attr.data-testid]="'bvp-service-' + $index">
+                          <div class="bvp-bar-header">
+                            <span class="bvp-bar-name">{{ safeStr(row.serviceType || row.serviceTypeDesc || row.description || 'Service ' + ($index + 1)) }}</span>
+                            <span class="bvp-bar-period">{{ safeStr(row.period || row.billingPeriod || row.month || '') }}</span>
+                          </div>
+                          <div class="bvp-bar-amounts">
+                            <div class="bvp-bar-row">
+                              <span class="bvp-bar-label">Billed</span>
+                              <div class="bvp-bar-track">
+                                <div class="bvp-bar-segment bvp-bar-billed" [style.width.%]="getBvpBarWidth(row, 'billed')"></div>
+                              </div>
+                              <span class="bvp-bar-val">R {{ formatCurrency(getBvpRowBilled(row)) }}</span>
+                            </div>
+                            <div class="bvp-bar-row">
+                              <span class="bvp-bar-label">Paid</span>
+                              <div class="bvp-bar-track">
+                                <div class="bvp-bar-segment bvp-bar-paid" [style.width.%]="getBvpBarWidth(row, 'paid')"></div>
+                              </div>
+                              <span class="bvp-bar-val">R {{ formatCurrency(getBvpRowPaid(row)) }}</span>
+                            </div>
+                          </div>
+                          <div class="bvp-bar-footer">
+                            <span class="bvp-bar-variance" [class.bvp-var-deficit]="getBvpRowBilled(row) - getBvpRowPaid(row) > 0" [class.bvp-var-surplus]="getBvpRowBilled(row) - getBvpRowPaid(row) <= 0">
+                              {{ getBvpRowBilled(row) - getBvpRowPaid(row) > 0 ? 'Shortfall' : 'Covered' }}: R {{ formatCurrency(Math.abs(getBvpRowBilled(row) - getBvpRowPaid(row))) }}
+                            </span>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+
+                @if (tabData()?.balance?.length) {
+                  <div class="bvp-section">
+                    <div class="bvp-section-title">Aging Analysis by Service</div>
+                    <div class="bvp-aging-table-wrap">
+                      <table class="bvp-aging-table">
+                        <thead>
+                          <tr>
+                            <th class="bvp-aging-th">Service</th>
+                            <th class="bvp-aging-th bvp-aging-amt">Current</th>
+                            <th class="bvp-aging-th bvp-aging-amt">30 Days</th>
+                            <th class="bvp-aging-th bvp-aging-amt">60 Days</th>
+                            <th class="bvp-aging-th bvp-aging-amt">90 Days</th>
+                            <th class="bvp-aging-th bvp-aging-amt">120 Days</th>
+                            <th class="bvp-aging-th bvp-aging-amt">150+ Days</th>
+                            <th class="bvp-aging-th bvp-aging-amt bvp-aging-total">Total Outstanding</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (svc of tabData()?.balance; track $index) {
+                            <tr class="bvp-aging-row" [attr.data-testid]="'bvp-aging-' + $index">
+                              <td class="bvp-aging-td bvp-aging-name">{{ safeStr(svc.serviceTypeDesc || svc.serviceType || 'Service ' + ($index + 1)) }}</td>
+                              <td class="bvp-aging-td bvp-aging-amt">R {{ formatCurrency(svc.current || 0) }}</td>
+                              <td class="bvp-aging-td bvp-aging-amt" [class.bvp-overdue]="(svc.days30 || 0) > 0">R {{ formatCurrency(svc.days30 || 0) }}</td>
+                              <td class="bvp-aging-td bvp-aging-amt" [class.bvp-overdue]="(svc.days60 || 0) > 0">R {{ formatCurrency(svc.days60 || 0) }}</td>
+                              <td class="bvp-aging-td bvp-aging-amt" [class.bvp-overdue]="(svc.days90 || 0) > 0">R {{ formatCurrency(svc.days90 || 0) }}</td>
+                              <td class="bvp-aging-td bvp-aging-amt" [class.bvp-overdue]="(svc.days120 || 0) > 0">R {{ formatCurrency(svc.days120 || 0) }}</td>
+                              <td class="bvp-aging-td bvp-aging-amt" [class.bvp-overdue]="((svc.days150 || 0) + (svc.untill360 || 0)) > 0">R {{ formatCurrency((svc.days150 || 0) + (svc.untill360 || 0)) }}</td>
+                              <td class="bvp-aging-td bvp-aging-amt bvp-aging-total-cell">R {{ formatCurrency(svc.totalOutStanding || svc.totalOutstanding || 0) }}</td>
+                            </tr>
+                          }
+                        </tbody>
+                        <tfoot>
+                          <tr class="bvp-aging-footer">
+                            <td class="bvp-aging-td bvp-aging-name">TOTAL</td>
+                            <td class="bvp-aging-td bvp-aging-amt">R {{ formatCurrency(getBvpAgingTotal('current')) }}</td>
+                            <td class="bvp-aging-td bvp-aging-amt">R {{ formatCurrency(getBvpAgingTotal('days30')) }}</td>
+                            <td class="bvp-aging-td bvp-aging-amt">R {{ formatCurrency(getBvpAgingTotal('days60')) }}</td>
+                            <td class="bvp-aging-td bvp-aging-amt">R {{ formatCurrency(getBvpAgingTotal('days90')) }}</td>
+                            <td class="bvp-aging-td bvp-aging-amt">R {{ formatCurrency(getBvpAgingTotal('days120')) }}</td>
+                            <td class="bvp-aging-td bvp-aging-amt">R {{ formatCurrency(getBvpAgingTotal('days150')) }}</td>
+                            <td class="bvp-aging-td bvp-aging-amt bvp-aging-total-cell">R {{ formatCurrency(getBvpAgingTotal('total')) }}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="empty-state">
+                <div class="empty-icon">📊</div>
+                <p class="empty-text">No billed vs paid data available for this account</p>
+              </div>
+            }
           </div>
         }
 
