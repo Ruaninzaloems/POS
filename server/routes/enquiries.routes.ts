@@ -409,6 +409,11 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
 
       if (supervisorRoutes[mappedEndpoint]) {
         const data = await platinumGet(session, `/api/BillingEnquiry/${supervisorRoutes[mappedEndpoint]}`, queryParams);
+        if (mappedEndpoint === 'property-details-by-account') {
+          const sample = Array.isArray(data) ? data[0] : data;
+          console.log(`[billing-enquiry] PropertyDetailsByAccount keys:`, sample ? Object.keys(sample) : 'empty/null', `isArray=${Array.isArray(data)}`);
+          if (sample) console.log(`[billing-enquiry] PropertyDetailsByAccount sample:`, JSON.stringify(sample).substring(0, 500));
+        }
         if (mappedEndpoint === 'total-balance-debt' || mappedEndpoint === 'service-type-balance') {
           const sample = Array.isArray(data) ? data[0] : data;
           console.log(`[billing-enquiry] ${mappedEndpoint} queryParams:`, JSON.stringify(queryParams));
@@ -430,6 +435,9 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
 
       if (mappedEndpoint === "get-contact-details") {
         const data = await platinumGet(session, "/api/billing/account-management/get-contact-details", queryParams);
+        const sample = Array.isArray(data) ? data[0] : data;
+        console.log(`[billing-enquiry] get-contact-details keys:`, sample ? Object.keys(sample) : 'empty/null');
+        if (sample) console.log(`[billing-enquiry] get-contact-details sample:`, JSON.stringify(sample).substring(0, 500));
         return handlePlatinumResult(res, data);
       }
 

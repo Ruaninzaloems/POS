@@ -901,15 +901,33 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       let data: any = null;
       switch (tab) {
         case 'account':
-          const [basic, accountInfo, propDetails] = await Promise.allSettled([
+          const [basic, accountInfo, acctPropDetails, acctContactInfo] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/basic-account-details/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-info-result/${accountId}`)),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/get-contact-details/${accountId}`)),
           ]);
+          const basicVal = basic.status === 'fulfilled' ? (Array.isArray(basic.value) ? basic.value[0] : basic.value) : null;
+          const airVal = accountInfo.status === 'fulfilled' ? (Array.isArray(accountInfo.value) ? accountInfo.value[0] : accountInfo.value) : null;
+          const acctPropVal = acctPropDetails.status === 'fulfilled' ? (Array.isArray(acctPropDetails.value) ? acctPropDetails.value[0] : acctPropDetails.value) : null;
+          const acctContactVal = acctContactInfo.status === 'fulfilled' ? (Array.isArray(acctContactInfo.value) ? acctContactInfo.value[0] : acctContactInfo.value) : null;
+          if (basicVal) console.log('[account] basic keys:', Object.keys(basicVal));
+          if (airVal) console.log('[account] accountInfo keys:', Object.keys(airVal));
+          if (acctPropVal) console.log('[account] property keys:', Object.keys(acctPropVal));
+          if (acctContactVal) console.log('[account] contact keys:', Object.keys(acctContactVal));
+          const mergedBasic = { ...basicVal, ...airVal };
+          if (acctContactVal) {
+            if (acctContactVal.contactNo || acctContactVal.contactNumber || acctContactVal.cellPhoneNo || acctContactVal.cellPhone) {
+              mergedBasic['contactNo'] = acctContactVal.contactNo || acctContactVal.contactNumber || acctContactVal.cellPhoneNo || acctContactVal.cellPhone || '';
+            }
+            if (acctContactVal.emailId || acctContactVal.email || acctContactVal.emailAddress) {
+              mergedBasic['emailId'] = acctContactVal.emailId || acctContactVal.email || acctContactVal.emailAddress || '';
+            }
+          }
           data = {
-            basic: basic.status === 'fulfilled' ? basic.value : null,
-            accountInfo: accountInfo.status === 'fulfilled' ? accountInfo.value : null,
-            property: propDetails.status === 'fulfilled' ? (Array.isArray(propDetails.value) ? propDetails.value[0] : propDetails.value) : null,
+            basic: mergedBasic,
+            accountInfo: airVal,
+            property: acctPropVal,
           };
           break;
 
@@ -935,7 +953,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
         case 'property':
           const [prop, consUnit, rates, meters, transfers] = await Promise.allSettled([
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/consumption-units/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-rates-details/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/metered-services-on-account/${accountId}`)),
