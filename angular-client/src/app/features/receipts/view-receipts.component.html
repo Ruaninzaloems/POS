@@ -324,6 +324,9 @@
                                 <div class="detail-pair"><span class="detail-key">Allocation Date</span><span class="detail-val">{{ formatDateOnly(item.billingAllocationDate || '') }}</span></div>
                                 <div class="detail-pair"><span class="detail-key">Date Captured</span><span class="detail-val">{{ formatDateOnly(item.dateCaptured || '') }}</span></div>
                                 <div class="detail-pair"><span class="detail-key">Processing Time</span><span class="detail-val">{{ getDaysBetween(item.bankStatementDate, item.billingAllocationDate) }}</span></div>
+                                @if (getAllocatedByUser(item)) {
+                                  <div class="detail-pair"><span class="detail-key">Allocated By</span><span class="detail-val">{{ getAllocatedByUser(item) }}</span></div>
+                                }
                               </div>
                             </div>
                           </div>

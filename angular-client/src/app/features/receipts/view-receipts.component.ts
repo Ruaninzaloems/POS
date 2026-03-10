@@ -386,6 +386,10 @@ export class ViewReceiptsComponent implements OnInit {
     try {
       const results: any = await firstValueFrom(this.api.get('/api/platinum/billing-enquiry/search-by-bank-statement-note', { searchText: this.bankNoteSearchText() }));
       const items = Array.isArray(results) ? results : (results?.items || results?.value || results?.data || []);
+      if (items.length > 0) {
+        console.log('[BankStatementNote] First result keys:', Object.keys(items[0]));
+        console.log('[BankStatementNote] First result:', JSON.stringify(items[0]));
+      }
       this.bankNoteResults.set(items);
       if (items.length === 0) {
         this.toast.info(`No bank statement notes found matching "${this.bankNoteSearchText()}".`);
@@ -561,6 +565,14 @@ export class ViewReceiptsComponent implements OnInit {
     } catch { return dateStr; }
   }
 
+  getAllocatedByUser(item: any): string {
+    return item.cashierName || item.CashierName || item.cashier || item.Cashier
+      || item.userName || item.UserName || item.user_name
+      || item.capturedByUserName || item.CapturedByUserName
+      || item.allocatedBy || item.AllocatedBy
+      || item.createdBy || item.CreatedBy || '';
+  }
+
   getDaysBetween(date1: string, date2: string): string {
     if (!date1 || !date2) return '-';
     try {
@@ -594,6 +606,7 @@ export class ViewReceiptsComponent implements OnInit {
     const cashbookDoc = this.escHtml(item.cashbookDocumentNumber || '-');
     const cashbookName = this.escHtml(item.cashbookDescription || item.CashbookDescription || item.cashbookName || '-');
     const miscGroup = this.escHtml(item.miscPaymentGroupDescription || '-');
+    const allocatedByUser = this.escHtml(this.getAllocatedByUser(item));
 
     printWindow.document.write(`<!DOCTYPE html><html><head><title>Bank Statement Allocation - ${receiptNo}</title>
       <style>
@@ -643,6 +656,7 @@ export class ViewReceiptsComponent implements OnInit {
           <div class="detail-item"><span class="detail-label">Paid Amount</span><span class="detail-value mono">${paidAmount}</span></div>
           <div class="detail-item"><span class="detail-label">Allocation Date</span><span class="detail-value">${allocDate}</span></div>
           <div class="detail-item"><span class="detail-label">Allocation Status</span><span class="detail-value"><span class="status-badge ${status.toLowerCase().includes('account') ? 'status-allocated' : status.toLowerCase().includes('misc') ? 'status-misc' : status.toLowerCase().includes('not allocated in') ? 'status-unallocated' : 'status-not'}">${status}</span></span></div>
+          ${allocatedByUser ? `<div class="detail-item"><span class="detail-label">Allocated By</span><span class="detail-value">${allocatedByUser}</span></div>` : ''}
           ${miscGroup !== '-' ? `<div class="detail-item"><span class="detail-label">Misc Payment Group</span><span class="detail-value">${miscGroup}</span></div>` : ''}
         </div>
       </div>
@@ -668,7 +682,7 @@ export class ViewReceiptsComponent implements OnInit {
   exportBankResults(): void {
     const results = this.filteredBankNoteResults();
     if (!results || results.length === 0) return;
-    const headers = ['Bank Statement Note','Bank Amount','Bank Date','Receipt No','Account ID','Paid Amount','Allocation Date','Allocation Status','Cashbook Doc','Cashbook Name'];
+    const headers = ['Bank Statement Note','Bank Amount','Bank Date','Receipt No','Account ID','Paid Amount','Allocation Date','Allocation Status','Allocated By','Cashbook Doc','Cashbook Name'];
     const rows = results.map((r: any) => [
       r.bankStatementNote || r.description || '',
       Number(r.bankAmount) || 0,
@@ -678,6 +692,7 @@ export class ViewReceiptsComponent implements OnInit {
       Number(r.paidAmount) || 0,
       this.formatDateOnly(r.billingAllocationDate || ''),
       r.allocationStatus || '',
+      this.getAllocatedByUser(r),
       r.cashbookDocumentNumber || '',
       r.cashbookDescription || r.CashbookDescription || r.cashbookName || ''
     ]);
