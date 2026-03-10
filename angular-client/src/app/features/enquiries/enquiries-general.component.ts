@@ -438,6 +438,24 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             delete (item as any)._fromAutocomplete;
           }
         }
+
+        if (!item.sgNumber && id) {
+          try {
+            const unitResult = await this.withTimeout(
+              firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/consumption-units/${id}`)), 6000
+            );
+            if (this.quickSearchToken !== token) return;
+            const units = this.normalizeArray(unitResult);
+            if (units.length > 0) {
+              const sg = units[0].sgNumber || units[0].sg_number || units[0].sgNo || units[0].lpiCode;
+              if (sg) {
+                item.sgNumber = sg;
+                console.log('[enrich] SG from cons_unit for', id, ':', sg);
+              }
+              if (!item.unitID && units[0].unit_ID) (item as any).unitID = units[0].unit_ID;
+            }
+          } catch {}
+        }
       } catch {}
     });
 
@@ -1435,5 +1453,86 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   isSummaryTotalRow(row: any): boolean {
     const desc = this.getSummaryDescription(row).toLowerCase();
     return desc === 'total' || desc === 'closing balance' || desc === 'receipts' || desc === 'opening balance';
+  }
+
+  private static readonly SA_PROVINCE_MAP: Record<string, string> = {
+    'C': 'Western Cape', 'T': 'Gauteng', 'N': 'KwaZulu-Natal',
+    'F': 'Free State', 'K': 'Eastern Cape', 'L': 'Limpopo',
+    'J': 'Mpumalanga', 'Q': 'North West', 'B': 'Northern Cape',
+  };
+
+  parseSgNumber(sg: string): { erf: string; portion: string; town: string; province: string; regDiv: string; raw: string } | null {
+    if (!sg) return null;
+    let clean = sg.replace(/\s/g, '');
+
+    const compactMatch = clean.match(/^([A-Za-z])(\d{3})(\d{4})(\d{8})(\d{5})$/);
+    if (compactMatch) {
+      clean = `${compactMatch[1]}${compactMatch[2]}/${compactMatch[3]}/${compactMatch[4]}/${compactMatch[5]}`;
+    }
+
+    const match4 = clean.match(/^([A-Za-z])(\d{3})\/(\d{4})\/(\d+)\/(\d+)$/);
+    if (match4) {
+      const provinceCode = match4[1].toUpperCase();
+      const regDiv = match4[2];
+      const erfNum = parseInt(match4[4], 10);
+      const portionNum = parseInt(match4[5], 10);
+      if (erfNum === 0) return null;
+      return {
+        erf: String(erfNum),
+        portion: portionNum === 0 ? 'Remainder' : String(portionNum),
+        town: this.getRegDivTown(regDiv, provinceCode),
+        province: EnquiriesGeneralComponent.SA_PROVINCE_MAP[provinceCode] || provinceCode,
+        regDiv,
+        raw: sg,
+      };
+    }
+
+    const match3 = clean.match(/^([A-Za-z])(\d{3})\/(\d+)\/(\d+)$/);
+    if (match3) {
+      const provinceCode = match3[1].toUpperCase();
+      const regDiv = match3[2];
+      const erfNum = parseInt(match3[3], 10);
+      const portionNum = parseInt(match3[4], 10);
+      if (erfNum === 0) return null;
+      return {
+        erf: String(erfNum),
+        portion: portionNum === 0 ? 'Remainder' : String(portionNum),
+        town: this.getRegDivTown(regDiv, provinceCode),
+        province: EnquiriesGeneralComponent.SA_PROVINCE_MAP[provinceCode] || provinceCode,
+        regDiv,
+        raw: sg,
+      };
+    }
+
+    return null;
+  }
+
+  private getRegDivTown(regDiv: string, provinceCode: string): string {
+    const knownDivisions: Record<string, string> = {
+      'C027': 'George', 'C028': 'Oudtshoorn', 'C024': 'Mossel Bay',
+      'C030': 'Knysna', 'C032': 'Plettenberg Bay', 'C001': 'Cape Town',
+      'C006': 'Stellenbosch', 'C009': 'Paarl', 'C002': 'Wynberg',
+      'C021': 'Worcester', 'C003': 'Simon\'s Town', 'C026': 'Riversdale',
+      'C029': 'Uniondale', 'C031': 'Humansdorp', 'C025': 'Heidelberg',
+      'T001': 'Johannesburg', 'T002': 'Pretoria', 'N001': 'Durban',
+      'F001': 'Bloemfontein', 'K001': 'East London', 'K002': 'Port Elizabeth',
+    };
+    const key = provinceCode + regDiv;
+    return knownDivisions[key] || '';
+  }
+
+  formatSgBreakdown(sg: string): string {
+    const parsed = this.parseSgNumber(sg);
+    if (!parsed) return sg || '';
+    let result = `Erf ${parsed.erf}`;
+    if (parsed.portion !== 'Remainder') {
+      result += ` Ptn ${parsed.portion}`;
+    } else {
+      result += ' (RE)';
+    }
+    if (parsed.town) {
+      result += `, ${parsed.town}`;
+    }
+    return result;
   }
 }

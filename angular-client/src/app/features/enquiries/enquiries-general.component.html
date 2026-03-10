@@ -181,6 +181,9 @@
                 <div class="section-header-bar">🏠 Property Details</div>
                 <div class="detail-grid">
                   <div class="detail-item"><div class="detail-label">SG Number</div><div class="detail-value mono">{{ safeStr(getAccountProp()['sgNumber']) }}</div></div>
+                  @if (getAccountProp()['sgNumber']) {
+                    <div class="detail-item"><div class="detail-label">Property (Erf)</div><div class="detail-value">{{ formatSgBreakdown(getAccountProp()['sgNumber']) }}</div></div>
+                  }
                   <div class="detail-item"><div class="detail-label">Street Address</div><div class="detail-value">{{ safeStr(getAccountProp()['streetNumber'] ? getAccountProp()['streetNumber'] + ' ' + getAccountProp()['streetName'] : getAccountProp()['streetName']) }}</div></div>
                   <div class="detail-item"><div class="detail-label">Town</div><div class="detail-value">{{ safeStr(getAccountProp()['town']) }}</div></div>
                   <div class="detail-item"><div class="detail-label">Market Value</div><div class="detail-value mono accent">R {{ formatCurrency(getAccountProp()['marketValue']) }}</div></div>
@@ -265,6 +268,9 @@
                 <div class="detail-grid">
                   <div class="detail-item"><div class="detail-label">Property ID</div><div class="detail-value mono">{{ safeStr(tabData()?.property?.propertyId || tabData()?.property?.property_ID || tabData()?.consUnit?.unit_ID) }}</div></div>
                   <div class="detail-item"><div class="detail-label">SG Number</div><div class="detail-value mono">{{ safeStr(tabData()?.property?.sgNumber || tabData()?.consUnit?.sgNumber) }}</div></div>
+                  @if (tabData()?.property?.sgNumber || tabData()?.consUnit?.sgNumber) {
+                    <div class="detail-item"><div class="detail-label">Property (Erf)</div><div class="detail-value">{{ formatSgBreakdown(tabData()?.property?.sgNumber || tabData()?.consUnit?.sgNumber) }}</div></div>
+                  }
                   <div class="detail-item"><div class="detail-label">Street Address</div><div class="detail-value">{{ safeStr(tabData()?.property?.streetNumber ? tabData()?.property?.streetNumber + ' ' + tabData()?.property?.streetName : tabData()?.property?.streetName) }}</div></div>
                   <div class="detail-item"><div class="detail-label">Suburb</div><div class="detail-value">{{ safeStr(tabData()?.property?.subSuburb || tabData()?.property?.suburb) }}</div></div>
                   <div class="detail-item"><div class="detail-label">Town</div><div class="detail-value">{{ safeStr(tabData()?.property?.town) }}</div></div>
@@ -1273,6 +1279,13 @@
                           {{ (account.locationAddress || account.address || account.deliveryAddress || '').replace('\r\n', ', ') }}
                         </div>
                       }
+                      @if (account.sgNumber) {
+                        <div class="dropdown-sg-line">
+                          <span class="sg-icon">📐</span>
+                          <span class="sg-code">{{ account.sgNumber }}</span>
+                          <span class="sg-breakdown">{{ formatSgBreakdown(account.sgNumber) }}</span>
+                        </div>
+                      }
                       @if (account.idRegistrationNumber) {
                         <div class="dropdown-id">ID: {{ account.idRegistrationNumber }}</div>
                       }
@@ -1383,10 +1396,14 @@
                   R {{ formatCurrency(getOutstanding(account)) }}
                 </div>
               </div>
+              @if (account.sgNumber) {
+                <div class="result-card-sg">
+                  <span class="sg-icon-sm">📐</span>
+                  <span class="sg-code-sm">{{ account.sgNumber }}</span>
+                  <span class="sg-breakdown-sm">{{ formatSgBreakdown(account.sgNumber) }}</span>
+                </div>
+              }
               <div class="result-card-meta">
-                @if (account.sgNumber) {
-                  <span class="meta-tag"><span class="meta-label">SG:</span> {{ account.sgNumber }}</span>
-                }
                 @if (account.unitID) {
                   <span class="meta-tag"><span class="meta-label">Unit:</span> {{ account.unitID }}</span>
                 }
@@ -1446,7 +1463,7 @@
                         R {{ formatCurrency(getOutstanding(account)) }}
                       </span>
                     </td>
-                    <td class="mono muted address-cell">{{ account.sgNumber || '-' }}</td>
+                    <td class="mono muted address-cell" [title]="account.sgNumber ? formatSgBreakdown(account.sgNumber) : ''">{{ account.sgNumber || '-' }}@if (account.sgNumber) {<br><span class="sg-breakdown-sm">{{ formatSgBreakdown(account.sgNumber) }}</span>}</td>
                     <td class="mono muted">{{ account.unitID || '-' }}</td>
                     <td class="mono muted">{{ account.oldAccountCode || '-' }}</td>
                     <td class="text-center">
