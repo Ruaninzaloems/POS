@@ -1601,7 +1601,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   async loadDetailedTransactions() {
     const account = this.selectedAccount();
     if (!account) return;
-    const accountId = account['accountId'] || account['account_ID'];
+    const accountId = this.getAccountId(account);
     const finYear = this.detailFinYear() || this.userFinYear();
     const month = this.detailMonth();
     if (!finYear) return;
@@ -1656,7 +1656,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.detailTxnLoading.set(true);
 
     const account = this.selectedAccount();
-    const accountId = account?.['accountId'] || account?.['account_ID'];
+    const accountId = this.getAccountId(account);
     const drilldown = (txn.drilldown || '').toLowerCase();
     const pId = txn.primaryId != null ? String(txn.primaryId) : null;
     const pIdNum = pId ? parseInt(pId) : 0;
@@ -1773,7 +1773,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.consumptionChartData.set([]);
     this.consumptionInsights.set(null);
     const account = this.selectedAccount();
-    const accountId = account?.['accountId'] || account?.['account_ID'];
+    const accountId = this.getAccountId(account);
     const meterNo = meter.physicalMeterNo || meter.meterNo || meter.meterNumber || '';
     try {
       const [historyRes, barRes] = await Promise.allSettled([
@@ -1949,7 +1949,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   async generateStatement() {
     const account = this.selectedAccount();
     if (!account) return;
-    const accountId = account['accountId'] || account['accountID'];
+    const accountId = this.getAccountId(account);
     if (!accountId) return;
     this.stmtGenerating.set(true);
     this.stmtGenerated.set(null);
@@ -1983,7 +1983,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   async sendStatement(method: 'email' | 'sms') {
     const account = this.selectedAccount();
     if (!account) return;
-    const accountId = account['accountId'] || account['accountID'];
+    const accountId = this.getAccountId(account);
     if (!accountId) return;
     if (method === 'email' && !this.stmtEmail()) {
       this.toast.show('Please enter an email address', 'error');
@@ -2046,7 +2046,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.meterConvHistory.set([]);
     this.meterConvInsights.set(null);
     const account = this.selectedAccount();
-    const accountId = account?.['accountId'] || account?.['account_ID'];
+    const accountId = this.getAccountId(account);
     const meterNo = meter.physicalMeterNo || meter.meterNo || meter.meterNumber || '';
     try {
       const res = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history`, { accountId: String(accountId), meterNo }));
@@ -2065,7 +2065,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.meterPrepaidSales.set([]);
     this.meterPrepaidStats.set(null);
     const account = this.selectedAccount();
-    const accountId = account?.['accountId'] || account?.['account_ID'];
+    const accountId = this.getAccountId(account);
     const meterNo = meter.physicalMeterNo || meter.meterNo || meter.meterNumber || meter.meter_ID || '';
     try {
       const res = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/prepaid-recharge-details-for-meter`, { accountId: String(accountId), meterNo }));
