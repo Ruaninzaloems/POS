@@ -270,6 +270,13 @@
 .detail-section { margin-bottom: 1rem; }
 .section-header-bar { font-size: 0.8rem; font-weight: 700; padding: 0.625rem 0.75rem; background: #fff; border: 1px solid #D6D6D6; border-radius: 0.5rem 0.5rem 0 0; border-bottom: 2px solid var(--pos-accent); color: var(--pos-text); }
 .detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0; background: #fff; border: 1px solid #D6D6D6; border-top: none; border-radius: 0 0 0.5rem 0.5rem; }
+.detail-grid.three-col { grid-template-columns: repeat(3, 1fr); border: none; border-radius: 0; }
+@media (max-width: 900px) { .detail-grid.three-col { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) { .detail-grid.three-col { grid-template-columns: 1fr; } }
+.prop-subsection-divider { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid #E5E5E5; }
+.prop-subsection-header { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--pos-text-muted); margin-bottom: 0.75rem; }
+.section-count-badge { display: inline-block; margin-left: 0.5rem; font-size: 0.7rem; font-weight: 600; background: rgba(0,0,0,0.08); color: var(--pos-text-muted); border-radius: 999px; padding: 0.1rem 0.5rem; vertical-align: middle; }
+.empty-inline { padding: 1.5rem; text-align: center; color: var(--pos-text-muted); font-size: 0.85rem; }
 .detail-item { padding: 0.625rem 0.75rem; border-bottom: 1px solid #F2F4F7; }
 .detail-label { font-size: 0.7rem; font-weight: 600; color: var(--pos-text-muted); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 0.125rem; }
 .detail-value { font-size: 0.875rem; color: var(--pos-text); word-break: break-word; }
@@ -1628,6 +1635,30 @@
   .acct-two-col { grid-template-columns: 1fr; }
   .acct-col:first-child { border-right: none; border-bottom: 1px solid rgba(15,43,70,0.06); }
   .acct-field-label { min-width: 130px; }
+}
+
+.name-tab-side-by-side {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+@media (max-width: 768px) {
+  .name-tab-side-by-side { grid-template-columns: 1fr; }
+}
+
+.clickable-row {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.clickable-row:hover {
+  background-color: rgba(15,43,70,0.04);
+}
+
+.btn-sm {
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 6px;
 }
 
 .s129-card { border-top: 3px solid rgba(245,158,11,0.3); }

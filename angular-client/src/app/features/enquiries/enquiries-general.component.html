@@ -880,46 +880,154 @@
         <!-- Property Tab -->
         @if (activeTab() === 'property') {
           <div class="tab-panel" data-testid="property-details-tab">
-            @if (tabData()?.property) {
-              <div class="detail-section">
-                <div class="section-header-bar">🏢 Property Information</div>
-                <div class="detail-grid">
-                  <div class="detail-item"><div class="detail-label">Property ID</div><div class="detail-value mono">{{ safeStr(tabData()?.property?.propertyId || tabData()?.property?.property_ID || tabData()?.consUnit?.unit_ID) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">SG Number</div><div class="detail-value mono">{{ safeStr(tabData()?.property?.sgNumber || tabData()?.consUnit?.sgNumber) }}</div></div>
-                  @if (tabData()?.property?.sgNumber || tabData()?.consUnit?.sgNumber) {
-                    <div class="detail-item"><div class="detail-label">Property (Erf)</div><div class="detail-value">{{ formatSgBreakdown(tabData()?.property?.sgNumber || tabData()?.consUnit?.sgNumber) }}</div></div>
+            @if (tabData()?.property || tabData()?.consUnit) {
+              <div class="acct-section-card">
+                <div class="acct-section-header">🏢 Property Information</div>
+                <div class="detail-grid three-col">
+                  <div class="detail-item"><div class="detail-label">Property ID</div><div class="detail-value mono" data-testid="field-property-id">{{ safeStr(tabData()?.property?.propertyId || tabData()?.property?.property_ID || tabData()?.consUnit?.unit_ID) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Erf Number</div><div class="detail-value" data-testid="field-erf-number">{{ formatSgErf(tabData()?.property?.sgNumber || tabData()?.consUnit?.sgNumber, tabData()?.property?.erfNumber || tabData()?.consUnit?.erfNumber) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Portion</div><div class="detail-value" data-testid="field-portion">{{ formatSgPortion(tabData()?.property?.sgNumber || tabData()?.consUnit?.sgNumber) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Allotment / Region Code</div><div class="detail-value" data-testid="field-allotment">{{ formatSgAllotment(tabData()?.property?.sgNumber || tabData()?.consUnit?.sgNumber) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">SG Number</div><div class="detail-value mono" data-testid="field-sg-number">{{ safeStr(tabData()?.property?.sgNumber || tabData()?.consUnit?.sgNumber) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Street Address</div><div class="detail-value" data-testid="field-street-address">{{ safeStr(tabData()?.property?.streetNumber ? tabData()?.property?.streetNumber + ' ' + tabData()?.property?.streetName : tabData()?.property?.streetName || tabData()?.consUnit?.nonStandAddLine1) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Suburb</div><div class="detail-value" data-testid="field-suburb">{{ safeStr(tabData()?.property?.subSuburb || tabData()?.property?.suburb || tabData()?.consUnit?.nonStandAddSuburb) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Town</div><div class="detail-value" data-testid="field-town">{{ safeStr(tabData()?.property?.town) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Property Type / Zoning</div><div class="detail-value" data-testid="field-property-type">{{ safeStr(tabData()?.property?.typeOfUse || tabData()?.property?.typeofUse || tabData()?.property?.townPlanningZoneType || tabData()?.property?.townPlanningZone) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Market Value</div><div class="detail-value mono accent" data-testid="field-market-value">R {{ formatCurrency(tabData()?.property?.marketValue || tabData()?.consUnit?.marketValue) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Stand Size (m²)</div><div class="detail-value" data-testid="field-stand-size">{{ formatIntValue(tabData()?.property?.standSize || tabData()?.consUnit?.standSize) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Extent (m²)</div><div class="detail-value" data-testid="field-extent">{{ formatIntValue(tabData()?.property?.extentM2 || tabData()?.property?.extent_M2 || tabData()?.consUnit?.extentM2 || tabData()?.consUnit?.extent_M2) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Land Size (ha)</div><div class="detail-value" data-testid="field-land-size">{{ safeStr(tabData()?.property?.landSize || tabData()?.consUnit?.landSize) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Rates Tariff</div><div class="detail-value" data-testid="field-rates-tariff">{{ safeStr(tabData()?.property?.ratesTariff) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Owner</div><div class="detail-value" data-testid="field-owner">{{ safeStr(tabData()?.property?.name) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Master Property</div><div class="detail-value" data-testid="field-master-property">{{ safeStr(tabData()?.property?.masterProperty) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Roll Number</div><div class="detail-value" data-testid="field-roll-number">{{ safeStr(tabData()?.property?.rollNumber) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Roll Start Date</div><div class="detail-value" data-testid="field-roll-start-date">{{ formatDate(tabData()?.property?.rollStartDate) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Expected Expiry Date</div><div class="detail-value" data-testid="field-expected-expiry">{{ formatDate(tabData()?.property?.expectedExpiryDate) }}</div></div>
+                  @if (tabData()?.property?.rdpOrReform) {
+                    <div class="detail-item"><div class="detail-label">RDP / Reform</div><div class="detail-value" data-testid="field-rdp-reform">{{ tabData()?.property?.rdpOrReform }}</div></div>
                   }
-                  <div class="detail-item"><div class="detail-label">Street Address</div><div class="detail-value">{{ safeStr(tabData()?.property?.streetNumber ? tabData()?.property?.streetNumber + ' ' + tabData()?.property?.streetName : tabData()?.property?.streetName) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Suburb</div><div class="detail-value">{{ safeStr(tabData()?.property?.subSuburb || tabData()?.property?.suburb) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Town</div><div class="detail-value">{{ safeStr(tabData()?.property?.town) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Property Type / Zoning</div><div class="detail-value">{{ safeStr(tabData()?.property?.typeOfUse || tabData()?.property?.typeofUse || tabData()?.property?.townPlanningZoneType) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Market Value</div><div class="detail-value mono accent">R {{ formatCurrency(tabData()?.property?.marketValue) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Stand Size (m²)</div><div class="detail-value">{{ safeStr(tabData()?.property?.standSize) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Owner</div><div class="detail-value">{{ safeStr(tabData()?.property?.name) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Ward</div><div class="detail-value">{{ safeStr(tabData()?.property?.ward) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Roll Number</div><div class="detail-value">{{ safeStr(tabData()?.property?.rollNumber) }}</div></div>
+                  @if (tabData()?.property?.complexName) {
+                    <div class="detail-item"><div class="detail-label">Complex</div><div class="detail-value" data-testid="field-complex">{{ tabData()?.property?.complexName }}</div></div>
+                  }
+                </div>
+
+                <div class="prop-subsection-divider"></div>
+                <div class="prop-subsection-header">🛡️ Electoral &amp; Classification Details</div>
+                <div class="detail-grid three-col">
+                  <div class="detail-item"><div class="detail-label">Ward</div><div class="detail-value" data-testid="field-ward">{{ tabData()?.consUnit?.wardID ? 'Ward ' + tabData()?.consUnit?.wardID : (tabData()?.property?.ward ? 'Ward ' + tabData()?.property?.ward : '-') }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Polling Station</div><div class="detail-value" data-testid="field-polling-station">{{ tabData()?.consUnit?.pollingStationID ? 'Station ' + tabData()?.consUnit?.pollingStationID : '-' }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Magisterial District</div><div class="detail-value" data-testid="field-magisterial-district">{{ tabData()?.consUnit?.magisterialID ? 'District ' + tabData()?.consUnit?.magisterialID : '-' }}</div></div>
+                  <div class="detail-item"><div class="detail-label">NT Property Category</div><div class="detail-value" data-testid="field-nt-category">{{ getNtPropertyCategoryDisplay(tabData()?.consUnit?.ntPropertyCategoryID, tabData()?.consUnit?.ntPropertyCategoryDescription) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Billing Cycle</div><div class="detail-value" data-testid="field-billing-cycle">{{ safeStr(tabData()?.consUnit?.billingCycleID) }}</div></div>
                 </div>
               </div>
+
+              <div class="acct-section-card">
+                <div class="acct-section-header">📊 General Valuations <span class="section-count-badge">{{ (tabData()?.valuations || []).length }}</span></div>
+                @if ((tabData()?.valuations || []).length === 0) {
+                  <div class="empty-inline">No valuation records found</div>
+                } @else {
+                  <div class="data-table-wrapper">
+                    <table class="data-table" data-testid="table-valuations">
+                      <thead>
+                        <tr>
+                          <th>Type</th>
+                          <th>Status</th>
+                          <th>Fin Year</th>
+                          <th class="text-right">Market Value</th>
+                          <th class="text-right">Improvement</th>
+                          <th class="text-right">Stand Size (m²)</th>
+                          <th>Roll Number</th>
+                          <th>Roll Date</th>
+                          <th>Tariff</th>
+                          <th>Zoning / Use</th>
+                          <th>Reason</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (v of tabData()?.valuations || []; track $index) {
+                          <tr [attr.data-testid]="'row-valuation-' + $index">
+                            <td>{{ v.type || '-' }}</td>
+                            <td><span class="inline-badge" [class.active]="v.valuationStatus === 'Active'">{{ v.valuationStatus || '-' }}</span></td>
+                            <td>{{ v.financialYear || '-' }}</td>
+                            <td class="text-right mono accent">{{ formatCurrency(v.standMarketValue) }}</td>
+                            <td class="text-right mono">{{ formatCurrency(v.improvementValue) }}</td>
+                            <td class="text-right mono">{{ formatIntValue(v.standSize) }}</td>
+                            <td>{{ v.rollNumber || '-' }}</td>
+                            <td>{{ formatDate(v.rollDate) }}</td>
+                            <td>{{ v.ratesTariffCode || '-' }}</td>
+                            <td>{{ v.zoneDesc || v.typeOfUseDesc || '-' }}</td>
+                            <td>{{ v.reason || '-' }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
+              </div>
+
               @if ((tabData()?.meters || []).length > 0) {
-                <div class="detail-section">
-                  <div class="section-header-bar">⏱️ Meters on Property</div>
+                <div class="acct-section-card">
+                  <div class="acct-section-header">⏱️ Meters on Property <span class="section-count-badge">{{ (tabData()?.meters || []).length }}</span></div>
                   <div class="data-table-wrapper">
                     <table class="data-table" data-testid="table-property-meters">
                       <thead>
                         <tr>
-                          <th>Service</th>
                           <th>Meter Number</th>
+                          <th>Service</th>
                           <th>Status</th>
-                          <th>Connection Size</th>
+                          <th>Type</th>
+                          <th class="text-right">Last Reading</th>
+                          <th>Read Date</th>
                         </tr>
                       </thead>
                       <tbody>
                         @for (m of tabData()?.meters || []; track $index) {
-                          <tr [attr.data-testid]="'row-meter-' +  $index  + ''">
-                            <td>{{ m.serviceDesc || m.serviceDescription || '-' }}</td>
-                            <td class="mono">{{ m.physicalMeterNo || m.meterNo || '-' }}</td>
-                            <td><span class="inline-badge" [class.active]="(m.serviceStatus || m.meterStatus || '').toLowerCase() === 'active'">{{ m.serviceStatus || m.meterStatus || '-' }}</span></td>
-                            <td>{{ m.meterConnectionSize || '-' }}</td>
+                          <tr [attr.data-testid]="'row-meter-' + $index">
+                            <td class="mono">{{ m.physicalMeterNo || m.physicalMeterNumber || m.meterNo || m.meterNumber || '-' }}</td>
+                            <td>{{ m.serviceDesc || m.serviceType || m.serviceDescription || '-' }}</td>
+                            <td><span class="inline-badge" [class.active]="(m.serviceStatus || m.status || '').toLowerCase() === 'active' || m.serviceStatusID === 1 || m.isActive">{{ m.serviceStatus || m.status || (m.isActive ? 'Active' : (m.serviceStatusID === 1 ? 'Active' : 'Inactive')) || '-' }}</span></td>
+                            <td>{{ m.meterConnectionSize || m.meterType || '-' }}</td>
+                            <td class="text-right mono">{{ m.lastReading || m.currentReading || '-' }}</td>
+                            <td>{{ formatDate(m.readDate || m.lastReadDate) }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              }
+
+              @if ((tabData()?.transfers || []).length > 0) {
+                <div class="acct-section-card">
+                  <div class="acct-section-header">📋 Transfer of Ownership History <span class="section-count-badge">{{ (tabData()?.transfers || []).length }}</span></div>
+                  <div class="data-table-wrapper">
+                    <table class="data-table" data-testid="table-transfer-ownership">
+                      <thead>
+                        <tr>
+                          <th>Financial Year</th>
+                          <th>Status</th>
+                          <th>Transfer Date</th>
+                          <th>Old Owner</th>
+                          <th>Old Account</th>
+                          <th>Title Deed</th>
+                          <th>Registration Date</th>
+                          <th class="text-right">Purchase Price</th>
+                          <th>Purchase Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (t of tabData()?.transfers || []; track $index) {
+                          <tr [attr.data-testid]="'row-transfer-' + $index">
+                            <td>{{ t.financialYear || t.financial_Year || '-' }}</td>
+                            <td><span class="inline-badge" [class.active]="(t.status || t.transferStatus || '') === 'Approve' || (t.status || t.transferStatus || '') === 'Approved'">{{ t.status || t.transferStatus || '-' }}</span></td>
+                            <td>{{ formatDate(t.transferOfOwnershipDate || t.transferDate || t.dateOfTransfer || t.date) }}</td>
+                            <td>{{ t.oldOwner || t.previousOwner || t.fromOwner || '-' }}</td>
+                            <td class="mono">{{ t.oldAccountNumber || t.oldAccount || '-' }}</td>
+                            <td class="mono">{{ t.titleDeedNumber || t.titleDeed || '-' }}</td>
+                            <td>{{ formatDate(t.registrationDate || t.registerDate) }}</td>
+                            <td class="text-right mono">R {{ formatCurrency(t.purchasePrice || t.purchase_Price || 0) }}</td>
+                            <td>{{ formatDate(t.purchaseDate || t.purchase_Date) }}</td>
                           </tr>
                         }
                       </tbody>
@@ -1155,13 +1263,144 @@
         @if (activeTab() === 'name') {
           <div class="tab-panel" data-testid="name-tab">
             @if (tabData()?.name) {
-              <div class="detail-section">
-                <div class="section-header-bar">👥 Name Details</div>
-                <div class="detail-grid">
-                  @for (key of ['title', 'initials', 'firstName', 'firstNames', 'surname', 'lastName', 'fullName', 'companyName', 'tradingName', 'idNo_RegistrationNo', 'passportNumber', 'dateOfBirth', 'gender', 'maritalStatus', 'nationality', 'language']; track key) {
-                    @if (safeStr(tabData()?.name?.[key]) !== '-') {
-                      <div class="detail-item"><div class="detail-label">{{ key }}</div><div class="detail-value">{{ safeStr(tabData()?.name?.[key]) }}</div></div>
+              <!-- Person Details -->
+              <div class="acct-section-card">
+                <div class="acct-section-header">👤 Person Details</div>
+                <div class="acct-two-col">
+                  <div class="acct-col">
+                    <div class="acct-field"><span class="acct-field-label">ID Number</span><span class="acct-field-value mono" data-testid="field-name-id-number">{{ safeStr(getNameData()['idNo_RegistrationNo'] || getNameData()['idRegistrationNumber'] || getNameData()['idNumber']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Passport Number</span><span class="acct-field-value">{{ safeStr(getNameData()['passportNo'] || getNameData()['passportNumber']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Country Name</span><span class="acct-field-value">{{ safeStr(getNameData()['nameCountry']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Title</span><span class="acct-field-value">{{ safeStr(getNameData()['title']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Last Name</span><span class="acct-field-value">{{ safeStr(getNameData()['surname_Company']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Full Name</span><span class="acct-field-value" data-testid="field-name-full-name">{{ getNameFullName() }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Is Farmer?</span><span class="acct-field-value">{{ safeStr(getNameData()['isFarmer']) }}</span></div>
+                  </div>
+                  <div class="acct-col">
+                    <div class="acct-field"><span class="acct-field-label">Is Sole Proprietor?</span><span class="acct-field-value">{{ safeStr(getNameData()['isSoleProp']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Nickname</span><span class="acct-field-value">{{ safeStr(getNameData()['nickName']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Maiden Name</span><span class="acct-field-value">{{ safeStr(getNameData()['maidenName']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Date of Birth</span><span class="acct-field-value">{{ getNameDob() }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Gender</span><span class="acct-field-value">{{ safeStr(getNameData()['genderDesc']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Ethnicity</span><span class="acct-field-value">{{ safeStr(getNameData()['ethnicDesc']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Language for Correspondence</span><span class="acct-field-value">{{ safeStr(getNameData()['languageCorrespond']) }}</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Employer Details & Marital Details side by side -->
+              <div class="name-tab-side-by-side">
+                <div class="acct-section-card">
+                  <div class="acct-section-header">💼 Employer Details</div>
+                  <div class="acct-col" style="padding: 0 16px 16px;">
+                    <div class="acct-field"><span class="acct-field-label">Employment Status</span><span class="acct-field-value">{{ safeStr(getNameData()['employementStatusDesc']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Employer</span><span class="acct-field-value">{{ safeStr(getNameData()['employer']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Contact Person</span><span class="acct-field-value">{{ safeStr(getNameData()['contactPerson']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Contact Telephone</span><span class="acct-field-value">{{ safeStr(getNameData()['tel_ContactPerson'] || getNameData()['tel_ContactPerson1']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Occupation</span><span class="acct-field-value">{{ safeStr(getNameData()['occupation'] || getNameData()['occupation1']) }}</span></div>
+                  </div>
+                </div>
+
+                <div class="acct-section-card">
+                  <div class="acct-section-header">💍 Marital Details</div>
+                  <div class="acct-col" style="padding: 0 16px 16px;">
+                    <div class="acct-field"><span class="acct-field-label">Marital Status</span><span class="acct-field-value">{{ safeStr(getNameData()['kinMarriedStatus']) }}</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Next of Kin -->
+              <div class="acct-section-card">
+                <div class="acct-section-header">👨‍👩‍👧 Next of Kin</div>
+                <div class="acct-two-col">
+                  <div class="acct-col">
+                    <div class="acct-field"><span class="acct-field-label">Last Name</span><span class="acct-field-value">{{ safeStr(getNameData()['kinLastName']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Full Name</span><span class="acct-field-value">{{ getNameKinFullName() }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Relationship</span><span class="acct-field-value">{{ safeStr(getNameData()['kinRelationShip']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Town/City</span><span class="acct-field-value">{{ safeStr(getNameData()['kinTown']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Suburb</span><span class="acct-field-value">{{ safeStr(getNameData()['kinSuburb']) }}</span></div>
+                  </div>
+                  <div class="acct-col">
+                    <div class="acct-field"><span class="acct-field-label">Street Name</span><span class="acct-field-value">{{ safeStr(getNameData()['kinStreetName']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Street Number</span><span class="acct-field-value">{{ safeStr(getNameData()['kinStreetNumber']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Telephone (Home)</span><span class="acct-field-value">{{ safeStr(getNameData()['kinTelephone']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Telephone (Mobile)</span><span class="acct-field-value">{{ safeStr(getNameData()['kinMobile']) }}</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- All Accounts for This Person -->
+              <div class="acct-section-card">
+                <div class="acct-section-header" style="display: flex; align-items: center; justify-content: space-between;">
+                  <span>🔗 All Accounts for This Person</span>
+                  <button class="btn-primary btn-sm" (click)="searchRelatedAccounts()" [disabled]="relatedAccountsLoading()" data-testid="button-find-related-accounts" style="font-size: 11px; padding: 4px 12px;">
+                    @if (relatedAccountsLoading()) {
+                      <span class="search-spinner" style="width:12px;height:12px;margin-right:4px;"></span> Searching...
+                    } @else if (relatedAccountsSearched()) {
+                      🔄 Refresh
+                    } @else {
+                      🔍 Find Accounts
                     }
+                  </button>
+                </div>
+                <div style="padding: 0 16px 16px;">
+                  @if (!relatedAccountsSearched() && !relatedAccountsLoading()) {
+                    <div class="empty-state" style="padding: 24px 0;">
+                      <div class="empty-icon">🔗</div>
+                      <p class="empty-text">Search for all accounts linked to this person</p>
+                      <p class="muted" style="font-size: 11px;">Uses the person's Name ID to find only accounts belonging to the same person record</p>
+                    </div>
+                  }
+                  @if (relatedAccountsLoading()) {
+                    <div style="display:flex;align-items:center;justify-content:center;padding:24px 0;gap:8px;color:#888;font-size:13px;">
+                      <div class="search-spinner" style="width:16px;height:16px;"></div>
+                      Searching for related accounts...
+                    </div>
+                  }
+                  @if (relatedAccountsSearched() && !relatedAccountsLoading() && relatedAccounts().length === 0) {
+                    <div class="empty-state" style="padding: 24px 0;">
+                      <div class="empty-icon">⚠️</div>
+                      <p class="empty-text">No other accounts found for this person</p>
+                    </div>
+                  }
+                  @if (relatedAccountsSearched() && !relatedAccountsLoading() && relatedAccounts().length > 0) {
+                    <div style="margin-bottom: 8px; font-size: 12px; color: #888;">{{ relatedAccounts().length }} other account(s) found</div>
+                    <div class="data-table-wrapper">
+                      <table class="data-table" data-testid="table-related-accounts">
+                        <thead>
+                          <tr>
+                            <th>Account</th>
+                            <th>Status</th>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th class="text-right">Outstanding</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (ra of relatedAccounts(); track $index) {
+                            <tr class="clickable-row" (click)="selectAccountFromRelated(ra)" [attr.data-testid]="'related-account-row-' + $index">
+                              <td class="mono">{{ ra.accountNumber || ra.accountNo || ra.account_ID || '-' }}</td>
+                              <td>
+                                <span class="inline-badge" [class.active]="(ra.accountStatus || ra.statusDesc || '').toLowerCase().includes('active')">
+                                  {{ ra.accountStatus || ra.statusDesc || '-' }}
+                                </span>
+                              </td>
+                              <td>{{ ra.name || ra.surname_Company || ra.companyName || '-' }}</td>
+                              <td>{{ ra.accountType || ra.accountDesc || '-' }}</td>
+                              <td class="text-right mono">
+                                @if (ra.outStandingAmount !== undefined && ra.outStandingAmount !== null) {
+                                  R {{ formatCurrency(ra.outStandingAmount) }}
+                                } @else if (ra.outStandingAmt !== undefined && ra.outStandingAmt !== null) {
+                                  R {{ formatCurrency(ra.outStandingAmt) }}
+                                } @else {
+                                  -
+                                }
+                              </td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
                   }
                 </div>
               </div>

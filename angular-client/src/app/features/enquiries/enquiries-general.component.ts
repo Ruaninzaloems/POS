@@ -200,6 +200,10 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   receiptDetailLoading = signal(false);
   receiptPrinting = signal<number | null>(null);
 
+  relatedAccounts = signal<any[]>([]);
+  relatedAccountsLoading = signal(false);
+  relatedAccountsSearched = signal(false);
+
   advancedSuggestions = signal<{ displayItem: string; accountId: number }[]>([]);
   activeFieldKey = signal<string | null>(null);
   advancedFieldLoading = signal(false);
@@ -1390,12 +1394,23 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
               }
             }
           }
+          let propValuations: any[] = [];
+          const propPropertyId = propVal?.propertyId || propVal?.property_ID || propConsUnitVal?.unit_ID;
+          if (propPropertyId) {
+            try {
+              const valResult = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/supplementary-valuations`, { propertyId: propPropertyId }));
+              propValuations = this.normalizeArray(valResult);
+            } catch (e) {
+              console.log('[property] supplementary valuations fetch failed:', e);
+            }
+          }
           data = {
             property: propVal,
             consUnit: propConsUnitVal,
             rates: rates.status === 'fulfilled' ? rates.value : null,
             meters: meters.status === 'fulfilled' ? this.normalizeArray(meters.value) : [],
             transfers: transfers.status === 'fulfilled' ? this.normalizeArray(transfers.value) : [],
+            valuations: propValuations,
           };
           break;
 
@@ -1453,39 +1468,43 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
         case 'name':
           try {
-            const nameResult = await firstValueFrom(
-              this.api.get<any>(`/api/platinum/billing-enquiry/name-info/${accountId}`)
-            );
-            const nameVal = Array.isArray(nameResult) ? nameResult[0] : nameResult;
-            if (nameVal && !nameVal._error) {
-              data = { name: nameVal };
-            } else {
-              throw new Error('name-info returned error');
-            }
-          } catch {
-            console.log('[name] name-info failed, building from basic-account-details + account-info');
-            const [nameBasic, nameAcctInfo] = await Promise.allSettled([
-              firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/basic-account-details/${accountId}`)),
-              firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-info-result/${accountId}`)),
+            const [nameInfoResult, relatedAcctsResult] = await Promise.allSettled([
+              firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/name-info/${accountId}`)),
+              firstValueFrom(this.api.get<any>(`/api/platinum/accounts-by-name-id`, { accountId: String(accountId) })),
             ]);
-            const nb = nameBasic.status === 'fulfilled' ? (Array.isArray(nameBasic.value) ? nameBasic.value[0] : nameBasic.value) : null;
-            const na = nameAcctInfo.status === 'fulfilled' ? (Array.isArray(nameAcctInfo.value) ? nameAcctInfo.value[0] : nameAcctInfo.value) : null;
-            const acct = this.selectedAccount();
-            const fallback: Record<string, any> = {};
-            fallback['fullName'] = nb?.['fullNAME'] || na?.['name'] || acct?.['name'] || acct?.['surname_Company'] || '';
-            fallback['initials'] = nb?.['initials'] || '';
-            fallback['accountNumber'] = nb?.['accountNumber'] || acct?.['accountNumber'] || '';
-            fallback['accountDesc'] = nb?.['accountDesc'] || na?.['accountDesc'] || acct?.['accountDesc'] || acct?.['accountType'] || '';
-            fallback['accountStatus'] = nb?.['accountStatus'] || acct?.['accountStatus'] || acct?.['statusDesc'] || '';
-            fallback['idRegistrationNumber'] = acct?.['idRegistrationNumber'] || '';
-            fallback['deliveryAddress'] = nb?.['deliveryAddress'] || na?.['deliverAddress'] || acct?.['deliveryAddress'] || acct?.['address'] || '';
-            fallback['postalCode'] = nb?.['postalCode'] || na?.['postalCode'] || '';
-            fallback['emailId'] = nb?.['emailId'] || '';
-            fallback['contactNo'] = nb?.['contactNo'] || '';
-            fallback['oldAccountCode'] = nb?.['oldAccountCode'] || acct?.['oldAccountCode'] || '';
-            fallback['sgNumber'] = nb?.['sgNumber'] || na?.['sgNumber'] || acct?.['sgNumber'] || '';
-            fallback['_fallback'] = true;
-            data = { name: fallback };
+            let nameVal: any = null;
+            if (nameInfoResult.status === 'fulfilled') {
+              const nr = nameInfoResult.value;
+              nameVal = Array.isArray(nr) ? nr[0] : nr;
+              if (nameVal && nameVal._error) nameVal = null;
+            }
+            if (!nameVal) {
+              console.log('[name] name-info failed, building from basic-account-details + account-info');
+              const [nameBasic, nameAcctInfo] = await Promise.allSettled([
+                firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/basic-account-details/${accountId}`)),
+                firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-info-result/${accountId}`)),
+              ]);
+              const nb = nameBasic.status === 'fulfilled' ? (Array.isArray(nameBasic.value) ? nameBasic.value[0] : nameBasic.value) : null;
+              const na = nameAcctInfo.status === 'fulfilled' ? (Array.isArray(nameAcctInfo.value) ? nameAcctInfo.value[0] : nameAcctInfo.value) : null;
+              const acct = this.selectedAccount();
+              const fallback: Record<string, any> = {};
+              fallback['firstNames'] = nb?.['fullNAME'] || na?.['name'] || acct?.['name'] || acct?.['surname_Company'] || '';
+              fallback['initials'] = nb?.['initials'] || '';
+              fallback['idNo_RegistrationNo'] = acct?.['idRegistrationNumber'] || '';
+              fallback['_fallback'] = true;
+              nameVal = fallback;
+            }
+            let relatedAccts: any[] = [];
+            if (relatedAcctsResult.status === 'fulfilled') {
+              const r = relatedAcctsResult.value;
+              if (r && Array.isArray(r.accounts)) {
+                relatedAccts = r.accounts;
+              }
+            }
+            data = { name: nameVal, relatedAccounts: relatedAccts };
+          } catch (nameErr: any) {
+            console.log('[name] Error loading name tab:', nameErr?.message);
+            data = { name: null, relatedAccounts: [] };
           }
           break;
 
@@ -1766,6 +1785,10 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
       if (generation === this._loadTabGeneration) {
         this.tabData.set(data);
+        if (tab === 'name') {
+          this.relatedAccounts.set(data?.relatedAccounts || []);
+          this.relatedAccountsSearched.set(!!data?.relatedAccounts);
+        }
       }
     } catch (e: any) {
       if (generation === this._loadTabGeneration) {
@@ -2049,6 +2072,78 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
   getAccountAir(): any {
     return this.tabData()?.accountInfo || {};
+  }
+
+  getNameData(): any {
+    return this.tabData()?.name || {};
+  }
+
+  getNameFullName(): string {
+    const n = this.getNameData();
+    const full = [n['firstNames'] || n['initials'], n['surname_Company'] || n['companyName'] || n['name']].filter(Boolean).join(' ').trim();
+    return full || '-';
+  }
+
+  getNameDob(): string {
+    const n = this.getNameData();
+    if (!n['dateOfBirth']) return '-';
+    return this.formatDate(n['dateOfBirth']);
+  }
+
+  getNameKinFullName(): string {
+    const n = this.getNameData();
+    const full = [n['kinFirstName'], n['kinLastName']].filter(Boolean).join(' ').trim();
+    return full || '-';
+  }
+
+  async searchRelatedAccounts(): Promise<void> {
+    const accountId = this.getAccountId(this.selectedAccount());
+    if (!accountId) return;
+    this.relatedAccountsLoading.set(true);
+    this.relatedAccountsSearched.set(true);
+    try {
+      const result = await firstValueFrom(
+        this.api.get<any>(`/api/platinum/accounts-by-name-id`, { accountId: String(accountId) })
+      );
+      if (result && Array.isArray(result.accounts)) {
+        this.relatedAccounts.set(result.accounts);
+      } else {
+        this.relatedAccounts.set([]);
+      }
+    } catch {
+      this.relatedAccounts.set([]);
+    } finally {
+      this.relatedAccountsLoading.set(false);
+    }
+  }
+
+  selectAccountFromRelated(account: any): void {
+    const mapped: SearchResult = {
+      account_ID: account.account_ID || account.accountID || account.id || 0,
+      accountID: account.accountID || account.account_ID || account.id || 0,
+      accountNumber: account.accountNumber || account.accountNo || '',
+      oldAccountCode: account.oldAccountCode || '',
+      name: account.name || account.surname_Company || account.companyName || '',
+      surname_Company: account.surname_Company || account.name || '',
+      initials: account.initials || '',
+      idRegistrationNumber: account.idRegistrationNumber || '',
+      deliveryAddress: account.deliveryAddress || '',
+      locationAddress: account.locationAddress || '',
+      address: account.address || '',
+      statusDesc: account.statusDesc || account.accountStatus || '',
+      accountStatus: account.accountStatus || account.statusDesc || '',
+      accountDesc: account.accountDesc || account.accountType || '',
+      accountType: account.accountType || account.accountDesc || '',
+      outStandingAmt: account.outStandingAmt || 0,
+      outStandingAmount: account.outStandingAmount || 0,
+      addName: account.addName || '',
+      contactDetails: account.contactDetails || '',
+      unitID: account.unitID || 0,
+      unitPartitionID: account.unitPartitionID || 0,
+      sgNumber: account.sgNumber || '',
+      propertyID: account.propertyID || '',
+    };
+    this.selectAccount(mapped);
   }
 
   getCurrentFinYear(): string {
@@ -3488,6 +3583,40 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       result += `, ${parsed.town}`;
     }
     return result;
+  }
+
+  formatSgErf(sg: string, fallbackErf?: string): string {
+    if (!sg) return fallbackErf || '-';
+    const parts = sg.split('/');
+    return parts.length >= 3 ? parts[2].replace(/^0+/, '') || parts[2] : (fallbackErf || '-');
+  }
+
+  formatSgPortion(sg: string): string {
+    if (!sg) return '-';
+    const parts = sg.split('/');
+    return parts.length >= 4 ? parts[3].replace(/^0+/, '') || '0' : '-';
+  }
+
+  formatSgAllotment(sg: string): string {
+    if (!sg) return '-';
+    const parts = sg.split('/');
+    return parts.length >= 2 ? `${parts[0]}/${parts[1]}` : '-';
+  }
+
+  formatIntValue(v: any): string {
+    if (v === null || v === undefined || v === '') return '-';
+    return typeof v === 'number' ? v.toLocaleString('en-ZA') : String(v);
+  }
+
+  getNtPropertyCategoryDisplay(id: any, desc?: string): string {
+    if (id === null || id === undefined) return '-';
+    const catMap: Record<number, string> = {
+      1: 'Unknown', 2: 'RES', 3: 'Residential Accommodation', 4: 'State Business',
+      5: 'POWC', 6: 'NMON', 7: 'Creches', 8: 'Guesthouses & B&Bs', 9: 'Flats',
+      10: 'State Residential', 32: 'Residential Vacant', 33: 'PSPV', 34: 'POWP',
+      35: 'POWG', 36: 'POWV', 37: 'PROT', 38: 'MUNG', 40: 'MUNRO', 41: 'MUN'
+    };
+    return catMap[Number(id)] || desc || `Category ${id}`;
   }
 
   private linkedRequestToken = 0;
