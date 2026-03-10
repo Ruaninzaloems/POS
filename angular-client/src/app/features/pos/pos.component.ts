@@ -1575,10 +1575,10 @@ export class PosComponent implements OnInit, OnDestroy {
       await firstValueFrom(
         this.api.post('/api/platinum/drop-box/submit', {
           amount: this.dropBoxAmount(),
-          reference: this.dropBoxReference(),
+          description: this.dropBoxReference() || 'Cash Drop',
           userId: this.user()?.user_ID,
-          cashierId: this.cashierInfo()?.id || this.cashierInfo()?.cashier_ID,
-          cashOfficeId: this.cashierInfo()?.cashOffice_ID,
+          finYear: this.cashierInfo()?.finYear || this.user()?.finYear || '',
+          paymentType: 1,
         })
       );
       this.toast.success('Cash drop recorded successfully.');

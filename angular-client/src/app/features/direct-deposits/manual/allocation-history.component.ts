@@ -174,7 +174,7 @@ export class AllocationHistoryComponent implements OnInit {
     try {
       const [jobResult, errorResult]: any[] = await Promise.allSettled([
         firstValueFrom(this.api.get(`/api/platinum/bulk-progress/job-account-details/${tx.directDepositJob_ID}`)),
-        firstValueFrom(this.api.get(`/api/platinum/bulk-progress/job-account-details/${tx.directDepositJob_ID}`)),
+        firstValueFrom(this.api.get(`/api/platinum/direct-deposit-errors/account-details/${tx.directDepositJob_ID}`)),
       ]);
 
       let details: any[] | null = null;
