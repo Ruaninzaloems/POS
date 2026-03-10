@@ -104,6 +104,9 @@
 .result-acct-num { font-family: 'Courier New', monospace; font-size: 0.8rem; color: var(--platinum-primary, #0f2b46); font-weight: 600; }
 .result-balance { font-family: 'Courier New', monospace; font-weight: 700; font-size: 0.9rem; flex-shrink: 0; }
 .result-balance.positive { color: #DC2626; }
+.result-card-meta { display: flex; flex-wrap: wrap; gap: 0.375rem; margin-top: 0.375rem; }
+.meta-tag { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.7rem; color: var(--pos-text-muted); background: #F2F4F7; border-radius: 0.25rem; padding: 0.125rem 0.375rem; font-family: 'Courier New', monospace; }
+.meta-label { font-weight: 700; color: var(--platinum-primary, #0f2b46); font-size: 0.65rem; text-transform: uppercase; }
 .result-card-bottom { display: flex; gap: 0.5rem; align-items: center; margin-top: 0.375rem; padding-top: 0.375rem; border-top: 1px solid #F7F7F7; }
 .result-address { font-size: 0.7rem; color: var(--pos-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
 

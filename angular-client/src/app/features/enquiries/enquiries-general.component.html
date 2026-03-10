@@ -1338,8 +1338,9 @@
                   <th>Status</th>
                   <th>Type</th>
                   <th class="text-right">Outstanding</th>
-                  <th>Old Code</th>
                   <th>SG Number</th>
+                  <th>Unit ID</th>
+                  <th>Old Code</th>
                   <th style="width:80px"></th>
                 </tr>
               </thead>
@@ -1365,15 +1366,16 @@
                         R {{ formatCurrency(getOutstanding(account)) }}
                       </span>
                     </td>
-                    <td class="mono muted">{{ account.oldAccountCode || '-' }}</td>
                     <td class="mono muted address-cell">{{ account.sgNumber || '-' }}</td>
+                    <td class="mono muted">{{ account.unitID || '-' }}</td>
+                    <td class="mono muted">{{ account.oldAccountCode || '-' }}</td>
                     <td class="text-center">
                       <button class="btn-sm btn-outline" (click)="selectAccount(account)" [attr.data-testid]="'btn-open-' +  getAccountId(account)  + ''">Open</button>
                     </td>
                   </tr>
                   @if (expandedRowId() === getAccountId(account)) {
                     <tr>
-                      <td colspan="10" class="expanded-content">
+                      <td colspan="11" class="expanded-content">
                         @if (expandedRowLoading()) {
                           <div class="qv-loading">
                             <div class="search-spinner"></div>

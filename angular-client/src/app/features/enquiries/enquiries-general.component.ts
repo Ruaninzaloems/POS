@@ -425,6 +425,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             if (full.outStandingAmt != null) item.outStandingAmt = full.outStandingAmt;
             if (full.oldAccountCode) item.oldAccountCode = full.oldAccountCode;
             if (full.sgNumber) item.sgNumber = full.sgNumber;
+            if (full.unitID != null) (item as any).unitID = full.unitID;
+            if (full.unitPartitionID != null) (item as any).unitPartitionID = full.unitPartitionID;
+            if (full.propertyID) (item as any).propertyID = full.propertyID;
             delete (item as any)._fromAutocomplete;
           }
         }
@@ -438,10 +441,10 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         const bal = await this.withTimeout(this.fetchAccountBalance(id), 12000);
         if (this.quickSearchToken !== token) return;
         if (Array.isArray(bal)) {
-          const total = bal.reduce((sum: number, s: any) => sum + (s.totalOutStanding ?? s.totalOutstandingAmount ?? s.outstandingBalance ?? 0), 0);
+          const total = bal.reduce((sum: number, s: any) => sum + (s.totalOutStanding ?? s.totalOutstandingAmount ?? s.totalOutstanding ?? s.outstandingBalance ?? s.closingBalance ?? s.closeBalance ?? 0), 0);
           item.outStandingAmount = total;
         } else if (bal) {
-          const amount = bal.totalOutStanding ?? bal.totalBalance ?? bal.balance ?? bal.outstandingAmount ?? bal.outStandingAmount;
+          const amount = bal.totalOutStanding ?? bal.totalBalance ?? bal.totalOutstanding ?? bal.balance ?? bal.outstandingAmount ?? bal.outStandingAmount ?? bal.closingBalance ?? bal.closeBalance;
           if (amount != null) item.outStandingAmount = Number(amount);
         }
       } catch {}
@@ -548,9 +551,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         if (bal) {
           let total: number | undefined;
           if (Array.isArray(bal)) {
-            total = bal.reduce((sum: number, svc: any) => sum + (svc.totalOutStanding ?? svc.totalOutstanding ?? svc.outstandingBalance ?? 0), 0);
+            total = bal.reduce((sum: number, svc: any) => sum + (svc.totalOutStanding ?? svc.totalOutstanding ?? svc.totalOutstandingAmount ?? svc.outstandingBalance ?? svc.closingBalance ?? svc.closeBalance ?? 0), 0);
           } else {
-            total = bal.totalBalance ?? bal.totalOutstanding ?? bal.outStandingAmount ?? bal.outstandingBalance ?? bal.balance;
+            total = bal.totalBalance ?? bal.totalOutstanding ?? bal.totalOutStanding ?? bal.outStandingAmount ?? bal.outstandingBalance ?? bal.closingBalance ?? bal.closeBalance ?? bal.balance;
           }
           if (total !== undefined && total !== null) {
             this.balanceCache.set(id, total);
@@ -1212,24 +1215,59 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   }
 
   async fetchAccountBalance(accountId: number): Promise<any> {
+    const fy = this.userFinYear();
+    const fyParams: Record<string, string> = {};
+    if (fy) fyParams['financialYear'] = fy;
+
     try {
-      return await firstValueFrom(
+      const res = await firstValueFrom(
+        this.api.get<any>(`/api/platinum/billing-enquiry/total-balance-debt-inquiry/${accountId}`, fyParams)
+      );
+      if (res && !res._error) {
+        console.log('[balance] TotalBalanceDebtInquiry OK for', accountId);
+        return Array.isArray(res) ? res : res ? [res] : [];
+      }
+    } catch {
+      console.log('[balance] TotalBalanceDebtInquiry failed for', accountId);
+    }
+
+    try {
+      const res = await firstValueFrom(
+        this.api.get<any>(`/api/platinum/billing-enquiry/close-balance-detail/${accountId}`, fyParams)
+      );
+      if (res && !res._error) {
+        console.log('[balance] getCloseBalanceDetail OK for', accountId);
+        return Array.isArray(res) ? res : res ? [res] : [];
+      }
+    } catch {
+      console.log('[balance] getCloseBalanceDetail failed for', accountId);
+    }
+
+    try {
+      const res = await firstValueFrom(
         this.api.get<any>(`/api/platinum/billing-enquiry/account-balance/${accountId}`)
       );
-    } catch {
-      let svc: any;
-      try {
-        const fy = this.userFinYear();
-        const params: Record<string, string> = {};
-        if (fy) params['financialYear'] = fy;
-        svc = await firstValueFrom(
-          this.api.get<any>(`/api/platinum/billing-enquiry/service-type-balance/${accountId}`, params)
-        );
-      } catch {
-        return [];
+      if (res && !res._error) {
+        console.log('[balance] TotalBalanceDebt OK for', accountId);
+        return Array.isArray(res) ? res : res ? [res] : [];
       }
-      return Array.isArray(svc) ? svc : svc ? [svc] : [];
+    } catch {
+      console.log('[balance] TotalBalanceDebt failed for', accountId);
     }
+
+    try {
+      const res = await firstValueFrom(
+        this.api.get<any>(`/api/platinum/billing-enquiry/service-type-balance/${accountId}`, fyParams)
+      );
+      if (res && !res._error) {
+        console.log('[balance] ServiceTypeBalanceDetails OK for', accountId);
+        return Array.isArray(res) ? res : res ? [res] : [];
+      }
+    } catch {
+      console.log('[balance] ServiceTypeBalanceDetails failed for', accountId);
+    }
+
+    return [];
   }
 
   hasCriticalFlags(): boolean {

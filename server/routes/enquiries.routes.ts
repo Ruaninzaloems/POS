@@ -396,6 +396,8 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
 
       const supervisorRoutes: Record<string, string> = {
         "total-balance-debt": "TotalBalanceDebt",
+        "total-balance-debt-inquiry": "TotalBalanceDebtInquiry",
+        "close-balance-detail": "getCloseBalanceDetail",
         "deposits-by-account-id": "DepositsByAccountId",
         "deposit-amount": "DepositAmount",
         "name-info-by-account": "NameInfoByAccount",
@@ -414,7 +416,7 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
           console.log(`[billing-enquiry] PropertyDetailsByAccount keys:`, sample ? Object.keys(sample) : 'empty/null', `isArray=${Array.isArray(data)}`);
           if (sample) console.log(`[billing-enquiry] PropertyDetailsByAccount sample:`, JSON.stringify(sample).substring(0, 500));
         }
-        if (mappedEndpoint === 'total-balance-debt' || mappedEndpoint === 'service-type-balance') {
+        if (['total-balance-debt', 'total-balance-debt-inquiry', 'close-balance-detail', 'service-type-balance'].includes(mappedEndpoint)) {
           const sample = Array.isArray(data) ? data[0] : data;
           console.log(`[billing-enquiry] ${mappedEndpoint} queryParams:`, JSON.stringify(queryParams));
           console.log(`[billing-enquiry] ${mappedEndpoint} response keys:`, sample ? Object.keys(sample) : 'empty/null', `count=${Array.isArray(data) ? data.length : 'single'}`);
