@@ -989,20 +989,26 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       let data: any = null;
       switch (tab) {
         case 'account':
-          const [basic, accountInfo, acctPropDetails, acctContactInfo] = await Promise.allSettled([
+          const [basic, accountInfo, acctPropDetails, acctContactInfo, acctConsUnit, acctRates] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/basic-account-details/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-info-result/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/get-contact-details/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/consumption-units/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-rates-details/${accountId}`)),
           ]);
           const basicVal = basic.status === 'fulfilled' ? (Array.isArray(basic.value) ? basic.value[0] : basic.value) : null;
           const airVal = accountInfo.status === 'fulfilled' ? (Array.isArray(accountInfo.value) ? accountInfo.value[0] : accountInfo.value) : null;
           const acctPropVal = acctPropDetails.status === 'fulfilled' ? (Array.isArray(acctPropDetails.value) ? acctPropDetails.value[0] : acctPropDetails.value) : null;
           const acctContactVal = acctContactInfo.status === 'fulfilled' ? (Array.isArray(acctContactInfo.value) ? acctContactInfo.value[0] : acctContactInfo.value) : null;
+          const acctConsUnitVal = acctConsUnit.status === 'fulfilled' ? (Array.isArray(acctConsUnit.value) ? acctConsUnit.value[0] : acctConsUnit.value) : null;
+          const acctRatesVal = acctRates.status === 'fulfilled' ? (Array.isArray(acctRates.value) ? acctRates.value[0] : acctRates.value) : null;
           if (basicVal) console.log('[account] basic keys:', Object.keys(basicVal));
           if (airVal) console.log('[account] accountInfo keys:', Object.keys(airVal));
           if (acctPropVal) console.log('[account] property keys:', Object.keys(acctPropVal));
           if (acctContactVal) console.log('[account] contact keys:', Object.keys(acctContactVal));
+          if (acctConsUnitVal) console.log('[account] consUnit keys:', Object.keys(acctConsUnitVal));
+          if (acctRatesVal) console.log('[account] rates keys:', Object.keys(acctRatesVal));
           const mergedBasic = { ...basicVal, ...airVal };
           if (acctContactVal) {
             const phone = acctContactVal.contactNo || acctContactVal.contactNumber || acctContactVal.cellPhoneNo || acctContactVal.cellPhone || acctContactVal.tel_Mobile || acctContactVal.tel_Work || acctContactVal.tel_Home || '';
@@ -1024,6 +1030,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
               if (basicVal.longitude) acctPropFinal['longitude'] = basicVal.longitude;
               if (basicVal.latitude) acctPropFinal['latitude'] = basicVal.latitude;
               if (basicVal.fullAddress) acctPropFinal['locationAddress'] = basicVal.fullAddress;
+              if (basicVal.creditStatusDesc) acctPropFinal['propertyStatus'] = basicVal.creditStatusDesc;
+              if (!acctPropFinal['propertyStatus'] && basicVal.accountStatus) acctPropFinal['propertyStatus'] = basicVal.accountStatus;
+              if (basicVal.solvencyDesc) acctPropFinal['solvencyDesc'] = basicVal.solvencyDesc;
             }
             if (airVal) {
               if (airVal.propertyStreet) acctPropFinal['propertyStreet'] = airVal.propertyStreet;
@@ -1039,6 +1048,28 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
               if (airVal.sgNumber && !acctPropFinal['sgNumber']) acctPropFinal['sgNumber'] = airVal.sgNumber;
               if (!acctPropFinal['locationAddress'] && airVal.streetName) {
                 acctPropFinal['locationAddress'] = [airVal.streenNumber, airVal.streetName, airVal.suburb, airVal.town].filter(Boolean).join(', ');
+              }
+            }
+            if (acctConsUnitVal && !acctConsUnitVal._error) {
+              console.log('[account] consUnit data:', JSON.stringify(acctConsUnitVal));
+              const cuKeys = ['propertyStatus', 'statusDesc', 'marketValue', 'propertyMarketValue', 'valuationCategory', 'valuationCat',
+                'partitionDescription', 'partitionDesc', 'partitionMarketValue', 'partMarketValue',
+                'billingCycle', 'billingCycleDesc', 'allotmentArea', 'allotment', 'farmName', 'farm',
+                'magisterialDistrict', 'magDistrict', 'registrationStatus', 'regStatus',
+                'oldPropertyCode', 'oldPropCode', 'sectionalTitleScheme', 'sectionalTitle',
+                'propertyCategory', 'category', 'propertyType', 'typeOfUse'];
+              for (const k of cuKeys) {
+                if (acctConsUnitVal[k] && !acctPropFinal[k]) acctPropFinal[k] = acctConsUnitVal[k];
+              }
+            }
+            if (acctRatesVal && !acctRatesVal._error) {
+              console.log('[account] rates data:', JSON.stringify(acctRatesVal));
+              const rtKeys = ['marketValue', 'propertyMarketValue', 'valuationCategory', 'valuationCat',
+                'propertyStatus', 'statusDesc', 'partitionMarketValue', 'partMarketValue',
+                'partitionDescription', 'partitionDesc', 'propertyCategory', 'category',
+                'billingCycle', 'billingCycleDesc'];
+              for (const k of rtKeys) {
+                if (acctRatesVal[k] && !acctPropFinal[k]) acctPropFinal[k] = acctRatesVal[k];
               }
             }
             acctPropFinal['_fallback'] = true;
