@@ -1163,9 +1163,21 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/billed-vs-paid-amounts/${accountId}`)),
             this.fetchAccountBalance(accountId),
           ]);
+          const bvpArr = billedVsPaid.status === 'fulfilled' ? this.normalizeArray(billedVsPaid.value) : [];
+          const balArr = billedBalance2.status === 'fulfilled' ? this.normalizeArray(billedBalance2.value) : [];
+          if (bvpArr.length > 0) {
+            console.log('[billed-vs-paid] sample keys:', Object.keys(bvpArr[0]), 'sample:', JSON.stringify(bvpArr[0]).substring(0, 500));
+          } else {
+            console.log('[billed-vs-paid] billedVsPaid empty. status:', billedVsPaid.status, billedVsPaid.status === 'rejected' ? (billedVsPaid as any).reason?.message : '');
+          }
+          if (balArr.length > 0) {
+            console.log('[billed-vs-paid] balance sample keys:', Object.keys(balArr[0]));
+          } else {
+            console.log('[billed-vs-paid] balance empty. status:', billedBalance2.status, billedBalance2.status === 'rejected' ? (billedBalance2 as any).reason?.message : '');
+          }
           data = {
-            billedVsPaid: billedVsPaid.status === 'fulfilled' ? this.normalizeArray(billedVsPaid.value) : [],
-            balance: billedBalance2.status === 'fulfilled' ? (Array.isArray(billedBalance2.value) ? billedBalance2.value : billedBalance2.value ? [billedBalance2.value] : []) : [],
+            billedVsPaid: bvpArr,
+            balance: balArr,
           };
           break;
 
@@ -1187,12 +1199,14 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         this.api.get<any>(`/api/platinum/billing-enquiry/account-balance/${accountId}`)
       );
     } catch {
-      const finYear = this.userFinYear();
-      const params: Record<string, string> = { accountId: String(accountId) };
-      if (finYear) params['financialYear'] = finYear;
-      const svc = await firstValueFrom(
-        this.api.get<any>(`/api/platinum/billing-enquiry/service-type-balance/${accountId}`, params)
-      );
+      let svc: any;
+      try {
+        svc = await firstValueFrom(
+          this.api.get<any>(`/api/platinum/billing-enquiry/service-type-balance/${accountId}`)
+        );
+      } catch {
+        return [];
+      }
       return Array.isArray(svc) ? svc : svc ? [svc] : [];
     }
   }
