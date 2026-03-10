@@ -502,32 +502,42 @@
         @if (activeTab() === 'deposits') {
           <div class="tab-panel" data-testid="deposits-tab">
             @if ((tabData()?.deposits || []).length > 0) {
-              <div class="detail-section">
-                <div class="section-header-bar">💵 Deposits</div>
-                <div class="data-table-wrapper">
-                  <table class="data-table" data-testid="table-deposits">
+              <div class="debt-table-section">
+                <div class="debt-table-header">
+                  <span class="debt-table-title">Deposit</span>
+                  <span class="debt-table-count">{{ (tabData()?.deposits || []).length }} record{{ (tabData()?.deposits || []).length !== 1 ? 's' : '' }}</span>
+                </div>
+                <div class="debt-table-wrapper">
+                  <table class="debt-table" data-testid="table-deposits">
                     <thead>
                       <tr>
-                        <th>Service Type</th>
-                        <th>Receipt No</th>
-                        <th>Receipt Date</th>
-                        <th>Payment Type</th>
-                        <th class="text-right">Deposit Amount</th>
-                        <th>Cashier</th>
+                        <th class="debt-th-desc">Service Type</th>
+                        <th class="debt-th-desc">Receipt No / Journal Transaction ID</th>
+                        <th class="debt-th-desc">Date Captured</th>
+                        <th class="debt-th-amt">Deposit Amount</th>
+                        <th class="debt-th-amt">Paid Amount</th>
                       </tr>
                     </thead>
                     <tbody>
                       @for (dep of tabData()?.deposits || []; track $index) {
                         <tr [attr.data-testid]="'row-deposit-' +  $index  + ''">
-                          <td>{{ dep.serviceDesc || dep.serviceDescription || dep.description || '-' }}</td>
-                          <td class="mono">{{ dep.receiptNo || dep.docNumber || '-' }}</td>
-                          <td>{{ formatDate(dep.receiptDate || dep.dateCaptured || dep.depositDate) }}</td>
-                          <td>{{ dep.paymentType || dep.paymentMethod || '-' }}</td>
-                          <td class="text-right mono bold">R {{ formatCurrency(dep.deposit ?? dep.depositAmount ?? dep.amount ?? 0) }}</td>
-                          <td>{{ dep.cashierName || dep.cashier || dep.capturedBy || '-' }}</td>
+                          <td class="debt-td-desc">{{ dep.serviceDesc || dep.serviceDescription || dep.serviceType || dep.description || '-' }}</td>
+                          <td class="debt-td-desc mono">{{ dep.receiptNo || dep.journalTransactionId || dep.docNumber || dep.receiptNumber || '' }}</td>
+                          <td class="debt-td-desc">{{ formatDate(dep.dateCaptured || dep.receiptDate || dep.depositDate || dep.capturedDate) }}</td>
+                          <td class="debt-td-amt">{{ formatDebtAmt(dep.depositAmount ?? dep.deposit ?? dep.amount ?? 0) }}</td>
+                          <td class="debt-td-amt" [class.debt-negative]="getDepositPaidAmt(dep) < 0">{{ formatDebtAmt(getDepositPaidAmt(dep)) }}</td>
                         </tr>
                       }
                     </tbody>
+                    <tfoot>
+                      <tr class="debt-totals-row">
+                        <td class="debt-td-desc debt-total-label"></td>
+                        <td class="debt-td-desc"></td>
+                        <td class="debt-td-desc"></td>
+                        <td class="debt-td-amt debt-total-val">{{ formatDebtAmt(getDepositColumnTotal('depositAmount')) }}</td>
+                        <td class="debt-td-amt debt-total-val" [class.debt-negative]="getDepositColumnTotal('paidAmount') < 0">{{ formatDebtAmt(getDepositColumnTotal('paidAmount')) }}</td>
+                      </tr>
+                    </tfoot>
                   </table>
                 </div>
               </div>

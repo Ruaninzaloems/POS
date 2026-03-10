@@ -1482,6 +1482,23 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     return val < 0 ? `(${formatted})` : formatted;
   }
 
+  getDepositPaidAmt(dep: any): number {
+    return Number(dep.paidAmount ?? dep.paid ?? dep.amountPaid ?? dep.paidAmt ?? 0) || 0;
+  }
+
+  getDepositColumnTotal(field: string): number {
+    const deposits = this.tabData()?.deposits || [];
+    return deposits.reduce((sum: number, dep: any) => {
+      if (field === 'depositAmount') {
+        return sum + (Number(dep.depositAmount ?? dep.deposit ?? dep.amount ?? 0) || 0);
+      }
+      if (field === 'paidAmount') {
+        return sum + this.getDepositPaidAmt(dep);
+      }
+      return sum;
+    }, 0);
+  }
+
   isSummaryTotalRow(row: any): boolean {
     const desc = this.getSummaryDescription(row).toLowerCase();
     return desc === 'total' || desc === 'closing balance' || desc === 'receipts' || desc === 'opening balance';
