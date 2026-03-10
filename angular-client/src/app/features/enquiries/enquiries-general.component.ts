@@ -3440,6 +3440,30 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     return 'other';
   }
 
+  getSvcActiveCount(): number {
+    return this.getServicesList().filter((svc: any) => this.isSvcActive(svc)).length;
+  }
+
+  getSvcCategories(): { key: string; label: string; icon: string }[] {
+    return [
+      { key: 'metered', label: 'Metered Services', icon: '🔧' },
+      { key: 'prepaid', label: 'Pre-Paid Meters', icon: '⚡' },
+      { key: 'basic', label: 'Basic Services', icon: '🏠' },
+      { key: 'rates', label: 'Property Rates', icon: '🏛️' },
+      { key: 'other', label: 'Other Services', icon: '📦' },
+    ];
+  }
+
+  getSvcTypeIcon(svc: any): string {
+    const type = (svc.serviceType || svc.serviceTypeDesc || svc.serviceDesc || svc.serviceDescription || svc.tariffType || '').toLowerCase();
+    if (type.includes('water')) return '💧';
+    if (type.includes('elec')) return '⚡';
+    if (type.includes('sewer') || type.includes('sanit') || type.includes('effluent')) return '🚿';
+    if (type.includes('refuse') || type.includes('disposal')) return '🗑️';
+    if (type.includes('rate')) return '🏛️';
+    return '📋';
+  }
+
   getSvcType(svc: any): string {
     return svc.serviceType || svc.serviceTypeDesc || svc.serviceDesc || svc.serviceDescription || '-';
   }
