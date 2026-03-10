@@ -622,9 +622,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
               }
               if (!item.unitID && units[0].unit_ID) (item as any).unitID = units[0].unit_ID;
             }
-          } catch (e) { console.warn('[enrich] Failed to fetch SG from consumption units:', e); }
+          } catch {}
         }
-      } catch (e) { console.warn('[enrich] Failed to enrich autocomplete result:', e); }
+      } catch {}
     });
 
     const balancePromises = allItems.map(async (item) => {
@@ -640,7 +640,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           const amount = bal.totalOutStanding ?? bal.totalBalance ?? bal.totalOutstanding ?? bal.balance ?? bal.outstandingAmount ?? bal.outStandingAmount ?? bal.closingBalance ?? bal.closeBalance;
           if (amount != null) item.outStandingAmount = Number(amount);
         }
-      } catch (e) { console.warn('[enrichAutocomplete] Failed to fetch balance for dropdown item:', e); }
+      } catch {}
     });
 
     await Promise.allSettled([...enrichPromises, ...balancePromises]);
@@ -752,7 +752,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             this.balanceCache.set(id, total);
           }
         }
-      } catch (e) { console.warn('[enrichBalances] Failed to fetch balance for account:', id, e); }
+      } catch {}
     }
 
     if (this.searchToken === token) {
@@ -992,7 +992,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         const total = bal?.totalBalance ?? bal?.totalDue ?? bal?.balance ?? bal?.outstandingBalance ?? null;
         if (total !== null && total !== undefined) this.headerBalance.set(Number(total));
       }
-    } catch (e) { console.warn('[loadHeaderBalance] Failed to load header balance:', e); }
+    } catch {}
   }
 
   async loadRiskFlags(accountId: number): Promise<void> {
@@ -1017,7 +1017,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             icon: '⚖️',
           });
         }
-      }).catch((e) => { console.warn('[riskFlags] Failed to check handover info:', e); }),
+      }).catch(() => {}),
 
       this.fetchAccountBalance(accountId).then((bal: any) => {
         const items = Array.isArray(bal) ? bal : bal ? [bal] : [];
@@ -1045,7 +1045,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             icon: '💰',
           });
         }
-      }).catch((e) => { console.warn('[riskFlags] Failed to check balance/arrears:', e); }),
+      }).catch(() => {}),
 
       firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/attp-application-history/${accountId}`)).then((data: any) => {
         const records = Array.isArray(data) ? data : data ? [data] : [];
@@ -1062,7 +1062,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             icon: '🛡️',
           });
         }
-      }).catch((e) => { console.warn('[riskFlags] Failed to check indigent status:', e); }),
+      }).catch(() => {}),
 
       firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/name-info/${accountId}`)).then((name: any) => {
         if (!name) return;
@@ -1076,7 +1076,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             icon: '💀',
           });
         }
-      }).catch((e) => { console.warn('[riskFlags] Failed to check deceased status:', e); }),
+      }).catch(() => {}),
     ];
 
     await Promise.allSettled(checks);

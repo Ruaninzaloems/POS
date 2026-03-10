@@ -330,10 +330,7 @@ export class PosComponent implements OnInit, OnDestroy {
           userid: String(userId),
           finYear
         })
-      ).catch((err) => {
-        console.warn('Failed to fetch active cashier info:', err);
-        return null;
-      });
+      ).catch(() => null);
 
       if (!data || data._error) {
         this.cashierInfo.set({ finYear });
@@ -1898,8 +1895,7 @@ export class PosComponent implements OnInit, OnDestroy {
             detailData = await firstValueFrom(
               this.api.get('/api/platinum/receipt-prepaid/cons-account-details', { accountId: String(accountId || accountNo) })
             );
-          } catch (e: any) {
-            console.warn(`[CsvImport] Detail lookup failed for ${accountNo}:`, e?.message);
+          } catch {
           }
 
           const merged = { ...acct, ...(detailData && !detailData._error ? detailData : {}) };

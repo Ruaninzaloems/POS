@@ -247,8 +247,7 @@ export class ViewReceiptsComponent implements OnInit {
         cashierId: c.cashierId || c.user_Id || c.id || 0,
         name: c.name || c.cashierName || c.userName || `Cashier ${c.id}`,
       })));
-    } catch (e) {
-      console.warn('[ViewReceipts] Failed to load cashiers:', e);
+    } catch {
       this.cashiers.set([]);
     } finally {
       this.loadingCashiers.set(false);
@@ -263,8 +262,7 @@ export class ViewReceiptsComponent implements OnInit {
       } else if (data?.finYear) {
         this.cashbookFinYear.set(data.finYear);
       }
-    } catch (e) {
-      console.warn('[ViewReceipts] Failed to load financial year:', e);
+    } catch {
     }
   }
 

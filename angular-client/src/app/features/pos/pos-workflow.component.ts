@@ -53,10 +53,7 @@ export class PosWorkflowComponent implements OnInit {
           userid: String(userId),
           finYear
         })
-      ).catch((err) => {
-        console.warn('Failed to check existing cashier session:', err);
-        return null;
-      });
+      ).catch(() => null);
 
       if (!data || data._error) {
         return;
@@ -131,8 +128,7 @@ export class PosWorkflowComponent implements OnInit {
         this.sessionActive.set(true);
         this.activeTab.set('transact');
       }
-    } catch (err) {
-      console.warn('Error checking existing cashier session:', err);
+    } catch {
     } finally {
       this.checkingSession.set(false);
     }

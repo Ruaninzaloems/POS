@@ -184,8 +184,7 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
           description: t.description,
         })));
       }
-    } catch (e) {
-      console.warn('Failed to load third party types', e);
+    } catch {
     } finally {
       this.loadingTypes.set(false);
     }
@@ -205,8 +204,7 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
           this.giSelectedCashOfficeId.set(String(details.cashOfficeId));
         }
       }
-    } catch (e) {
-      console.warn('Failed to load cashier details', e);
+    } catch {
     }
 
     this.giLoadingCashOffices.set(true);
@@ -221,8 +219,7 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
           name: o.cashOfficeDesc || o.name || `Office ${o.cashOffice_ID || o.id}`
         })));
       }
-    } catch (e) {
-      console.warn('Failed to load cash offices', e);
+    } catch {
     }
     this.giLoadingCashOffices.set(false);
   }
@@ -282,8 +279,7 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
         const detail = parsed.detail || parsed.message || '';
         return typeof detail === 'string' ? detail.replace(/^["']|["']$/g, '').trim() : rawMsg;
       }
-    } catch (e) {
-      console.warn('Failed to parse API error message', e);
+    } catch {
     }
     return rawMsg;
   }
@@ -380,7 +376,7 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
               firstValueFrom(this.api.put(`/api/platinum/third-party-payments/${useId}/transactions/${entry.index}`, {
                 newAccountNumber: entry.newAcct,
                 comment: `Auto-matched: Old "${entry.oldAcct}" \u2192 New "${entry.newAcct}"`,
-              })).catch((e) => { console.warn(`Failed to update migrated transaction ${entry.index}`, e); })
+              })).catch(() => {})
             );
             await Promise.all(updates);
           }
@@ -417,8 +413,7 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
               matchCount: results.length,
             });
           }
-        } catch (e) {
-          console.warn(`Failed to lookup account ${accNo}`, e);
+        } catch {
         }
       });
       await Promise.all(lookups);
@@ -469,7 +464,7 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
     if (this.importId()) {
       firstValueFrom(this.api.put(`/api/platinum/third-party-payments/${this.importId()}/transactions/${txnIndex}`, {
         newAccountNumber: '', comment: 'Link cleared \u2014 needs re-assignment'
-      })).catch((e) => { console.warn('Failed to persist cleared link', e); });
+      })).catch(() => {});
     }
   }
 
@@ -493,7 +488,7 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
       const results: any = await firstValueFrom(this.api.get('/api/platinum/third-party-payments/account-search', params));
       this.searchResults.set(Array.isArray(results) ? results : []);
     } catch (e) {
-      console.warn('Account search failed', e);
+      void e;
       this.searchResults.set([]);
     } finally {
       this.searching.set(false);
@@ -519,7 +514,7 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
     if (this.importId()) {
       firstValueFrom(this.api.put(`/api/platinum/third-party-payments/${this.importId()}/transactions/${idx}`, {
         newAccountNumber: accNo, comment: `Manually matched to ${accNo}`
-      })).catch((e) => { console.warn('Failed to persist manual match', e); });
+      })).catch(() => {});
     }
     this.searchOpen.set(false);
   }
@@ -679,8 +674,7 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
               if (result?.ownerName) row.ownerName = result.ownerName;
               if (result?.address) row.address = result.address;
             }
-          } catch (e) {
-            console.warn(`Failed to validate row ${row.rowNum}`, e);
+          } catch {
             row.validationStatus = 'unverified';
             row.validationMsg = 'Could not validate';
           }
@@ -780,8 +774,8 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
     this.giLoadingResults.set(true);
     try {
       const [results, errors] = await Promise.all([
-        firstValueFrom(this.api.get(`/api/platinum/direct-deposit-allocation/generic-import-results/${this.giJobId()}`)).catch((e) => { console.warn('Failed to load import results', e); return []; }),
-        firstValueFrom(this.api.get(`/api/platinum/direct-deposit-allocation/generic-import-errors/${this.giJobId()}`)).catch((e) => { console.warn('Failed to load import errors', e); return []; }),
+        firstValueFrom(this.api.get(`/api/platinum/direct-deposit-allocation/generic-import-results/${this.giJobId()}`)).catch(() => []),
+        firstValueFrom(this.api.get(`/api/platinum/direct-deposit-allocation/generic-import-errors/${this.giJobId()}`)).catch(() => []),
       ]);
       this.giResults.set(Array.isArray(results) ? results : []);
       this.giErrors.set(Array.isArray(errors) ? errors : []);

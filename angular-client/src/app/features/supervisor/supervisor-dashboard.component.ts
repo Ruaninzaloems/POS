@@ -248,7 +248,6 @@ export class SupervisorDashboardComponent implements OnInit {
         isMiscPayment: item.isMiscPayment === true || item.isMiscPayment === 1 || item.is_misc_payment === true,
       })));
     } catch (e: any) {
-      console.warn('Failed to load pending cancel requests:', e);
       this.toast.error('Failed to load cancellation requests: ' + (e?.message || 'Unknown error'));
       this.pendingCancelRequests.set([]);
     } finally {
@@ -264,14 +263,14 @@ export class SupervisorDashboardComponent implements OnInit {
     this.reviewTab.set('cash');
     try {
       const [details, reconcile, cashRes, cardRes, chequeRes, postalRes, dropboxRes, offlineRes] = await Promise.all([
-        firstValueFrom(this.api.get('/api/platinum/auth-day-end/cashier-details', { id: String(shift.id) })).catch((e) => { console.warn('Failed to load cashier details:', e); return null; }),
-        firstValueFrom(this.api.get('/api/platinum/auth-day-end/cashier-reconcile-by-cashierid', { cashierId: String(shift.id) })).catch((e) => { console.warn('Failed to load cashier reconcile:', e); return null; }),
-        firstValueFrom(this.api.post(`/api/platinum/auth-day-end/cashier-receipt-cash-list?id=${shift.id}`, this.pagerBody)).catch((e) => { console.warn('Failed to load cash receipts:', e); return []; }),
-        firstValueFrom(this.api.post(`/api/platinum/auth-day-end/cashier-receipt-card-list?id=${shift.id}`, this.pagerBody)).catch((e) => { console.warn('Failed to load card receipts:', e); return []; }),
-        firstValueFrom(this.api.post(`/api/platinum/auth-day-end/cashier-receipt-cheque-list?id=${shift.id}`, this.pagerBody)).catch((e) => { console.warn('Failed to load cheque receipts:', e); return []; }),
-        firstValueFrom(this.api.post(`/api/platinum/auth-day-end/cashier-receipt-postal-order-list?id=${shift.id}`, this.pagerBody)).catch((e) => { console.warn('Failed to load postal receipts:', e); return []; }),
-        firstValueFrom(this.api.post(`/api/platinum/auth-day-end/cashier-receipt-drop-box-list?id=${shift.id}`, this.pagerBody)).catch((e) => { console.warn('Failed to load dropbox receipts:', e); return []; }),
-        firstValueFrom(this.api.post(`/api/platinum/auth-day-end/cashier-receipt-offline-data-list?id=${shift.id}`, this.pagerBody)).catch((e) => { console.warn('Failed to load offline receipts:', e); return []; }),
+        firstValueFrom(this.api.get('/api/platinum/auth-day-end/cashier-details', { id: String(shift.id) })).catch(() => null),
+        firstValueFrom(this.api.get('/api/platinum/auth-day-end/cashier-reconcile-by-cashierid', { cashierId: String(shift.id) })).catch(() => null),
+        firstValueFrom(this.api.post(`/api/platinum/auth-day-end/cashier-receipt-cash-list?id=${shift.id}`, this.pagerBody)).catch(() => []),
+        firstValueFrom(this.api.post(`/api/platinum/auth-day-end/cashier-receipt-card-list?id=${shift.id}`, this.pagerBody)).catch(() => []),
+        firstValueFrom(this.api.post(`/api/platinum/auth-day-end/cashier-receipt-cheque-list?id=${shift.id}`, this.pagerBody)).catch(() => []),
+        firstValueFrom(this.api.post(`/api/platinum/auth-day-end/cashier-receipt-postal-order-list?id=${shift.id}`, this.pagerBody)).catch(() => []),
+        firstValueFrom(this.api.post(`/api/platinum/auth-day-end/cashier-receipt-drop-box-list?id=${shift.id}`, this.pagerBody)).catch(() => []),
+        firstValueFrom(this.api.post(`/api/platinum/auth-day-end/cashier-receipt-offline-data-list?id=${shift.id}`, this.pagerBody)).catch(() => []),
       ]);
       this.reviewData.set({
         details, reconcile,
@@ -295,9 +294,7 @@ export class SupervisorDashboardComponent implements OnInit {
     try {
       try {
         await firstValueFrom(this.api.post(`/api/platinum/auth-day-end/validate-cashbook?cashierId=${cashierId}`));
-      } catch (e: any) {
-        console.warn('Cashbook validation warning:', e);
-      }
+      } catch {}
 
       const shift = this.selectedShift();
       const details = this.reviewData()?.details;
@@ -313,8 +310,7 @@ export class SupervisorDashboardComponent implements OnInit {
           } else {
             cashBookId = 1;
           }
-        } catch (e: any) {
-          console.warn('Failed to load cashbook list, using default:', e);
+        } catch {
           cashBookId = 1;
         }
       }
@@ -481,7 +477,6 @@ export class SupervisorDashboardComponent implements OnInit {
       const data: any = await firstValueFrom(this.api.get('/api/platinum/auth-day-end-per-office/cash-office-list'));
       this.perOfficeList.set(Array.isArray(data) ? data : (data?.items || []));
     } catch (e: any) {
-      console.warn('Failed to load per-office list:', e);
       this.toast.error('Failed to load cash office list: ' + (e?.message || 'Unknown error'));
       this.perOfficeList.set([]);
     }
@@ -524,8 +519,7 @@ export class SupervisorDashboardComponent implements OnInit {
           validationResult: data?.validationResult || prev.validationResult,
         });
       }
-    } catch (e: any) {
-      console.warn('Failed to refresh per-office summary:', e);
+    } catch {
     }
   }
 
@@ -533,8 +527,8 @@ export class SupervisorDashboardComponent implements OnInit {
     if (!this.perOfficeSelectedId() || !this.perOfficeData()) return;
     this.perOfficeVerifying.set(cashierId);
     try {
-      try { await firstValueFrom(this.api.post('/api/platinum/auth-day-end-per-office/add-stage')); } catch (e: any) { console.warn('Add stage warning:', e); }
-      try { await firstValueFrom(this.api.post('/api/platinum/auth-day-end-per-office/process-staging-payments', { cashOfficeId: this.perOfficeSelectedId() })); } catch (e: any) { console.warn('Process staging payments warning:', e); }
+      try { await firstValueFrom(this.api.post('/api/platinum/auth-day-end-per-office/add-stage')); } catch {}
+      try { await firstValueFrom(this.api.post('/api/platinum/auth-day-end-per-office/process-staging-payments', { cashOfficeId: this.perOfficeSelectedId() })); } catch {}
 
       const result: any = await firstValueFrom(this.api.post('/api/platinum/auth-day-end-per-office/verify-cashier-reconcile', {
         cashierId, cashOfficeId: this.perOfficeSelectedId(), cashBookId: this.perOfficeData().cashBookId,
@@ -564,12 +558,12 @@ export class SupervisorDashboardComponent implements OnInit {
       } else {
         this.toast.success('All cashiers in this office have been fully reconciled.');
       }
-      try { await firstValueFrom(this.api.post('/api/platinum/auth-day-end-per-office/finish-stage')); } catch (e: any) { console.warn('Finish stage warning:', e); }
+      try { await firstValueFrom(this.api.post('/api/platinum/auth-day-end-per-office/finish-stage')); } catch {}
       await this.refreshPerOfficeSummary();
       this.loadCashierList();
     } catch (e: any) {
       this.toast.error('Office submission failed: ' + (e?.message || ''));
-      try { await firstValueFrom(this.api.post('/api/platinum/auth-day-end-per-office/finish-stage')); } catch (e2: any) { console.warn('Finish stage warning:', e2); }
+      try { await firstValueFrom(this.api.post('/api/platinum/auth-day-end-per-office/finish-stage')); } catch {}
     } finally {
       this.perOfficeSubmitting.set(false);
     }
@@ -579,11 +573,11 @@ export class SupervisorDashboardComponent implements OnInit {
     try {
       await firstValueFrom(this.api.post('/api/platinum/auth-day-end-per-office/return-day-end-reconcile', { id: cashierReconcileId, returnReason: reason }));
       this.toast.success('Cashier reconcile returned for correction.');
-      try { await firstValueFrom(this.api.post('/api/platinum/auth-day-end-per-office/finish-stage')); } catch (e: any) { console.warn('Finish stage warning:', e); }
+      try { await firstValueFrom(this.api.post('/api/platinum/auth-day-end-per-office/finish-stage')); } catch {}
       await this.refreshPerOfficeSummary();
     } catch (e: any) {
       this.toast.error('Return failed: ' + (e?.message || ''));
-      try { await firstValueFrom(this.api.post('/api/platinum/auth-day-end-per-office/finish-stage')); } catch (e2: any) { console.warn('Finish stage warning:', e2); }
+      try { await firstValueFrom(this.api.post('/api/platinum/auth-day-end-per-office/finish-stage')); } catch {}
     }
   }
 

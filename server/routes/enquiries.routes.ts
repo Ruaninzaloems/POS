@@ -156,7 +156,7 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
       ];
       const results = await Promise.allSettled(
         keys.map(key => platinumGet(session, "/api/BillingEnquiry/GetAAAA_ConfigSetting", { strKeyName: key })
-          .catch((e: any) => { console.warn(`[enquiries] Config setting fallback for ${key}:`, e?.message); return platinumGet(session, "/api/BillingEnquiry/GetAppSetting", { key }); })
+          .catch(() => platinumGet(session, "/api/BillingEnquiry/GetAppSetting", { key }))
         )
       );
       const settings: Array<{ keyName: string; value: any }> = [];
@@ -192,8 +192,7 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
           try {
             const val = await platinumGet(session, "/api/BillingEnquiry/GetAppSetting", { key });
             return { key, value: val };
-          } catch (e: any) {
-            console.warn(`[enquiries] AppSetting lookup failed for ${key}:`, e?.message);
+          } catch {
             return { key, value: null };
           }
         })
@@ -219,8 +218,7 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
             try {
               const val = await platinumGet(session, "/api/BillingEnquiry/GetAAAA_ConfigSetting", { strKeyName: key });
               return { key, value: val };
-            } catch (e: any) {
-              console.warn(`[enquiries] ConfigSetting lookup failed for ${key}:`, e?.message);
+            } catch {
               return { key, value: null };
             }
           })

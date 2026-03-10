@@ -77,8 +77,7 @@ export class AuthService {
   async logout(): Promise<void> {
     try {
       await firstValueFrom(this.api.post('/api/auth/logout'));
-    } catch (e) {
-      console.warn('Logout API call failed:', e);
+    } catch {
     }
     this._user.set(null);
     this._site.set(null);
