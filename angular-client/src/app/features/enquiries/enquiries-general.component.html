@@ -161,8 +161,8 @@
                 @if (safeStr(getAccountBasic()['emailId'] || getAccountBasic()['email']) !== '-') {
                   <span class="hero-footer-item">✉️ {{ safeStr(getAccountBasic()['emailId'] || getAccountBasic()['email']) }}</span>
                 }
-                @if (safeStr(getAccountBasic()['deliveryAddress']) !== '-') {
-                  <span class="hero-footer-item">📍 {{ safeStr(getAccountBasic()['deliveryAddress']) }}</span>
+                @if (safeStr(getAccountBasic()['deliveryAddress'] || getAccountAir()['deliverAddress'] || getAccountBasic()['fullAddress']) !== '-') {
+                  <span class="hero-footer-item">📍 {{ safeStr(getAccountBasic()['deliveryAddress'] || getAccountAir()['deliverAddress'] || getAccountBasic()['fullAddress']) }}</span>
                 }
               </div>
             </div>
@@ -176,15 +176,15 @@
                   <div class="acct-field"><span class="acct-field-label">Payment Group</span><span class="acct-field-value">{{ safeStr(getAccountBasic()['paymentGroupDesc'] || getAccountAir()['paymentGroupDesc'] || getAccountBasic()['paymentGroup']) }}</span></div>
                   <div class="acct-field"><span class="acct-field-label">Account Type</span><span class="acct-field-value">{{ safeStr(getAccountBasic()['accountDesc'] || getAccountAir()['accountDesc'] || getAccountBasic()['accountType']) }}</span></div>
                   <div class="acct-field"><span class="acct-field-label">Incentive Scheme Code</span><span class="acct-field-value">{{ safeStr(getAccountBasic()['incentiveSchemeCode'] || getAccountAir()['incentiveSchemeCode']) }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Email</span><span class="acct-field-value">{{ safeStr(getAccountBasic()['emailId'] || getAccountBasic()['email'] || getAccountBasic()['emailAddress']) }}</span></div>
+                  <div class="acct-field"><span class="acct-field-label">Email</span><span class="acct-field-value">{{ safeStr(getAccountBasic()['emailId'] || getAccountBasic()['email'] || getAccountBasic()['emailAddress'] || getAccountAir()['email']) }}</span></div>
                   <div class="acct-field"><span class="acct-field-label">Paid Deposit Amount</span><span class="acct-field-value mono">{{ safeStr(getAccountBasic()['paidDepositAmount'] || getAccountAir()['paidDepositAmount'] || getAccountBasic()['depositAmount']) }}</span></div>
                 </div>
                 <div class="acct-col">
                   <div class="acct-field"><span class="acct-field-label">Name</span><span class="acct-field-value" data-testid="field-name">{{ safeStr(getAccountBasic()['fullNAME'] || getAccountAir()['name'] || getAccountName(selectedAccount())) }}</span></div>
                   <div class="acct-field"><span class="acct-field-label">Sub Account Group</span><span class="acct-field-value">{{ safeStr(getAccountBasic()['subAccountGroup'] || getAccountAir()['subAccountGroup'] || getAccountBasic()['subInstitutionDesc']) }}</span></div>
                   <div class="acct-field"><span class="acct-field-label">Account Status</span><span class="acct-field-value acct-status-val" [class.acct-status-active]="(getAccountBasic()['accountStatus'] || '').toLowerCase().includes('active')">{{ safeStr(getAccountBasic()['accountStatus'] || selectedAccount()!['accountStatus'] || selectedAccount()!['statusDesc']) }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Delivery Address</span><span class="acct-field-value">{{ safeStr(getAccountBasic()['deliveryAddress'] || getAccountAir()['deliveryAddress']) }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Contact Number</span><span class="acct-field-value">{{ safeStr(getAccountBasic()['contactNo'] || getAccountBasic()['contactNumber']) }}</span></div>
+                  <div class="acct-field"><span class="acct-field-label">Delivery Address</span><span class="acct-field-value">{{ safeStr(getAccountBasic()['deliveryAddress'] || getAccountAir()['deliverAddress'] || getAccountBasic()['fullAddress']) }}</span></div>
+                  <div class="acct-field"><span class="acct-field-label">Contact Number</span><span class="acct-field-value">{{ safeStr(getAccountBasic()['contactNo'] || getAccountBasic()['contactNumber'] || getAccountBasic()['tel_Mobile'] || getAccountBasic()['tel_Work'] || getAccountBasic()['tel_Home']) }}</span></div>
                 </div>
               </div>
             </div>
@@ -214,16 +214,16 @@
                   <div class="acct-field"><span class="acct-field-label">Old Property Code</span><span class="acct-field-value mono">{{ safeStr(getAccountProp()['oldPropertyCode'] || getAccountBasic()['oldPropertyCode'] || getAccountProp()['oldPropCode']) }}</span></div>
                   <div class="acct-field"><span class="acct-field-label">Billing Cycle</span><span class="acct-field-value">{{ safeStr(getAccountProp()['billingCycle'] || getAccountBasic()['billingCycle'] || getAccountProp()['billingCycleDesc']) }}</span></div>
                   <div class="acct-field"><span class="acct-field-label">Sectional Title Scheme</span><span class="acct-field-value">{{ safeStr(getAccountProp()['sectionalTitleScheme'] || getAccountProp()['sectionalTitle']) }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Location Address</span><span class="acct-field-value">{{ safeStr(getAccountProp()['locationAddress'] || (getAccountProp()['streetNumber'] ? getAccountProp()['streetNumber'] + ' ' + getAccountProp()['streetName'] + ', ' + getAccountProp()['town'] : getAccountProp()['streetName'])) }}</span></div>
+                  <div class="acct-field"><span class="acct-field-label">Location Address</span><span class="acct-field-value">{{ safeStr(getAccountProp()['locationAddress'] || getAccountProp()['propertyStreet'] || (getAccountProp()['streetNumber'] ? getAccountProp()['streetNumber'] + ' ' + getAccountProp()['streetName'] + ', ' + getAccountProp()['town'] : getAccountProp()['streetName']) || getAccountBasic()['fullAddress']) }}</span></div>
                   <div class="acct-field"><span class="acct-field-label">Longitude</span><span class="acct-field-value mono">{{ safeStr(getAccountProp()['longitude'] || getAccountProp()['gpsLong']) }}</span></div>
                   <div class="acct-field"><span class="acct-field-label">Registration Status</span><span class="acct-field-value">{{ safeStr(getAccountProp()['registrationStatus'] || getAccountProp()['regStatus']) }}</span></div>
                 </div>
                 <div class="acct-col">
-                  <div class="acct-field"><span class="acct-field-label">Property ID</span><span class="acct-field-value mono">{{ safeStr(getAccountProp()['propertyId'] || getAccountProp()['property_ID']) }}</span></div>
+                  <div class="acct-field"><span class="acct-field-label">Property ID</span><span class="acct-field-value mono">{{ safeStr(getAccountProp()['propertyId'] || getAccountProp()['property_ID'] || getAccountBasic()['propertyID']) }}</span></div>
                   <div class="acct-field"><span class="acct-field-label">Property Status</span><span class="acct-field-value" [class.acct-status-active]="(getAccountProp()['propertyStatus'] || '').toLowerCase().includes('active')">{{ safeStr(getAccountProp()['propertyStatus'] || getAccountProp()['statusDesc']) }}</span></div>
                   <div class="acct-field"><span class="acct-field-label">Allotment Area</span><span class="acct-field-value">{{ safeStr(getAccountProp()['allotmentArea'] || getAccountProp()['allotment']) }}</span></div>
                   <div class="acct-field"><span class="acct-field-label">Farm Name</span><span class="acct-field-value">{{ safeStr(getAccountProp()['farmName'] || getAccountProp()['farm']) }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Property Type</span><span class="acct-field-value">{{ safeStr(getAccountProp()['propertyType'] || getAccountProp()['typeOfUse'] || getAccountProp()['typeofUse']) }}</span></div>
+                  <div class="acct-field"><span class="acct-field-label">Property Type</span><span class="acct-field-value">{{ safeStr(getAccountProp()['propertyType'] || getAccountProp()['typeOfUse'] || getAccountProp()['typeofUse'] || getAccountProp()['typeOfUseDesc']) }}</span></div>
                   <div class="acct-field"><span class="acct-field-label">Latitude</span><span class="acct-field-value mono">{{ safeStr(getAccountProp()['latitude'] || getAccountProp()['gpsLat']) }}</span></div>
                   <div class="acct-field"><span class="acct-field-label">Magisterial District</span><span class="acct-field-value">{{ safeStr(getAccountProp()['magisterialDistrict'] || getAccountProp()['magDistrict']) }}</span></div>
                   <div class="acct-field"><span class="acct-field-label">Property Market Value</span><span class="acct-field-value mono acct-highlight">R {{ formatCurrency(getAccountProp()['marketValue'] || getAccountProp()['propertyMarketValue']) }}</span></div>
@@ -235,9 +235,9 @@
               <div class="acct-section-header">Partition</div>
               <div class="acct-two-col">
                 <div class="acct-col">
-                  <div class="acct-field"><span class="acct-field-label">Property Type of Use</span><span class="acct-field-value">{{ safeStr(getAccountProp()['propertyTypeOfUse'] || getAccountProp()['typeOfUse'] || getAccountProp()['typeofUse']) }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Property Category</span><span class="acct-field-value">{{ safeStr(getAccountProp()['propertyCategory'] || getAccountProp()['category']) }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Accountable Owner Name</span><span class="acct-field-value">{{ safeStr(getAccountProp()['accountableOwnerName'] || getAccountProp()['ownerName'] || getAccountProp()['name']) }}</span></div>
+                  <div class="acct-field"><span class="acct-field-label">Property Type of Use</span><span class="acct-field-value">{{ safeStr(getAccountProp()['propertyTypeOfUse'] || getAccountProp()['typeOfUse'] || getAccountProp()['typeofUse'] || getAccountProp()['typeOfUseDesc']) }}</span></div>
+                  <div class="acct-field"><span class="acct-field-label">Property Category</span><span class="acct-field-value">{{ safeStr(getAccountProp()['propertyCategory'] || getAccountProp()['category'] || getAccountProp()['zoneDesc']) }}</span></div>
+                  <div class="acct-field"><span class="acct-field-label">Accountable Owner Name</span><span class="acct-field-value">{{ safeStr(getAccountProp()['accountableOwnerName'] || getAccountProp()['ownerName'] || getAccountProp()['name'] || getAccountProp()['owner']) }}</span></div>
                 </div>
                 <div class="acct-col">
                   <div class="acct-field"><span class="acct-field-label">Valuation Category</span><span class="acct-field-value">{{ safeStr(getAccountProp()['valuationCategory'] || getAccountProp()['valuationCat']) }}</span></div>

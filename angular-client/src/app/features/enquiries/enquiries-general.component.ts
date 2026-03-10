@@ -1005,17 +1005,48 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           if (acctContactVal) console.log('[account] contact keys:', Object.keys(acctContactVal));
           const mergedBasic = { ...basicVal, ...airVal };
           if (acctContactVal) {
-            if (acctContactVal.contactNo || acctContactVal.contactNumber || acctContactVal.cellPhoneNo || acctContactVal.cellPhone) {
-              mergedBasic['contactNo'] = acctContactVal.contactNo || acctContactVal.contactNumber || acctContactVal.cellPhoneNo || acctContactVal.cellPhone || '';
+            const phone = acctContactVal.contactNo || acctContactVal.contactNumber || acctContactVal.cellPhoneNo || acctContactVal.cellPhone || acctContactVal.tel_Mobile || acctContactVal.tel_Work || acctContactVal.tel_Home || '';
+            if (phone) mergedBasic['contactNo'] = phone;
+            const em = acctContactVal.emailId || acctContactVal.email || acctContactVal.emailAddress || '';
+            if (em) mergedBasic['emailId'] = em;
+            if (!mergedBasic['tel_Home'] && acctContactVal.tel_Home) mergedBasic['tel_Home'] = acctContactVal.tel_Home;
+            if (!mergedBasic['tel_Work'] && acctContactVal.tel_Work) mergedBasic['tel_Work'] = acctContactVal.tel_Work;
+            if (!mergedBasic['tel_Mobile'] && acctContactVal.tel_Mobile) mergedBasic['tel_Mobile'] = acctContactVal.tel_Mobile;
+            if (!mergedBasic['fax'] && acctContactVal.fax) mergedBasic['fax'] = acctContactVal.fax;
+          }
+          let acctPropFinal = acctPropVal;
+          if (!acctPropFinal || acctPropFinal._error) {
+            acctPropFinal = {};
+            if (basicVal) {
+              if (basicVal.sgNumber) acctPropFinal['sgNumber'] = basicVal.sgNumber;
+              if (basicVal.propertyID) acctPropFinal['propertyId'] = basicVal.propertyID;
+              if (basicVal.unitPartitionID) acctPropFinal['unitPartitionID'] = basicVal.unitPartitionID;
+              if (basicVal.longitude) acctPropFinal['longitude'] = basicVal.longitude;
+              if (basicVal.latitude) acctPropFinal['latitude'] = basicVal.latitude;
+              if (basicVal.fullAddress) acctPropFinal['locationAddress'] = basicVal.fullAddress;
             }
-            if (acctContactVal.emailId || acctContactVal.email || acctContactVal.emailAddress) {
-              mergedBasic['emailId'] = acctContactVal.emailId || acctContactVal.email || acctContactVal.emailAddress || '';
+            if (airVal) {
+              if (airVal.propertyStreet) acctPropFinal['propertyStreet'] = airVal.propertyStreet;
+              if (airVal.zoneDesc) acctPropFinal['zoneDesc'] = airVal.zoneDesc;
+              if (airVal.isMasterProperty) acctPropFinal['isMasterProperty'] = airVal.isMasterProperty;
+              if (airVal.typeOfUseDesc) acctPropFinal['typeOfUseDesc'] = airVal.typeOfUseDesc;
+              if (airVal.owner) acctPropFinal['owner'] = airVal.owner;
+              if (airVal.streetName) acctPropFinal['streetName'] = airVal.streetName;
+              if (airVal.streenNumber) acctPropFinal['streetNumber'] = airVal.streenNumber;
+              if (airVal.town) acctPropFinal['town'] = airVal.town;
+              if (airVal.suburb) acctPropFinal['suburb'] = airVal.suburb;
+              if (airVal.postalCode) acctPropFinal['postalCode'] = airVal.postalCode;
+              if (airVal.sgNumber && !acctPropFinal['sgNumber']) acctPropFinal['sgNumber'] = airVal.sgNumber;
+              if (!acctPropFinal['locationAddress'] && airVal.streetName) {
+                acctPropFinal['locationAddress'] = [airVal.streenNumber, airVal.streetName, airVal.suburb, airVal.town].filter(Boolean).join(', ');
+              }
             }
+            acctPropFinal['_fallback'] = true;
           }
           data = {
             basic: mergedBasic,
             accountInfo: airVal,
-            property: acctPropVal,
+            property: acctPropFinal,
           };
           this.loadLinkedAccounts(accountId);
           break;
@@ -1050,14 +1081,43 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           break;
 
         case 'property':
-          const [prop, consUnit, rates, meters, transfers] = await Promise.allSettled([
+          const [prop, consUnit, rates, meters, transfers, propAcctInfo] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/consumption-units/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-rates-details/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/metered-services-on-account/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/transfer-ownership/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-info-result/${accountId}`)),
           ]);
-          const propVal = prop.status === 'fulfilled' ? (Array.isArray(prop.value) ? prop.value[0] : prop.value) : null;
+          let propVal = prop.status === 'fulfilled' ? (Array.isArray(prop.value) ? prop.value[0] : prop.value) : null;
+          if (propVal && propVal._error) propVal = null;
+          if (!propVal) {
+            const propAir = propAcctInfo.status === 'fulfilled' ? (Array.isArray(propAcctInfo.value) ? propAcctInfo.value[0] : propAcctInfo.value) : null;
+            const propAcct = this.selectedAccount();
+            if (propAir || propAcct) {
+              const ownerName = propAir?.['owner'] || propAir?.['name'] || propAcct?.['name'] || propAcct?.['surname_Company'] || '';
+              propVal = {
+                propertyStreet: propAir?.['propertyStreet'] || propAcct?.['locationAddress'] || propAcct?.['address'] || '',
+                owner: ownerName,
+                name: ownerName,
+                zoneDesc: propAir?.['zoneDesc'] || '',
+                sgNumber: propAir?.['sgNumber'] || propAcct?.['sgNumber'] || '',
+                typeOfUseDesc: propAir?.['typeOfUseDesc'] || '',
+                isMasterProperty: propAir?.['isMasterProperty'] || '',
+                accountDesc: propAir?.['accountDesc'] || propAcct?.['accountDesc'] || propAcct?.['accountType'] || '',
+                institutionDesc: propAir?.['institutionDesc'] || '',
+                groupCodeDesc: propAir?.['groupCodeDesc'] || '',
+                deliverAddress: propAir?.['deliverAddress'] || propAcct?.['deliveryAddress'] || '',
+                town: propAir?.['town'] || '',
+                suburb: propAir?.['suburb'] || '',
+                streetName: propAir?.['streetName'] || '',
+                streenNumber: propAir?.['streenNumber'] || '',
+                postalCode: propAir?.['postalCode'] || '',
+                propertyId: propAcct?.['propertyID'] || '',
+                _fallback: true,
+              };
+            }
+          }
           data = {
             property: propVal,
             consUnit: consUnit.status === 'fulfilled' ? (Array.isArray(consUnit.value) ? consUnit.value[0] : consUnit.value) : null,
@@ -1068,13 +1128,41 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           break;
 
         case 'contact':
-          const [contactDetails, contactHistory, deliveryHistory] = await Promise.allSettled([
+          const [contactDetails, contactHistory, deliveryHistory, contactBasic, contactAir] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/contact-details/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/contact-details-history/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/delivery-address-history/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/basic-account-details/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-info-result/${accountId}`)),
           ]);
+          const contactObj = contactDetails.status === 'fulfilled' ? (Array.isArray(contactDetails.value) ? contactDetails.value[0] : contactDetails.value) : {};
+          const cBasic = contactBasic.status === 'fulfilled' ? (Array.isArray(contactBasic.value) ? contactBasic.value[0] : contactBasic.value) : null;
+          const cAir = contactAir.status === 'fulfilled' ? (Array.isArray(contactAir.value) ? contactAir.value[0] : contactAir.value) : null;
+          const mergedContact: Record<string, any> = { ...contactObj };
+          if (cAir) {
+            if (!mergedContact['town'] && cAir['town']) mergedContact['town'] = cAir['town'];
+            if (!mergedContact['suburb'] && cAir['suburb']) mergedContact['suburb'] = cAir['suburb'];
+            if (!mergedContact['postalCode'] && cAir['postalCode']) mergedContact['postalCode'] = cAir['postalCode'];
+            if (!mergedContact['careOf'] && cAir['careOf']) mergedContact['careOf'] = cAir['careOf'];
+            if (!mergedContact['streetName'] && cAir['streetName']) mergedContact['addressLine1'] = [cAir['streenNumber'], cAir['streetName']].filter(Boolean).join(' ');
+            if (cAir['deliverAddress'] && !mergedContact['deliveryAddressType']) mergedContact['deliveryAddressType'] = cAir['deliverAddress'];
+          }
+          if (cBasic) {
+            if (!mergedContact['postalCode'] && cBasic['postalCode']) mergedContact['postalCode'] = cBasic['postalCode'];
+            if (!mergedContact['emailId'] && cBasic['emailId']) mergedContact['emailId'] = cBasic['emailId'];
+            if (!mergedContact['email'] && !mergedContact['emailId'] && cBasic['emailId']) mergedContact['email'] = cBasic['emailId'];
+            if (!mergedContact['tel_Mobile'] && cBasic['contactNo']) mergedContact['tel_Mobile'] = cBasic['contactNo'];
+            const delAddr = cBasic['deliveryAddress'] || '';
+            if (delAddr) {
+              const lines = delAddr.split(/\r?\n/).map((l: string) => l.trim()).filter(Boolean);
+              if (lines.length > 0 && !mergedContact['addressLine1']) mergedContact['addressLine1'] = lines[0];
+              if (lines.length > 1 && !mergedContact['addressLine2']) mergedContact['addressLine2'] = lines[1];
+              if (lines.length > 2 && !mergedContact['addressLine3']) mergedContact['addressLine3'] = lines[2];
+              if (lines.length > 1 && !mergedContact['town']) mergedContact['town'] = lines[lines.length > 3 ? lines.length - 2 : 1];
+            }
+          }
           data = {
-            contact: contactDetails.status === 'fulfilled' ? contactDetails.value : null,
+            contact: mergedContact,
             history: contactHistory.status === 'fulfilled' ? this.normalizeArray(contactHistory.value) : [],
             deliveryHistory: deliveryHistory.status === 'fulfilled' ? this.normalizeArray(deliveryHistory.value) : [],
           };
@@ -1092,10 +1180,41 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           break;
 
         case 'name':
-          const nameResult = await firstValueFrom(
-            this.api.get<any>(`/api/platinum/billing-enquiry/name-info/${accountId}`)
-          );
-          data = { name: nameResult };
+          try {
+            const nameResult = await firstValueFrom(
+              this.api.get<any>(`/api/platinum/billing-enquiry/name-info/${accountId}`)
+            );
+            const nameVal = Array.isArray(nameResult) ? nameResult[0] : nameResult;
+            if (nameVal && !nameVal._error) {
+              data = { name: nameVal };
+            } else {
+              throw new Error('name-info returned error');
+            }
+          } catch {
+            console.log('[name] name-info failed, building from basic-account-details + account-info');
+            const [nameBasic, nameAcctInfo] = await Promise.allSettled([
+              firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/basic-account-details/${accountId}`)),
+              firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-info-result/${accountId}`)),
+            ]);
+            const nb = nameBasic.status === 'fulfilled' ? (Array.isArray(nameBasic.value) ? nameBasic.value[0] : nameBasic.value) : null;
+            const na = nameAcctInfo.status === 'fulfilled' ? (Array.isArray(nameAcctInfo.value) ? nameAcctInfo.value[0] : nameAcctInfo.value) : null;
+            const acct = this.selectedAccount();
+            const fallback: Record<string, any> = {};
+            fallback['fullName'] = nb?.['fullNAME'] || na?.['name'] || acct?.['name'] || acct?.['surname_Company'] || '';
+            fallback['initials'] = nb?.['initials'] || '';
+            fallback['accountNumber'] = nb?.['accountNumber'] || acct?.['accountNumber'] || '';
+            fallback['accountDesc'] = nb?.['accountDesc'] || na?.['accountDesc'] || acct?.['accountDesc'] || acct?.['accountType'] || '';
+            fallback['accountStatus'] = nb?.['accountStatus'] || acct?.['accountStatus'] || acct?.['statusDesc'] || '';
+            fallback['idRegistrationNumber'] = acct?.['idRegistrationNumber'] || '';
+            fallback['deliveryAddress'] = nb?.['deliveryAddress'] || na?.['deliverAddress'] || acct?.['deliveryAddress'] || acct?.['address'] || '';
+            fallback['postalCode'] = nb?.['postalCode'] || na?.['postalCode'] || '';
+            fallback['emailId'] = nb?.['emailId'] || '';
+            fallback['contactNo'] = nb?.['contactNo'] || '';
+            fallback['oldAccountCode'] = nb?.['oldAccountCode'] || acct?.['oldAccountCode'] || '';
+            fallback['sgNumber'] = nb?.['sgNumber'] || na?.['sgNumber'] || acct?.['sgNumber'] || '';
+            fallback['_fallback'] = true;
+            data = { name: fallback };
+          }
           break;
 
         case 'deposits':
