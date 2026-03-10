@@ -169,6 +169,11 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   linkedServicesMap = signal<Record<string, any[]>>({});
   linkedServicesLoading = signal<string | null>(null);
 
+  propDebtAccounts = signal<any[]>([]);
+  propDebtLoading = signal(false);
+  propDebtTotals = signal<any>(null);
+  propDebtExpandedAcct = signal<string | null>(null);
+
   advancedSuggestions = signal<{ displayItem: string; accountId: number }[]>([]);
   activeFieldKey = signal<string | null>(null);
   advancedFieldLoading = signal(false);
@@ -217,6 +222,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       heading: 'FINANCIAL',
       tabs: [
         { value: 'balance', label: 'Balance / Debt', icon: '💳' },
+        { value: 'property-debt', label: 'Property Debt', icon: '🏘️' },
         { value: 'txn-detailed', label: 'Transaction Detail', icon: '📋' },
         { value: 'txn-summary', label: 'Transaction Summary', icon: '📄' },
         { value: 'transactions', label: 'Receipts', icon: '🧾' },
@@ -1021,6 +1027,11 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           } catch {
             data = { balance: [] };
           }
+          break;
+
+        case 'property-debt':
+          data = { propertyDebt: true };
+          this.loadPropertyDebt(accountId);
           break;
 
         case 'services':
@@ -2302,6 +2313,93 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         this.linkedAccountsLoading.set(false);
       }
     }
+  }
+
+  private propDebtRequestToken = 0;
+
+  async loadPropertyDebt(accountId: number) {
+    const token = ++this.propDebtRequestToken;
+    this.propDebtLoading.set(true);
+    this.propDebtAccounts.set([]);
+    this.propDebtTotals.set(null);
+    this.propDebtExpandedAcct.set(null);
+    try {
+      const linkedResult = await firstValueFrom(
+        this.api.get<any>(`/api/platinum/billing-enquiry/linked-accounts-on-property/${accountId}`)
+      );
+      if (this.propDebtRequestToken !== token) return;
+      let allAccounts = this.normalizeArray(linkedResult);
+      const currentAcctNum = this.selectedAccount()?.['accountNumber'] || '';
+      const currentAcctId = this.getAccountId(this.selectedAccount());
+      const hasCurrent = allAccounts.some((a: any) =>
+        (a.accountNumber || a.account || '') === currentAcctNum ||
+        String(a.account_ID || a.accountID || '') === String(currentAcctId)
+      );
+      if (!hasCurrent) {
+        allAccounts = [{ accountNumber: currentAcctNum, account_ID: currentAcctId, name: this.getAccountName(this.selectedAccount()), accountStatus: this.selectedAccount()?.['accountStatus'] || this.selectedAccount()?.['statusDesc'], accountType: this.selectedAccount()?.['accountDesc'] || this.selectedAccount()?.['accountType'] }, ...allAccounts];
+      }
+
+      const balancePromises = allAccounts.map(async (acct: any) => {
+        const acctId = acct.account_ID || acct.accountID || acct.accountNumber;
+        if (!acctId) return { ...acct, balanceItems: [], balanceError: true };
+        try {
+          const bal = await this.fetchAccountBalance(Number(acctId));
+          const items = Array.isArray(bal) ? bal : bal ? [bal] : [];
+          let acctOutstanding = 0, acctCurrent = 0, acctD30 = 0, acctD60 = 0, acctD90 = 0, acctD120Plus = 0;
+          for (const item of items) {
+            acctOutstanding += Number(item.totalOutStanding || item.totalOutstandingAmount || item.totalOutstanding || 0) || 0;
+            acctCurrent += Number(item.current || item.currentAmount || 0) || 0;
+            acctD30 += Number(item.days30 || 0) || 0;
+            acctD60 += Number(item.days60 || 0) || 0;
+            acctD90 += Number(item.days90 || 0) || 0;
+            acctD120Plus += (Number(item.days120 || 0) || 0) + (Number(item.days150 || 0) || 0) + (Number(item.days180 || item.untill360 || 0) || 0);
+          }
+          return {
+            ...acct,
+            balanceItems: items,
+            balanceError: false,
+            totalOutstanding: acctOutstanding,
+            agingCurrent: acctCurrent,
+            agingD30: acctD30,
+            agingD60: acctD60,
+            agingD90: acctD90,
+            agingD120Plus: acctD120Plus,
+          };
+        } catch {
+          return { ...acct, balanceItems: [], balanceError: true, totalOutstanding: 0, agingCurrent: 0, agingD30: 0, agingD60: 0, agingD90: 0, agingD120Plus: 0 };
+        }
+      });
+
+      const results = await Promise.all(balancePromises);
+      if (this.propDebtRequestToken !== token) return;
+
+      this.propDebtAccounts.set(results);
+
+      const totals = results.reduce((acc: any, a: any) => ({
+        outstanding: acc.outstanding + (a.totalOutstanding || 0),
+        current: acc.current + (a.agingCurrent || 0),
+        d30: acc.d30 + (a.agingD30 || 0),
+        d60: acc.d60 + (a.agingD60 || 0),
+        d90: acc.d90 + (a.agingD90 || 0),
+        d120Plus: acc.d120Plus + (a.agingD120Plus || 0),
+        accountCount: acc.accountCount + 1,
+        withDebt: acc.withDebt + ((a.totalOutstanding || 0) > 0 ? 1 : 0),
+      }), { outstanding: 0, current: 0, d30: 0, d60: 0, d90: 0, d120Plus: 0, accountCount: 0, withDebt: 0 });
+      this.propDebtTotals.set(totals);
+    } catch (e) {
+      if (this.propDebtRequestToken !== token) return;
+      console.error('[property-debt] Failed:', e);
+      this.propDebtAccounts.set([]);
+      this.propDebtTotals.set(null);
+    } finally {
+      if (this.propDebtRequestToken === token) {
+        this.propDebtLoading.set(false);
+      }
+    }
+  }
+
+  togglePropDebtExpand(acctKey: string) {
+    this.propDebtExpandedAcct.set(this.propDebtExpandedAcct() === acctKey ? null : acctKey);
   }
 
   async toggleLinkedExpand(acctKey: string, accountId: number | string) {

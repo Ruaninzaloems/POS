@@ -429,6 +429,155 @@
           </div>
         }
 
+        <!-- Property Debt Tab -->
+        @if (activeTab() === 'property-debt') {
+          <div class="tab-panel" data-testid="property-debt-tab">
+            @if (propDebtLoading()) {
+              <div class="propdebt-loading">
+                <div class="search-spinner"></div>
+                <span>Loading property-level debt for all linked accounts...</span>
+              </div>
+            } @else if (propDebtAccounts().length === 0) {
+              <div class="empty-state">
+                <div class="empty-icon">🏘️</div>
+                <p class="empty-text">No linked accounts found for this property</p>
+              </div>
+            } @else {
+              @if (propDebtTotals()) {
+                <div class="propdebt-summary">
+                  <div class="propdebt-summary-title">Property-Level Debt Summary</div>
+                  <div class="propdebt-summary-cards">
+                    <div class="propdebt-card propdebt-card-total" [class.has-debt]="propDebtTotals().outstanding > 0">
+                      <span class="propdebt-card-label">Total Outstanding</span>
+                      <span class="propdebt-card-value">R {{ formatDebtAmt(propDebtTotals().outstanding) }}</span>
+                    </div>
+                    <div class="propdebt-card propdebt-card-current">
+                      <span class="propdebt-card-label">Current</span>
+                      <span class="propdebt-card-value">R {{ formatDebtAmt(propDebtTotals().current) }}</span>
+                    </div>
+                    <div class="propdebt-card" [class.propdebt-card-warn]="propDebtTotals().d30 > 0">
+                      <span class="propdebt-card-label">30 Days</span>
+                      <span class="propdebt-card-value">R {{ formatDebtAmt(propDebtTotals().d30) }}</span>
+                    </div>
+                    <div class="propdebt-card" [class.propdebt-card-warn]="propDebtTotals().d60 > 0">
+                      <span class="propdebt-card-label">60 Days</span>
+                      <span class="propdebt-card-value">R {{ formatDebtAmt(propDebtTotals().d60) }}</span>
+                    </div>
+                    <div class="propdebt-card" [class.propdebt-card-danger]="propDebtTotals().d90 > 0">
+                      <span class="propdebt-card-label">90 Days</span>
+                      <span class="propdebt-card-value">R {{ formatDebtAmt(propDebtTotals().d90) }}</span>
+                    </div>
+                    <div class="propdebt-card" [class.propdebt-card-danger]="propDebtTotals().d120Plus > 0">
+                      <span class="propdebt-card-label">120+ Days</span>
+                      <span class="propdebt-card-value">R {{ formatDebtAmt(propDebtTotals().d120Plus) }}</span>
+                    </div>
+                  </div>
+                  <div class="propdebt-summary-meta">
+                    <span>{{ propDebtTotals().accountCount }} account{{ propDebtTotals().accountCount !== 1 ? 's' : '' }} on property</span>
+                    <span class="propdebt-meta-sep">|</span>
+                    <span>{{ propDebtTotals().withDebt }} with outstanding debt</span>
+                  </div>
+                </div>
+              }
+
+              <div class="propdebt-accounts-section">
+                <div class="propdebt-accounts-header">Per-Account Debt Breakdown</div>
+                <div class="data-table-wrapper">
+                  <table class="data-table propdebt-table" data-testid="table-property-debt">
+                    <thead>
+                      <tr>
+                        <th style="width:32px"></th>
+                        <th>Account</th>
+                        <th>Name</th>
+                        <th>Status</th>
+                        <th>Type</th>
+                        <th class="text-right">Outstanding</th>
+                        <th class="text-right">Current</th>
+                        <th class="text-right">30 Days</th>
+                        <th class="text-right">60 Days</th>
+                        <th class="text-right">90 Days</th>
+                        <th class="text-right">120+ Days</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (pa of propDebtAccounts(); track getLinkedAcctId(pa); let pi = $index) {
+                        <tr class="propdebt-row" [class.propdebt-row-current]="(pa.accountNumber || pa.account || '') === (selectedAccount()!['accountNumber'] || '')" [class.propdebt-row-expanded]="propDebtExpandedAcct() === getLinkedAcctId(pa)" (click)="togglePropDebtExpand(getLinkedAcctId(pa))" [attr.data-testid]="'propdebt-row-' + pi">
+                          <td class="text-center">
+                            <span class="expand-chevron linked-chevron" [class.expanded]="propDebtExpandedAcct() === getLinkedAcctId(pa)">▶</span>
+                          </td>
+                          <td class="mono propdebt-acct-num">{{ pa.accountNumber || pa.account || '-' }}</td>
+                          <td>{{ pa.name || pa.surname_Company || pa.personCompany || '-' }}</td>
+                          <td><span class="inline-badge" [class.active]="(pa.accountStatus || pa.statusDesc || '').toLowerCase().includes('active')">{{ pa.accountStatus || pa.statusDesc || '-' }}</span></td>
+                          <td>{{ pa.accountType || pa.accountDesc || pa.accType || '-' }}</td>
+                          <td class="text-right"><span class="mono bold" [class.positive]="(pa.totalOutstanding || 0) > 0">R {{ formatDebtAmt(pa.totalOutstanding || 0) }}</span></td>
+                          <td class="text-right mono">R {{ formatDebtAmt(pa.agingCurrent || 0) }}</td>
+                          <td class="text-right mono" [class.propdebt-amt-warn]="(pa.agingD30 || 0) > 0">R {{ formatDebtAmt(pa.agingD30 || 0) }}</td>
+                          <td class="text-right mono" [class.propdebt-amt-warn]="(pa.agingD60 || 0) > 0">R {{ formatDebtAmt(pa.agingD60 || 0) }}</td>
+                          <td class="text-right mono" [class.propdebt-amt-danger]="(pa.agingD90 || 0) > 0">R {{ formatDebtAmt(pa.agingD90 || 0) }}</td>
+                          <td class="text-right mono" [class.propdebt-amt-danger]="(pa.agingD120Plus || 0) > 0">R {{ formatDebtAmt(pa.agingD120Plus || 0) }}</td>
+                        </tr>
+                        @if (propDebtExpandedAcct() === getLinkedAcctId(pa)) {
+                          <tr>
+                            <td colspan="11" class="propdebt-expand-cell">
+                              @if (pa.balanceError) {
+                                <div class="propdebt-svc-error">Unable to load service-level balance for this account</div>
+                              } @else if ((pa.balanceItems || []).length > 0) {
+                                <div class="propdebt-svc-wrap">
+                                  <div class="propdebt-svc-title">Service Breakdown — {{ pa.accountNumber || pa.account }}</div>
+                                  <table class="data-table propdebt-svc-table">
+                                    <thead>
+                                      <tr>
+                                        <th>Service</th>
+                                        <th class="text-right">Outstanding</th>
+                                        <th class="text-right">Current</th>
+                                        <th class="text-right">30 Days</th>
+                                        <th class="text-right">60 Days</th>
+                                        <th class="text-right">90 Days</th>
+                                        <th class="text-right">120+ Days</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      @for (svc of pa.balanceItems; track $index) {
+                                        <tr [attr.data-testid]="'propdebt-svc-' + pi + '-' + $index">
+                                          <td>{{ svc.serviceDescription || svc.serviceDesc || svc.description || svc.serviceTypeDesc || 'Service' }}</td>
+                                          <td class="text-right mono" [class.positive]="getDebtVal(svc, 'totalOutStanding') > 0">R {{ formatDebtAmt(getDebtVal(svc, 'totalOutStanding')) }}</td>
+                                          <td class="text-right mono">R {{ formatDebtAmt(getDebtVal(svc, 'current')) }}</td>
+                                          <td class="text-right mono">R {{ formatDebtAmt(getDebtVal(svc, 'days30')) }}</td>
+                                          <td class="text-right mono">R {{ formatDebtAmt(getDebtVal(svc, 'days60')) }}</td>
+                                          <td class="text-right mono">R {{ formatDebtAmt(getDebtVal(svc, 'days90')) }}</td>
+                                          <td class="text-right mono">R {{ formatDebtAmt((getDebtVal(svc, 'days120') + getDebtVal(svc, 'days150') + getDebtVal(svc, 'days180'))) }}</td>
+                                        </tr>
+                                      }
+                                    </tbody>
+                                  </table>
+                                </div>
+                              } @else {
+                                <div class="propdebt-svc-error">No service-level balance data available</div>
+                              }
+                            </td>
+                          </tr>
+                        }
+                      }
+                      @if (propDebtTotals()) {
+                        <tr class="propdebt-totals-row">
+                          <td></td>
+                          <td colspan="4" class="propdebt-totals-label">Property Total</td>
+                          <td class="text-right"><span class="mono bold" [class.positive]="propDebtTotals().outstanding > 0">R {{ formatDebtAmt(propDebtTotals().outstanding) }}</span></td>
+                          <td class="text-right mono bold">R {{ formatDebtAmt(propDebtTotals().current) }}</td>
+                          <td class="text-right mono bold">R {{ formatDebtAmt(propDebtTotals().d30) }}</td>
+                          <td class="text-right mono bold">R {{ formatDebtAmt(propDebtTotals().d60) }}</td>
+                          <td class="text-right mono bold">R {{ formatDebtAmt(propDebtTotals().d90) }}</td>
+                          <td class="text-right mono bold">R {{ formatDebtAmt(propDebtTotals().d120Plus) }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            }
+          </div>
+        }
+
         <!-- Services Tab -->
         @if (activeTab() === 'services') {
           <div class="tab-panel" data-testid="services-panel">

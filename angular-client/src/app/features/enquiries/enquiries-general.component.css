@@ -1333,6 +1333,139 @@
   font-style: italic;
 }
 
+.propdebt-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 2rem 1rem;
+  font-size: 0.85rem;
+  color: var(--pos-text-muted);
+  justify-content: center;
+}
+.propdebt-loading .search-spinner {
+  position: static;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+.propdebt-summary {
+  background: linear-gradient(135deg, rgba(15,43,70,0.04) 0%, rgba(201,168,76,0.06) 100%);
+  border: 1px solid rgba(15,43,70,0.10);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+.propdebt-summary-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--platinum-primary, #0f2b46);
+  margin-bottom: 0.75rem;
+}
+.propdebt-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.5rem;
+}
+.propdebt-card {
+  text-align: center;
+  padding: 0.5rem 0.4rem;
+  background: #fff;
+  border: 1px solid rgba(15,43,70,0.08);
+  border-radius: 0.4rem;
+}
+.propdebt-card-label {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--pos-text-muted);
+  margin-bottom: 0.2rem;
+}
+.propdebt-card-value {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 700;
+  font-family: 'Inter', monospace;
+  color: var(--platinum-primary, #0f2b46);
+}
+.propdebt-card-total {
+  border-color: rgba(15,43,70,0.15);
+  background: rgba(15,43,70,0.03);
+}
+.propdebt-card-total.has-debt {
+  border-color: rgba(220,38,38,0.25);
+  background: rgba(220,38,38,0.04);
+}
+.propdebt-card-total.has-debt .propdebt-card-value { color: #dc2626; }
+.propdebt-card-current { border-color: rgba(34,197,94,0.2); background: rgba(34,197,94,0.03); }
+.propdebt-card-current .propdebt-card-value { color: #15803d; }
+.propdebt-card-warn { border-color: rgba(245,158,11,0.25); background: rgba(245,158,11,0.04); }
+.propdebt-card-warn .propdebt-card-value { color: #b45309; }
+.propdebt-card-danger { border-color: rgba(220,38,38,0.2); background: rgba(220,38,38,0.04); }
+.propdebt-card-danger .propdebt-card-value { color: #dc2626; }
+.propdebt-summary-meta {
+  margin-top: 0.6rem;
+  font-size: 0.75rem;
+  color: var(--pos-text-muted);
+  text-align: center;
+}
+.propdebt-meta-sep { margin: 0 0.5rem; color: rgba(15,43,70,0.2); }
+.propdebt-accounts-section {
+  border: 1px solid rgba(15,43,70,0.10);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+.propdebt-accounts-header {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--platinum-primary, #0f2b46);
+  padding: 0.6rem 1rem;
+  background: rgba(15,43,70,0.04);
+  border-bottom: 1px solid rgba(15,43,70,0.08);
+}
+.propdebt-table { margin: 0 !important; border-radius: 0 !important; }
+.propdebt-row { cursor: pointer; transition: background 0.15s; }
+.propdebt-row:hover { background: rgba(15,43,70,0.03) !important; }
+.propdebt-row-expanded { background: rgba(201,168,76,0.06) !important; }
+.propdebt-row-current { border-left: 3px solid var(--platinum-accent, #c9a84c); }
+.propdebt-acct-num { font-weight: 600; }
+.propdebt-amt-warn { color: #b45309 !important; }
+.propdebt-amt-danger { color: #dc2626 !important; }
+.propdebt-totals-row {
+  background: rgba(15,43,70,0.06) !important;
+  border-top: 2px solid rgba(15,43,70,0.12);
+}
+.propdebt-totals-label {
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--platinum-primary, #0f2b46);
+}
+.propdebt-expand-cell {
+  padding: 0 !important;
+  background: rgba(15,43,70,0.02);
+}
+.propdebt-svc-wrap { padding: 0.5rem; }
+.propdebt-svc-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--platinum-primary, #0f2b46);
+  padding: 0.3rem 0.5rem;
+  margin-bottom: 0.25rem;
+}
+.propdebt-svc-table { margin: 0 !important; font-size: 0.75rem !important; }
+.propdebt-svc-table th { font-size: 0.7rem !important; padding: 0.3rem 0.5rem !important; background: rgba(15,43,70,0.04) !important; }
+.propdebt-svc-table td { padding: 0.3rem 0.5rem !important; font-size: 0.73rem !important; }
+.propdebt-svc-error {
+  padding: 0.6rem 1rem;
+  font-size: 0.78rem;
+  color: var(--pos-text-muted);
+  font-style: italic;
+}
+@media (max-width: 768px) {
+  .propdebt-summary-cards { grid-template-columns: repeat(3, 1fr); }
+}
+
 @media (max-width: 768px) {
   .acct-two-col { grid-template-columns: 1fr; }
   .acct-col:first-child { border-right: none; border-bottom: 1px solid rgba(15,43,70,0.06); }
