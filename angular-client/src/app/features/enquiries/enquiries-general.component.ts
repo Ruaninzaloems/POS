@@ -118,6 +118,8 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
   bvpFinYear = signal('');
   bvpAvailableYears = signal<string[]>([]);
+  ratesFinYear = signal('');
+  ratesAvailableYears = signal<string[]>([]);
   summarySource = signal<'monthly' | 'aging' | ''>('');
 
   detailFinYear = signal('');
@@ -407,6 +409,24 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const n = typeof v === 'number' ? v : parseFloat(v);
     if (isNaN(n)) return '-';
     return n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  getObjectEntries(obj: any): { key: string; value: any }[] {
+    if (!obj || typeof obj !== 'object') return [];
+    return Object.entries(obj)
+      .filter(([k]) => !k.startsWith('_'))
+      .map(([key, value]) => ({ key, value }));
+  }
+
+  camelToLabel(key: string): string {
+    return key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim();
+  }
+
+  formatAutoValue(val: any): string {
+    if (val === null || val === undefined || val === '') return '-';
+    if (typeof val === 'number') return this.formatCurrency(val);
+    if (typeof val === 'boolean') return val ? 'Yes' : 'No';
+    return String(val);
   }
 
   getBillingCycleDisplay(): string {
@@ -1720,11 +1740,16 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           break;
 
         case 'rates':
-          const ratesFy = this.userFinYear();
+          this.initRatesYears();
+          if (!this.ratesFinYear()) {
+            this.ratesFinYear.set(this.userFinYear() || this.getCurrentFinYear());
+          }
+          const ratesFy = this.ratesFinYear();
           const fyP: Record<string, string> = ratesFy ? { financialYear: ratesFy } : {};
+          const ratesFyParam: Record<string, string> = ratesFy ? { finYear: ratesFy } : {};
           const [ratesDetail, ratesHistory, ratesBalance, ratesServiceBal, ratesPropDetails] = await Promise.allSettled([
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-rates-details/${accountId}`)),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/rates-run-history/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-rates-details/${accountId}`, ratesFyParam)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/rates-run-history/${accountId}`, ratesFyParam)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/total-balance-debt-inquiry/${accountId}`, fyP)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/service-type-balance/${accountId}`, fyP)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
@@ -1746,6 +1771,23 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           if (balanceItems.length) console.log('[rates] balance items count:', balanceItems.length, 'rates-filtered:', ratesBalanceItems.length);
           if (svcBalItems.length) console.log('[rates] service-type-balance count:', svcBalItems.length, 'rates-filtered:', ratesServiceItems.length);
           if (propDetailsVal) console.log('[rates] property-details keys:', Object.keys(propDetailsVal));
+
+          const propId = propDetailsVal?.property_ID || propDetailsVal?.propertyID || propDetailsVal?.propertyId || accountId;
+          let valuationsArr: any[] = [];
+          let valuationDataVal: any = null;
+          let valuationImportVal: any = null;
+          if (propId) {
+            const [suppVal, valById, valImport] = await Promise.allSettled([
+              firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/supplementary-valuations`, { propertyId: String(propId) })),
+              firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/valuation-by-id`, { propertyId: String(propId) })),
+              firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/valuation-import-by-id`, { propertyId: String(propId) })),
+            ]);
+            valuationsArr = suppVal.status === 'fulfilled' ? this.normalizeArray(suppVal.value) : [];
+            valuationDataVal = valById.status === 'fulfilled' && valById.value && !valById.value._error ? (Array.isArray(valById.value) ? valById.value[0] : valById.value) : null;
+            valuationImportVal = valImport.status === 'fulfilled' && valImport.value && !valImport.value._error ? (Array.isArray(valImport.value) ? valImport.value[0] : valImport.value) : null;
+            console.log('[rates] valuations count:', valuationsArr.length, 'valById:', valuationDataVal ? Object.keys(valuationDataVal).length + ' keys' : 'null', 'valImport:', valuationImportVal ? Object.keys(valuationImportVal).length + ' keys' : 'null');
+          }
+
           data = {
             ratesDetails: ratesDetailVal && !ratesDetailVal._error ? ratesDetailVal : null,
             ratesHistory: ratesHistoryVal,
@@ -1754,6 +1796,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             allBalanceItems: balanceItems,
             allServiceItems: svcBalItems,
             propertyDetails: propDetailsVal && !propDetailsVal._error ? propDetailsVal : null,
+            valuations: valuationsArr,
+            valuationData: valuationDataVal,
+            valuationImport: valuationImportVal,
           };
           break;
 
@@ -2292,6 +2337,29 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       years.push(`${y}/${y + 1}`);
     }
     this.summaryAvailableYears.set(years);
+  }
+
+  initRatesYears(): void {
+    if (this.ratesAvailableYears().length > 0) return;
+    const currentFy = this.userFinYear() || this.getCurrentFinYear();
+    const [startYear] = currentFy.split('/').map(Number);
+    const years: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      const y = startYear - i;
+      years.push(`${y}/${y + 1}`);
+    }
+    this.ratesAvailableYears.set(years);
+  }
+
+  async onRatesYearChange(year: string): Promise<void> {
+    this.ratesFinYear.set(year);
+    const account = this.selectedAccount();
+    if (!account) return;
+    const accountId = this.getAccountId(account);
+    if (!accountId) return;
+    this.tabLoading.set(true);
+    await this.loadTabData('rates', accountId);
+    this.tabLoading.set(false);
   }
 
   initBvpYears(): void {

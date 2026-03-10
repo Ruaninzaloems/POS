@@ -385,6 +385,31 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
     "transaction-history": "detailed-transaction-results",
   };
 
+  const valuationQueryParamEndpoints: Record<string, string> = {
+    "valuation-by-id": "ValuationById",
+    "valuation-import-by-id": "ValuationImportById",
+    "supplementary-valuations": "SupplementaryValuations",
+    "valuation-by-unit": "ValuationByUnit",
+  };
+
+  app.get("/api/platinum/billing-enquiry/:endpoint", async (req, res, next) => {
+    const { endpoint } = req.params;
+    const platinumPath = valuationQueryParamEndpoints[endpoint];
+    if (!platinumPath) return next();
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const queryParams: Record<string, string> = { ...req.query as Record<string, string> };
+      console.log(`[billing-enquiry] valuation endpoint="${endpoint}" mapped="${platinumPath}" queryParams:`, JSON.stringify(queryParams));
+      const data = await platinumGet(session, `/api/BillingEnquiry/${platinumPath}`, queryParams);
+      const sample = Array.isArray(data) ? data[0] : data;
+      console.log(`[billing-enquiry] ${endpoint} response keys:`, sample ? Object.keys(sample) : 'empty/null', `isArray=${Array.isArray(data)} count=${Array.isArray(data) ? data.length : 'single'}`);
+      return handlePlatinumResult(res, data);
+    } catch (e: any) {
+      console.error(`[billing-enquiry/${endpoint}] Error:`, e.message);
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   app.get("/api/platinum/billing-enquiry/:endpoint/:accountId", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;

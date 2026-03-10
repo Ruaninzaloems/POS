@@ -2578,6 +2578,8 @@
                       <th class="debt-th-desc">Financial Year</th>
                       <th class="debt-th-desc">Month</th>
                       <th class="debt-th-desc">Type</th>
+                      <th class="debt-th-desc">Description</th>
+                      <th class="debt-th-desc">Amount</th>
                       <th class="debt-th-desc">Generated Date</th>
                       <th class="debt-th-desc">Status</th>
                       <th class="debt-th-desc">Download</th>
@@ -2590,6 +2592,8 @@
                         <td class="debt-td-desc">{{ s.financialYear || s.billingPeriod || s.period || '-' }}</td>
                         <td class="debt-td-desc">{{ s.month || s.billingMonth || '-' }}</td>
                         <td class="debt-td-desc"><span class="stmt-type-badge" [class.stmt-detailed]="(s.statementType || s.type || '').toLowerCase().includes('detail')">{{ s.statementType || s.type || '-' }}</span></td>
+                        <td class="debt-td-desc">{{ s.description || s.statementDescription || 'Account Statement' }}</td>
+                        <td class="debt-td-desc mono">R {{ formatCurrency(s.amount ?? s.totalAmount ?? 0) }}</td>
                         <td class="debt-td-desc">{{ formatDate(s.generatedDate || s.dateGenerated || s.date || s.dateCaptured) }}</td>
                         <td class="debt-td-desc"><span class="ind-status-badge" [class.ind-active]="(s.status || '').toLowerCase() !== 'failed'">{{ s.status || '-' }}</span></td>
                         <td class="debt-td-desc">
@@ -2607,7 +2611,7 @@
                         </td>
                       </tr>
                     } @empty {
-                      <tr><td colspan="7" class="debt-td-desc" style="text-align:center; color: var(--pos-text-muted); padding: 1rem;">No statements generated yet. Use the generator above to create one.</td></tr>
+                      <tr><td colspan="9" class="debt-td-desc" style="text-align:center; color: var(--pos-text-muted); padding: 1rem;">No statements generated yet. Use the generator above to create one.</td></tr>
                     }
                   </tbody>
                 </table>
@@ -2938,7 +2942,16 @@
 
         @if (activeTab() === 'rates') {
           <div class="tab-panel" data-testid="rates-tab">
-            @if (tabData()?.ratesDetails || (tabData()?.allBalanceItems || []).length > 0 || tabData()?.propertyDetails || (tabData()?.ratesHistory || []).length > 0 || (tabData()?.ratesBalanceItems || []).length > 0 || (tabData()?.ratesServiceItems || []).length > 0) {
+            <div class="rates-fy-toolbar">
+              <label class="rates-fy-label">Financial Year:</label>
+              <select class="rates-fy-select" [ngModel]="ratesFinYear()" (ngModelChange)="onRatesYearChange($event)" data-testid="select-rates-finyear">
+                @for (y of ratesAvailableYears(); track y) {
+                  <option [value]="y">{{ y }}</option>
+                }
+              </select>
+            </div>
+
+            @if (tabData()?.ratesDetails || (tabData()?.allBalanceItems || []).length > 0 || tabData()?.propertyDetails || (tabData()?.ratesHistory || []).length > 0 || (tabData()?.ratesBalanceItems || []).length > 0 || (tabData()?.ratesServiceItems || []).length > 0 || (tabData()?.valuations || []).length > 0 || tabData()?.valuationData || tabData()?.valuationImport) {
               <div class="export-toolbar">
                 <button class="export-btn export-csv" (click)="exportRatesCsv()" data-testid="button-export-rates-csv">📥 Excel/CSV</button>
               </div>
@@ -2969,7 +2982,37 @@
 
               @if (tabData()?.ratesDetails) {
                 <div class="detail-section">
-                  <div class="section-header-bar">⚖️ Rates & Valuation Details</div>
+                  <div class="section-header-bar">⚖️ Rates Summary ({{ ratesFinYear() }})</div>
+                  <div class="rates-summary-grid">
+                    <div class="rates-summary-card">
+                      <div class="rates-summary-label">Annual Property Rates</div>
+                      <div class="rates-summary-value mono">R {{ formatCurrency(tabData()?.ratesDetails?.annualPropertyRates ?? tabData()?.ratesDetails?.annualRate ?? 0) }}</div>
+                    </div>
+                    <div class="rates-summary-card">
+                      <div class="rates-summary-label">Instalment</div>
+                      <div class="rates-summary-value mono">R {{ formatCurrency(tabData()?.ratesDetails?.installment ?? tabData()?.ratesDetails?.instalmentAmount ?? 0) }}</div>
+                    </div>
+                    <div class="rates-summary-card">
+                      <div class="rates-summary-label">Frequency</div>
+                      <div class="rates-summary-value">{{ tabData()?.ratesDetails?.frequency || 'Monthly' }}</div>
+                    </div>
+                    <div class="rates-summary-card">
+                      <div class="rates-summary-label">Remaining Instalments</div>
+                      <div class="rates-summary-value mono">{{ tabData()?.ratesDetails?.remainingInstallments ?? tabData()?.ratesDetails?.remainingInstalments ?? '-' }}</div>
+                    </div>
+                    <div class="rates-summary-card">
+                      <div class="rates-summary-label">Remaining Amount</div>
+                      <div class="rates-summary-value mono">R {{ formatCurrency(tabData()?.ratesDetails?.remaingAmount ?? tabData()?.ratesDetails?.remainingAmount ?? 0) }}</div>
+                    </div>
+                    <div class="rates-summary-card rates-summary-rebate">
+                      <div class="rates-summary-label">Rebate Amount</div>
+                      <div class="rates-summary-value mono">R {{ formatCurrency(tabData()?.ratesDetails?.rebateAmount ?? 0) }}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="detail-section" style="margin-top: 0.5rem;">
+                  <div class="section-header-bar">💰 Property Valuation Cards</div>
                   <div class="rates-cards-row">
                     @for (card of [
                       { key: 'marketValue', label: 'Market Value', isCurrency: true, icon: '💰' },
@@ -3152,6 +3195,106 @@
                         }
                       </tbody>
                     </table>
+                  </div>
+                </div>
+              }
+
+              @if ((tabData()?.valuations || []).length > 0) {
+                <div class="detail-section" style="margin-top: 1rem;">
+                  <div class="section-header-bar">🏛️ Property Valuations <span class="section-count">{{ (tabData()?.valuations || []).length }}</span></div>
+                  <div>
+                    @for (v of tabData()?.valuations || []; track $index) {
+                      <div class="valuation-card" [attr.data-testid]="'valuation-item-' + $index">
+                        <div class="valuation-badges">
+                          <span class="valuation-badge">{{ v.type || 'General' }}</span>
+                          <span class="valuation-badge" [class.valuation-badge-active]="v.valuationStatus === 'Active'">{{ v.valuationStatus || '-' }}</span>
+                          @if (v.reason) { <span class="valuation-badge">{{ v.reason }}</span> }
+                          @if (v.financialYear) { <span class="valuation-badge-fy">FY: {{ v.financialYear }}</span> }
+                        </div>
+                        <div class="valuation-grid">
+                          <div>
+                            <div class="valuation-field-label">Stand Market Value</div>
+                            <div class="valuation-field-value mono" style="font-weight: 700;">R {{ formatCurrency(v.standMarketValue || 0) }}</div>
+                          </div>
+                          <div>
+                            <div class="valuation-field-label">Improvement Value</div>
+                            <div class="valuation-field-value mono" style="font-weight: 700;">R {{ formatCurrency(v.improvementValue || 0) }}</div>
+                          </div>
+                          <div>
+                            <div class="valuation-field-label">Stand Size</div>
+                            <div class="valuation-field-value mono">{{ v.standSize ?? '-' }} m²</div>
+                          </div>
+                          <div>
+                            <div class="valuation-field-label">Land Size</div>
+                            <div class="valuation-field-value mono">{{ v.landSize ?? '-' }} ha</div>
+                          </div>
+                          @if ((v.agriculturalValue || 0) > 0) {
+                            <div>
+                              <div class="valuation-field-label">Agricultural Value</div>
+                              <div class="valuation-field-value mono">R {{ formatCurrency(v.agriculturalValue) }}</div>
+                            </div>
+                          }
+                          @if ((v.standValue || 0) > 0) {
+                            <div>
+                              <div class="valuation-field-label">Stand Value</div>
+                              <div class="valuation-field-value mono">R {{ formatCurrency(v.standValue) }}</div>
+                            </div>
+                          }
+                          @if ((v.exemptValue || 0) > 0) {
+                            <div>
+                              <div class="valuation-field-label">Exempt Value</div>
+                              <div class="valuation-field-value mono" style="color: var(--pos-success);">R {{ formatCurrency(v.exemptValue) }}</div>
+                            </div>
+                          }
+                          <div>
+                            <div class="valuation-field-label">Zone</div>
+                            <div class="valuation-field-value">{{ v.zoneDesc || '-' }}</div>
+                          </div>
+                          <div>
+                            <div class="valuation-field-label">Type of Use</div>
+                            <div class="valuation-field-value">{{ v.typeOfUseDesc || '-' }}</div>
+                          </div>
+                          <div class="valuation-full-span">
+                            <div class="valuation-field-label">Rates Tariff Code</div>
+                            <div class="valuation-field-value">{{ v.ratesTariffCode || '-' }}</div>
+                          </div>
+                        </div>
+                        <div class="valuation-footer">
+                          <span>Roll No: {{ v.rollNumber || '-' }}</span>
+                          <span>Roll Date: {{ formatDate(v.rollDate) }}</span>
+                          <span>Expected Expiry: {{ formatDate(v.expectedExpiryDate) }}</span>
+                          @if (v.address) { <span style="font-weight: 500; color: var(--pos-text);">Address: {{ v.address }}</span> }
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+
+              @if (tabData()?.valuationData) {
+                <div class="detail-section" style="margin-top: 1rem;">
+                  <div class="section-header-bar">📄 Valuation Roll Data</div>
+                  <div class="auto-fields-grid">
+                    @for (entry of getObjectEntries(tabData()?.valuationData); track entry.key) {
+                      <div>
+                        <div class="auto-field-label">{{ camelToLabel(entry.key) }}</div>
+                        <div class="auto-field-value mono">{{ formatAutoValue(entry.value) }}</div>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+
+              @if (tabData()?.valuationImport) {
+                <div class="detail-section" style="margin-top: 1rem;">
+                  <div class="section-header-bar">📄 Valuation Import Data</div>
+                  <div class="auto-fields-grid">
+                    @for (entry of getObjectEntries(tabData()?.valuationImport); track entry.key) {
+                      <div>
+                        <div class="auto-field-label">{{ camelToLabel(entry.key) }}</div>
+                        <div class="auto-field-value mono">{{ formatAutoValue(entry.value) }}</div>
+                      </div>
+                    }
                   </div>
                 </div>
               }
