@@ -1617,10 +1617,16 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           break;
 
         case 'linked-accounts':
-          const linkedResult = await firstValueFrom(
-            this.api.get<any>(`/api/platinum/billing-enquiry/linked-accounts-on-property/${accountId}`)
-          );
-          data = { linkedAccounts: this.normalizeArray(linkedResult) };
+          const [linkedSettled] = await Promise.allSettled([
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/linked-accounts-on-property/${accountId}`))
+          ]);
+          const linkedArr = linkedSettled.status === 'fulfilled' ? this.normalizeArray(linkedSettled.value) : [];
+          linkedArr.sort((a: any, b: any) => {
+            const numA = a.accountNumber || a.accountNo || '';
+            const numB = b.accountNumber || b.accountNo || '';
+            return String(numA).localeCompare(String(numB), undefined, { numeric: true });
+          });
+          data = { linkedAccounts: linkedArr };
           break;
 
         case 'debit-orders':
@@ -3639,6 +3645,11 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         const num = a.accountNumber || a.account || '';
         return num !== currentAcctNum;
       });
+      linked.sort((a: any, b: any) => {
+        const numA = a.accountNumber || a.accountNo || '';
+        const numB = b.accountNumber || b.accountNo || '';
+        return String(numA).localeCompare(String(numB), undefined, { numeric: true });
+      });
       if (linked.length > 0) {
         console.log('[linked-accounts] keys:', Object.keys(linked[0]));
       }
@@ -3716,6 +3727,11 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       const results = await Promise.all(balancePromises);
       if (this.propDebtRequestToken !== token) return;
 
+      results.sort((a: any, b: any) => {
+        const numA = a.accountNumber || a.accountNo || '';
+        const numB = b.accountNumber || b.accountNo || '';
+        return String(numA).localeCompare(String(numB), undefined, { numeric: true });
+      });
       this.propDebtAccounts.set(results);
 
       const totals = results.reduce((acc: any, a: any) => ({
