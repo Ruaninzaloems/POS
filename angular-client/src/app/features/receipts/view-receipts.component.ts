@@ -415,6 +415,10 @@ export class ViewReceiptsComponent implements OnInit {
     try {
       const results: any = await firstValueFrom(this.api.get('/api/platinum/billing-enquiry/get-eft-bank-statement-notes', { accountId: this.eftAccountSearch() }));
       const items = Array.isArray(results) ? results : (results?.items || results?.value || results?.data || []);
+      if (items.length > 0) {
+        console.log('[EftByAccount] First result keys:', Object.keys(items[0]));
+        console.log('[EftByAccount] First result:', JSON.stringify(items[0]));
+      }
       this.eftResults.set(items);
       if (items.length === 0) {
         this.toast.info(`No EFT receipts found for account "${this.eftAccountSearch()}".`);
@@ -709,13 +713,14 @@ export class ViewReceiptsComponent implements OnInit {
   exportEftResults(): void {
     const results = this.filteredEftResults();
     if (!results || results.length === 0) return;
-    const headers = ['Receipt No','Bank Statement Note','Amount','Bank Date','Billing Allocation Date'];
+    const headers = ['Receipt No','Bank Statement Note','Amount','Bank Date','Billing Allocation Date','Capturer'];
     const rows = results.map((r: any) => [
       r.receiptNo || '',
       r.bankStatementNote || '',
       Number(r.amount) || 0,
       this.formatDateOnly(r.bankStatementDate || ''),
-      this.formatDateOnly(r.billingAllocationDate || '')
+      this.formatDateOnly(r.billingAllocationDate || ''),
+      this.getAllocatedByUser(r)
     ]);
     const csv = [headers.map(h => this.csvEscape(h)).join(','), ...rows.map(r => r.map(v => this.csvEscape(v)).join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });

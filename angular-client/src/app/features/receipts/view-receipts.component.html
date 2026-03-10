@@ -453,6 +453,7 @@
                     Allocation Date @if (eftSortField() === 'billingAllocationDate') { <span>{{ eftSortDir() === 'asc' ? '↑' : '↓' }}</span> }
                   </th>
                   <th>Processing Time</th>
+                  <th>Capturer</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -470,6 +471,7 @@
                     <td>
                       <span class="processing-time">{{ getDaysBetween(item.bankStatementDate, item.billingAllocationDate) }}</span>
                     </td>
+                    <td>{{ getAllocatedByUser(item) || '-' }}</td>
                     <td class="actions-cell" (click)="$event.stopPropagation()">
                       <button class="btn-outline btn-sm btn-icon" (click)="loadFromEft(item)" title="View Receipt" [attr.data-testid]="'btn-view-eft-receipt-' + $index">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -481,7 +483,7 @@
                   </tr>
                   @if (eftExpandedRow() === $index) {
                     <tr class="expanded-detail-row">
-                      <td [attr.colspan]="8">
+                      <td [attr.colspan]="9">
                         <div class="detail-panel">
                           <div class="detail-flow">
                             <div class="detail-block detail-block-bank">
@@ -508,6 +510,9 @@
                                 <div class="detail-pair"><span class="detail-key">Account ID</span><span class="detail-val font-mono">{{ eftAccountSearch() }}</span></div>
                                 <div class="detail-pair"><span class="detail-key">Allocation Date</span><span class="detail-val">{{ formatDateOnly(item.billingAllocationDate || '') }}</span></div>
                                 <div class="detail-pair"><span class="detail-key">Processing Time</span><span class="detail-val">{{ getDaysBetween(item.bankStatementDate, item.billingAllocationDate) }}</span></div>
+                                @if (getAllocatedByUser(item)) {
+                                  <div class="detail-pair"><span class="detail-key">Allocated By</span><span class="detail-val">{{ getAllocatedByUser(item) }}</span></div>
+                                }
                               </div>
                             </div>
                           </div>
