@@ -31,6 +31,11 @@ interface AllocationLine {
   amount: number;
   allocationType: string;
   description?: string;
+  lastName?: string;
+  initials?: string;
+  miscPaymentGroupId?: number;
+  clearanceId?: number;
+  vatAmount?: number;
 }
 
 interface SearchResult {
@@ -200,6 +205,12 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
       return;
     }
 
+    const nameParts = (account.name || '').split(/\s+/).filter(Boolean);
+    let lastName = nameParts[0] || 'N/A';
+    let initials = nameParts.length >= 2
+      ? nameParts.slice(1).map(p => p.charAt(0).toUpperCase()).join('')
+      : lastName.charAt(0).toUpperCase();
+
     const line: AllocationLine = {
       accountNo: account.accountNo,
       accountId: account.accountId,
@@ -207,6 +218,8 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
       amount: amount,
       allocationType: account.type || 'ACCOUNT',
       description: account.description,
+      lastName,
+      initials,
     };
 
     this.lines.update(prev => [...prev, line]);
@@ -248,15 +261,31 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
         accountNo: line.accountNo,
         amount: line.amount,
         allocationType: line.allocationType || 'ACCOUNT',
-        name: line.name,
-        description: line.description,
+        description: line.description || '',
+        miscPaymentGroupId: line.miscPaymentGroupId || null,
+        clearanceId: line.clearanceId || null,
+        vatAmount: line.vatAmount || 0,
+        lastName: line.lastName || '',
+        initials: line.initials || '',
       }));
+
+      this.postingStatus.set('Fetching financial year...');
+      let finYear: string;
+      try {
+        const fyResult: any = await firstValueFrom(this.api.get('/api/platinum/active-fin-year'));
+        finYear = typeof fyResult === 'string' ? fyResult : (fyResult?.finYear || fyResult?.financialYear || fyResult?.value || String(fyResult));
+      } catch (e: any) {
+        this.toast.error('Could not fetch active financial year from API');
+        this.posting.set(false);
+        this.postingStatus.set('');
+        return;
+      }
 
       this.postingStatus.set(`Submitting ${allLines.length} allocation line(s)...`);
 
-      const txDate = tx.dateOfTransaction || new Date().toISOString();
       const now = new Date();
-      const finYear = now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear();
+      const saDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+      const txDate = tx.dateOfTransaction || saDate;
 
       const result: any = await firstValueFrom(
         this.api.post('/api/dd-allocation/submit-batch', {
@@ -274,7 +303,7 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
         this.postingStatus.set('Processing allocation batch...');
         const pollResult = await this.pollJobStatus(jobId);
 
-        if (pollResult.status === 'COMPLETED' || pollResult.status === 'PARTIAL') {
+        if (pollResult.status === 'COMPLETED' || pollResult.status === 'PARTIAL_FAILURE' || pollResult.status === 'PARTIAL') {
           this.completedLines.set(pollResult.results || allLines.map(l => ({ ...l })));
           this.postErrors.set(pollResult.errors || []);
           this.postComplete.set(true);
@@ -317,7 +346,7 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
           this.api.get(`/api/dd-allocation/job/${jobId}`)
         );
         this.postingStatus.set(`Processing: ${status.completedLines || 0} of ${status.totalLines || '?'} lines...`);
-        if (status.status === 'COMPLETED' || status.status === 'PARTIAL' || status.status === 'FAILED') {
+        if (status.status === 'COMPLETED' || status.status === 'PARTIAL_FAILURE' || status.status === 'PARTIAL' || status.status === 'FAILED') {
           return status;
         }
       } catch {

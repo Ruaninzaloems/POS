@@ -613,13 +613,16 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
               }
               submitData = {
                 billType, accountId, paidAmount: line.amount, paymentTypeId: 5, posItemId,
-                reconId, userId: serverUserId, financialYear, transactionDate, groupId,
+                reconId, userId: serverUserId, financialYear, transactionDate,
+                receiptDate: transactionDate, groupId,
+                lastName: derivedLastName, initials: derivedInitials,
                 reference: actualReference || "0", description: line.description || transactionNote || '',
               };
             }
 
             try {
               console.log(`[DD Batch ${jobId}] Submitting line ${lineIdx}/${job.totalLines}: ${lineLabel}`);
+              console.log(`[DD Batch ${jobId}] Payload:`, JSON.stringify(submitData));
               let { rawRes, responseText } = await submitLine(submitData, token);
 
               if (rawRes.status === 401) {
