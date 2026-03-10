@@ -1073,9 +1073,8 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             if (!mergedBasic['tel_Mobile'] && acctContactVal.tel_Mobile) mergedBasic['tel_Mobile'] = acctContactVal.tel_Mobile;
             if (!mergedBasic['fax'] && acctContactVal.fax) mergedBasic['fax'] = acctContactVal.fax;
           }
-          let acctPropFinal = acctPropVal;
-          if (!acctPropFinal || acctPropFinal._error) {
-            acctPropFinal = {};
+          let acctPropFinal = acctPropVal && !acctPropVal._error ? { ...acctPropVal } : {};
+          if (!acctPropVal || acctPropVal._error) {
             if (basicVal) {
               if (basicVal.sgNumber) acctPropFinal['sgNumber'] = basicVal.sgNumber;
               if (basicVal.propertyID) acctPropFinal['propertyId'] = basicVal.propertyID;
@@ -1103,30 +1102,86 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
                 acctPropFinal['locationAddress'] = [airVal.streenNumber, airVal.streetName, airVal.suburb, airVal.town].filter(Boolean).join(', ');
               }
             }
-            if (acctConsUnitVal && !acctConsUnitVal._error) {
-              console.log('[account] consUnit data:', JSON.stringify(acctConsUnitVal));
-              const cuKeys = ['propertyStatus', 'statusDesc', 'marketValue', 'propertyMarketValue', 'valuationCategory', 'valuationCat',
-                'partitionDescription', 'partitionDesc', 'partitionMarketValue', 'partMarketValue',
-                'billingCycle', 'billingCycleDesc', 'allotmentArea', 'allotment', 'farmName', 'farm',
-                'magisterialDistrict', 'magDistrict', 'registrationStatus', 'regStatus',
-                'oldPropertyCode', 'oldPropCode', 'sectionalTitleScheme', 'sectionalTitle',
-                'propertyCategory', 'category', 'propertyType', 'typeOfUse'];
-              for (const k of cuKeys) {
-                if (acctConsUnitVal[k] && !acctPropFinal[k]) acctPropFinal[k] = acctConsUnitVal[k];
-              }
-            }
-            if (acctRatesVal && !acctRatesVal._error) {
-              console.log('[account] rates data:', JSON.stringify(acctRatesVal));
-              const rtKeys = ['marketValue', 'propertyMarketValue', 'valuationCategory', 'valuationCat',
-                'propertyStatus', 'statusDesc', 'partitionMarketValue', 'partMarketValue',
-                'partitionDescription', 'partitionDesc', 'propertyCategory', 'category',
-                'billingCycle', 'billingCycleDesc'];
-              for (const k of rtKeys) {
-                if (acctRatesVal[k] && !acctPropFinal[k]) acctPropFinal[k] = acctRatesVal[k];
-              }
-            }
             acctPropFinal['_fallback'] = true;
           }
+          if (acctConsUnitVal && !acctConsUnitVal._error) {
+            console.log('[account] consUnit data:', JSON.stringify(acctConsUnitVal));
+            const cuKeys = ['propertyStatus', 'statusDesc', 'marketValue', 'propertyMarketValue', 'valuationCategory', 'valuationCat',
+              'partitionDescription', 'partitionDesc', 'partitionMarketValue', 'partMarketValue',
+              'billingCycle', 'billingCycleDesc', 'allotmentArea', 'allotment', 'farmName', 'farm',
+              'magisterialDistrict', 'magDistrict', 'registrationStatus', 'regStatus',
+              'oldPropertyCode', 'oldPropCode', 'sectionalTitleScheme', 'sectionalTitle',
+              'propertyCategory', 'category', 'propertyType', 'typeOfUse', 'typeofUse',
+              'accountableOwnerName', 'ownerName', 'name', 'owner'];
+            for (const k of cuKeys) {
+              if (acctConsUnitVal[k] != null && acctConsUnitVal[k] !== '' && !acctPropFinal[k]) acctPropFinal[k] = acctConsUnitVal[k];
+            }
+          }
+          if (acctRatesVal && !acctRatesVal._error) {
+            console.log('[account] rates data:', JSON.stringify(acctRatesVal));
+            const rtKeys = ['marketValue', 'propertyMarketValue', 'valuationCategory', 'valuationCat',
+              'propertyStatus', 'statusDesc', 'partitionMarketValue', 'partMarketValue',
+              'partitionDescription', 'partitionDesc', 'propertyCategory', 'category',
+              'billingCycle', 'billingCycleDesc', 'accountableOwnerName', 'ownerName'];
+            for (const k of rtKeys) {
+              if (acctRatesVal[k] != null && acctRatesVal[k] !== '' && !acctPropFinal[k]) acctPropFinal[k] = acctRatesVal[k];
+            }
+          }
+
+          const unitPartId = acctPropFinal['unitPartitionID'] || acctPropFinal['unitPartition_ID'] ||
+            basicVal?.unitPartitionID || basicVal?.unitPartition_ID ||
+            airVal?.unitPartitionID || airVal?.unitPartition_ID ||
+            acctConsUnitVal?.unitPartitionID || acctConsUnitVal?.unitPartition_ID;
+          if (unitPartId) {
+            console.log('[account] fetching partition-details & valuation for unitPartitionID:', unitPartId);
+            const [partDetails, valuation, partOwner] = await Promise.allSettled([
+              firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/partition-details`, { unitPartitionID: unitPartId })),
+              firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/valuation-by-unit`, { unitPartitionID: unitPartId })),
+              firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/unit-partition-owner`, { unitPartitionID: unitPartId })),
+            ]);
+            const partVal = partDetails.status === 'fulfilled' ? (Array.isArray(partDetails.value) ? partDetails.value[0] : partDetails.value) : null;
+            const valuationVal = valuation.status === 'fulfilled' ? (Array.isArray(valuation.value) ? valuation.value[0] : valuation.value) : null;
+            const partOwnerVal = partOwner.status === 'fulfilled' ? (Array.isArray(partOwner.value) ? partOwner.value[0] : partOwner.value) : null;
+            if (partVal) console.log('[account] partition-details keys:', Object.keys(partVal), 'sample:', JSON.stringify(partVal).substring(0, 500));
+            if (valuationVal) console.log('[account] valuation keys:', Object.keys(valuationVal), 'sample:', JSON.stringify(valuationVal).substring(0, 500));
+            if (partOwnerVal) console.log('[account] partition-owner keys:', Object.keys(partOwnerVal), 'sample:', JSON.stringify(partOwnerVal).substring(0, 500));
+            if (partVal && !partVal._error) {
+              const partKeys = ['partitionDescription', 'partitionDesc', 'description', 'partitionMarketValue', 'partMarketValue',
+                'marketValue', 'valuationCategory', 'valuationCat', 'valuationCategoryDesc',
+                'propertyCategory', 'category', 'categoryDesc', 'propertyType', 'typeOfUse', 'typeofUse', 'typeOfUseDesc',
+                'allotmentArea', 'allotment', 'farmName', 'farm', 'magisterialDistrict', 'magDistrict',
+                'registrationStatus', 'regStatus', 'billingCycle', 'billingCycleDesc',
+                'oldPropertyCode', 'oldPropCode', 'sectionalTitleScheme', 'sectionalTitle',
+                'accountableOwnerName', 'ownerName', 'name', 'owner'];
+              for (const k of partKeys) {
+                if (partVal[k] != null && partVal[k] !== '' && !acctPropFinal[k]) acctPropFinal[k] = partVal[k];
+              }
+              if (!acctPropFinal['partitionDescription'] && partVal['description']) acctPropFinal['partitionDescription'] = partVal['description'];
+              if (!acctPropFinal['partitionMarketValue'] && partVal['marketValue']) acctPropFinal['partitionMarketValue'] = partVal['marketValue'];
+            }
+            if (valuationVal && !valuationVal._error) {
+              if (!acctPropFinal['marketValue'] && !acctPropFinal['propertyMarketValue']) {
+                const mv = valuationVal['marketValue'] || valuationVal['propertyMarketValue'] || valuationVal['totalMarketValue'];
+                if (mv != null && mv !== '') acctPropFinal['marketValue'] = mv;
+              }
+              if (!acctPropFinal['partitionMarketValue'] && !acctPropFinal['partMarketValue']) {
+                const pmv = valuationVal['partitionMarketValue'] || valuationVal['partMarketValue'] || valuationVal['marketValue'];
+                if (pmv != null && pmv !== '') acctPropFinal['partitionMarketValue'] = pmv;
+              }
+              if (!acctPropFinal['valuationCategory'] && !acctPropFinal['valuationCat']) {
+                const vc = valuationVal['valuationCategory'] || valuationVal['valuationCat'] || valuationVal['valuationCategoryDesc'] || valuationVal['category'];
+                if (vc != null && vc !== '') acctPropFinal['valuationCategory'] = vc;
+              }
+            }
+            if (partOwnerVal && !partOwnerVal._error) {
+              if (!acctPropFinal['accountableOwnerName'] && !acctPropFinal['ownerName']) {
+                const ownerName = partOwnerVal['ownerName'] || partOwnerVal['name'] || partOwnerVal['accountableOwnerName'] ||
+                  partOwnerVal['surname_Company'] || partOwnerVal['fullName'];
+                if (ownerName) acctPropFinal['accountableOwnerName'] = ownerName;
+              }
+            }
+          }
+
           data = {
             basic: mergedBasic,
             accountInfo: airVal,
@@ -1202,9 +1257,79 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
               };
             }
           }
+          const propConsUnitVal = consUnit.status === 'fulfilled' ? (Array.isArray(consUnit.value) ? consUnit.value[0] : consUnit.value) : null;
+          const propRatesVal = rates.status === 'fulfilled' ? (Array.isArray(rates.value) ? rates.value[0] : rates.value) : null;
+          if (propVal) {
+            if (propConsUnitVal && !propConsUnitVal._error) {
+              const enrichKeys = ['marketValue', 'propertyMarketValue', 'partitionMarketValue', 'partMarketValue',
+                'valuationCategory', 'valuationCat', 'partitionDescription', 'partitionDesc',
+                'propertyCategory', 'category', 'billingCycle', 'allotmentArea', 'farmName',
+                'magisterialDistrict', 'registrationStatus', 'oldPropertyCode', 'sectionalTitleScheme',
+                'accountableOwnerName', 'ownerName'];
+              for (const k of enrichKeys) {
+                if (propConsUnitVal[k] != null && propConsUnitVal[k] !== '' && !propVal[k]) propVal[k] = propConsUnitVal[k];
+              }
+            }
+            if (propRatesVal && !propRatesVal._error) {
+              const enrichKeys = ['marketValue', 'propertyMarketValue', 'partitionMarketValue', 'partMarketValue',
+                'valuationCategory', 'valuationCat', 'partitionDescription', 'partitionDesc',
+                'propertyCategory', 'category', 'billingCycle', 'accountableOwnerName', 'ownerName'];
+              for (const k of enrichKeys) {
+                if (propRatesVal[k] != null && propRatesVal[k] !== '' && !propVal[k]) propVal[k] = propRatesVal[k];
+              }
+            }
+          }
+          const propUnitPartId = propVal?.unitPartitionID || propVal?.unitPartition_ID ||
+            propConsUnitVal?.unitPartitionID || propConsUnitVal?.unitPartition_ID;
+          if (propUnitPartId && propVal) {
+            console.log('[property] fetching partition & valuation for unitPartitionID:', propUnitPartId);
+            const [propPartDetails, propValuation, propPartOwner] = await Promise.allSettled([
+              firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/partition-details`, { unitPartitionID: propUnitPartId })),
+              firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/valuation-by-unit`, { unitPartitionID: propUnitPartId })),
+              firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/unit-partition-owner`, { unitPartitionID: propUnitPartId })),
+            ]);
+            const ppVal = propPartDetails.status === 'fulfilled' ? (Array.isArray(propPartDetails.value) ? propPartDetails.value[0] : propPartDetails.value) : null;
+            const pvVal = propValuation.status === 'fulfilled' ? (Array.isArray(propValuation.value) ? propValuation.value[0] : propValuation.value) : null;
+            const poVal = propPartOwner.status === 'fulfilled' ? (Array.isArray(propPartOwner.value) ? propPartOwner.value[0] : propPartOwner.value) : null;
+            if (ppVal) console.log('[property] partition-details keys:', Object.keys(ppVal));
+            if (pvVal) console.log('[property] valuation keys:', Object.keys(pvVal));
+            if (poVal) console.log('[property] partition-owner keys:', Object.keys(poVal));
+            if (ppVal && !ppVal._error) {
+              const pKeys = ['partitionDescription', 'partitionDesc', 'description', 'partitionMarketValue', 'partMarketValue',
+                'marketValue', 'valuationCategory', 'valuationCat', 'valuationCategoryDesc',
+                'propertyCategory', 'category', 'categoryDesc', 'allotmentArea', 'farmName',
+                'magisterialDistrict', 'registrationStatus', 'billingCycle', 'oldPropertyCode', 'sectionalTitleScheme',
+                'accountableOwnerName', 'ownerName', 'name', 'owner'];
+              for (const k of pKeys) {
+                if (ppVal[k] != null && ppVal[k] !== '' && !propVal[k]) propVal[k] = ppVal[k];
+              }
+              if (!propVal['partitionDescription'] && ppVal['description']) propVal['partitionDescription'] = ppVal['description'];
+              if (!propVal['partitionMarketValue'] && ppVal['marketValue']) propVal['partitionMarketValue'] = ppVal['marketValue'];
+            }
+            if (pvVal && !pvVal._error) {
+              if (!propVal['marketValue'] && !propVal['propertyMarketValue']) {
+                const mv = pvVal['marketValue'] || pvVal['propertyMarketValue'] || pvVal['totalMarketValue'];
+                if (mv != null && mv !== '') propVal['marketValue'] = mv;
+              }
+              if (!propVal['partitionMarketValue'] && !propVal['partMarketValue']) {
+                const pmv = pvVal['partitionMarketValue'] || pvVal['partMarketValue'] || pvVal['marketValue'];
+                if (pmv != null && pmv !== '') propVal['partitionMarketValue'] = pmv;
+              }
+              if (!propVal['valuationCategory'] && !propVal['valuationCat']) {
+                const vc = pvVal['valuationCategory'] || pvVal['valuationCat'] || pvVal['valuationCategoryDesc'] || pvVal['category'];
+                if (vc != null && vc !== '') propVal['valuationCategory'] = vc;
+              }
+            }
+            if (poVal && !poVal._error) {
+              if (!propVal['accountableOwnerName'] && !propVal['ownerName']) {
+                const on = poVal['ownerName'] || poVal['name'] || poVal['accountableOwnerName'] || poVal['surname_Company'] || poVal['fullName'];
+                if (on) propVal['accountableOwnerName'] = on;
+              }
+            }
+          }
           data = {
             property: propVal,
-            consUnit: consUnit.status === 'fulfilled' ? (Array.isArray(consUnit.value) ? consUnit.value[0] : consUnit.value) : null,
+            consUnit: propConsUnitVal,
             rates: rates.status === 'fulfilled' ? rates.value : null,
             meters: meters.status === 'fulfilled' ? this.normalizeArray(meters.value) : [],
             transfers: transfers.status === 'fulfilled' ? this.normalizeArray(transfers.value) : [],
