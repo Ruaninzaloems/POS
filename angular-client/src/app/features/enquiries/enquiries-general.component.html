@@ -3478,9 +3478,9 @@
                           <td class="dtl-td mono">{{ txn.documentNumber || txn.docNumber || '' }}</td>
                           <td class="dtl-td">{{ txn.tariff || '' }}</td>
                           <td class="dtl-td dtl-td-amt" [class.dtl-neg]="(txn.amount || 0) < 0">{{ formatDebtAmt(txn.amount ?? 0) }}</td>
-                          <td class="dtl-td dtl-td-amt">{{ formatDebtAmt(txn.interest ?? 0) }}</td>
-                          <td class="dtl-td dtl-td-amt" [class.dtl-neg]="(txn.vat || 0) < 0">{{ formatDebtAmt(txn.vat ?? 0) }}</td>
-                          <td class="dtl-td dtl-td-amt dtl-td-total" [class.dtl-neg]="(txn.total || 0) < 0">{{ formatDebtAmt(txn.total ?? txn.totalAmount ?? 0) }}</td>
+                          <td class="dtl-td dtl-td-amt" [class.dtl-neg]="(txn.interestAmount || txn.interest || 0) < 0">{{ formatDebtAmt(txn.interestAmount ?? txn.interest ?? 0) }}</td>
+                          <td class="dtl-td dtl-td-amt" [class.dtl-neg]="(txn.vatAmount || txn.vat || 0) < 0">{{ formatDebtAmt(txn.vatAmount ?? txn.vat ?? 0) }}</td>
+                          <td class="dtl-td dtl-td-amt dtl-td-total" [class.dtl-neg]="(txn.total || txn.totalAmount || 0) < 0">{{ formatDebtAmt(txn.total ?? txn.totalAmount ?? 0) }}</td>
                         </tr>
                       }
                     </tbody>
@@ -3535,15 +3535,15 @@
                         </div>
                         <div class="dtl-amt-cell">
                           <span class="dtl-amt-label">Interest</span>
-                          <span class="dtl-amt-val">{{ formatDebtAmt(detailSelectedTxn().interest ?? 0) }}</span>
+                          <span class="dtl-amt-val">{{ formatDebtAmt(detailSelectedTxn().interestAmount ?? detailSelectedTxn().interest ?? 0) }}</span>
                         </div>
                         <div class="dtl-amt-cell">
                           <span class="dtl-amt-label">VAT</span>
-                          <span class="dtl-amt-val">{{ formatDebtAmt(detailSelectedTxn().vat ?? 0) }}</span>
+                          <span class="dtl-amt-val">{{ formatDebtAmt(detailSelectedTxn().vatAmount ?? detailSelectedTxn().vat ?? 0) }}</span>
                         </div>
                         <div class="dtl-amt-cell dtl-amt-total">
                           <span class="dtl-amt-label">Total</span>
-                          <span class="dtl-amt-val" [class.dtl-neg]="(detailSelectedTxn().total || 0) < 0">{{ formatDebtAmt(detailSelectedTxn().total ?? 0) }}</span>
+                          <span class="dtl-amt-val" [class.dtl-neg]="(detailSelectedTxn().total || detailSelectedTxn().totalAmount || 0) < 0">{{ formatDebtAmt(detailSelectedTxn().total ?? detailSelectedTxn().totalAmount ?? 0) }}</span>
                         </div>
                       </div>
                     </div>

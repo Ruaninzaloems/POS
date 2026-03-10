@@ -2223,7 +2223,10 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           })
         );
         const arr = this.normalizeArray(result);
-        if (arr.length > 0) console.log('[detail-txn] sample keys:', Object.keys(arr[0]));
+        if (arr.length > 0) {
+          console.log('[detail-txn] sample keys:', Object.keys(arr[0]));
+          console.log('[detail-txn] sample row:', JSON.stringify(arr[0]).substring(0, 800));
+        }
         this.detailTransactions.set(arr);
       } else {
         const months = this.detailMonths;
@@ -2235,7 +2238,10 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           ))
         );
         const allTxns = results.flatMap(r => r.status === 'fulfilled' ? this.normalizeArray(r.value) : []);
-        if (allTxns.length > 0) console.log('[detail-txn] all months sample keys:', Object.keys(allTxns[0]));
+        if (allTxns.length > 0) {
+          console.log('[detail-txn] all months sample keys:', Object.keys(allTxns[0]));
+          console.log('[detail-txn] all months sample row:', JSON.stringify(allTxns[0]).substring(0, 800));
+        }
         this.detailTransactions.set(allTxns);
       }
     } catch (e: any) {
@@ -2421,8 +2427,8 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           let monthAmount = 0, monthInterest = 0, monthVat = 0, monthTotal = 0;
           for (const t of txns) {
             const amt = t.amount ?? t.debitAmount ?? 0;
-            const int = t.interest ?? 0;
-            const vat = t.vat ?? 0;
+            const int = t.interestAmount ?? t.interest ?? 0;
+            const vat = t.vatAmount ?? t.vat ?? 0;
             const tot = t.total ?? t.totalAmount ?? 0;
             monthAmount += Number(amt) || 0;
             monthInterest += Number(int) || 0;

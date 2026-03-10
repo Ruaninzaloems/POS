@@ -505,6 +505,13 @@ export function registerSupervisorRoutes(app: Express, httpServer: Server): void
       try {
         const session = requireAuth(req, res); if (!session) return;
         const data = await platinumGet(session, `/api/BillingEnquiry/${platinumPath}`, req.query as Record<string, string>);
+        if (localPath === 'get-billing-period-transactions' && data) {
+          const txnItems = Array.isArray(data) ? data : (data as any)?.value || [];
+          if (txnItems.length > 0) {
+            console.log('[billing-period-txn] keys:', Object.keys(txnItems[0]));
+            console.log('[billing-period-txn] sample:', JSON.stringify(txnItems[0]).substring(0, 600));
+          }
+        }
         if (localPath === 'prepaid-meter-services-for-account' && data) {
           const items = Array.isArray(data) ? data : (data as any)?.value || (data as any)?.data || [];
           if (items.length > 0) {
