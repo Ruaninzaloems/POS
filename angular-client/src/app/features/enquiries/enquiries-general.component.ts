@@ -360,6 +360,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     return n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
+  formatDepositDisplay(v: any): string {
+    if (v === null || v === undefined || v === '') return '-';
+    const n = typeof v === 'number' ? v : parseFloat(v);
+    if (isNaN(n)) return '-';
+    return 'R ' + n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
   formatDate(v: any): string {
     if (!v) return '-';
     try {
@@ -1042,13 +1049,14 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       let data: any = null;
       switch (tab) {
         case 'account':
-          const [basic, accountInfo, acctPropDetails, acctContactInfo, acctConsUnit, acctRates] = await Promise.allSettled([
+          const [basic, accountInfo, acctPropDetails, acctContactInfo, acctConsUnit, acctRates, acctDepositAmt] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/basic-account-details/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-info-result/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/get-contact-details/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/consumption-units/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-rates-details/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/deposit-amount`, { accountId: String(accountId) })),
           ]);
           const basicVal = basic.status === 'fulfilled' ? (Array.isArray(basic.value) ? basic.value[0] : basic.value) : null;
           const airVal = accountInfo.status === 'fulfilled' ? (Array.isArray(accountInfo.value) ? accountInfo.value[0] : accountInfo.value) : null;
@@ -1063,6 +1071,11 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           if (acctConsUnitVal) console.log('[account] consUnit keys:', Object.keys(acctConsUnitVal));
           if (acctRatesVal) console.log('[account] rates keys:', Object.keys(acctRatesVal));
           const mergedBasic = { ...basicVal, ...airVal };
+          if (acctDepositAmt.status === 'fulfilled' && acctDepositAmt.value != null) {
+            const depVal = acctDepositAmt.value;
+            const depAmount = typeof depVal === 'number' ? depVal : Number(depVal?.totalDeposit ?? depVal?.amount ?? depVal?.depositAmount ?? depVal) || 0;
+            mergedBasic['paidDepositAmount'] = depAmount;
+          }
           if (acctContactVal) {
             const phone = acctContactVal.contactNo || acctContactVal.contactNumber || acctContactVal.cellPhoneNo || acctContactVal.cellPhone || acctContactVal.tel_Mobile || acctContactVal.tel_Work || acctContactVal.tel_Home || '';
             if (phone) mergedBasic['contactNo'] = phone;

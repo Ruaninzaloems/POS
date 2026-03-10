@@ -177,7 +177,7 @@
                   <div class="acct-field"><span class="acct-field-label">Account Type</span><span class="acct-field-value">{{ safeStr(getAccountBasic()['accountDesc'] || getAccountAir()['accountDesc'] || getAccountBasic()['accountType']) }}</span></div>
                   <div class="acct-field"><span class="acct-field-label">Incentive Scheme Code</span><span class="acct-field-value">{{ safeStr(getAccountBasic()['incentiveSchemeCode'] || getAccountAir()['incentiveSchemeCode']) }}</span></div>
                   <div class="acct-field"><span class="acct-field-label">Email</span><span class="acct-field-value">{{ safeStr(getAccountBasic()['emailId'] || getAccountBasic()['email'] || getAccountBasic()['emailAddress'] || getAccountAir()['email']) }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Paid Deposit Amount</span><span class="acct-field-value mono">{{ safeStr(getAccountBasic()['paidDepositAmount'] || getAccountAir()['paidDepositAmount'] || getAccountBasic()['depositAmount']) }}</span></div>
+                  <div class="acct-field"><span class="acct-field-label">Paid Deposit Amount</span><span class="acct-field-value mono">{{ formatDepositDisplay(getAccountBasic()['paidDepositAmount']) }}</span></div>
                 </div>
                 <div class="acct-col">
                   <div class="acct-field"><span class="acct-field-label">Name</span><span class="acct-field-value" data-testid="field-name">{{ safeStr(getAccountBasic()['fullNAME'] || getAccountAir()['name'] || getAccountName(selectedAccount())) }}</span></div>
