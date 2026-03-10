@@ -547,6 +547,135 @@
                 <p class="empty-text">No deposit records found</p>
               </div>
             }
+
+            <div class="debt-table-section" style="margin-top: 1.5rem;">
+              <div class="debt-table-header">
+                <span class="debt-table-title">Refunds</span>
+                <span class="debt-table-count">{{ (tabData()?.refunds || []).length }} record{{ (tabData()?.refunds || []).length !== 1 ? 's' : '' }}</span>
+              </div>
+              <div class="debt-table-wrapper">
+                <table class="debt-table" data-testid="table-refunds">
+                  <thead>
+                    <tr>
+                      <th class="debt-th-amt">Deposit Amount</th>
+                      <th class="debt-th-amt">Outstanding Amount</th>
+                      <th class="debt-th-desc">Payment Type</th>
+                      <th class="debt-th-desc">Bank</th>
+                      <th class="debt-th-desc">Bank Branch Code</th>
+                      <th class="debt-th-desc">Account Type</th>
+                      <th class="debt-th-desc">Bank Account Number</th>
+                      <th class="debt-th-desc">Transfer Account</th>
+                      <th class="debt-th-desc">Status</th>
+                      <th class="debt-th-desc">Document</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @if ((tabData()?.refunds || []).length > 0) {
+                      @for (ref of tabData()?.refunds || []; track $index) {
+                        <tr>
+                          <td class="debt-td-amt">{{ formatDebtAmt(ref.depositAmount ?? ref.deposit ?? ref.amount ?? 0) }}</td>
+                          <td class="debt-td-amt">{{ formatDebtAmt(ref.outstandingAmount ?? ref.outstanding ?? 0) }}</td>
+                          <td class="debt-td-desc">{{ ref.paymentType || ref.paymentMethod || '-' }}</td>
+                          <td class="debt-td-desc">{{ ref.bank || ref.bankName || '-' }}</td>
+                          <td class="debt-td-desc">{{ ref.bankBranchCode || ref.branchCode || '-' }}</td>
+                          <td class="debt-td-desc">{{ ref.accountType || '-' }}</td>
+                          <td class="debt-td-desc mono">{{ ref.bankAccountNumber || ref.bankAccountNo || '-' }}</td>
+                          <td class="debt-td-desc">{{ ref.transferAccount || '-' }}</td>
+                          <td class="debt-td-desc">{{ ref.status || '-' }}</td>
+                          <td class="debt-td-desc">{{ ref.document || ref.documentNo || '-' }}</td>
+                        </tr>
+                      }
+                    } @else {
+                      <tr><td colspan="10" class="debt-td-desc empty-row-text">No records to display</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="debt-table-section" style="margin-top: 1.5rem;">
+              <div class="debt-table-header">
+                <span class="debt-table-title">Payment Reversals</span>
+                <span class="debt-table-count">{{ (tabData()?.reversals || []).length }} record{{ (tabData()?.reversals || []).length !== 1 ? 's' : '' }}</span>
+              </div>
+              <div class="debt-table-wrapper">
+                <table class="debt-table" data-testid="table-payment-reversals">
+                  <thead>
+                    <tr>
+                      <th class="debt-th-desc">Receipt No</th>
+                      <th class="debt-th-desc">Receipt Date</th>
+                      <th class="debt-th-desc">Card No</th>
+                      <th class="debt-th-amt">Receipt Amount</th>
+                      <th class="debt-th-desc">Transaction Date</th>
+                      <th class="debt-th-desc">Document No</th>
+                      <th class="debt-th-desc">Comment</th>
+                      <th class="debt-th-amt">Admin Fee</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @if ((tabData()?.reversals || []).length > 0) {
+                      @for (rev of tabData()?.reversals || []; track $index) {
+                        <tr>
+                          <td class="debt-td-desc mono">{{ rev.receiptNo || rev.receiptNumber || '-' }}</td>
+                          <td class="debt-td-desc">{{ formatDate(rev.receiptDate || rev.dateCaptured) }}</td>
+                          <td class="debt-td-desc mono">{{ rev.cardNo || rev.cardNumber || '-' }}</td>
+                          <td class="debt-td-amt">{{ formatDebtAmt(rev.receiptAmount ?? rev.amount ?? 0) }}</td>
+                          <td class="debt-td-desc">{{ formatDate(rev.transactionDate || rev.reversalDate) }}</td>
+                          <td class="debt-td-desc mono">{{ rev.documentNo || rev.docNumber || '-' }}</td>
+                          <td class="debt-td-desc">{{ rev.comment || rev.reason || '-' }}</td>
+                          <td class="debt-td-amt">{{ formatDebtAmt(rev.adminFee ?? rev.administrationFee ?? 0) }}</td>
+                        </tr>
+                      }
+                    } @else {
+                      <tr><td colspan="8" class="debt-td-desc empty-row-text">No records to display</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="debt-table-section" style="margin-top: 1.5rem;">
+              <div class="debt-table-header">
+                <span class="debt-table-title">Deposit Bank Guarantee</span>
+                <span class="debt-table-count">{{ (tabData()?.bankGuarantees || []).length }} record{{ (tabData()?.bankGuarantees || []).length !== 1 ? 's' : '' }}</span>
+              </div>
+              <div class="debt-table-wrapper">
+                <table class="debt-table" data-testid="table-bank-guarantee">
+                  <thead>
+                    <tr>
+                      <th class="debt-th-desc">Service Type</th>
+                      <th class="debt-th-amt">Bank Guarantee Amount</th>
+                      <th class="debt-th-desc">Bank Guarantee Number</th>
+                      <th class="debt-th-desc">Bank Guarantee by</th>
+                      <th class="debt-th-desc">Bank Guarantee Start Date</th>
+                      <th class="debt-th-desc">Bank Guarantee Expiry Date</th>
+                      <th class="debt-th-desc">Cancel</th>
+                      <th class="debt-th-desc">Bank</th>
+                      <th class="debt-th-desc">Cancelled Reason</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @if ((tabData()?.bankGuarantees || []).length > 0) {
+                      @for (bg of tabData()?.bankGuarantees || []; track $index) {
+                        <tr>
+                          <td class="debt-td-desc">{{ bg.serviceType || bg.serviceDescription || bg.serviceDesc || '-' }}</td>
+                          <td class="debt-td-amt">{{ formatDebtAmt(bg.bankGuaranteeAmount ?? bg.guaranteeAmount ?? bg.amount ?? 0) }}</td>
+                          <td class="debt-td-desc mono">{{ bg.bankGuaranteeNumber || bg.guaranteeNumber || '-' }}</td>
+                          <td class="debt-td-desc">{{ bg.bankGuaranteeBy || bg.guaranteeBy || '-' }}</td>
+                          <td class="debt-td-desc">{{ formatDate(bg.bankGuaranteeStartDate || bg.startDate || bg.guaranteeStartDate) }}</td>
+                          <td class="debt-td-desc">{{ formatDate(bg.bankGuaranteeExpiryDate || bg.expiryDate || bg.guaranteeExpiryDate) }}</td>
+                          <td class="debt-td-desc">{{ bg.cancel || bg.cancelled || '-' }}</td>
+                          <td class="debt-td-desc">{{ bg.bank || bg.bankName || '-' }}</td>
+                          <td class="debt-td-desc">{{ bg.cancelledReason || bg.cancellationReason || '-' }}</td>
+                        </tr>
+                      }
+                    } @else {
+                      <tr><td colspan="9" class="debt-td-desc empty-row-text">No records to display</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         }
 

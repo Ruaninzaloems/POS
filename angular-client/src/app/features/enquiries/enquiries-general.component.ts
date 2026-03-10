@@ -1029,13 +1029,19 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           break;
 
         case 'deposits':
-          const [depositsResult, depositAmtResult] = await Promise.allSettled([
+          const [depositsResult, depositAmtResult, refundsResult, reversalsResult, bankGuaranteeResult] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/deposits/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/deposit-amount/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/refunds/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/payment-reversals/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/deposit-bank-guarantee/${accountId}`)),
           ]);
           data = {
             deposits: depositsResult.status === 'fulfilled' ? this.normalizeArray(depositsResult.value) : [],
             depositAmount: depositAmtResult.status === 'fulfilled' ? depositAmtResult.value : null,
+            refunds: refundsResult.status === 'fulfilled' ? this.normalizeArray(refundsResult.value) : [],
+            reversals: reversalsResult.status === 'fulfilled' ? this.normalizeArray(reversalsResult.value) : [],
+            bankGuarantees: bankGuaranteeResult.status === 'fulfilled' ? this.normalizeArray(bankGuaranteeResult.value) : [],
           };
           break;
 
