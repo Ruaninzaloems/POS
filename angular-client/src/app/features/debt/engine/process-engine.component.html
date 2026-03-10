@@ -122,10 +122,10 @@
                 @if (stage.description) { <p class="stage-desc">{{ stage.description }}</p> }
               </div>
               <div class="stage-meta">
-                <span class="stage-meta-item" title="Rules">⚙ {{ stage.rules?.length || 0 }}</span>
-                <span class="stage-meta-item" title="Templates">📄 {{ stage.templates?.length || 0 }}</span>
-                <span class="stage-meta-item" title="Actions">⚡ {{ stage.actions?.length || 0 }}</span>
-                <span class="stage-meta-item" title="Timer">⏲ {{ stage.timer?.waitDays || 0 }}d</span>
+                <span class="stage-meta-item" title="Rules">⚙ {{ stage.rules.length || 0 }}</span>
+                <span class="stage-meta-item" title="Templates">📄 {{ stage.templates.length || 0 }}</span>
+                <span class="stage-meta-item" title="Actions">⚡ {{ stage.actions.length || 0 }}</span>
+                <span class="stage-meta-item" title="Timer">⏲ {{ stage.timer.waitDays || 0 }}d</span>
               </div>
               <div class="stage-actions" (click)="$event.stopPropagation()">
                 <button class="btn-icon" (click)="openEditStage(stage)" title="Edit" [attr.data-testid]="'button-edit-stage-' + idx  + ''">✎</button>
@@ -138,7 +138,7 @@
               <div class="stage-detail">
                 <div class="stage-detail-grid">
                   <div>
-                    <h4 class="detail-section-title">Rules ({{ stage.rules?.length || 0 }})</h4>
+                    <h4 class="detail-section-title">Rules ({{ stage.rules.length || 0 }})</h4>
                     @if (!stage.rules || stage.rules.length === 0) {
                       <span class="text-muted" style="font-size: 0.75rem;">No rules</span>
                     } @else {
@@ -151,7 +151,7 @@
                     }
                   </div>
                   <div>
-                    <h4 class="detail-section-title">Templates ({{ stage.templates?.length || 0 }})</h4>
+                    <h4 class="detail-section-title">Templates ({{ stage.templates.length || 0 }})</h4>
                     @if (!stage.templates || stage.templates.length === 0) {
                       <span class="text-muted" style="font-size: 0.75rem;">No templates</span>
                     } @else {
@@ -164,7 +164,7 @@
                     }
                   </div>
                   <div>
-                    <h4 class="detail-section-title">Actions ({{ stage.actions?.length || 0 }})</h4>
+                    <h4 class="detail-section-title">Actions ({{ stage.actions.length || 0 }})</h4>
                     @if (!stage.actions || stage.actions.length === 0) {
                       <span class="text-muted" style="font-size: 0.75rem;">No actions</span>
                     } @else {
@@ -179,9 +179,9 @@
                   <div>
                     <h4 class="detail-section-title">Timer</h4>
                     <div style="font-size: 0.75rem; color: var(--pos-text);">
-                      <p><strong>Wait:</strong> {{ stage.timer?.waitDays || 0 }} days</p>
-                      <p><strong>Business days only:</strong> {{ stage.timer?.businessDaysOnly ? 'Yes' : 'No' }}</p>
-                      <p><strong>Auto-escalate:</strong> {{ stage.timer?.escalateOnExpiry ? 'Yes' : 'No' }}</p>
+                      <p><strong>Wait:</strong> {{ stage.timer.waitDays || 0 }} days</p>
+                      <p><strong>Business days only:</strong> {{ stage.timer.businessDaysOnly ? 'Yes' : 'No' }}</p>
+                      <p><strong>Auto-escalate:</strong> {{ stage.timer.escalateOnExpiry ? 'Yes' : 'No' }}</p>
                     </div>
                   </div>
                 </div>

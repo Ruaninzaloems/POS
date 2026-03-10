@@ -85,10 +85,10 @@
                 <td class="font-medium" [attr.data-testid]="'text-account-no-' + account.accountId">{{ account.accountNo }}</td>
                 <td class="text-muted truncate-cell" [title]="account.address">{{ account.address || '—' }}</td>
                 <td>
-                  <span class="badge" [class]="account.indigentStatus?.toLowerCase() === 'yes' ? 'badge-orange' : 'badge-slate'" [attr.data-testid]="'badge-indigent-' + account.accountId">{{ account.indigentStatus || 'No' }}</span>
+                  <span class="badge" [class]="account.indigentStatus.toLowerCase() === 'yes' ? 'badge-orange' : 'badge-slate'" [attr.data-testid]="'badge-indigent-' + account.accountId">{{ account.indigentStatus || 'No' }}</span>
                 </td>
                 <td>
-                  <span class="badge" [class]="account.rebateStatus?.toLowerCase() === 'yes' ? 'badge-purple' : 'badge-slate'" [attr.data-testid]="'badge-rebate-' + account.accountId">{{ account.rebateStatus || 'No' }}</span>
+                  <span class="badge" [class]="account.rebateStatus.toLowerCase() === 'yes' ? 'badge-purple' : 'badge-slate'" [attr.data-testid]="'badge-rebate-' + account.accountId">{{ account.rebateStatus || 'No' }}</span>
                 </td>
                 <td class="font-mono text-muted">{{ account.sgNumber || '—' }}</td>
                 <td class="text-right font-medium" [class]="getDaysClass(account.outstandingDays)" [attr.data-testid]="'text-days-' + account.accountId">{{ account.outstandingDays }}</td>

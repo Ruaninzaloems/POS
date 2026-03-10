@@ -121,7 +121,7 @@
         </div>
 
         <div class="batches-list" data-testid="unprocessed-batches">
-          @for (batch of unprocessedBatches(); track trackByNum) {
+          @for (batch of unprocessedBatches(); track trackByNum($index, batch)) {
             <div class="batch-card card" [attr.data-testid]="'batch-unprocessed-' + batch.num">
               <div class="batch-header" (click)="toggleBatch(batch.num)" [attr.data-testid]="'button-expand-batch-' + batch.num">
                 <div class="batch-num">{{ batch.num }}</div>
@@ -184,7 +184,7 @@
     } @else {
       @if (processedBatches().length > 0) {
         <div class="batches-list">
-          @for (batch of processedBatches(); track trackByNum) {
+          @for (batch of processedBatches(); track trackByNum($index, batch)) {
             <div class="batch-card card" [attr.data-testid]="'batch-processed-' + batch.num">
               <div class="batch-header" (click)="toggleProcessedBatch(batch.num)">
                 <div class="batch-num batch-num-green">{{ batch.num }}</div>

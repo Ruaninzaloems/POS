@@ -104,7 +104,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (item of filteredHistory(); track trackByJobId) {
+              @for (item of filteredHistory(); track trackByJobId($index, item)) {
                 <tr class="clickable-row" (click)="openDetails(item)" [attr.data-testid]="'row-job-' + item.directDepositJob_ID">
                   <td class="font-mono" [attr.data-testid]="'text-job-id-' + item.directDepositJob_ID">{{ item.directDepositJob_ID }}</td>
                   <td>{{ formatDate(item.fileDate) }}</td>
