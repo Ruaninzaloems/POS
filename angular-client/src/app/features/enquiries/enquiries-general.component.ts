@@ -1665,6 +1665,71 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     URL.revokeObjectURL(url);
   }
 
+  getFilteredServices(category: string): any[] {
+    const all = this.getServicesList();
+    return all.filter((svc: any) => this.getSvcCategory(svc) === category);
+  }
+
+  getSvcCategory(svc: any): string {
+    const type = (svc.serviceType || svc.serviceTypeDesc || svc.serviceDesc || svc.serviceDescription || svc.tariffType || '').toLowerCase();
+    const tariff = (svc.tariff || svc.tariffDesc || '').toLowerCase();
+    const combined = type + ' ' + tariff;
+    if (combined.includes('property rate') || combined.includes('rates') && !combined.includes('water') && !combined.includes('elec') && !combined.includes('sewer') && !combined.includes('refuse')) return 'rates';
+    if (combined.includes('metered') || combined.includes('effluent') || combined.includes('pre-paid') || combined.includes('pre paid') || combined.includes('prepaid')) return 'metered';
+    if (combined.includes('basic') || combined.includes('disposal') || combined.includes('refuse') || combined.includes('sanitation')) return 'basic';
+    if (combined.includes('rate')) return 'rates';
+    return 'other';
+  }
+
+  getSvcType(svc: any): string {
+    return svc.serviceType || svc.serviceTypeDesc || svc.serviceDesc || svc.serviceDescription || '-';
+  }
+
+  isSvcActive(svc: any): boolean {
+    return (svc.serviceStatus || svc.statusDesc || svc.status || '').toLowerCase() === 'active';
+  }
+
+  getSvcMeterDisplay(svc: any): string {
+    const meter = svc.physicalMeterMeterCode || svc.physicalMeterNo || svc.meterNo || svc.meterNumber || '';
+    const code = svc.meterCode || '';
+    if (meter && code) return `${meter} - ${code}`;
+    if (meter) return meter;
+    return 'No Meter';
+  }
+
+  formatTariffRate(svc: any): string {
+    const parts: string[] = [];
+    const startDate = svc.tariffStartDate || svc.startDate || svc.serviceCommencementDate;
+    const endDate = svc.tariffEndDate || svc.endDate;
+    if (startDate || endDate) {
+      parts.push(`<div class="svc-rate-line"><strong>Start Date · End Date:</strong></div>`);
+      parts.push(`<div class="svc-rate-line">${this.formatDate(startDate)} · ${this.formatDate(endDate)}</div>`);
+    }
+    const tariffRates = svc.tariffRates || svc.tariffRate || svc.rates;
+    if (typeof tariffRates === 'string' && tariffRates.length > 0) {
+      parts.push(`<div class="svc-rate-line svc-rate-detail">${tariffRates.replace(/\n/g, '<br>')}</div>`);
+    } else if (Array.isArray(tariffRates)) {
+      tariffRates.forEach((r: any) => {
+        const label = r.description || r.label || r.name || '';
+        const val = r.rate ?? r.value ?? r.amount ?? '';
+        if (label || val !== '') parts.push(`<div class="svc-rate-line">${label}: ${val}</div>`);
+      });
+    }
+    const interval = svc.interval || svc.tariffInterval;
+    const cost = svc.cost || svc.tariffCost || svc.monthlyCost;
+    const remainder = svc.remainder || svc.tariffRemainder;
+    if (interval !== undefined || cost !== undefined || remainder !== undefined) {
+      parts.push(`<div class="svc-rate-line"><strong>Interval · Cost:</strong></div>`);
+      const vals: string[] = [];
+      if (interval !== undefined) vals.push(`Interval: ${interval}`);
+      if (cost !== undefined) vals.push(`Cost: ${this.formatDebtAmt(Number(cost) || 0)}`);
+      if (remainder !== undefined) vals.push(`Remainder: ${this.formatDebtAmt(Number(remainder) || 0)}`);
+      parts.push(`<div class="svc-rate-line">${vals.join('<br>')}</div>`);
+    }
+    if (parts.length === 0) return '<div class="svc-rate-line">-</div>';
+    return parts.join('');
+  }
+
   getDepositPaidAmt(dep: any): number {
     return Number(dep.paidAmount ?? dep.paid ?? dep.amountPaid ?? dep.paidAmt ?? 0) || 0;
   }
