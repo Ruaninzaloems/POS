@@ -826,3 +826,24 @@
   font-family: 'Courier New', monospace;
   font-size: 0.7rem;
 }
+.svc-header-addbilling { background: linear-gradient(135deg, rgba(15,43,70,0.06) 0%, rgba(168,85,247,0.08) 100%) !important; }
+.svc-header-addinfo { background: linear-gradient(135deg, rgba(15,43,70,0.06) 0%, rgba(236,72,153,0.08) 100%) !important; }
+.svc-block-badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: #F2F4F7;
+  color: var(--pos-text-muted);
+}
+.svc-block-badge.svc-blocked {
+  background: rgba(239,68,68,0.10);
+  color: #b91c1c;
+}
+.svc-comment-cell {
+  max-width: 200px;
+  word-break: break-word;
+  white-space: normal;
+  line-height: 1.3;
+}

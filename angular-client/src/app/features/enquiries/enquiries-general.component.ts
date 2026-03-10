@@ -979,13 +979,17 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           break;
 
         case 'services':
-          const [allSvc, svcSearch] = await Promise.allSettled([
+          const [allSvc, svcSearch, addBilling, svcNotif] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/all-services/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/services-search-results/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/additional-billing-search-results/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-notifications/${accountId}`)),
           ]);
           data = {
             services: allSvc.status === 'fulfilled' ? this.normalizeArray(allSvc.value) : [],
             searchServices: svcSearch.status === 'fulfilled' ? this.normalizeArray(svcSearch.value) : [],
+            additionalBilling: addBilling.status === 'fulfilled' ? this.normalizeArray(addBilling.value) : [],
+            additionalInfo: svcNotif.status === 'fulfilled' ? this.normalizeArray(svcNotif.value) : [],
           };
           break;
 

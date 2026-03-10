@@ -265,7 +265,7 @@
         <!-- Services Tab -->
         @if (activeTab() === 'services') {
           <div class="tab-panel" data-testid="services-panel">
-            @if (getServicesList().length > 0) {
+            @if (getServicesList().length > 0 || (tabData()?.additionalBilling || []).length > 0 || (tabData()?.additionalInfo || []).length > 0) {
               <div class="svc-sections">
                 @if (getFilteredServices('metered').length > 0) {
                   <div class="debt-table-section">
@@ -446,6 +446,87 @@
                     </div>
                   </div>
                 }
+
+                <div class="debt-table-section" style="margin-top: 1.5rem;">
+                  <div class="debt-table-header svc-header-addbilling">
+                    <span class="debt-table-title">Additional Billing Services</span>
+                    <span class="debt-table-count">{{ (tabData()?.additionalBilling || []).length }} record{{ (tabData()?.additionalBilling || []).length !== 1 ? 's' : '' }}</span>
+                  </div>
+                  <div class="debt-table-wrapper">
+                    <table class="debt-table" data-testid="table-additional-billing">
+                      <thead>
+                        <tr>
+                          <th class="debt-th-desc">Status</th>
+                          <th class="debt-th-desc">Type</th>
+                          <th class="debt-th-amt">Amount</th>
+                          <th class="debt-th-desc">Commencement Date</th>
+                          <th class="debt-th-desc">Termination Date</th>
+                          <th class="debt-th-desc">Frequency</th>
+                          <th class="debt-th-desc">Levy Month</th>
+                          <th class="debt-th-amt">Factor Quantity</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (ab of tabData()?.additionalBilling || []; track $index) {
+                          <tr>
+                            <td class="debt-td-desc"><span class="svc-status-badge" [class.svc-active]="(ab.status || ab.serviceStatus || '').toLowerCase() === 'active'">{{ ab.status || ab.serviceStatus || '-' }}</span></td>
+                            <td class="debt-td-desc">{{ ab.type || ab.serviceType || ab.billingType || ab.description || '-' }}</td>
+                            <td class="debt-td-amt mono">{{ formatDebtAmt(ab.amount || ab.billingAmount || 0) }}</td>
+                            <td class="debt-td-desc">{{ formatDate(ab.commencementDate || ab.startDate || ab.serviceCommencementDate) }}</td>
+                            <td class="debt-td-desc">{{ formatDate(ab.terminationDate || ab.endDate) }}</td>
+                            <td class="debt-td-desc">{{ ab.frequency || '-' }}</td>
+                            <td class="debt-td-desc">{{ ab.levyMonth || ab.billingMonth || '-' }}</td>
+                            <td class="debt-td-amt mono">{{ ab.factorQuantity ?? ab.factor ?? '-' }}</td>
+                          </tr>
+                        } @empty {
+                          <tr><td colspan="8" class="debt-td-desc" style="text-align:center; color: var(--pos-text-muted); padding: 1rem;">No records to display</td></tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div class="debt-table-section" style="margin-top: 1.5rem;">
+                  <div class="debt-table-header svc-header-addinfo">
+                    <span class="debt-table-title">Additional Information</span>
+                    <span class="debt-table-count">{{ (tabData()?.additionalInfo || []).length }} record{{ (tabData()?.additionalInfo || []).length !== 1 ? 's' : '' }}</span>
+                  </div>
+                  <div class="debt-table-wrapper">
+                    <table class="debt-table" data-testid="table-additional-info">
+                      <thead>
+                        <tr>
+                          <th class="debt-th-desc">Block or Unblock</th>
+                          <th class="debt-th-desc">Receipt No</th>
+                          <th class="debt-th-desc">Receipt Date</th>
+                          <th class="debt-th-desc">Card No</th>
+                          <th class="debt-th-amt">Receipt Amount</th>
+                          <th class="debt-th-desc">Transaction Date</th>
+                          <th class="debt-th-desc">Document No</th>
+                          <th class="debt-th-desc">Comment</th>
+                          <th class="debt-th-amt">Admin Fee</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (ai of tabData()?.additionalInfo || []; track $index) {
+                          <tr>
+                            <td class="debt-td-desc"><span class="svc-block-badge" [class.svc-blocked]="(ai.blockOrUnblock || ai.blockUnblock || ai.action || '').toLowerCase().includes('block')">{{ ai.blockOrUnblock || ai.blockUnblock || ai.action || '-' }}</span></td>
+                            <td class="debt-td-desc mono">{{ ai.receiptNo || ai.receiptNumber || '-' }}</td>
+                            <td class="debt-td-desc">{{ formatDate(ai.receiptDate) }}</td>
+                            <td class="debt-td-desc mono">{{ ai.cardNo || ai.cardNumber || '-' }}</td>
+                            <td class="debt-td-amt mono">{{ formatDebtAmt(ai.receiptAmount || 0) }}</td>
+                            <td class="debt-td-desc">{{ formatDate(ai.transactionDate) }}</td>
+                            <td class="debt-td-desc mono">{{ ai.documentNo || ai.documentNumber || ai.docNo || '-' }}</td>
+                            <td class="debt-td-desc svc-comment-cell">{{ ai.comment || ai.comments || ai.remark || '-' }}</td>
+                            <td class="debt-td-amt mono">{{ formatDebtAmt(ai.adminFee || ai.administrationFee || 0) }}</td>
+                          </tr>
+                        } @empty {
+                          <tr><td colspan="9" class="debt-td-desc" style="text-align:center; color: var(--pos-text-muted); padding: 1rem;">No records to display</td></tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
               </div>
             } @else {
               <div class="empty-state">
