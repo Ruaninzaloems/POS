@@ -368,6 +368,26 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     return String(v).trim() || '-';
   }
 
+  getObjectKeys(obj: any): string[] {
+    if (!obj || typeof obj !== 'object') return [];
+    return Object.keys(obj).sort();
+  }
+
+  isNumericValue(v: any): boolean {
+    if (v === null || v === undefined || v === '') return false;
+    return !isNaN(Number(v)) && typeof v !== 'boolean';
+  }
+
+  isCurrencyField(key: string): boolean {
+    const lower = key.toLowerCase();
+    return lower.includes('value') || lower.includes('amount') || lower.includes('rate') || lower.includes('rebate') || lower.includes('balance') || lower.includes('charge') || lower.includes('cost') || lower.includes('price') || lower.includes('tariff');
+  }
+
+  isDateField(key: string): boolean {
+    const lower = key.toLowerCase();
+    return lower.includes('date') || lower.endsWith('_dt') || lower.endsWith('on');
+  }
+
   onQuickQueryChange(val: string): void {
     this.quickQuery.set(val);
     this.highlightIdx.set(-1);
@@ -1389,13 +1409,40 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           break;
 
         case 'rates':
-          const [ratesDetail, ratesHistory] = await Promise.allSettled([
+          const ratesFy = this.userFinYear();
+          const fyP: Record<string, string> = ratesFy ? { financialYear: ratesFy } : {};
+          const [ratesDetail, ratesHistory, ratesBalance, ratesServiceBal, ratesPropDetails] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-rates-details/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/rates-run-history/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/total-balance-debt-inquiry/${accountId}`, fyP)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/service-type-balance/${accountId}`, fyP)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
           ]);
+          const ratesDetailVal = ratesDetail.status === 'fulfilled' ? (Array.isArray(ratesDetail.value) ? ratesDetail.value[0] : ratesDetail.value) : null;
+          const ratesHistoryVal = ratesHistory.status === 'fulfilled' ? this.normalizeArray(ratesHistory.value) : [];
+          const balanceItems = ratesBalance.status === 'fulfilled' ? this.normalizeArray(ratesBalance.value) : [];
+          const svcBalItems = ratesServiceBal.status === 'fulfilled' ? this.normalizeArray(ratesServiceBal.value) : [];
+          const propDetailsVal = ratesPropDetails.status === 'fulfilled' ? (Array.isArray(ratesPropDetails.value) ? ratesPropDetails.value[0] : ratesPropDetails.value) : null;
+          const ratesServiceItems = svcBalItems.filter((s: any) => {
+            const desc = (s.serviceDescription || s.description || '').toLowerCase();
+            return desc.includes('rate') || desc.includes('property') || desc.includes('valuation');
+          });
+          const ratesBalanceItems = balanceItems.filter((b: any) => {
+            const desc = (b.serviceDescription || b.description || '').toLowerCase();
+            return desc.includes('rate') || desc.includes('property') || desc.includes('valuation');
+          });
+          if (ratesDetailVal) console.log('[rates] account-rates-details keys:', Object.keys(ratesDetailVal));
+          if (balanceItems.length) console.log('[rates] balance items count:', balanceItems.length, 'rates-filtered:', ratesBalanceItems.length);
+          if (svcBalItems.length) console.log('[rates] service-type-balance count:', svcBalItems.length, 'rates-filtered:', ratesServiceItems.length);
+          if (propDetailsVal) console.log('[rates] property-details keys:', Object.keys(propDetailsVal));
           data = {
-            ratesDetails: ratesDetail.status === 'fulfilled' ? ratesDetail.value : null,
-            ratesHistory: ratesHistory.status === 'fulfilled' ? this.normalizeArray(ratesHistory.value) : [],
+            ratesDetails: ratesDetailVal && !ratesDetailVal._error ? ratesDetailVal : null,
+            ratesHistory: ratesHistoryVal,
+            ratesBalanceItems: ratesBalanceItems,
+            ratesServiceItems: ratesServiceItems,
+            allBalanceItems: balanceItems,
+            allServiceItems: svcBalItems,
+            propertyDetails: propDetailsVal && !propDetailsVal._error ? propDetailsVal : null,
           };
           break;
 

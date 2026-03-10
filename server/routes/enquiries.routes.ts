@@ -492,6 +492,11 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
           console.log(`[billing-enquiry] BilledVsPaidAmounts queryParams:`, JSON.stringify(queryParams));
         }
         const data = await platinumGet(session, `/api/BillingEnquiry/${platinumPath}`, queryParams);
+        if (['account-rates-details', 'rates-run-history'].includes(mappedEndpoint)) {
+          const sample = Array.isArray(data) ? data[0] : data;
+          console.log(`[billing-enquiry] ${mappedEndpoint} response keys:`, sample ? Object.keys(sample) : 'empty/null', `type=${typeof data}`, `isArray=${Array.isArray(data)}`, `count=${Array.isArray(data) ? data.length : 'single'}`);
+          if (sample) console.log(`[billing-enquiry] ${mappedEndpoint} field count:`, Object.keys(sample).length);
+        }
         if (mappedEndpoint === 'billed-vs-paid-amounts') {
           const sample = Array.isArray(data) ? data[0] : data;
           console.log(`[billing-enquiry] BilledVsPaidAmounts response keys:`, sample ? Object.keys(sample) : 'empty/null', `type=${typeof data}`, `isArray=${Array.isArray(data)}`, `count=${Array.isArray(data) ? data.length : 'single'}`);
