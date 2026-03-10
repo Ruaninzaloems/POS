@@ -1274,38 +1274,91 @@
 
         @if (activeTab() === 'indigent') {
           <div class="tab-panel" data-testid="indigent-tab">
-            @if ((tabData()?.indigentHistory || []).length > 0) {
-              <div class="detail-section">
-                <div class="section-header-bar">🛡️ Indigent Subsidy History</div>
-                <div class="data-table-wrapper">
-                  <table class="data-table" data-testid="table-indigent">
-                    <thead>
-                      <tr>
-                        <th>Date</th>
-                        <th>Status</th>
-                        <th>Type</th>
-                        <th>Expiry Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (r of tabData()?.indigentHistory || []; track $index) {
-                        <tr [attr.data-testid]="'row-indigent-' +  $index  + ''">
-                          <td>{{ formatDate(r.applicationDate || r.date) }}</td>
-                          <td><span class="inline-badge" [class.active]="(r.attpStatus || r.status || '').toLowerCase().includes('active')">{{ r.attpStatus || r.status || '-' }}</span></td>
-                          <td>{{ r.indigentType || r.attpType || r.type || '-' }}</td>
-                          <td>{{ formatDate(r.expiryDate || r.validTo) }}</td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
+            @if (indigentInsights()) {
+              <div class="cons-insights-row" style="margin-bottom: 1rem;">
+                <div class="cons-insight-card ind-card">
+                  <div class="cons-insight-label">Current Status</div>
+                  <div class="cons-insight-value" [class.cons-insight-low]="indigentInsights().currentStatus?.toLowerCase().includes('active')" [class.cons-insight-high]="indigentInsights().currentStatus?.toLowerCase().includes('disq') || indigentInsights().currentStatus?.toLowerCase().includes('termin')">{{ indigentInsights().currentStatus || 'N/A' }}</div>
+                  <div class="cons-insight-sub">latest record</div>
                 </div>
-              </div>
-            } @else {
-              <div class="empty-state">
-                <div class="empty-icon">🛡️</div>
-                <p class="empty-text">No indigent subsidy records found</p>
+                <div class="cons-insight-card ind-card">
+                  <div class="cons-insight-label">Indigent Type</div>
+                  <div class="cons-insight-value" style="font-size: 0.9rem;">{{ indigentInsights().currentType || 'N/A' }}</div>
+                  <div class="cons-insight-sub">classification</div>
+                </div>
+                <div class="cons-insight-card ind-card">
+                  <div class="cons-insight-label">Application Date</div>
+                  <div class="cons-insight-value pp-date">{{ indigentInsights().applicationDate || '-' }}</div>
+                  <div class="cons-insight-sub">first applied</div>
+                </div>
+                <div class="cons-insight-card ind-card">
+                  <div class="cons-insight-label">Total Write-Offs</div>
+                  <div class="cons-insight-value pp-amount">R {{ formatCurrency(indigentInsights().totalWriteOff) }}</div>
+                  <div class="cons-insight-sub">cumulative</div>
+                </div>
+                <div class="cons-insight-card ind-card">
+                  <div class="cons-insight-label">Records</div>
+                  <div class="cons-insight-value">{{ indigentInsights().totalRecords }}</div>
+                  <div class="cons-insight-sub">history entries</div>
+                </div>
+                @if (indigentInsights().doNotCut) {
+                  <div class="cons-insight-card ind-card ind-dnc-active">
+                    <div class="cons-insight-label">Do-Not-Cut</div>
+                    <div class="cons-insight-value cons-insight-low">Active</div>
+                    <div class="cons-insight-sub">{{ indigentInsights().doNotCutDate || 'protected' }}</div>
+                  </div>
+                }
               </div>
             }
+
+            <div class="debt-table-section">
+              <div class="debt-table-header ind-header">
+                <span class="debt-table-title">Indigent History</span>
+                <span class="debt-table-count">{{ (tabData()?.indigentHistory || []).length }} record{{ (tabData()?.indigentHistory || []).length !== 1 ? 's' : '' }}</span>
+              </div>
+              <div class="debt-table-wrapper">
+                <table class="debt-table" data-testid="table-indigent">
+                  <thead>
+                    <tr>
+                      <th class="debt-th-desc">ATTP Status</th>
+                      <th class="debt-th-desc">Indigent Type</th>
+                      <th class="debt-th-desc">Application Date</th>
+                      <th class="debt-th-desc">Disqualify/Terminate/Cancel Date</th>
+                      <th class="debt-th-desc">Last Verification Date</th>
+                      <th class="debt-th-desc">Disqualify/Terminate/Cancel Reason</th>
+                      <th class="debt-th-desc">Do-Not-Cut Date</th>
+                      <th class="debt-th-desc">Do-Not-Cut Ext Reason</th>
+                      <th class="debt-th-amt">Application Write Off Amount</th>
+                      <th class="debt-th-amt">Total Write Off Amount</th>
+                      <th class="debt-th-desc">Electricity Meter Service Type</th>
+                      <th class="debt-th-desc">Meter Change Date</th>
+                      <th class="debt-th-desc">Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (r of tabData()?.indigentHistory || []; track $index) {
+                      <tr [attr.data-testid]="'row-indigent-' + $index" [class.ind-row-active]="(r.attpStatus || r.status || '').toLowerCase().includes('active')" [class.ind-row-disq]="(r.attpStatus || r.status || '').toLowerCase().includes('disq') || (r.attpStatus || r.status || '').toLowerCase().includes('termin')">
+                        <td class="debt-td-desc"><span class="ind-status-badge" [class.ind-active]="(r.attpStatus || r.status || '').toLowerCase().includes('active')" [class.ind-disq]="(r.attpStatus || r.status || '').toLowerCase().includes('disq') || (r.attpStatus || r.status || '').toLowerCase().includes('termin')" [class.ind-pending]="(r.attpStatus || r.status || '').toLowerCase().includes('pend')">{{ r.attpStatus || r.status || '-' }}</span></td>
+                        <td class="debt-td-desc">{{ r.indigentType || r.attpType || r.type || '-' }}</td>
+                        <td class="debt-td-desc">{{ formatDate(r.applicationDate || r.date) }}</td>
+                        <td class="debt-td-desc">{{ formatDate(r.disqualifyTerminateCancelDate || r.disqualifyDate || r.terminateDate || r.cancelDate) }}</td>
+                        <td class="debt-td-desc">{{ formatDate(r.lastVerificationDate || r.verificationDate) }}</td>
+                        <td class="debt-td-desc ind-reason-cell">{{ r.disqualifyTerminateCancelReason || r.disqualifyReason || r.terminateReason || r.cancelReason || '-' }}</td>
+                        <td class="debt-td-desc">{{ formatDate(r.doNotCutDate) }}</td>
+                        <td class="debt-td-desc ind-reason-cell">{{ r.doNotCutExtReason || r.doNotCutReason || '-' }}</td>
+                        <td class="debt-td-amt mono">{{ formatDebtAmt(r.applicationWriteOffAmount || r.writeOffAmount || 0) }}</td>
+                        <td class="debt-td-amt mono bold">{{ formatDebtAmt(r.totalWriteOffAmount || r.totalWriteOff || 0) }}</td>
+                        <td class="debt-td-desc">{{ r.electricityMeterServiceType || r.meterServiceType || '-' }}</td>
+                        <td class="debt-td-desc">{{ formatDate(r.meterChangeDate) }}</td>
+                        <td class="debt-td-desc ind-reason-cell">{{ r.remarks || r.remark || r.comment || '-' }}</td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="13" class="debt-td-desc" style="text-align:center; color: var(--pos-text-muted); padding: 1rem;">No records to display</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         }
 

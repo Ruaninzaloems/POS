@@ -141,6 +141,8 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   meterPrepaidLoading = signal(false);
   meterPrepaidStats = signal<any>(null);
 
+  indigentInsights = signal<any>(null);
+
   advancedSuggestions = signal<{ displayItem: string; accountId: number }[]>([]);
   activeFieldKey = signal<string | null>(null);
   advancedFieldLoading = signal(false);
@@ -1177,7 +1179,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           const indigentResult = await firstValueFrom(
             this.api.get<any>(`/api/platinum/billing-enquiry/attp-application-history/${accountId}`)
           );
-          data = { indigentHistory: this.normalizeArray(indigentResult) };
+          const indHistory = this.normalizeArray(indigentResult);
+          data = { indigentHistory: indHistory };
+          this.indigentInsights.set(this.computeIndigentInsights(indHistory));
           break;
 
         case 'services-meters':
@@ -1809,6 +1813,26 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const date = r.readingDate || r.billingDate || r.date || '';
     if (!date) return '-';
     return this.formatDate(date);
+  }
+
+  computeIndigentInsights(records: any[]): any {
+    if (!records || records.length === 0) return null;
+    const latest = records[0];
+    const currentStatus = latest.attpStatus || latest.status || '';
+    const currentType = latest.indigentType || latest.attpType || latest.type || '';
+    const appDate = latest.applicationDate || latest.date || '';
+    const totalWriteOff = records.reduce((sum: number, r: any) => sum + (Number(r.totalWriteOffAmount || r.totalWriteOff || 0) || 0), 0);
+    const doNotCut = records.some((r: any) => r.doNotCutDate && r.doNotCutDate !== '' && r.doNotCutDate !== null);
+    const doNotCutRec = records.find((r: any) => r.doNotCutDate && r.doNotCutDate !== '' && r.doNotCutDate !== null);
+    return {
+      currentStatus,
+      currentType,
+      applicationDate: this.formatDate(appDate),
+      totalWriteOff,
+      totalRecords: records.length,
+      doNotCut,
+      doNotCutDate: doNotCutRec ? this.formatDate(doNotCutRec.doNotCutDate) : null,
+    };
   }
 
   isPrepaidMeter(m: any): boolean {
