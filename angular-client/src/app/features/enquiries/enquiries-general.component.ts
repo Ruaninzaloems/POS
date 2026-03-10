@@ -241,6 +241,12 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   expandedClearanceRow = signal<number | null>(null);
   clearanceLinkedAccounts = signal<any[]>([]);
 
+  handoverYear = signal('');
+  handoverMonth = signal('All');
+  handoverPage = signal(1);
+  handoverPageSize = signal(50);
+  expandedLinkedRow = signal<number | null>(null);
+
   generatingPropertyLetter = signal<string | null>(null);
 
   nbeLoading = signal(false);
@@ -1523,13 +1529,31 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           break;
 
         case 'handover':
-          const [handoverInfo, handoverEnquiry] = await Promise.allSettled([
+          const [handoverInfo, handoverEnquiry, handoverTxns] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/handover-info/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/handover-account-enquiry/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/cons-handover-transaction-detail/${accountId}`)),
           ]);
+          const hoInfoArr = this.normalizeArray(handoverInfo.status === 'fulfilled' ? handoverInfo.value : null);
+          const hoEnqArr = this.normalizeArray(handoverEnquiry.status === 'fulfilled' ? handoverEnquiry.value : null);
+          const hoTxnArr = this.normalizeArray(handoverTxns.status === 'fulfilled' ? handoverTxns.value : null);
+          const hoSeen = new Set<string>();
+          const hoDeduplicated = [...hoInfoArr, ...hoEnqArr].filter((h: any) => {
+            const key = JSON.stringify({
+              acc: h.handoverAccount ?? h.accountNumber ?? h.account ?? '',
+              amt: h.handoverAmount ?? h.amount ?? '',
+              dt: h.handedOverDate ?? h.handoverDate ?? '',
+              rt: h.runType ?? h.type ?? '',
+              st: h.status ?? h.handoverStatus ?? '',
+              cd: h.dateCreated ?? h.createdDate ?? '',
+            });
+            if (hoSeen.has(key)) return false;
+            hoSeen.add(key);
+            return true;
+          });
           data = {
-            info: handoverInfo.status === 'fulfilled' ? handoverInfo.value : null,
-            enquiry: handoverEnquiry.status === 'fulfilled' ? handoverEnquiry.value : null,
+            handovers: hoDeduplicated,
+            transactions: hoTxnArr,
           };
           break;
 
@@ -1970,6 +1994,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         if (tab === 'name') {
           this.relatedAccounts.set(data?.relatedAccounts || []);
           this.relatedAccountsSearched.set(!!data?.relatedAccounts);
+        }
+        if (tab === 'handover') {
+          this.initHandoverYear();
+          this.handoverPage.set(1);
+        }
+        if (tab === 'linked-accounts') {
+          this.expandedLinkedRow.set(null);
         }
       }
     } catch (e: any) {
@@ -4922,33 +4953,109 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.exportService.exportPdf(this.getExportOpts('Linked_Accounts', 'LINKED ACCOUNTS REPORT'), headers, rows, aligns);
   }
 
+  readonly FY_MONTHS = ['All', 'July', 'August', 'September', 'October', 'November', 'December', 'January', 'February', 'March', 'April', 'May', 'June'];
+  readonly MONTH_INDEX_MAP: Record<string, number> = { 'January': 0, 'February': 1, 'March': 2, 'April': 3, 'May': 4, 'June': 5, 'July': 6, 'August': 7, 'September': 8, 'October': 9, 'November': 10, 'December': 11 };
+
+  getFinYearOptionsList(): string[] {
+    const fy = this.userFinYear() || this.getCurrentFinYear();
+    const [start] = fy.split('/').map(Number);
+    const years: string[] = [];
+    for (let i = 0; i < 5; i++) years.push(`${start - i}/${start - i + 1}`);
+    return years;
+  }
+
+  initHandoverYear(): void {
+    if (!this.handoverYear()) {
+      this.handoverYear.set(this.userFinYear() || this.getCurrentFinYear());
+    }
+  }
+
+  getHandoverFiltered(): any[] {
+    const all = this.tabData()?.handovers || [];
+    const selectedYear = this.handoverYear();
+    const selectedMonth = this.handoverMonth();
+    if (!selectedYear) return all;
+    const [yearStart] = selectedYear.split('/').map(Number);
+    return all.filter((h: any) => {
+      const dateStr = h.handedOverDate ?? h.handoverDate ?? h.dateCreated ?? h.createdDate;
+      if (!dateStr) return true;
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return true;
+      const fy = d.getMonth() >= 6 ? d.getFullYear() : d.getFullYear() - 1;
+      if (fy !== (yearStart < 100 ? 2000 + yearStart : yearStart)) return false;
+      if (selectedMonth !== 'All') {
+        const monthIdx = this.MONTH_INDEX_MAP[selectedMonth];
+        if (monthIdx !== undefined && d.getMonth() !== monthIdx) return false;
+      }
+      return true;
+    });
+  }
+
+  getHandoverPageItems(): any[] {
+    const filtered = this.getHandoverFiltered();
+    const page = this.handoverPage();
+    const size = this.handoverPageSize();
+    const start = (page - 1) * size;
+    return filtered.slice(start, start + size);
+  }
+
+  getHandoverTotalPages(): number {
+    return Math.max(1, Math.ceil(this.getHandoverFiltered().length / this.handoverPageSize()));
+  }
+
+  onHandoverYearChange(year: string): void {
+    this.handoverYear.set(year);
+    this.handoverPage.set(1);
+  }
+
+  onHandoverMonthChange(month: string): void {
+    this.handoverMonth.set(month);
+    this.handoverPage.set(1);
+  }
+
+  onHandoverPageSizeChange(size: number): void {
+    this.handoverPageSize.set(size);
+    this.handoverPage.set(1);
+  }
+
+  toggleLinkedRow(idx: number): void {
+    this.expandedLinkedRow.set(this.expandedLinkedRow() === idx ? null : idx);
+  }
+
+  getLinkedCombinedOutstanding(): number {
+    const linked = this.tabData()?.linkedAccounts || [];
+    return linked.reduce((sum: number, a: any) => {
+      const raw = a.totalOutstanding ?? a.outStandingAmount ?? a.outStandingAmt ?? a.outstanding ?? 0;
+      return sum + (typeof raw === 'number' ? raw : (parseFloat(String(raw)) || 0));
+    }, 0);
+  }
+
   exportHandoverCsv(): void {
-    const data = this.tabData();
-    const handover = this.normalizeArray(data?.info || data?.handover || data?.enquiry || []);
+    const handover = this.getHandoverFiltered();
     if (!handover.length) { this.toast.show('No handover data to export', 'error'); return; }
-    const headers = ['Status', 'Attorney', 'Instruction Date', 'Amount', 'Legal Fees', 'Reference', 'Payment Status'];
+    const headers = ['Run Type', 'Handover Account', 'Handover Amount', 'Handed Over Date', 'Outstanding Days', 'Outstanding Month', 'Attorney', 'Status', 'Capturer', 'Date Created', 'Reviewed By', 'Termination Reason', 'Termination Date'];
     const rows = handover.map((h: any) => [
-      h.handoverStatus || h.status || '', h.attorney || h.attorneyName || '',
-      this.formatDate(h.instructionDate || h.handoverDate || h.date),
-      Number(h.handoverAmount || h.amount || 0), Number(h.legalFees || h.fees || 0),
-      h.reference || h.caseNumber || '', h.paymentStatus || '',
+      h.runType ?? h.type ?? '', h.handoverAccount ?? h.accountNumber ?? h.account ?? '',
+      Number(h.handoverAmount ?? h.amount ?? 0), this.formatDate(h.handedOverDate ?? h.handoverDate),
+      h.outstandingDays ?? h.daysOutstanding ?? '', h.outstandingMonth ?? h.monthsOutstanding ?? '',
+      h.attorney ?? h.attorneyName ?? '', h.status ?? h.handoverStatus ?? '',
+      h.capturer ?? h.capturedBy ?? h.createdBy ?? '', this.formatDate(h.dateCreated ?? h.createdDate ?? h.capturedDate),
+      h.reviewedBy ?? '', h.terminationReason ?? '', this.formatDate(h.terminationDate),
     ]);
     this.exportService.exportCsv(this.getExportOpts('Handover', 'HANDOVER REPORT'), headers, rows);
     this.toast.show('Handover data exported', 'success');
   }
 
   exportHandoverPdf(): void {
-    const data = this.tabData();
-    const handover = this.normalizeArray(data?.info || data?.handover || data?.enquiry || []);
+    const handover = this.getHandoverFiltered();
     if (!handover.length) { this.toast.show('No handover data to export', 'error'); return; }
-    const headers = ['Status', 'Attorney', 'Instruction Date', 'Amount', 'Legal Fees', 'Reference'];
-    const aligns: ('left' | 'right')[] = ['left', 'left', 'left', 'right', 'right', 'left'];
+    const headers = ['Run Type', 'Account', 'Amount', 'Date', 'Attorney', 'Status'];
+    const aligns: ('left' | 'right')[] = ['left', 'left', 'right', 'left', 'left', 'left'];
     const rows = handover.map((h: any) => [
-      h.handoverStatus || h.status || '', h.attorney || h.attorneyName || '',
-      this.formatDate(h.instructionDate || h.handoverDate || h.date),
-      this.formatCurrency(Number(h.handoverAmount || h.amount || 0)),
-      this.formatCurrency(Number(h.legalFees || h.fees || 0)),
-      h.reference || h.caseNumber || '',
+      h.runType ?? h.type ?? '', h.handoverAccount ?? h.accountNumber ?? h.account ?? '',
+      this.formatCurrency(Number(h.handoverAmount ?? h.amount ?? 0)),
+      this.formatDate(h.handedOverDate ?? h.handoverDate),
+      h.attorney ?? h.attorneyName ?? '', h.status ?? h.handoverStatus ?? '',
     ]);
     this.exportService.exportPdf(this.getExportOpts('Handover', 'HANDOVER REPORT'), headers, rows, aligns);
   }

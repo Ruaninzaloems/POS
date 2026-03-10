@@ -1293,23 +1293,122 @@
         <!-- Handover Tab -->
         @if (activeTab() === 'handover') {
           <div class="tab-panel" data-testid="handover-tab">
-            @if (tabData()?.info) {
+            @if ((tabData()?.handovers || []).length > 0) {
               <div class="export-toolbar">
                 <button class="export-btn export-csv" (click)="exportHandoverCsv()" data-testid="button-export-handover-csv">📥 Excel/CSV</button>
                 <button class="export-btn export-pdf" (click)="exportHandoverPdf()" data-testid="button-export-handover-pdf">🖨️ Print/PDF</button>
               </div>
               <div class="detail-section">
-                <div class="section-header-bar">➡️ Handover Information</div>
-                @for (item of normalizeArray(tabData()?.info); track $index) {
-                  <div class="detail-grid" style="margin-bottom:1rem">
-                    <div class="detail-item"><div class="detail-label">Status</div><div class="detail-value">{{ safeStr(item.handoverStatus || item.status || item.handoverStatusDesc) }}</div></div>
-                    <div class="detail-item"><div class="detail-label">Attorney</div><div class="detail-value">{{ safeStr(item.attorneyName || item.attorney) }}</div></div>
-                    <div class="detail-item"><div class="detail-label">Handover Date</div><div class="detail-value">{{ formatDate(item.handoverDate || item.date) }}</div></div>
-                    <div class="detail-item"><div class="detail-label">Amount</div><div class="detail-value mono">R {{ formatCurrency(item.handoverAmount || item.amount || 0) }}</div></div>
-                    <div class="detail-item"><div class="detail-label">Reference</div><div class="detail-value">{{ safeStr(item.referenceNumber || item.reference) }}</div></div>
+                <div class="section-header-bar">➡️ Handover List per Billing Period</div>
+                <div class="handover-filters">
+                  <select class="handover-filter-select" [ngModel]="handoverYear()" (ngModelChange)="onHandoverYearChange($event)" data-testid="select-handover-year">
+                    @for (yr of getFinYearOptionsList(); track yr) {
+                      <option [value]="yr">{{ yr }}</option>
+                    }
+                  </select>
+                  <select class="handover-filter-select" [ngModel]="handoverMonth()" (ngModelChange)="onHandoverMonthChange($event)" data-testid="select-handover-month">
+                    @for (m of FY_MONTHS; track m) {
+                      <option [value]="m">{{ m }}</option>
+                    }
+                  </select>
+                </div>
+                <div class="data-table-wrapper">
+                  <table class="data-table" data-testid="table-handover-list">
+                    <thead>
+                      <tr>
+                        <th>Run Type</th>
+                        <th>Handover Account</th>
+                        <th class="text-right">Handover Amount</th>
+                        <th>Handed Over Date</th>
+                        <th>Outstanding Days</th>
+                        <th>Outstanding Month</th>
+                        <th>Attorney</th>
+                        <th>Status</th>
+                        <th>Capturer</th>
+                        <th>Date Created</th>
+                        <th>Reviewed By</th>
+                        <th>Termination Reason</th>
+                        <th>Termination Date</th>
+                        <th>Review By</th>
+                        <th>Review Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (h of getHandoverPageItems(); track $index) {
+                        <tr [attr.data-testid]="'row-handover-' + $index">
+                          <td>{{ h.runType ?? h.type ?? '-' }}</td>
+                          <td class="mono">{{ h.handoverAccount ?? h.accountNumber ?? h.account ?? '-' }}</td>
+                          <td class="text-right mono">R {{ formatCurrency(h.handoverAmount ?? h.amount ?? 0) }}</td>
+                          <td>{{ formatDate(h.handedOverDate ?? h.handoverDate) }}</td>
+                          <td>{{ h.outstandingDays ?? h.daysOutstanding ?? '-' }}</td>
+                          <td>{{ h.outstandingMonth ?? h.monthsOutstanding ?? '-' }}</td>
+                          <td>{{ h.attorney ?? h.attorneyName ?? '-' }}</td>
+                          <td><span class="inline-badge" [class.active]="(h.status ?? h.handoverStatus) === 'Active'" [class.terminated]="(h.status ?? h.handoverStatus) === 'Terminated'">{{ h.status ?? h.handoverStatus ?? '-' }}</span></td>
+                          <td>{{ h.capturer ?? h.capturedBy ?? h.createdBy ?? '-' }}</td>
+                          <td>{{ formatDate(h.dateCreated ?? h.createdDate ?? h.capturedDate) }}</td>
+                          <td>{{ h.reviewedBy ?? '-' }}</td>
+                          <td class="muted">{{ h.terminationReason ?? '-' }}</td>
+                          <td>{{ formatDate(h.terminationDate) }}</td>
+                          <td>{{ h.terminatedReviewedBy ?? h.reviewedBy2 ?? '-' }}</td>
+                          <td>{{ formatDate(h.reviewDate ?? h.reviewedDate) }}</td>
+                        </tr>
+                      } @empty {
+                        <tr><td colspan="15" class="text-center muted" style="padding:1.5rem">No records to display.</td></tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+                <div class="table-pagination-bar">
+                  <div class="pagination-left">
+                    <span class="pagination-label">Items per page:</span>
+                    <select class="pagination-select" [ngModel]="handoverPageSize()" (ngModelChange)="onHandoverPageSizeChange(+$event)">
+                      <option [value]="10">10</option>
+                      <option [value]="25">25</option>
+                      <option [value]="50">50</option>
+                      <option [value]="100">100</option>
+                    </select>
                   </div>
-                }
+                  <span class="pagination-info">
+                    {{ getHandoverFiltered().length === 0 ? '0 of 0' : ((handoverPage() - 1) * handoverPageSize() + 1) + '–' + (handoverPage() * handoverPageSize() > getHandoverFiltered().length ? getHandoverFiltered().length : handoverPage() * handoverPageSize()) + ' of ' + getHandoverFiltered().length }}
+                  </span>
+                  <div class="pagination-buttons">
+                    <button class="page-btn" [disabled]="handoverPage() <= 1" (click)="handoverPage.set(1)">&laquo;</button>
+                    <button class="page-btn" [disabled]="handoverPage() <= 1" (click)="handoverPage.set(handoverPage() - 1)">&lsaquo;</button>
+                    <button class="page-btn" [disabled]="handoverPage() >= getHandoverTotalPages()" (click)="handoverPage.set(handoverPage() + 1)">&rsaquo;</button>
+                    <button class="page-btn" [disabled]="handoverPage() >= getHandoverTotalPages()" (click)="handoverPage.set(getHandoverTotalPages())">&raquo;</button>
+                  </div>
+                </div>
               </div>
+
+              @if ((tabData()?.transactions || []).length > 0) {
+                <div class="detail-section" style="margin-top:1rem">
+                  <div class="section-header-bar">📋 Handover Transaction Detail <span class="section-count">{{ (tabData()?.transactions || []).length }} record{{ (tabData()?.transactions || []).length !== 1 ? 's' : '' }}</span></div>
+                  <div class="data-table-wrapper">
+                    <table class="data-table" data-testid="table-handover-transactions">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Description</th>
+                          <th class="text-right">Amount</th>
+                          <th>Reference</th>
+                          <th>Type</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (tx of tabData()?.transactions || []; track $index) {
+                          <tr [attr.data-testid]="'row-handover-txn-' + $index">
+                            <td>{{ formatDate(tx.transactionDate ?? tx.date) }}</td>
+                            <td>{{ tx.description || tx.transactionDescription || '-' }}</td>
+                            <td class="text-right mono">R {{ formatCurrency(tx.amount ?? tx.transactionAmount ?? 0) }}</td>
+                            <td>{{ tx.reference || '-' }}</td>
+                            <td>{{ tx.transactionType || tx.type || '-' }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              }
             } @else {
               <div class="empty-state">
                 <div class="empty-icon">➡️</div>
@@ -2979,25 +3078,58 @@
                 <button class="export-btn export-pdf" (click)="exportLinkedAccountsPdf()" data-testid="button-export-linked-pdf">🖨️ Print/PDF</button>
               </div>
               <div class="detail-section">
-                <div class="section-header-bar">🏢 Linked Accounts</div>
+                <div class="section-header-bar linked-header-bar">
+                  <span>🏢 Linked Accounts on Same Property</span>
+                  <span class="section-count">{{ (tabData()?.linkedAccounts || []).length }} account{{ (tabData()?.linkedAccounts || []).length !== 1 ? 's' : '' }}</span>
+                  <span class="linked-combined" [class.negative]="getLinkedCombinedOutstanding() > 0" [class.positive]="getLinkedCombinedOutstanding() <= 0">
+                    Combined Outstanding: R {{ formatCurrency(getLinkedCombinedOutstanding()) }}
+                  </span>
+                </div>
                 <div class="data-table-wrapper">
                   <table class="data-table" data-testid="table-linked-accounts">
                     <thead>
                       <tr>
+                        <th style="width:30px"></th>
                         <th>Account Number</th>
+                        <th>Account Type</th>
                         <th>Name</th>
                         <th>Status</th>
                         <th class="text-right">Outstanding</th>
+                        <th style="width:80px"></th>
                       </tr>
                     </thead>
                     <tbody>
                       @for (a of tabData()?.linkedAccounts || []; track $index) {
-                        <tr class="clickable" (click)="selectAccount(a)" [attr.data-testid]="'row-linked-' +  $index  + ''">
-                          <td class="mono accent">{{ a.accountNumber || a.accountNo || '-' }}</td>
+                        <tr class="clickable" (click)="toggleLinkedRow($index)" [class.expanded-row]="expandedLinkedRow() === $index" [attr.data-testid]="'row-linked-' + $index">
+                          <td class="text-center"><span class="expand-chevron" [class.rotated]="expandedLinkedRow() === $index">▶</span></td>
+                          <td class="mono accent">{{ a.accountNumber || a.accountNo || (a.account_ID || a.accountID ? ('' + (a.account_ID || a.accountID)).padStart(12, '0') : '-') }}</td>
+                          <td>{{ a.accountType || a.accountDesc || '-' }}</td>
                           <td>{{ a.name || a.surname_Company || a.accountName || '-' }}</td>
                           <td><span class="inline-badge" [class.active]="(a.accountStatus || a.statusDesc || '').toLowerCase() === 'active'">{{ a.accountStatus || a.statusDesc || '-' }}</span></td>
-                          <td class="text-right mono">R {{ formatCurrency(a.outStandingAmount || a.outStandingAmt || 0) }}</td>
+                          <td class="text-right mono" [class.negative-amount]="(a.totalOutstanding ?? a.outStandingAmount ?? a.outStandingAmt ?? a.outstanding ?? 0) > 0">R {{ formatCurrency(a.totalOutstanding ?? a.outStandingAmount ?? a.outStandingAmt ?? a.outstanding ?? 0) }}</td>
+                          <td class="text-center"><button class="view-account-btn" (click)="$event.stopPropagation(); selectAccount(a)">View</button></td>
                         </tr>
+                        @if (expandedLinkedRow() === $index) {
+                          <tr class="linked-detail-row">
+                            <td colspan="7">
+                              <div class="linked-balance-breakdown">
+                                <div class="breakdown-title">Balance Breakdown</div>
+                                @if ((a.balanceDetails || []).length > 0) {
+                                  <div class="breakdown-grid">
+                                    @for (b of a.balanceDetails; track $index) {
+                                      <div class="breakdown-item">
+                                        <span class="breakdown-label">{{ b.serviceDescription || 'Unknown Service' }}</span>
+                                        <span class="breakdown-value" [class.negative-amount]="(b.totalOutStanding || 0) > 0">R {{ formatCurrency(b.totalOutStanding ?? 0) }}</span>
+                                      </div>
+                                    }
+                                  </div>
+                                } @else {
+                                  <div class="breakdown-empty">No detailed balance breakdown available</div>
+                                }
+                              </div>
+                            </td>
+                          </tr>
+                        }
                       }
                     </tbody>
                   </table>
