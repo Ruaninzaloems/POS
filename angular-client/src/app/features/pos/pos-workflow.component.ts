@@ -24,12 +24,15 @@ export class PosWorkflowComponent implements OnInit {
   sessionReady = signal(false);
   checkingSession = signal(true);
   sessionActive = signal(false);
+  needsReconcile = signal(false);
+  reconcileMessage = signal('');
+  sessionStatusMessage = signal('');
 
   user = this.auth.user;
 
-  canAccessSetup = computed(() => !this.sessionActive());
-  canAccessTransact = computed(() => this.sessionReady());
-  canAccessDayEnd = computed(() => this.sessionReady());
+  canAccessSetup = computed(() => !this.sessionActive() && !this.needsReconcile());
+  canAccessTransact = computed(() => this.sessionReady() && !this.needsReconcile());
+  canAccessDayEnd = computed(() => this.sessionReady() || this.needsReconcile());
 
   ngOnInit(): void {
     this.checkExistingSession();
@@ -59,12 +62,68 @@ export class PosWorkflowComponent implements OnInit {
       const isActive = data.isActive === true;
       const hasPendingDayEnd = data.hasPendingDayEnd === true;
       const hasDayEndReturned = data.hasDayEndReturned === true;
+      const cashierId = data.cashierId || data.details?.id;
 
-      if (isActive && !hasPendingDayEnd) {
+      if (hasDayEndReturned) {
         this.sessionReady.set(true);
         this.sessionActive.set(true);
         this.activeTab.set('transact');
-      } else if (hasDayEndReturned) {
+        return;
+      }
+
+      if (hasPendingDayEnd) {
+        this.sessionReady.set(true);
+        this.sessionActive.set(true);
+        this.sessionStatusMessage.set('Day-end pending supervisor approval');
+        this.activeTab.set('transact');
+        return;
+      }
+
+      if (isActive && data.officeId) {
+        if (cashierId) {
+          try {
+            const reconCheck: any = await firstValueFrom(
+              this.api.get('/api/platinum/receipt-prepaid/validate-cashier-day-end-recon', {
+                cashierId: String(cashierId),
+                finYear
+              })
+            );
+
+            if (typeof reconCheck === 'string') {
+              if (reconCheck.toLowerCase().includes('reconcile')) {
+                this.sessionReady.set(true);
+                this.sessionActive.set(true);
+                this.needsReconcile.set(true);
+                this.reconcileMessage.set(reconCheck);
+                this.activeTab.set('day-end');
+                return;
+              }
+            } else if (reconCheck && !reconCheck._error) {
+              const reconMsg = reconCheck.message || reconCheck.msg || reconCheck.validationMessage || '';
+              const reconNeed = reconCheck.needsReconcile === true
+                || reconCheck.requiresReconcile === true
+                || reconCheck.isValid === false
+                || (typeof reconMsg === 'string' && reconMsg.toLowerCase().includes('reconcile'));
+
+              if (reconNeed) {
+                this.sessionReady.set(true);
+                this.sessionActive.set(true);
+                this.needsReconcile.set(true);
+                this.reconcileMessage.set(reconMsg || 'You need to submit your day-end reconciliation before you can process transactions.');
+                this.activeTab.set('day-end');
+                return;
+              }
+            }
+          } catch {
+            this.sessionReady.set(true);
+            this.sessionActive.set(true);
+            this.needsReconcile.set(true);
+            this.reconcileMessage.set('Unable to verify reconciliation status. Please submit your day-end or contact your supervisor.');
+            this.activeTab.set('day-end');
+            return;
+          }
+        }
+
         this.sessionReady.set(true);
         this.sessionActive.set(true);
         this.activeTab.set('transact');

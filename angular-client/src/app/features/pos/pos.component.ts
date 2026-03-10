@@ -137,7 +137,8 @@ export class PosComponent implements OnInit, OnDestroy {
 
   sessionActive = signal(false);
   sessionLoading = signal(true);
-  sessionStatus = signal<'none' | 'active' | 'pending_approval' | 'returned' | 'closed'>('none');
+  sessionStatus = signal<'none' | 'active' | 'pending_approval' | 'returned' | 'closed' | 'needs_reconcile'>('none');
+  reconcileMessage = signal('');
   sessionReturnReason = signal('');
   receiptRange = signal<any>(null);
 
@@ -284,21 +285,42 @@ export class PosComponent implements OnInit, OnDestroy {
 
       const finYear = this.user()?.finYear || '';
 
-      const [cashierData, validateData] = await Promise.all([
-        firstValueFrom(this.api.get<any>('/api/platinum/receipt-prepaid/active-cashier-details', { userId: String(userId) })).catch(() => null),
-        firstValueFrom(this.api.get<any>('/api/platinum/receipt-prepaid/validate-cashier', { userId: String(userId), finYear })).catch(() => null),
-      ]);
+      const data: any = await firstValueFrom(
+        this.api.get<any>('/api/platinum/auth/active-cashier-by-userid', {
+          userid: String(userId),
+          finYear
+        })
+      ).catch(() => null);
 
-      const resolvedFinYear = finYear || (cashierData?.finYear ? String(cashierData.finYear) : '');
-      const hasPendingDayEnd = validateData?.hasPendingDayEnd === true;
-      const hasDayEndReturned = validateData?.hasDayEndReturned === true;
-      const isActive = validateData?.isActive === true || (cashierData && !cashierData._error && cashierData.cashOffice_ID);
+      if (!data || data._error) {
+        this.cashierInfo.set({ finYear });
+        this.sessionActive.set(false);
+        this.sessionStatus.set('none');
+        this.sessionLoading.set(false);
+        return;
+      }
+
+      const isActive = data.isActive === true;
+      const hasPendingDayEnd = data.hasPendingDayEnd === true;
+      const hasDayEndReturned = data.hasDayEndReturned === true;
+      const cashierRegistered = data.cashierRegistered === true;
+
+      const cashierDetails = data.details || {};
+      const officeData = cashierDetails.const_CashOffice || {};
+      const cashierInfoObj: any = {
+        ...cashierDetails,
+        cashOffice_ID: data.officeId || officeData.cashOffice_ID || cashierDetails.officeId,
+        cashOfficeDesc: data.officeName || officeData.cashOfficeDesc || '',
+        cashFloat: data.cashFloat ?? cashierDetails.cashFloat ?? 0,
+        finYear,
+      };
+
+      this.cashierInfo.set(cashierInfoObj);
 
       if (hasDayEndReturned) {
         this.sessionActive.set(true);
         this.sessionStatus.set('returned');
-        this.sessionReturnReason.set(validateData?.returnReason || validateData?.declineReason || '');
-        this.cashierInfo.set({ ...cashierData, finYear: resolvedFinYear });
+        this.sessionReturnReason.set(data.dayEndReturnReason || '');
         this.cashierCheckDone = true;
         this.loadPaymentConfig();
         this.sessionLoading.set(false);
@@ -309,22 +331,64 @@ export class PosComponent implements OnInit, OnDestroy {
         this.sessionActive.set(false);
         this.sessionStatus.set('pending_approval');
         this.sessionReturnReason.set('');
-        this.cashierInfo.set({ ...cashierData, finYear: resolvedFinYear });
         this.sessionLoading.set(false);
         return;
       }
 
-      if (cashierData && !cashierData._error && isActive) {
-        this.cashierInfo.set({ ...cashierData, finYear: resolvedFinYear });
+      if (isActive && data.officeId) {
+        const cashierId = data.cashierId || cashierDetails.id;
+        if (cashierId) {
+          try {
+            const reconCheck: any = await firstValueFrom(
+              this.api.get<any>('/api/platinum/receipt-prepaid/validate-cashier-day-end-recon', {
+                cashierId: String(cashierId),
+                finYear
+              })
+            );
+
+            if (typeof reconCheck === 'string') {
+              if (reconCheck.toLowerCase().includes('reconcile')) {
+                this.sessionActive.set(false);
+                this.sessionStatus.set('needs_reconcile');
+                this.reconcileMessage.set(reconCheck);
+                this.sessionLoading.set(false);
+                return;
+              }
+            } else if (reconCheck && !reconCheck._error) {
+              const reconMsg = reconCheck.message || reconCheck.msg || reconCheck.validationMessage || '';
+              const needsRecon = reconCheck.needsReconcile === true
+                || reconCheck.requiresReconcile === true
+                || reconCheck.isValid === false
+                || (typeof reconMsg === 'string' && reconMsg.toLowerCase().includes('reconcile'));
+
+              if (needsRecon) {
+                this.sessionActive.set(false);
+                this.sessionStatus.set('needs_reconcile');
+                this.reconcileMessage.set(reconMsg || 'You need to submit your day-end reconciliation before you can process transactions.');
+                this.sessionLoading.set(false);
+                return;
+              }
+            }
+          } catch {
+            this.sessionActive.set(false);
+            this.sessionStatus.set('needs_reconcile');
+            this.reconcileMessage.set('Unable to verify reconciliation status. Please submit your day-end or contact your supervisor.');
+            this.sessionLoading.set(false);
+            return;
+          }
+        }
+
         this.sessionActive.set(true);
         this.sessionStatus.set('active');
         this.cashierCheckDone = true;
         this.loadPaymentConfig();
-        if (validateData?.receiptRange) {
-          this.receiptRange.set(validateData.receiptRange);
+        if (data.hasReceiptRange) {
+          this.receiptRange.set(data.receiptRange || null);
         }
+      } else if (cashierRegistered && !isActive) {
+        this.sessionActive.set(false);
+        this.sessionStatus.set('none');
       } else {
-        this.cashierInfo.set({ finYear: resolvedFinYear });
         this.sessionActive.set(false);
         this.sessionStatus.set('none');
       }
