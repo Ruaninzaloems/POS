@@ -49,12 +49,14 @@ export function registerSupervisorRoutes(app: Express, httpServer: Server): void
             const results = Array.isArray(enquiryData) ? enquiryData : (enquiryData.results || [enquiryData]);
             const match = results.find((r: any) => String(r.accountID) === accountId);
             if (match) {
+               console.warn(`[total-balance-debt] TotalBalanceDebtInquiry returned no data for accountId=${accountId}, using synthetic fallback from EnquiryResults`);
                return res.json([{
                   serviceDescription: "Balance B/F",
                   totalOutStanding: match.outStandingAmount || 0,
                   currentAccount: match.outStandingAmount || 0,
                   newCharge: 0,
-                  days30: 0, days60: 0, days90: 0, days120: 0, days150: 0, untill360: 0
+                  days30: 0, days60: 0, days90: 0, days120: 0, days150: 0, untill360: 0,
+                  _synthetic: true
                }]);
             }
          }
@@ -94,7 +96,9 @@ export function registerSupervisorRoutes(app: Express, httpServer: Server): void
                   return { accNo, name, address };
                 }
               }
-            } catch (e) {}
+            } catch (e: any) {
+              console.warn(`[batch-account-names] Lookup failed for account ${accNo}:`, e.message);
+            }
             return null;
           })
         );
@@ -568,7 +572,7 @@ export function registerSupervisorRoutes(app: Express, httpServer: Server): void
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!response.ok) {
-        const text = await response.text().catch(() => '');
+        const text = await response.text().catch((e: any) => { console.warn('[supervisor-report] Failed to read error response body:', e?.message); return ''; });
         return res.status(response.status).json({ message: `Failed to download ${type}`, detail: text.substring(0, 500) });
       }
       const contentType = response.headers.get('content-type') || 'application/pdf';

@@ -232,7 +232,9 @@ export function registerAuthRoutes(app: Express, httpServer: Server): void {
                   const offices = await platinumGet(session, "/api/ReceiptPrepaid/cash-offices", { finYear, userId });
                   const officeList = Array.isArray(offices) ? offices : [];
                   cashOffice = officeList.find((o: any) => (o.cashOffice_ID || o.id) === matchedCashier.officeId) || null;
-                } catch {} 
+                } catch (officeErr: any) {
+                  console.warn(`[active-cashier] Failed to fetch cash offices for cashier officeId=${matchedCashier.officeId}:`, officeErr.message);
+                } 
               }
             } else {
               console.log(`[active-cashier] No matching cashier found in cashier-list for userId=${userId}`);

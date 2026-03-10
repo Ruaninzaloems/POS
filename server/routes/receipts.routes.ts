@@ -482,7 +482,7 @@ export function registerReceiptsRoutes(app: Express, httpServer: Server): void {
                   }
                 } finally {
                   if (existsSync(tmpPath)) {
-                    try { unlinkSync(tmpPath); } catch {}
+                    try { unlinkSync(tmpPath); } catch (cleanupErr: any) { console.warn(`[pos-multi-receipt-print] Failed to clean up temp file ${tmpPath}:`, cleanupErr.message); }
                   }
                 }
               }

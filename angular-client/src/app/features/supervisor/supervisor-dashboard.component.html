@@ -311,7 +311,7 @@
                             <td class="font-mono">{{ r.receiptNo || r.receipt_no || '-' }}</td>
                             <td class="font-mono">{{ r.accountNumber || r.accountId || '-' }}</td>
                             <td class="amount-cell">{{ formatCurrency(r.amount || r.totalAmount || 0) }}</td>
-                            <td>{{ r.receiptDate || r.date || '-' }}</td>
+                            <td>{{ formatDate(r.receiptDate || r.date || '') }}</td>
                             <td>
                               @if (directCancelId() === (r.id || r.receiptId)) {
                                 <div class="cancel-inline">
@@ -346,7 +346,7 @@
                             <td class="font-mono">{{ r.receiptNo || r.receipt_no || '-' }}</td>
                             <td class="font-mono">{{ r.accountNumber || r.accountId || '-' }}</td>
                             <td class="amount-cell">{{ formatCurrency(r.amount || r.totalAmount || 0) }}</td>
-                            <td>{{ r.receiptDate || r.date || '-' }}</td>
+                            <td>{{ formatDate(r.receiptDate || r.date || '') }}</td>
                           </tr>
                         }
                       </tbody>

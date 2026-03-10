@@ -422,7 +422,7 @@ export function registerBillingRoutes(app: Express, httpServer: Server): void {
         res.json({ receiptId, allocations });
       } finally {
         if (existsSync(tmpPath)) {
-          try { unlinkSync(tmpPath); } catch {}
+          try { unlinkSync(tmpPath); } catch (cleanupErr: any) { console.warn(`[receipt-allocations] Failed to clean up temp file ${tmpPath}:`, cleanupErr.message); }
         }
       }
     } catch (e: any) {
@@ -704,7 +704,7 @@ export function registerBillingRoutes(app: Express, httpServer: Server): void {
       });
 
       if (!pdfRes.ok) {
-        const errorText = await pdfRes.text().catch(() => "");
+        const errorText = await pdfRes.text().catch((e: any) => { console.warn('[print-misc-receipt] Failed to read error response body:', e?.message); return ""; });
         console.error(`[print-misc-receipt] Platinum returned ${pdfRes.status}: ${errorText}`);
         return res.status(pdfRes.status).json({ message: "Failed to fetch misc receipt PDF from Platinum", detail: errorText });
       }

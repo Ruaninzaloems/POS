@@ -135,7 +135,7 @@ export class ClientCommunicationsComponent implements OnInit, OnDestroy {
       const searchBody: any = {};
       if (isNumeric) { searchBody.accountNo = query; } else { searchBody.name = query; }
 
-      const rawData: any = await firstValueFrom(this.api.post('/api/platinum/billing-payment/search-accounts', searchBody)).catch(() => []);
+      const rawData: any = await firstValueFrom(this.api.post('/api/platinum/billing-payment/search-accounts', searchBody)).catch((err) => { console.warn('[ClientCommunications] Search accounts failed:', err); return []; });
       const items = Array.isArray(rawData) ? rawData : (rawData?.value || []);
       const results = items.slice(0, 20);
       this.searchResults.set(results);
@@ -146,15 +146,16 @@ export class ClientCommunicationsComponent implements OnInit, OnDestroy {
         if (accId && !this.contactIndicators()[accId]) {
           this.contactIndicators.update(prev => ({ ...prev, [accId]: { email: false, mobile: false, loading: true } }));
           Promise.all([
-            firstValueFrom(this.api.get('/api/platinum/billing-account-management/get-contact-details', { accountId: String(accId) })).catch(() => null),
-            firstValueFrom(this.api.get('/api/platinum/billing-enquiry/name-info-by-account', { accountId: String(accId) })).catch(() => null),
+            firstValueFrom(this.api.get('/api/platinum/billing-account-management/get-contact-details', { accountId: String(accId) })).catch((err) => { console.warn('[ClientCommunications] Contact details fetch failed for account', accId, err); return null; }),
+            firstValueFrom(this.api.get('/api/platinum/billing-enquiry/name-info-by-account', { accountId: String(accId) })).catch((err) => { console.warn('[ClientCommunications] Name info fetch failed for account', accId, err); return null; }),
           ]).then(([contactRes, nameRes]) => {
             const { email, mobile } = this.extractContactInfo(contactRes, nameRes);
             this.contactIndicators.update(prev => ({ ...prev, [accId]: { email: !!email, mobile: !!mobile, loading: false } }));
           });
         }
       });
-    } catch {
+    } catch (err) {
+      console.warn('[ClientCommunications] performSearch failed:', err);
       this.searchResults.set([]);
     } finally {
       this.searching.set(false);
@@ -176,9 +177,9 @@ export class ClientCommunicationsComponent implements OnInit, OnDestroy {
     let additionalEmails: string[] = [];
     try {
       const [contactRes, nameRes, addEmailRes] = await Promise.all([
-        firstValueFrom(this.api.get('/api/platinum/billing-account-management/get-contact-details', { accountId: String(accountId) })).catch(() => null),
-        firstValueFrom(this.api.get('/api/platinum/billing-enquiry/name-info-by-account', { accountId: String(accountId) })).catch(() => null),
-        firstValueFrom(this.api.get('/api/platinum/billing-account-management/get-additional-emails', { accountId: String(accountId) })).catch(() => null),
+        firstValueFrom(this.api.get('/api/platinum/billing-account-management/get-contact-details', { accountId: String(accountId) })).catch((err) => { console.warn('[ClientCommunications] Contact details fetch failed for account', accountId, err); return null; }),
+        firstValueFrom(this.api.get('/api/platinum/billing-enquiry/name-info-by-account', { accountId: String(accountId) })).catch((err) => { console.warn('[ClientCommunications] Name info fetch failed for account', accountId, err); return null; }),
+        firstValueFrom(this.api.get('/api/platinum/billing-account-management/get-additional-emails', { accountId: String(accountId) })).catch((err) => { console.warn('[ClientCommunications] Additional emails fetch failed for account', accountId, err); return null; }),
       ]);
 
       const { email, mobile } = this.extractContactInfo(contactRes, nameRes);
@@ -191,7 +192,8 @@ export class ClientCommunicationsComponent implements OnInit, OnDestroy {
       }
 
       return { email, mobile, additionalEmails };
-    } catch {
+    } catch (err) {
+      console.warn('[ClientCommunications] fetchContactDetails failed for account', accountId, err);
       return { email: '', mobile: '', additionalEmails: [] };
     }
   }
@@ -225,7 +227,8 @@ export class ClientCommunicationsComponent implements OnInit, OnDestroy {
       this.recipients.update(prev => prev.map(r =>
         r.accountId === accId ? { ...r, ...contactInfo, contactLoading: false, contactLoaded: true } : r
       ));
-    } catch {
+    } catch (err) {
+      console.warn('[ClientCommunications] addRecipient contact fetch failed for account', accId, err);
       this.recipients.update(prev => prev.map(r =>
         r.accountId === accId ? { ...r, contactLoading: false, contactLoaded: true } : r
       ));
@@ -347,14 +350,14 @@ export class ClientCommunicationsComponent implements OnInit, OnDestroy {
         const batch = unique.slice(batchStart, batchStart + BATCH_SIZE);
         const searchPromises = batch.map(async (accNo) => {
           try {
-            const rawData: any = await firstValueFrom(this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: accNo })).catch(() => []);
+            const rawData: any = await firstValueFrom(this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: accNo })).catch((err) => { console.warn('[ClientCommunications] CSV import search failed for account', accNo, err); return []; });
             const data = rawData || [];
             const items: any[] = Array.isArray(data) ? data : (data?.value || []);
             return items.find((i: any) => {
               const itemAccNo = String(i.accountNumber || i.accountNo || i.account_ID || i.accountID || i.id || '');
               return itemAccNo === accNo || itemAccNo.replace(/^0+/, '') === accNo.replace(/^0+/, '');
             }) || (items.length > 0 ? items[0] : null);
-          } catch { return null; }
+          } catch (err) { console.warn('[ClientCommunications] CSV import search error for account', accNo, err); return null; }
         });
 
         const foundItems = await Promise.all(searchPromises);
@@ -413,7 +416,8 @@ export class ClientCommunicationsComponent implements OnInit, OnDestroy {
         this.contactEnriching.set(false);
         this.toast.success(`Loaded contact info for ${pendingContactIds.length} account(s).`);
       }
-    } catch {
+    } catch (err) {
+      console.warn('[ClientCommunications] CSV import failed:', err);
       this.toast.error('Could not read the file.');
     } finally {
       this.importing.set(false);

@@ -33,7 +33,9 @@ export class LoginComponent {
     try {
       const data = await firstValueFrom(this.api.get<any[]>('/api/sites'));
       this.sites.set(data || []);
-    } catch { }
+    } catch (e) {
+      console.warn('Failed to load sites:', e);
+    }
   }
 
   async onSubmit(): Promise<void> {

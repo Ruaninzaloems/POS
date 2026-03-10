@@ -330,7 +330,10 @@ export class PosComponent implements OnInit, OnDestroy {
           userid: String(userId),
           finYear
         })
-      ).catch(() => null);
+      ).catch((err) => {
+        console.warn('Failed to fetch active cashier info:', err);
+        return null;
+      });
 
       if (!data || data._error) {
         this.cashierInfo.set({ finYear });
@@ -1567,6 +1570,10 @@ export class PosComponent implements OnInit, OnDestroy {
     }
     if (!this.cancelReceiptNo()) {
       this.toast.error('Enter a receipt number to cancel.');
+      return;
+    }
+    if (!this.cancelReason().trim()) {
+      this.toast.error('Please provide a reason for cancellation.');
       return;
     }
     this.cancellingReceipt.set(true);

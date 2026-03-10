@@ -136,7 +136,10 @@ export class CashierDayEndComponent implements OnInit {
           userid: String(userId),
           finYear
         })
-      ).catch(() => null);
+      ).catch((err: any) => {
+        console.warn('Failed to fetch active cashier session', err);
+        return null;
+      });
 
       if (!data || data._error) {
         this.sessionActive.set(false);
@@ -172,7 +175,8 @@ export class CashierDayEndComponent implements OnInit {
         this.loadCashierDetails(cashierId);
         this.loadReceiptData(cashierId);
       }
-    } catch {
+    } catch (err) {
+      console.warn('Error detecting cashier session', err);
       this.sessionActive.set(false);
     } finally {
       this.sessionLoading.set(false);
@@ -203,10 +207,10 @@ export class CashierDayEndComponent implements OnInit {
 
     try {
       const [cheques, cards, dropBoxes, reconciles]: any[] = await Promise.all([
-        firstValueFrom(this.api.post(`/api/platinum/billing-payment-day-end/get-cashier-receipt-cheque-list?id=${cashierId}`, {})).catch(() => []),
-        firstValueFrom(this.api.post(`/api/platinum/billing-payment-day-end/get-cashier-receipt-card-list?id=${cashierId}`, {})).catch(() => []),
-        firstValueFrom(this.api.post(`/api/platinum/billing-payment-day-end/get-cashier-receipt-drop-box-list?id=${cashierId}`, {})).catch(() => []),
-        firstValueFrom(this.api.get('/api/platinum/billing-payment-day-end/get-cashier-receipt-reconcile-list', { userId, id: String(cashierId) })).catch(() => []),
+        firstValueFrom(this.api.post(`/api/platinum/billing-payment-day-end/get-cashier-receipt-cheque-list?id=${cashierId}`, {})).catch((err: any) => { console.warn('Failed to load cheque list', err); return []; }),
+        firstValueFrom(this.api.post(`/api/platinum/billing-payment-day-end/get-cashier-receipt-card-list?id=${cashierId}`, {})).catch((err: any) => { console.warn('Failed to load card list', err); return []; }),
+        firstValueFrom(this.api.post(`/api/platinum/billing-payment-day-end/get-cashier-receipt-drop-box-list?id=${cashierId}`, {})).catch((err: any) => { console.warn('Failed to load drop box list', err); return []; }),
+        firstValueFrom(this.api.get('/api/platinum/billing-payment-day-end/get-cashier-receipt-reconcile-list', { userId, id: String(cashierId) })).catch((err: any) => { console.warn('Failed to load reconcile list', err); return []; }),
       ]);
 
       const chequeItems = this.extractItems(cheques);
@@ -291,7 +295,9 @@ export class CashierDayEndComponent implements OnInit {
         await firstValueFrom(
           this.api.post('/api/platinum/auth-day-end/validate-cashbook', { cashierId })
         );
-      } catch {}
+      } catch (err) {
+        console.warn('Failed to validate cashbook', err);
+      }
 
       const cashierOfficeId = this.sessionOfficeId() || Number(
         this.cashierDetails()?.officeId ||
@@ -307,7 +313,9 @@ export class CashierDayEndComponent implements OnInit {
             cashierOfficeId,
           })
         );
-      } catch {}
+      } catch (err) {
+        console.warn('Failed to submit day-end auth reconcile', err);
+      }
 
       this.toast.success('Day-end reconciliation submitted successfully.');
     } catch (e: any) {
