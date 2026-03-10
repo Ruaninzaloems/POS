@@ -1,4 +1,4 @@
-import { Component, signal, computed, OnInit, inject } from '@angular/core';
+import { Component, signal, computed, OnInit, inject, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -50,10 +50,15 @@ export class CashierDayEndComponent implements OnInit {
   noteDenominations = NOTE_DENOMINATIONS;
   coinDenominations = COIN_DENOMINATIONS;
 
-  cashierList = signal<any[]>([]);
-  selectedCashierId = signal('');
+  sessionLoading = signal(true);
+  sessionActive = signal(false);
+  sessionCashierId = signal<number | null>(null);
+  sessionCashierName = signal('');
+  sessionOfficeName = signal('');
+  sessionOfficeId = signal<number | null>(null);
+  sessionCashFloat = signal(0);
+
   cashierDetails = signal<any>(null);
-  isLoadingCashiers = signal(false);
   isLoadingDetails = signal(false);
 
   chequeList = signal<any[]>([]);
@@ -75,6 +80,12 @@ export class CashierDayEndComponent implements OnInit {
   isSaving = signal(false);
   showTransactionHistory = signal(false);
   enableDenominationCounting = signal(true);
+
+  activeSection = signal<'takings' | 'cancellation' | 'dropbox'>('takings');
+
+  cancelReceiptId = signal('');
+  cancelReason = signal('');
+  isCancellingReceipt = signal(false);
 
   today = (() => { const d = new Date(); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; })();
 
@@ -102,41 +113,83 @@ export class CashierDayEndComponent implements OnInit {
     this.totalCashOnHandPlusDropBox() + this.totalCreditAmt() + this.totalChequeAmt()
   );
 
+  cancellableReceipts = computed(() =>
+    this.reconcileList().filter(r => !this.isCancelled(r))
+  );
+
   ngOnInit(): void {
-    this.loadCashierList();
+    this.detectSession();
   }
 
-  async loadCashierList(): Promise<void> {
-    this.isLoadingCashiers.set(true);
+  async detectSession(): Promise<void> {
+    this.sessionLoading.set(true);
     try {
-      const data: any = await firstValueFrom(
-        this.api.get('/api/platinum/billing-payment-day-end/get-cashier-list')
-      );
-      const items = this.extractItems(data);
-      this.cashierList.set(items);
-
-      if (items.length === 1) {
-        const id = String(items[0].id || items[0].cashierId || items[0].cashier_id || '');
-        this.selectedCashierId.set(id);
-        this.onCashierChange();
+      const userId = this.user()?.user_ID;
+      const finYear = this.user()?.finYear || '';
+      if (!userId) {
+        this.sessionActive.set(false);
+        return;
       }
-    } catch (e) {
-      this.toast.error('Failed to load cashier list.');
+
+      const data: any = await firstValueFrom(
+        this.api.get('/api/platinum/auth/active-cashier-by-userid', {
+          userid: String(userId),
+          finYear
+        })
+      ).catch(() => null);
+
+      if (!data || data._error) {
+        this.sessionActive.set(false);
+        return;
+      }
+
+      const isActive = data.isActive === true || data.active === true;
+      const hasPendingDayEnd = data.hasPendingDayEnd === true;
+      const hasDayEndReturned = data.hasDayEndReturned === true;
+
+      if (!isActive && !hasPendingDayEnd && !hasDayEndReturned) {
+        this.sessionActive.set(false);
+        return;
+      }
+
+      this.sessionActive.set(true);
+      const cashierId = data.cashierId || data.details?.id || data.id || null;
+      this.sessionCashierId.set(cashierId ? Number(cashierId) : null);
+
+      const name = data.cashierName || data.details?.userName || data.details?.name || this.user()?.userName || '';
+      this.sessionCashierName.set(name);
+
+      const office = data.officeName || data.details?.const_CashOffice?.cashOfficeDesc || data.cashOfficeName || '';
+      this.sessionOfficeName.set(office);
+
+      const officeId = data.officeId || data.details?.officeId || data.details?.const_CashOffice?.cashOffice_ID || null;
+      this.sessionOfficeId.set(officeId ? Number(officeId) : null);
+
+      const cashFloat = data.cashFloat || data.details?.cashFloat || 0;
+      this.sessionCashFloat.set(Number(cashFloat) || 0);
+
+      if (cashierId) {
+        this.loadCashierDetails(cashierId);
+        this.loadReceiptData(cashierId);
+      }
+    } catch {
+      this.sessionActive.set(false);
     } finally {
-      this.isLoadingCashiers.set(false);
+      this.sessionLoading.set(false);
     }
   }
 
-  async loadCashierDetails(): Promise<void> {
-    const cashierId = this.selectedCashierId();
-    if (!cashierId) return;
-
+  async loadCashierDetails(cashierId: number): Promise<void> {
     this.isLoadingDetails.set(true);
     try {
       const data: any = await firstValueFrom(
-        this.api.get('/api/platinum/billing-payment-day-end/get-cashier-details', { id: cashierId })
+        this.api.get('/api/platinum/billing-payment-day-end/get-cashier-details', { id: String(cashierId) })
       );
       this.cashierDetails.set(data);
+      if (data) {
+        const office = data.cashOfficeName || data.cash_office || data.cashOffice || data.officeName || data.const_CashOffice?.cashOfficeDesc || '';
+        if (office && !this.sessionOfficeName()) this.sessionOfficeName.set(office);
+      }
     } catch (e) {
       console.error('Failed to load cashier details', e);
     } finally {
@@ -144,20 +197,16 @@ export class CashierDayEndComponent implements OnInit {
     }
   }
 
-  async loadReceiptData(): Promise<void> {
-    const cashierId = this.selectedCashierId();
-    if (!cashierId) return;
-
+  async loadReceiptData(cashierId: number): Promise<void> {
     this.isLoadingReceipts.set(true);
-    const id = Number(cashierId);
-    const userId = String(this.user()?.user_ID || 213);
+    const userId = String(this.user()?.user_ID || '');
 
     try {
       const [cheques, cards, dropBoxes, reconciles]: any[] = await Promise.all([
-        firstValueFrom(this.api.post(`/api/platinum/billing-payment-day-end/get-cashier-receipt-cheque-list?id=${id}`, {})).catch(() => []),
-        firstValueFrom(this.api.post(`/api/platinum/billing-payment-day-end/get-cashier-receipt-card-list?id=${id}`, {})).catch(() => []),
-        firstValueFrom(this.api.post(`/api/platinum/billing-payment-day-end/get-cashier-receipt-drop-box-list?id=${id}`, {})).catch(() => []),
-        firstValueFrom(this.api.get('/api/platinum/billing-payment-day-end/get-cashier-receipt-reconcile-list', { userId, id: cashierId })).catch(() => []),
+        firstValueFrom(this.api.post(`/api/platinum/billing-payment-day-end/get-cashier-receipt-cheque-list?id=${cashierId}`, {})).catch(() => []),
+        firstValueFrom(this.api.post(`/api/platinum/billing-payment-day-end/get-cashier-receipt-card-list?id=${cashierId}`, {})).catch(() => []),
+        firstValueFrom(this.api.post(`/api/platinum/billing-payment-day-end/get-cashier-receipt-drop-box-list?id=${cashierId}`, {})).catch(() => []),
+        firstValueFrom(this.api.get('/api/platinum/billing-payment-day-end/get-cashier-receipt-reconcile-list', { userId, id: String(cashierId) })).catch(() => []),
       ]);
 
       const chequeItems = this.extractItems(cheques);
@@ -179,13 +228,6 @@ export class CashierDayEndComponent implements OnInit {
     }
   }
 
-  onCashierChange(): void {
-    if (this.selectedCashierId()) {
-      this.loadCashierDetails();
-      this.loadReceiptData();
-    }
-  }
-
   updateDenomination(key: string, count: number): void {
     this.denominations.update(prev => ({ ...prev, [key]: Math.max(0, count) }));
   }
@@ -199,17 +241,22 @@ export class CashierDayEndComponent implements OnInit {
   }
 
   async handleSaveReconcile(): Promise<void> {
-    if (!this.selectedCashierId()) {
-      this.toast.error('Please select a cashier first.');
+    const cashierId = this.sessionCashierId();
+    if (!cashierId) {
+      this.toast.error('No active session found. Cannot submit reconciliation.');
+      return;
+    }
+    if (!this.sessionActive()) {
+      this.toast.error('Session is not active. Please start a session first.');
       return;
     }
 
     this.isSaving.set(true);
     try {
-      const userId = this.user()?.user_ID || 213;
+      const userId = this.user()?.user_ID || '';
       const denoms = this.denominations();
       const payload = {
-        cashierId: Number(this.selectedCashierId()),
+        cashierId: cashierId,
         reason: this.reason() || null,
         totalCashAmt: this.cashOnHand(),
         totalChequeAmt: this.totalChequeAmt(),
@@ -233,7 +280,7 @@ export class CashierDayEndComponent implements OnInit {
       };
 
       const result: any = await firstValueFrom(
-        this.api.post('/api/platinum/billing-payment-day-end/save-reconcile-data', { userId, ...payload })
+        this.api.post(`/api/platinum/billing-payment-day-end/save-reconcile-data?userId=${userId}`, payload)
       );
 
       if (result?.error || result?.isError === true || result?.success === false) {
@@ -242,11 +289,11 @@ export class CashierDayEndComponent implements OnInit {
 
       try {
         await firstValueFrom(
-          this.api.post('/api/platinum/auth-day-end/validate-cashbook', { cashierId: Number(this.selectedCashierId()) })
+          this.api.post('/api/platinum/auth-day-end/validate-cashbook', { cashierId })
         );
       } catch {}
 
-      const cashierOfficeId = Number(
+      const cashierOfficeId = this.sessionOfficeId() || Number(
         this.cashierDetails()?.officeId ||
         this.cashierDetails()?.cashOffice_ID ||
         this.cashierDetails()?.const_CashOffice?.cashOffice_ID || 1
@@ -254,8 +301,8 @@ export class CashierDayEndComponent implements OnInit {
 
       try {
         await firstValueFrom(
-          this.api.post('/api/platinum/auth-day-end/submit-day-auth-reconcile', {
-            cashierId: Number(this.selectedCashierId()),
+          this.api.post(`/api/platinum/auth-day-end/submit-day-auth-reconcile?cashierId=${cashierId}`, {
+            cashierId,
             cashBookId: 1,
             cashierOfficeId,
           })
@@ -270,6 +317,46 @@ export class CashierDayEndComponent implements OnInit {
     }
   }
 
+  async handleRequestCancel(): Promise<void> {
+    const receiptId = this.cancelReceiptId();
+    const reason = this.cancelReason();
+    if (!receiptId) {
+      this.toast.error('Please select a receipt to cancel.');
+      return;
+    }
+    if (!reason.trim()) {
+      this.toast.error('Please provide a reason for cancellation.');
+      return;
+    }
+
+    this.isCancellingReceipt.set(true);
+    try {
+      const result: any = await firstValueFrom(
+        this.api.post('/api/platinum/auth-day-end/request-cancel-receipt', {
+          receiptId: Number(receiptId),
+          reason: reason.trim(),
+          cashierId: this.sessionCashierId(),
+          userId: this.user()?.user_ID,
+        })
+      );
+
+      if (result?.error || result?.isError === true || result?.success === false) {
+        throw new Error(result?.error || result?.message || 'API rejected the cancellation request.');
+      }
+
+      this.toast.success('Cancellation request submitted. Awaiting supervisor approval.');
+      this.cancelReceiptId.set('');
+      this.cancelReason.set('');
+
+      const cid = this.sessionCashierId();
+      if (cid) this.loadReceiptData(cid);
+    } catch (e: any) {
+      this.toast.error(e?.message || 'Failed to submit cancellation request.');
+    } finally {
+      this.isCancellingReceipt.set(false);
+    }
+  }
+
   resetForm(): void {
     this.denominations.set({
       n200: 0, n100: 0, n50: 0, n20: 0, n10: 0,
@@ -280,13 +367,10 @@ export class CashierDayEndComponent implements OnInit {
     this.reason.set('');
   }
 
-  getCashierName(c: any): string {
-    return c.name || c.cashierName || c.userName || `Cashier ${c.id || c.cashierId}`;
-  }
-
-  getCashierOffice(): string {
-    const d = this.cashierDetails();
-    return d?.cashOfficeName || d?.cash_office || d?.cashOffice || d?.officeName || d?.const_CashOffice?.cashOfficeDesc || '-';
+  getReceiptLabel(item: any): string {
+    const no = item.receiptNo || item.receipt_no || '';
+    const acc = item.accountNumber || item.accountId || '';
+    return no ? `${no} — ${acc}` : acc || `Receipt #${item.id || '?'}`;
   }
 
   getPayTypeLabel(item: any): string {
