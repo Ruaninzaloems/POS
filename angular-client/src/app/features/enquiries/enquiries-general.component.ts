@@ -984,10 +984,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.riskFlagsLoading.set(false);
   }
 
+  private _loadTabGeneration = 0;
+
   async loadTabData(tab: string, accountId: number): Promise<void> {
+    const generation = ++this._loadTabGeneration;
+    console.log(`[loadTabData] tab=${tab} accountId=${accountId} gen=${generation}`);
     this.tabLoading.set(true);
     this.tabError.set(null);
-    this.tabData.set(null);
 
     try {
       let data: any = null;
@@ -1487,11 +1490,17 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           data = { message: 'Tab not implemented' };
       }
 
-      this.tabData.set(data);
+      if (generation === this._loadTabGeneration) {
+        this.tabData.set(data);
+      }
     } catch (e: any) {
-      this.tabError.set(e?.error?.message || e?.message || 'Failed to load tab data');
+      if (generation === this._loadTabGeneration) {
+        this.tabError.set(e?.error?.message || e?.message || 'Failed to load tab data');
+      }
     } finally {
-      this.tabLoading.set(false);
+      if (generation === this._loadTabGeneration) {
+        this.tabLoading.set(false);
+      }
     }
   }
 
