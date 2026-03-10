@@ -1343,20 +1343,195 @@
         @if (activeTab() === 'consumption') {
           <div class="tab-panel" data-testid="consumption-tab">
             @if ((tabData()?.meters || []).length > 0) {
-              <div class="detail-section">
-                <div class="section-header-bar">💧 Consumption Overview</div>
-                <div class="services-grid">
+              <div class="cons-layout">
+                <div class="cons-meter-sidebar">
+                  <div class="cons-sidebar-title">Meters on Account</div>
                   @for (m of tabData()?.meters || []; track $index) {
-                    <div class="service-card" [attr.data-testid]="'consumption-card-' +  $index  + ''">
-                      <div class="service-card-header">
-                        <span class="service-name">{{ m.serviceDesc || m.serviceDescription || 'Service' }}</span>
+                    <div class="cons-meter-card" [class.cons-meter-active]="consumptionSelectedMeter()?.physicalMeterNo === m.physicalMeterNo && consumptionSelectedMeter()?.serviceDesc === m.serviceDesc" (click)="selectConsumptionMeter(m)" [attr.data-testid]="'consumption-meter-' + $index">
+                      <div class="cons-meter-icon">
+                        @if ((m.serviceDesc || m.serviceDescription || '').toLowerCase().includes('water')) { 💧 }
+                        @else if ((m.serviceDesc || m.serviceDescription || '').toLowerCase().includes('elec')) { ⚡ }
+                        @else if ((m.serviceDesc || m.serviceDescription || '').toLowerCase().includes('sewer') || (m.serviceDesc || m.serviceDescription || '').toLowerCase().includes('effluent')) { 🚿 }
+                        @else { 📊 }
                       </div>
-                      <div class="service-card-body">
-                        <div class="service-row"><span>Meter</span><span class="mono">{{ m.physicalMeterNo || m.meterNo || '-' }}</span></div>
-                        <div class="service-row"><span>Previous Reading</span><span class="mono">{{ m.previousReading || m.lastReading || '-' }}</span></div>
-                        <div class="service-row"><span>Current Reading</span><span class="mono">{{ m.currentReading || '-' }}</span></div>
-                        <div class="service-row"><span>Consumption</span><span class="mono bold">{{ m.consumption || m.units || '-' }}</span></div>
+                      <div class="cons-meter-info">
+                        <div class="cons-meter-name">{{ m.serviceDesc || m.serviceDescription || 'Service' }}</div>
+                        <div class="cons-meter-no mono">{{ m.physicalMeterNo || m.meterNo || 'No Meter' }}</div>
+                        <div class="cons-meter-status">
+                          <span class="svc-status-badge" [class.svc-active]="(m.serviceStatus || m.meterStatus || '').toLowerCase() === 'active'">{{ m.serviceStatus || m.meterStatus || '-' }}</span>
+                        </div>
                       </div>
+                    </div>
+                  }
+                </div>
+
+                <div class="cons-main-panel">
+                  @if (consumptionSelectedMeter()) {
+                    <div class="cons-selected-header">
+                      <div class="cons-selected-title">
+                        <span class="cons-selected-svc">{{ consumptionSelectedMeter().serviceDesc || consumptionSelectedMeter().serviceDescription || 'Service' }}</span>
+                        <span class="cons-selected-meter mono">Meter: {{ consumptionSelectedMeter().physicalMeterNo || consumptionSelectedMeter().meterNo || '-' }}</span>
+                      </div>
+                      @if (consumptionSelectedMeter().meterConnectionSize) {
+                        <span class="cons-conn-badge">Connection: {{ consumptionSelectedMeter().meterConnectionSize }}</span>
+                      }
+                    </div>
+
+                    @if (consumptionInsights()) {
+                      <div class="cons-insights-row">
+                        <div class="cons-insight-card">
+                          <div class="cons-insight-label">Average</div>
+                          <div class="cons-insight-value">{{ consumptionInsights().avg | number:'1.1-1' }}</div>
+                          <div class="cons-insight-sub">per period</div>
+                        </div>
+                        <div class="cons-insight-card">
+                          <div class="cons-insight-label">Minimum</div>
+                          <div class="cons-insight-value cons-insight-low">{{ consumptionInsights().min | number:'1.0-0' }}</div>
+                          <div class="cons-insight-sub">lowest reading</div>
+                        </div>
+                        <div class="cons-insight-card">
+                          <div class="cons-insight-label">Maximum</div>
+                          <div class="cons-insight-value cons-insight-high">{{ consumptionInsights().max | number:'1.0-0' }}</div>
+                          <div class="cons-insight-sub">highest reading</div>
+                        </div>
+                        <div class="cons-insight-card">
+                          <div class="cons-insight-label">Trend</div>
+                          <div class="cons-insight-value cons-insight-trend">
+                            @if (consumptionInsights().trend === 'increasing') { ↑ Rising }
+                            @else if (consumptionInsights().trend === 'decreasing') { ↓ Falling }
+                            @else { → Stable }
+                          </div>
+                          <div class="cons-insight-sub">recent vs prior</div>
+                        </div>
+                        <div class="cons-insight-card">
+                          <div class="cons-insight-label">Std Deviation</div>
+                          <div class="cons-insight-value">{{ consumptionInsights().stdDev | number:'1.1-1' }}</div>
+                          <div class="cons-insight-sub">variability</div>
+                        </div>
+                        <div class="cons-insight-card cons-anomaly-card" [class.cons-has-anomalies]="consumptionInsights().anomalies.length > 0">
+                          <div class="cons-insight-label">Anomalies</div>
+                          <div class="cons-insight-value">{{ consumptionInsights().anomalies.length }}</div>
+                          <div class="cons-insight-sub">
+                            @if (consumptionInsights().anomalies.length === 0) { all normal }
+                            @else { flagged readings }
+                          </div>
+                        </div>
+                      </div>
+
+                      @if (consumptionInsights().anomalies.length > 0) {
+                        <div class="cons-anomaly-alerts">
+                          <div class="cons-anomaly-title">Anomaly Alerts</div>
+                          @for (a of consumptionInsights().anomalies; track $index) {
+                            <div class="cons-anomaly-item" [class.cons-anomaly-spike]="a.type === 'spike'" [class.cons-anomaly-drop]="a.type === 'drop'" [class.cons-anomaly-zero]="a.type === 'zero'">
+                              <span class="cons-anomaly-icon">
+                                @if (a.type === 'spike') { ⚠️ }
+                                @else if (a.type === 'drop') { ⬇️ }
+                                @else { 🚫 }
+                              </span>
+                              <span class="cons-anomaly-text">
+                                @if (a.type === 'spike') { Usage spike of {{ a.value | number:'1.0-0' }} ({{ a.pctAbove }}% above average) on {{ formatDate(a.date) }} }
+                                @else if (a.type === 'drop') { Usage drop to {{ a.value | number:'1.0-0' }} ({{ a.pctBelow }}% below average) on {{ formatDate(a.date) }} }
+                                @else { Zero consumption recorded on {{ formatDate(a.date) }} }
+                              </span>
+                            </div>
+                          }
+                        </div>
+                      }
+                    }
+
+                    @if (consumptionHistoryLoading()) {
+                      <div class="cons-loading">
+                        <div class="search-spinner-inline"></div>
+                        <span>Loading meter history...</span>
+                      </div>
+                    }
+
+                    @if (!consumptionHistoryLoading() && consumptionChartData().length > 0) {
+                      <div class="cons-chart-section">
+                        <div class="cons-chart-title">Consumption History Chart</div>
+                        <div class="cons-chart-container" data-testid="consumption-chart">
+                          <div class="cons-chart-bars">
+                            @for (r of consumptionChartData(); track $index) {
+                              <div class="cons-chart-col" [attr.data-testid]="'chart-bar-' + $index">
+                                <div class="cons-chart-val">{{ getConsumptionVal(r) | number:'1.0-0' }}</div>
+                                <div class="cons-chart-bar-wrap">
+                                  <div class="cons-chart-bar"
+                                    [style.height.%]="getChartBarHeight(r)"
+                                    [class.cons-bar-spike]="isAnomalyReading(r, $index) === 'spike'"
+                                    [class.cons-bar-drop]="isAnomalyReading(r, $index) === 'drop'"
+                                    [class.cons-bar-zero]="isAnomalyReading(r, $index) === 'zero'">
+                                  </div>
+                                </div>
+                                <div class="cons-chart-label">{{ getConsumptionChartLabel(r) }}</div>
+                              </div>
+                            }
+                          </div>
+                          @if (consumptionInsights()) {
+                            <div class="cons-chart-avg-line" [style.bottom.%]="(consumptionInsights().avg / getChartMaxVal()) * 100">
+                              <span class="cons-avg-label">Avg: {{ consumptionInsights().avg | number:'1.1-1' }}</span>
+                            </div>
+                          }
+                        </div>
+                      </div>
+                    }
+
+                    @if (!consumptionHistoryLoading() && consumptionHistory().length > 0) {
+                      <div class="cons-history-section">
+                        <div class="debt-table-header">
+                          <span class="debt-table-title">Meter Reading History</span>
+                          <span class="debt-table-count">{{ consumptionHistory().length }} reading{{ consumptionHistory().length !== 1 ? 's' : '' }}</span>
+                        </div>
+                        <div class="debt-table-wrapper">
+                          <table class="debt-table" data-testid="table-meter-history">
+                            <thead>
+                              <tr>
+                                <th class="debt-th-desc">Reading Date</th>
+                                <th class="debt-th-desc">Reading Type</th>
+                                <th class="debt-th-amt">Previous Reading</th>
+                                <th class="debt-th-amt">Current Reading</th>
+                                <th class="debt-th-amt">Consumption</th>
+                                <th class="debt-th-desc">Status</th>
+                                <th class="debt-th-desc">Flag</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              @for (r of consumptionHistory(); track $index) {
+                                <tr [class.cons-row-spike]="isAnomalyReading(r, $index) === 'spike'" [class.cons-row-drop]="isAnomalyReading(r, $index) === 'drop'" [class.cons-row-zero]="isAnomalyReading(r, $index) === 'zero'">
+                                  <td class="debt-td-desc">{{ formatDate(r.readingDate || r.billingDate || r.date) }}</td>
+                                  <td class="debt-td-desc">{{ r.readingType || r.type || '-' }}</td>
+                                  <td class="debt-td-amt mono">{{ r.previousReading || r.prevReading || '-' }}</td>
+                                  <td class="debt-td-amt mono">{{ r.currentReading || r.reading || r.meterReading || '-' }}</td>
+                                  <td class="debt-td-amt mono bold">{{ getConsumptionVal(r) | number:'1.0-0' }}</td>
+                                  <td class="debt-td-desc">{{ r.status || r.readingStatus || '-' }}</td>
+                                  <td class="debt-td-desc">
+                                    @if (isAnomalyReading(r, $index) === 'spike') {
+                                      <span class="cons-flag cons-flag-spike">⚠️ Spike</span>
+                                    } @else if (isAnomalyReading(r, $index) === 'drop') {
+                                      <span class="cons-flag cons-flag-drop">⬇️ Drop</span>
+                                    } @else if (isAnomalyReading(r, $index) === 'zero') {
+                                      <span class="cons-flag cons-flag-zero">🚫 Zero</span>
+                                    } @else {
+                                      <span class="cons-flag cons-flag-normal">✓ Normal</span>
+                                    }
+                                  </td>
+                                </tr>
+                              }
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    }
+
+                    @if (!consumptionHistoryLoading() && consumptionHistory().length === 0 && consumptionChartData().length === 0) {
+                      <div class="empty-state">
+                        <div class="empty-icon">📉</div>
+                        <p class="empty-text">No reading history available for this meter</p>
+                      </div>
+                    }
+                  } @else {
+                    <div class="empty-state">
+                      <div class="empty-icon">👈</div>
+                      <p class="empty-text">Select a meter to view consumption details</p>
                     </div>
                   }
                 </div>
@@ -1364,7 +1539,7 @@
             } @else {
               <div class="empty-state">
                 <div class="empty-icon">💧</div>
-                <p class="empty-text">No consumption data available</p>
+                <p class="empty-text">No metered services found for this account</p>
               </div>
             }
           </div>

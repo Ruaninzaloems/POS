@@ -126,6 +126,12 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   detailTxnLoading = signal(false);
   detailMonths: string[] = ['July','August','September','October','November','December','January','February','March','April','May','June'];
 
+  consumptionSelectedMeter = signal<any>(null);
+  consumptionHistory = signal<any[]>([]);
+  consumptionHistoryLoading = signal(false);
+  consumptionChartData = signal<any[]>([]);
+  consumptionInsights = signal<any>(null);
+
   advancedSuggestions = signal<{ displayItem: string; accountId: number }[]>([]);
   activeFieldKey = signal<string | null>(null);
   advancedFieldLoading = signal(false);
@@ -1177,12 +1183,21 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           break;
 
         case 'consumption':
-          const [consumptionMeters] = await Promise.allSettled([
+          const [consumptionMeters, unitLinkedMeters] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/metered-services-on-account/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/unit-linked-meters`, { accountId: String(accountId) })),
           ]);
-          data = {
-            meters: consumptionMeters.status === 'fulfilled' ? this.normalizeArray(consumptionMeters.value) : [],
-          };
+          const meterList = consumptionMeters.status === 'fulfilled' ? this.normalizeArray(consumptionMeters.value) : [];
+          const linkedMeters = unitLinkedMeters.status === 'fulfilled' ? this.normalizeArray(unitLinkedMeters.value) : [];
+          const combinedMeters = meterList.length > 0 ? meterList : linkedMeters;
+          data = { meters: combinedMeters };
+          this.consumptionSelectedMeter.set(null);
+          this.consumptionHistory.set([]);
+          this.consumptionChartData.set([]);
+          this.consumptionInsights.set(null);
+          if (combinedMeters.length > 0) {
+            this.selectConsumptionMeter(combinedMeters[0]);
+          }
           break;
 
         case 'txn-detailed':
@@ -1667,6 +1682,104 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     a.download = `Detailed_Transactions_${acct?.['accountNo'] || acct?.['accountId'] || 'export'}_${this.detailFinYear()}_${this.detailMonth() || 'All'}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  async selectConsumptionMeter(meter: any) {
+    this.consumptionSelectedMeter.set(meter);
+    this.consumptionHistoryLoading.set(true);
+    this.consumptionHistory.set([]);
+    this.consumptionChartData.set([]);
+    this.consumptionInsights.set(null);
+    const account = this.selectedAccount();
+    const accountId = account?.['accountId'] || account?.['account_ID'];
+    const meterNo = meter.physicalMeterNo || meter.meterNo || meter.meterNumber || '';
+    try {
+      const [historyRes, barRes] = await Promise.allSettled([
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history`, { accountId: String(accountId), meterNo })),
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history-barchart`, { accountId: String(accountId), meterNo })),
+      ]);
+      const history = historyRes.status === 'fulfilled' ? this.normalizeArray(historyRes.value) : [];
+      const barChart = barRes.status === 'fulfilled' ? this.normalizeArray(barRes.value) : [];
+      const primaryData = history.length > 0 ? history : barChart;
+      this.consumptionHistory.set(primaryData);
+      this.consumptionChartData.set(primaryData);
+      this.consumptionInsights.set(this.computeConsumptionInsights(primaryData));
+    } catch {
+      this.consumptionHistory.set([]);
+    }
+    this.consumptionHistoryLoading.set(false);
+  }
+
+  computeConsumptionInsights(readings: any[]): any {
+    if (!readings || readings.length === 0) return null;
+    const consumptions = readings
+      .map((r: any) => Number(r.consumption || r.units || r.totalConsumption || 0))
+      .filter((v: number) => !isNaN(v));
+    if (consumptions.length === 0) return null;
+    const total = consumptions.reduce((s: number, v: number) => s + v, 0);
+    const avg = total / consumptions.length;
+    const min = Math.min(...consumptions);
+    const max = Math.max(...consumptions);
+    const stdDev = Math.sqrt(consumptions.reduce((s: number, v: number) => s + Math.pow(v - avg, 2), 0) / consumptions.length);
+    const anomalies: any[] = [];
+    const threshold = avg + (stdDev * 1.5);
+    const lowThreshold = Math.max(avg - (stdDev * 1.5), 0);
+    readings.forEach((r: any, i: number) => {
+      const val = Number(r.consumption || r.units || r.totalConsumption || 0);
+      if (val > threshold && val > 0) {
+        anomalies.push({ index: i, type: 'spike', value: val, pctAbove: Math.round(((val - avg) / avg) * 100), date: r.readingDate || r.billingDate || r.date });
+      } else if (val < lowThreshold && avg > 0 && val >= 0) {
+        anomalies.push({ index: i, type: 'drop', value: val, pctBelow: Math.round(((avg - val) / avg) * 100), date: r.readingDate || r.billingDate || r.date });
+      }
+      if (val === 0 && avg > 5) {
+        if (!anomalies.find((a: any) => a.index === i)) {
+          anomalies.push({ index: i, type: 'zero', value: 0, date: r.readingDate || r.billingDate || r.date });
+        }
+      }
+    });
+    const recent = consumptions.slice(0, Math.min(3, consumptions.length));
+    const older = consumptions.slice(Math.min(3, consumptions.length), Math.min(6, consumptions.length));
+    let trend = 'stable';
+    if (recent.length > 0 && older.length > 0) {
+      const recentAvg = recent.reduce((s: number, v: number) => s + v, 0) / recent.length;
+      const olderAvg = older.reduce((s: number, v: number) => s + v, 0) / older.length;
+      if (olderAvg > 0) {
+        const change = ((recentAvg - olderAvg) / olderAvg) * 100;
+        if (change > 15) trend = 'increasing';
+        else if (change < -15) trend = 'decreasing';
+      }
+    }
+    return { total, avg: Math.round(avg * 100) / 100, min, max, stdDev: Math.round(stdDev * 100) / 100, anomalies, trend, count: consumptions.length };
+  }
+
+  getConsumptionVal(r: any): number {
+    return Number(r.consumption || r.units || r.totalConsumption || 0);
+  }
+
+  getChartMaxVal(): number {
+    const data = this.consumptionChartData();
+    if (!data || data.length === 0) return 100;
+    const max = Math.max(...data.map((r: any) => this.getConsumptionVal(r)));
+    return max > 0 ? max : 100;
+  }
+
+  getChartBarHeight(r: any): number {
+    const max = this.getChartMaxVal();
+    const val = this.getConsumptionVal(r);
+    return max > 0 ? (val / max) * 100 : 0;
+  }
+
+  isAnomalyReading(r: any, idx: number): string {
+    const insights = this.consumptionInsights();
+    if (!insights?.anomalies) return '';
+    const match = insights.anomalies.find((a: any) => a.index === idx);
+    return match ? match.type : '';
+  }
+
+  getConsumptionChartLabel(r: any): string {
+    const date = r.readingDate || r.billingDate || r.date || '';
+    if (!date) return '-';
+    return this.formatDate(date);
   }
 
   getFilteredServices(category: string): any[] {
