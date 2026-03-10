@@ -601,7 +601,100 @@
         <!-- Services Tab -->
         @if (activeTab() === 'services') {
           <div class="tab-panel" data-testid="services-panel">
-            @if (getServicesList().length > 0 || (tabData()?.additionalBilling || []).length > 0 || (tabData()?.additionalInfo || []).length > 0) {
+            @if (svcSelectedService()) {
+              <div class="svc-balance-drilldown" data-testid="service-balance-detail">
+                <div class="svc-bal-header">
+                  <button class="svc-bal-back" (click)="svcSelectedService.set(null)" data-testid="button-back-services">← Back</button>
+                  <h3 class="svc-bal-title">Service Type Balance</h3>
+                  <span class="svc-bal-subtitle">{{ svcSelectedService()?.serviceDesc || svcSelectedService()?.serviceDescription || svcSelectedService()?.tariffType || '' }}</span>
+                  <select class="svc-bal-fy-select" [ngModel]="svcBalanceFinYear()" (ngModelChange)="changeSvcBalanceFinYear($event)" data-testid="select-fin-year-detail">
+                    @for (fy of getSvcBalanceFinYearOptions(); track fy) {
+                      <option [value]="fy">{{ fy }}</option>
+                    }
+                  </select>
+                </div>
+
+                @if (svcBalanceLoading()) {
+                  <div class="loading-row"><span class="loading-spinner"></span> Loading balance data...</div>
+                } @else if (svcBalanceError()) {
+                  <div class="empty-state">
+                    <p class="empty-text" style="color: #dc2626;">{{ svcBalanceError() }}</p>
+                    <button class="btn-outline btn-sm" (click)="viewServiceBalance(svcSelectedService())" style="margin-top: 0.5rem;">Retry</button>
+                  </div>
+                } @else if (getSvcBalanceFiltered().length === 0) {
+                  <div class="empty-state"><p class="empty-text">No billing data for this service in {{ svcBalanceFinYear() }}</p></div>
+                } @else {
+                  <div class="debt-table-wrapper">
+                    <table class="debt-table svc-modern-table" data-testid="table-service-detail">
+                      <thead>
+                        <tr>
+                          <th class="debt-th-desc">Service Description</th>
+                          <th class="debt-th-amt">Opening Balance</th>
+                          <th class="debt-th-amt">Amount</th>
+                          <th class="debt-th-amt">VAT</th>
+                          <th class="debt-th-amt">Interest</th>
+                          <th class="debt-th-amt">Total Amount</th>
+                          <th class="debt-th-amt">Closing Balance</th>
+                          <th class="debt-th-amt">Current Interest</th>
+                          <th class="debt-th-amt">Current Charge</th>
+                          <th class="debt-th-desc">Month</th>
+                          <th class="debt-th-desc">Fin Year</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (r of getSvcBalanceFiltered(); track $index) {
+                          <tr>
+                            <td class="debt-td-desc">{{ r.serviceDescription || (svcSelectedService()?.serviceDesc || '') }}</td>
+                            <td class="debt-td-amt mono">{{ formatDebtAmt(r.openingBalance || 0) }}</td>
+                            <td class="debt-td-amt mono">{{ formatDebtAmt(r.amount || 0) }}</td>
+                            <td class="debt-td-amt mono">{{ formatDebtAmt(r.vat || 0) }}</td>
+                            <td class="debt-td-amt mono">{{ formatDebtAmt(r.interestAmount ?? r.interest ?? 0) }}</td>
+                            <td class="debt-td-amt mono bold accent-text">{{ formatDebtAmt(r.totalAmount ?? r.total ?? 0) }}</td>
+                            <td class="debt-td-amt mono">{{ formatDebtAmt(r.closingBalance ?? r.closingBal ?? 0) }}</td>
+                            <td class="debt-td-amt mono">{{ formatDebtAmt(r.currentInterestAmount || 0) }}</td>
+                            <td class="debt-td-amt mono">{{ formatDebtAmt(r.currentCharge || 0) }}</td>
+                            <td class="debt-td-desc">{{ r.month || '-' }}</td>
+                            <td class="debt-td-desc">{{ r.financialYear || '-' }}</td>
+                          </tr>
+                        }
+                        <tr class="debt-total-row">
+                          <td class="debt-td-desc bold">Total</td>
+                          <td class="debt-td-amt mono bold">{{ formatDebtAmt(getSvcBalanceTotals().openingBalance || 0) }}</td>
+                          <td class="debt-td-amt mono bold">{{ formatDebtAmt(getSvcBalanceTotals().amount || 0) }}</td>
+                          <td class="debt-td-amt mono bold">{{ formatDebtAmt(getSvcBalanceTotals().vat || 0) }}</td>
+                          <td class="debt-td-amt mono bold">{{ formatDebtAmt(getSvcBalanceTotals().interestAmount || 0) }}</td>
+                          <td class="debt-td-amt mono bold accent-text">{{ formatDebtAmt(getSvcBalanceTotals().totalAmount || 0) }}</td>
+                          <td class="debt-td-amt mono bold">{{ formatDebtAmt(getSvcBalanceTotals().closingBalance || 0) }}</td>
+                          <td class="debt-td-amt mono bold">{{ formatDebtAmt(getSvcBalanceTotals().currentInterestAmount || 0) }}</td>
+                          <td class="debt-td-amt mono bold">{{ formatDebtAmt(getSvcBalanceTotals().currentCharge || 0) }}</td>
+                          <td class="debt-td-desc" colspan="2"></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  @if (getSvcBalanceChartData().length > 0) {
+                    <div class="svc-bal-chart-section">
+                      <div class="svc-bal-chart-title">Monthly Billing Amount</div>
+                      <div class="svc-bal-chart-legend">
+                        <span class="svc-bal-legend-item"><span class="svc-bal-legend-swatch accent-bg"></span> Billing Amount</span>
+                      </div>
+                      <div class="svc-bal-chart">
+                        <div class="svc-bal-chart-bars">
+                          @for (d of getSvcBalanceChartData(); track $index) {
+                            <div class="svc-bal-bar-col">
+                              <span class="svc-bal-bar-val mono">{{ formatDebtAmt(d.amount) }}</span>
+                              <div class="svc-bal-bar accent-bg" [style.height.%]="getSvcBalanceBarHeight(d.amount)"></div>
+                              <span class="svc-bal-bar-label">{{ d.month }}</span>
+                            </div>
+                          }
+                        </div>
+                      </div>
+                    </div>
+                  }
+                }
+              </div>
+            } @else if (getServicesList().length > 0 || (tabData()?.additionalBilling || []).length > 0 || (tabData()?.additionalInfo || []).length > 0) {
               <div class="svc-overview-bar">
                 <div class="svc-overview-cards">
                   <div class="svc-ov-card svc-ov-total">
@@ -723,6 +816,9 @@
                                 <span class="svc-card-rate mono" [innerHTML]="formatTariffRate(svc)"></span>
                               </div>
                             }
+                            <div class="svc-card-actions">
+                              <button class="svc-bal-btn" (click)="viewServiceBalance(svc)" [attr.data-testid]="'button-view-balance-' + $index">📊 View Balance</button>
+                            </div>
                           </div>
                         }
                       </div>
@@ -3158,6 +3254,169 @@
                             </div>
                           }
 
+                          @if (!meterConvLoading() && meterConvHistory().length >= 3) {
+                            <div class="intel-section" data-testid="meter-intel-meters-tab">
+                              <div class="intel-header" (click)="meterIntelShow.set(!meterIntelShow())">
+                                <span class="intel-title">🔬 Meter Intelligence</span>
+                                <span class="intel-toggle">{{ meterIntelShow() ? '▼' : '▶' }}</span>
+                              </div>
+                              @if (meterIntelShow()) {
+                                <div class="intel-body">
+                                  <div class="intel-period-selector">
+                                    <span class="intel-period-label">Averaging Period:</span>
+                                    @for (m of [3,6,9,12,15,18,21,24]; track m) {
+                                      <button class="intel-period-btn" [class.intel-period-active]="meterIntelMonths() === m" (click)="meterIntelMonths.set(m)" [attr.data-testid]="'btn-meter-intel-months-' + m">{{ m }}m</button>
+                                    }
+                                  </div>
+                                  @if (computeMeterIntelligence(meterConvHistory(), meterIntelMonths()); as intel) {
+                                    @if (intel.noData) {
+                                      <div class="intel-empty">Not enough billed readings with reading days for analysis</div>
+                                    } @else {
+                                      <div class="intel-stats-row">
+                                        <div class="intel-stat-card">
+                                          <div class="intel-stat-label">Avg Daily</div>
+                                          <div class="intel-stat-value accent-text">{{ intel.avgDailyConsumption | number:'1.2-2' }}</div>
+                                          <div class="intel-stat-sub">units/day (weighted)</div>
+                                        </div>
+                                        <div class="intel-stat-card">
+                                          <div class="intel-stat-label">Avg Monthly</div>
+                                          <div class="intel-stat-value">{{ intel.avgMonthlyConsumption | number:'1.0-0' }}</div>
+                                          <div class="intel-stat-sub">units (30-day equivalent)</div>
+                                        </div>
+                                        <div class="intel-stat-card">
+                                          <div class="intel-stat-label">Range (Daily)</div>
+                                          <div class="intel-stat-value">{{ intel.minDaily | number:'1.2-2' }} – {{ intel.maxDaily | number:'1.2-2' }}</div>
+                                          <div class="intel-stat-sub">min – max daily</div>
+                                        </div>
+                                        <div class="intel-stat-card">
+                                          <div class="intel-stat-label">Period Data</div>
+                                          <div class="intel-stat-value">{{ intel.periodMonths }} months</div>
+                                          <div class="intel-stat-sub">{{ intel.totalConsumption | number:'1.0-0' }} total units / {{ intel.totalDays }} days</div>
+                                        </div>
+                                      </div>
+
+                                      @if (intel.trendChart && intel.trendChart.length > 0) {
+                                        <div class="intel-trend-section">
+                                          <div class="intel-trend-title">Daily Consumption Trend</div>
+                                          <div class="intel-trend-chart">
+                                            <div class="intel-trend-avg-line" [style.bottom.%]="intel.trendMax > 0 ? (intel.avgDailyConsumption / intel.trendMax) * 100 : 0">
+                                              <span class="intel-trend-avg-label mono">Avg: {{ intel.avgDailyConsumption | number:'1.2-2' }}</span>
+                                            </div>
+                                            <div class="intel-trend-bars">
+                                              @for (r of intel.trendChart; track $index) {
+                                                <div class="intel-trend-col">
+                                                  <div class="intel-trend-bar-wrap">
+                                                    <div class="intel-trend-bar" [style.height.%]="intel.trendMax > 0 ? (r.dailyConsumption / intel.trendMax) * 100 : 0" [class.intel-bar-spike-high]="r.spikeType === 'high'" [class.intel-bar-spike-low]="r.spikeType === 'low'"></div>
+                                                  </div>
+                                                  <span class="intel-trend-label">{{ (r.billingMonth || '').substring(0, 3) }}</span>
+                                                </div>
+                                              }
+                                            </div>
+                                          </div>
+                                          <div class="intel-trend-legend">
+                                            <span class="intel-legend-item"><span class="intel-legend-dot intel-dot-normal"></span> Normal</span>
+                                            <span class="intel-legend-item"><span class="intel-legend-dot intel-dot-high"></span> High Spike (≥150%)</span>
+                                            <span class="intel-legend-item"><span class="intel-legend-dot intel-dot-low"></span> Low Spike (≤40%)</span>
+                                          </div>
+                                        </div>
+                                      }
+
+                                      <div class="intel-spikes-section">
+                                        @if (intel.spikeCount === 0) {
+                                          <div class="intel-no-spikes">✅ No consumption spikes detected — usage is consistent</div>
+                                        } @else {
+                                          <div class="intel-spike-title">⚠️ {{ intel.spikeCount }} Spike{{ intel.spikeCount !== 1 ? 's' : '' }} Detected</div>
+                                          <div class="intel-spike-list">
+                                            @for (s of intel.spikes; track $index) {
+                                              <div class="intel-spike-item" [class.intel-spike-high]="s.spikeType === 'high'" [class.intel-spike-low]="s.spikeType === 'low'">
+                                                <span class="intel-spike-month">{{ s.billingMonth }} {{ s.financialYear }}</span>
+                                                <span class="intel-spike-rate mono">{{ s.dailyConsumption | number:'1.2-2' }}/day</span>
+                                                <span class="intel-spike-total mono">{{ s.consumption | number:'1.0-0' }} units / {{ s.readingDays }} days</span>
+                                                <span class="intel-spike-pct" [class.intel-pct-high]="s.spikePercent > 0" [class.intel-pct-low]="s.spikePercent < 0">{{ s.spikePercent > 0 ? '+' : '' }}{{ s.spikePercent | number:'1.0-0' }}%</span>
+                                              </div>
+                                            }
+                                          </div>
+                                        }
+                                      </div>
+                                    }
+                                  }
+                                </div>
+                              }
+                            </div>
+                          }
+
+                          @if (!meterConvLoading() && meterConvHistory().length > 0) {
+                            @if (computeBillingEstimate(meterConvHistory(), meterSelectedConv(), meterEstVatRate()); as est) {
+                              @if (est && est.hasTiers) {
+                                <div class="intel-section" data-testid="billing-est-meters-tab">
+                                  <div class="intel-header" (click)="meterEstShow.set(!meterEstShow())">
+                                    <span class="intel-title">💰 Billing Estimator</span>
+                                    <span class="intel-toggle">{{ meterEstShow() ? '▼' : '▶' }}</span>
+                                  </div>
+                                  @if (meterEstShow()) {
+                                    <div class="intel-body">
+                                      <div class="est-vat-selector">
+                                        <span class="est-vat-label">VAT:</span>
+                                        <button class="est-vat-btn" [class.est-vat-active]="meterEstVatRate() === 0" (click)="meterEstVatRate.set(0)">0%</button>
+                                        <button class="est-vat-btn" [class.est-vat-active]="meterEstVatRate() === 15" (click)="meterEstVatRate.set(15)">15%</button>
+                                      </div>
+                                      @if (est.estimates.length > 0) {
+                                        @for (e of est.estimates; track $index) {
+                                          <div class="est-reading-block">
+                                            <div class="est-reading-header">
+                                              <span class="est-reading-title">{{ e.billingMonth }}</span>
+                                              @if (e.isProRated) { <span class="est-prorata-badge">Pro-Rated ({{ e.readingDays }} days)</span> }
+                                            </div>
+                                            <div class="est-reading-details">
+                                              <span>Old: <strong class="mono">{{ e.oldReading }}</strong></span>
+                                              <span>New: <strong class="mono">{{ e.newReading }}</strong></span>
+                                              <span>Units: <strong class="mono">{{ e.consumption | number:'1.0-0' }}</strong></span>
+                                              <span>Days: <strong>{{ e.readingDays }}</strong></span>
+                                            </div>
+                                            @if (e.breakdown.length > 0) {
+                                              <table class="est-tier-table">
+                                                <thead><tr><th>Tier</th>@if (e.isProRated) { <th>Pro-Rated Range</th> }<th>Units</th><th>Rate</th><th>Amount</th></tr></thead>
+                                                <tbody>
+                                                  @for (b of e.breakdown; track $index) {
+                                                    <tr><td>{{ b.label }}</td>@if (e.isProRated) { <td class="mono">{{ b.proFrom | number:'1.0-0' }} – {{ b.proTo ? (b.proTo | number:'1.0-0') : '∞' }}</td> }<td class="mono">{{ b.units | number:'1.2-2' }}</td><td class="mono">{{ b.rate | number:'1.4-4' }}</td><td class="mono bold">{{ formatDebtAmt(b.amount) }}</td></tr>
+                                                  }
+                                                </tbody>
+                                              </table>
+                                            }
+                                            <div class="est-totals">
+                                              <div class="est-total-line"><span>Subtotal</span><span class="mono">{{ formatDebtAmt(e.subtotal) }}</span></div>
+                                              <div class="est-total-line"><span>VAT ({{ est.vatRate }}%)</span><span class="mono">{{ formatDebtAmt(e.vatAmount) }}</span></div>
+                                              <div class="est-total-line est-grand-total"><span>Estimated Total</span><span class="mono bold accent-text">{{ formatDebtAmt(e.total) }}</span></div>
+                                            </div>
+                                          </div>
+                                        }
+                                      } @else if (est.projection) {
+                                        <div class="est-projection">
+                                          <div class="est-proj-title">Projected Next Bill (based on {{ est.projection.months }}-month avg of {{ est.projection.avg | number:'1.0-0' }} units)</div>
+                                          <div class="est-totals">
+                                            <div class="est-total-line"><span>Subtotal</span><span class="mono">{{ formatDebtAmt(est.projection.subtotal) }}</span></div>
+                                            <div class="est-total-line"><span>VAT ({{ est.vatRate }}%)</span><span class="mono">{{ formatDebtAmt(est.projection.vatAmount) }}</span></div>
+                                            <div class="est-total-line est-grand-total"><span>Projected Total</span><span class="mono bold accent-text">{{ formatDebtAmt(est.projection.total) }}</span></div>
+                                          </div>
+                                        </div>
+                                      }
+                                      @if (est.tiers.length > 0) {
+                                        <details class="est-tiers-detail">
+                                          <summary>View Tariff Tiers ({{ est.tiers.length }})</summary>
+                                          <div class="est-tiers-list">
+                                            @for (t of est.tiers; track $index) {
+                                              <div class="est-tier-item"><span class="est-tier-range">{{ t.label }}</span><span class="est-tier-rate mono">R {{ t.rate | number:'1.4-4' }}/unit</span></div>
+                                            }
+                                          </div>
+                                        </details>
+                                      }
+                                    </div>
+                                  }
+                                </div>
+                              }
+                            }
+                          }
+
                           @if (!meterConvLoading() && meterConvHistory().length === 0) {
                             <div class="empty-state"><div class="empty-icon">📉</div><p class="empty-text">No reading history for this meter</p></div>
                           }
@@ -3444,23 +3703,23 @@
                       </div>
                     }
 
-                    @if (!consumptionHistoryLoading() && consumptionChartData().length > 0 && consumptionViewMode() === 'chart') {
+                    @if (!consumptionHistoryLoading() && consumptionHistory().length > 0 && consumptionViewMode() === 'chart') {
                       <div class="cons-chart-section">
                         <div class="cons-chart-header">
                           <div class="cons-chart-title">Consumption Trend</div>
                           <div class="cons-chart-legend">
-                            <span class="cons-legend-item"><span class="cons-legend-dot cons-legend-normal"></span> Normal</span>
-                            <span class="cons-legend-item"><span class="cons-legend-dot cons-legend-spike"></span> Spike</span>
-                            <span class="cons-legend-item"><span class="cons-legend-dot cons-legend-drop"></span> Drop</span>
+                            <span class="cons-legend-item"><span class="cons-legend-dot cons-bar-actual"></span> Actual</span>
+                            <span class="cons-legend-item"><span class="cons-legend-dot cons-bar-estimate"></span> Levy Estimate</span>
+                            <span class="cons-legend-item"><span class="cons-legend-dot cons-bar-reversed"></span> Reversed</span>
                             <span class="cons-legend-item"><span class="cons-legend-dashed"></span> Average</span>
                           </div>
                         </div>
                         <div class="cons-chart-container" data-testid="consumption-chart">
                           <div class="cons-chart-y-axis">
-                            <span class="cons-y-label">{{ getChartMaxVal() | number:'1.0-0' }}</span>
-                            <span class="cons-y-label">{{ (getChartMaxVal() * 0.75) | number:'1.0-0' }}</span>
-                            <span class="cons-y-label">{{ (getChartMaxVal() * 0.5) | number:'1.0-0' }}</span>
-                            <span class="cons-y-label">{{ (getChartMaxVal() * 0.25) | number:'1.0-0' }}</span>
+                            <span class="cons-y-label">{{ getConsChartMax() | number:'1.0-0' }}</span>
+                            <span class="cons-y-label">{{ (getConsChartMax() * 0.75) | number:'1.0-0' }}</span>
+                            <span class="cons-y-label">{{ (getConsChartMax() * 0.5) | number:'1.0-0' }}</span>
+                            <span class="cons-y-label">{{ (getConsChartMax() * 0.25) | number:'1.0-0' }}</span>
                             <span class="cons-y-label">0</span>
                           </div>
                           <div class="cons-chart-area">
@@ -3472,23 +3731,25 @@
                               <div class="cons-grid-line"></div>
                             </div>
                             <div class="cons-chart-bars">
-                              @for (r of consumptionChartData(); track $index) {
+                              @for (r of getConsChartSorted(); track $index) {
                                 <div class="cons-chart-col" [attr.data-testid]="'chart-bar-' + $index">
+                                  <span class="cons-bar-val-label mono">{{ getConsumptionVal(r) }}</span>
                                   <div class="cons-chart-bar-wrap">
-                                    <div class="cons-chart-bar"
-                                      [style.height.%]="getChartBarHeight(r)"
-                                      [class.cons-bar-spike]="isAnomalyReading(r, $index) === 'spike'"
-                                      [class.cons-bar-drop]="isAnomalyReading(r, $index) === 'drop'"
-                                      [class.cons-bar-zero]="isAnomalyReading(r, $index) === 'zero'">
-                                      <span class="cons-bar-tooltip">{{ getConsumptionVal(r) | number:'1.0-0' }}</span>
+                                    <div class="cons-chart-bar {{ getConsChartBarColor(r) }}"
+                                      [style.height.%]="getConsChartBarPct(r)">
                                     </div>
                                   </div>
-                                  <div class="cons-chart-label">{{ getConsumptionChartLabel(r) }}</div>
+                                  <div class="cons-chart-label-2">
+                                    <span class="cons-chart-month">{{ getConsChartMonthLabel(r).mon }}</span>
+                                    @if (getConsChartMonthLabel(r).yr) {
+                                      <span class="cons-chart-year">{{ getConsChartMonthLabel(r).yr }}</span>
+                                    }
+                                  </div>
                                 </div>
                               }
                             </div>
                             @if (consumptionInsights()) {
-                              <div class="cons-chart-avg-line" [style.bottom.%]="(consumptionInsights().avg / getChartMaxVal()) * 100">
+                              <div class="cons-chart-avg-line" [style.bottom.%]="(consumptionInsights().avg / getConsChartMax()) * 100">
                                 <span class="cons-avg-label">Avg: {{ consumptionInsights().avg | number:'1.1-1' }}</span>
                               </div>
                             }
@@ -3501,13 +3762,24 @@
                       <div class="cons-history-section">
                         <div class="debt-table-header">
                           <span class="debt-table-title">Meter Reading History</span>
-                          <span class="debt-table-count">{{ consumptionHistory().length }} reading{{ consumptionHistory().length !== 1 ? 's' : '' }}</span>
+                          <span class="debt-table-count">{{ getConsumptionHistorySorted().length }} reading{{ getConsumptionHistorySorted().length !== 1 ? 's' : '' }}
+                            @if (getOpenMonthsCount().open > 0) {
+                              <span class="cons-open-months-badge">{{ getOpenMonthsCount().open }} awaiting billing</span>
+                            }
+                          </span>
                         </div>
-                        <div class="debt-table-wrapper">
-                          <table class="debt-table cons-full-table" data-testid="table-meter-history">
+                        <div class="debt-table-wrapper cons-extended-table-wrap">
+                          <table class="debt-table cons-full-table cons-extended-table" data-testid="table-meter-history">
                             <thead>
                               <tr>
-                                <th class="debt-th-desc">Billing Month</th>
+                                <th class="debt-th-desc cons-sticky-col">Billing Month</th>
+                                <th class="debt-th-desc">Fin Year</th>
+                                <th class="debt-th-desc">Combination Meter</th>
+                                <th class="debt-th-desc">Factor</th>
+                                <th class="debt-th-desc">Meter No</th>
+                                <th class="debt-th-desc">Physical Meter</th>
+                                <th class="debt-th-desc">Meter Book</th>
+                                <th class="debt-th-desc">Route</th>
                                 <th class="debt-th-desc">Old Reading Date</th>
                                 <th class="debt-th-amt">Old Reading</th>
                                 <th class="debt-th-desc">New Reading Date</th>
@@ -3516,13 +3788,31 @@
                                 <th class="debt-th-amt">Consumption</th>
                                 <th class="debt-th-desc">Flag</th>
                                 <th class="debt-th-desc">Reading Status</th>
-                                <th class="debt-th-desc">Alert</th>
+                                <th class="debt-th-desc">Test Reading Date</th>
+                                <th class="debt-th-amt">Test Reading</th>
+                                <th class="debt-th-desc">Decline Reason</th>
+                                <th class="debt-th-desc">Meter Error Code</th>
+                                <th class="debt-th-desc">Import Status</th>
+                                <th class="debt-th-desc">Meter Change</th>
+                                <th class="debt-th-desc">Meter Status</th>
+                                <th class="debt-th-desc">Service Status</th>
+                                <th class="debt-th-desc">Disconnection Status</th>
+                                <th class="debt-th-amt">Disconnection Reading</th>
+                                <th class="debt-th-desc">Disconnection Date</th>
+                                <th class="debt-th-desc">Contractor Remarks</th>
                               </tr>
                             </thead>
                             <tbody>
-                              @for (r of consumptionHistory(); track $index) {
-                                <tr [class.cons-row-spike]="isAnomalyReading(r, $index) === 'spike'" [class.cons-row-drop]="isAnomalyReading(r, $index) === 'drop'" [class.cons-row-zero]="isAnomalyReading(r, $index) === 'zero'">
-                                  <td class="debt-td-desc">{{ r.billingmonth || r.billingMonth || '-' }}</td>
+                              @for (r of getConsumptionHistorySorted(); track $index) {
+                                <tr [class]="getConsRowClass(r)">
+                                  <td class="debt-td-desc cons-sticky-col">{{ r.billingmonth || r.billingMonth || '-' }}</td>
+                                  <td class="debt-td-desc">{{ r.financialYear || r.finYear || '-' }}</td>
+                                  <td class="debt-td-desc mono">{{ r.combinationMeterNo || r.combMeterNo || '-' }}</td>
+                                  <td class="debt-td-desc mono">{{ r.factor || r.factorQuantity || r.tarifffactor || '-' }}</td>
+                                  <td class="debt-td-desc mono">{{ r.meterNo || '-' }}</td>
+                                  <td class="debt-td-desc mono">{{ r.physicalMeterNo || '-' }}</td>
+                                  <td class="debt-td-desc">{{ r.meterBook || '-' }}</td>
+                                  <td class="debt-td-desc">{{ r.route || '-' }}</td>
                                   <td class="debt-td-desc">{{ formatDate(r.reading1Date || r.readingDate) }}</td>
                                   <td class="debt-td-amt mono">{{ r.reading1 || r.previousReading || r.prevReading || '-' }}</td>
                                   <td class="debt-td-desc">{{ formatDate(r.reading2Date || r.date) }}</td>
@@ -3531,17 +3821,18 @@
                                   <td class="debt-td-amt mono bold">{{ getConsumptionVal(r) | number:'1.0-0' }}</td>
                                   <td class="debt-td-desc">{{ r.flag || '-' }}</td>
                                   <td class="debt-td-desc">{{ r.readingStatus || r.status || r.meterStatus || '-' }}</td>
-                                  <td class="debt-td-desc">
-                                    @if (isAnomalyReading(r, $index) === 'spike') {
-                                      <span class="cons-flag cons-flag-spike">⚠️ Spike</span>
-                                    } @else if (isAnomalyReading(r, $index) === 'drop') {
-                                      <span class="cons-flag cons-flag-drop">⬇️ Drop</span>
-                                    } @else if (isAnomalyReading(r, $index) === 'zero') {
-                                      <span class="cons-flag cons-flag-zero">🚫 Zero</span>
-                                    } @else {
-                                      <span class="cons-flag cons-flag-normal">✓</span>
-                                    }
-                                  </td>
+                                  <td class="debt-td-desc">{{ formatDate(r.testReadingDate) }}</td>
+                                  <td class="debt-td-amt mono">{{ r.testReading || '-' }}</td>
+                                  <td class="debt-td-desc">{{ r.declineReason || r.refusalReason || '-' }}</td>
+                                  <td class="debt-td-desc">{{ r.meterErrorCode || r.errorCode || '-' }}</td>
+                                  <td class="debt-td-desc">{{ r.importStatus || '-' }}</td>
+                                  <td class="debt-td-desc">{{ r.meterChange || '-' }}</td>
+                                  <td class="debt-td-desc">{{ r.meterStatus || '-' }}</td>
+                                  <td class="debt-td-desc">{{ r.serviceStatus || '-' }}</td>
+                                  <td class="debt-td-desc">{{ r.disconnectionStatus || '-' }}</td>
+                                  <td class="debt-td-amt mono">{{ r.disconnectionReading || '-' }}</td>
+                                  <td class="debt-td-desc">{{ formatDate(r.disconnectionDate) }}</td>
+                                  <td class="debt-td-desc">{{ r.contractorRemarks || r.remarks || '-' }}</td>
                                 </tr>
                               }
                             </tbody>
@@ -3570,7 +3861,204 @@
                       </div>
                     }
 
-                    @if (!consumptionHistoryLoading() && consumptionHistory().length === 0 && consumptionChartData().length === 0) {
+                    @if (!consumptionHistoryLoading() && consumptionAllHistory().length >= 3) {
+                      <div class="intel-section" data-testid="meter-intelligence-panel">
+                        <div class="intel-header" (click)="consIntelligenceShow.set(!consIntelligenceShow())">
+                          <span class="intel-title">🔬 Meter Intelligence</span>
+                          <span class="intel-toggle">{{ consIntelligenceShow() ? '▼' : '▶' }}</span>
+                        </div>
+                        @if (consIntelligenceShow()) {
+                          <div class="intel-body">
+                            <div class="intel-period-selector">
+                              <span class="intel-period-label">Averaging Period:</span>
+                              @for (m of [3,6,9,12,15,18,21,24]; track m) {
+                                <button class="intel-period-btn" [class.intel-period-active]="consIntelligenceMonths() === m" (click)="consIntelligenceMonths.set(m)" [attr.data-testid]="'btn-intel-months-' + m">{{ m }}m</button>
+                              }
+                            </div>
+                            @if (computeMeterIntelligence(consumptionAllHistory()); as intel) {
+                              @if (intel.noData) {
+                                <div class="intel-empty">Not enough billed readings with reading days for analysis</div>
+                              } @else {
+                                <div class="intel-stats-row">
+                                  <div class="intel-stat-card">
+                                    <div class="intel-stat-label">Avg Daily</div>
+                                    <div class="intel-stat-value accent-text">{{ intel.avgDailyConsumption | number:'1.2-2' }}</div>
+                                    <div class="intel-stat-sub">units/day (weighted)</div>
+                                  </div>
+                                  <div class="intel-stat-card">
+                                    <div class="intel-stat-label">Avg Monthly</div>
+                                    <div class="intel-stat-value">{{ intel.avgMonthlyConsumption | number:'1.0-0' }}</div>
+                                    <div class="intel-stat-sub">units (30-day equivalent)</div>
+                                  </div>
+                                  <div class="intel-stat-card">
+                                    <div class="intel-stat-label">Range (Daily)</div>
+                                    <div class="intel-stat-value">{{ intel.minDaily | number:'1.2-2' }} – {{ intel.maxDaily | number:'1.2-2' }}</div>
+                                    <div class="intel-stat-sub">min – max daily</div>
+                                  </div>
+                                  <div class="intel-stat-card">
+                                    <div class="intel-stat-label">Period Data</div>
+                                    <div class="intel-stat-value">{{ intel.periodMonths }} months</div>
+                                    <div class="intel-stat-sub">{{ intel.totalConsumption | number:'1.0-0' }} total units / {{ intel.totalDays }} days</div>
+                                  </div>
+                                </div>
+
+                                @if (intel.trendChart && intel.trendChart.length > 0) {
+                                  <div class="intel-trend-section">
+                                    <div class="intel-trend-title">Daily Consumption Trend</div>
+                                    <div class="intel-trend-chart">
+                                      <div class="intel-trend-avg-line" [style.bottom.%]="intel.trendMax > 0 ? (intel.avgDailyConsumption / intel.trendMax) * 100 : 0">
+                                        <span class="intel-trend-avg-label mono">Avg: {{ intel.avgDailyConsumption | number:'1.2-2' }}</span>
+                                      </div>
+                                      <div class="intel-trend-bars">
+                                        @for (r of intel.trendChart; track $index) {
+                                          <div class="intel-trend-col">
+                                            <div class="intel-trend-bar-wrap">
+                                              <div class="intel-trend-bar" [style.height.%]="intel.trendMax > 0 ? (r.dailyConsumption / intel.trendMax) * 100 : 0" [class.intel-bar-spike-high]="r.spikeType === 'high'" [class.intel-bar-spike-low]="r.spikeType === 'low'"></div>
+                                            </div>
+                                            <span class="intel-trend-label">{{ (r.billingMonth || '').substring(0, 3) }}</span>
+                                          </div>
+                                        }
+                                      </div>
+                                    </div>
+                                    <div class="intel-trend-legend">
+                                      <span class="intel-legend-item"><span class="intel-legend-dot intel-dot-normal"></span> Normal</span>
+                                      <span class="intel-legend-item"><span class="intel-legend-dot intel-dot-high"></span> High Spike (≥150%)</span>
+                                      <span class="intel-legend-item"><span class="intel-legend-dot intel-dot-low"></span> Low Spike (≤40%)</span>
+                                    </div>
+                                  </div>
+                                }
+
+                                <div class="intel-spikes-section">
+                                  @if (intel.spikeCount === 0) {
+                                    <div class="intel-no-spikes">✅ No consumption spikes detected — usage is consistent</div>
+                                  } @else {
+                                    <div class="intel-spike-title">⚠️ {{ intel.spikeCount }} Spike{{ intel.spikeCount !== 1 ? 's' : '' }} Detected</div>
+                                    <div class="intel-spike-list">
+                                      @for (s of intel.spikes; track $index) {
+                                        <div class="intel-spike-item" [class.intel-spike-high]="s.spikeType === 'high'" [class.intel-spike-low]="s.spikeType === 'low'">
+                                          <span class="intel-spike-month">{{ s.billingMonth }} {{ s.financialYear }}</span>
+                                          <span class="intel-spike-rate mono">{{ s.dailyConsumption | number:'1.2-2' }}/day</span>
+                                          <span class="intel-spike-total mono">{{ s.consumption | number:'1.0-0' }} units / {{ s.readingDays }} days</span>
+                                          <span class="intel-spike-pct" [class.intel-pct-high]="s.spikePercent > 0" [class.intel-pct-low]="s.spikePercent < 0">{{ s.spikePercent > 0 ? '+' : '' }}{{ s.spikePercent | number:'1.0-0' }}%</span>
+                                        </div>
+                                      }
+                                    </div>
+                                  }
+                                </div>
+                              }
+                            }
+                          </div>
+                        }
+                      </div>
+                    }
+
+                    @if (!consumptionHistoryLoading() && consumptionAllHistory().length > 0) {
+                      @if (computeBillingEstimate(consumptionAllHistory()); as est) {
+                        @if (est && est.hasTiers) {
+                          <div class="intel-section" data-testid="billing-estimator-panel">
+                            <div class="intel-header" (click)="consBillingEstShow.set(!consBillingEstShow())">
+                              <span class="intel-title">💰 Billing Estimator</span>
+                              <span class="intel-toggle">{{ consBillingEstShow() ? '▼' : '▶' }}</span>
+                            </div>
+                            @if (consBillingEstShow()) {
+                              <div class="intel-body">
+                                <div class="est-vat-selector">
+                                  <span class="est-vat-label">VAT:</span>
+                                  <button class="est-vat-btn" [class.est-vat-active]="consBillingVatRate() === 0" (click)="consBillingVatRate.set(0)">0%</button>
+                                  <button class="est-vat-btn" [class.est-vat-active]="consBillingVatRate() === 15" (click)="consBillingVatRate.set(15)">15%</button>
+                                </div>
+
+                                @if (est.estimates.length > 0) {
+                                  @for (e of est.estimates; track $index) {
+                                    <div class="est-reading-block">
+                                      <div class="est-reading-header">
+                                        <span class="est-reading-title">{{ e.billingMonth }}</span>
+                                        @if (e.isProRated) {
+                                          <span class="est-prorata-badge">Pro-Rated ({{ e.readingDays }} days)</span>
+                                        }
+                                      </div>
+                                      <div class="est-reading-details">
+                                        <span>Old: <strong class="mono">{{ e.oldReading }}</strong></span>
+                                        <span>New: <strong class="mono">{{ e.newReading }}</strong></span>
+                                        <span>Units: <strong class="mono">{{ e.consumption | number:'1.0-0' }}</strong></span>
+                                        <span>Days: <strong>{{ e.readingDays }}</strong></span>
+                                        @if (e.dailyConsumption) {
+                                          <span>Daily: <strong class="mono">{{ e.dailyConsumption | number:'1.2-2' }}</strong></span>
+                                        }
+                                      </div>
+                                      @if (e.breakdown.length > 0) {
+                                        <table class="est-tier-table">
+                                          <thead>
+                                            <tr>
+                                              <th>Tier</th>
+                                              @if (e.isProRated) { <th>Pro-Rated Range</th> }
+                                              <th>Units</th>
+                                              <th>Rate</th>
+                                              <th>Amount</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            @for (b of e.breakdown; track $index) {
+                                              <tr>
+                                                <td>{{ b.label }}</td>
+                                                @if (e.isProRated) { <td class="mono">{{ b.proFrom | number:'1.0-0' }} – {{ b.proTo ? (b.proTo | number:'1.0-0') : '∞' }}</td> }
+                                                <td class="mono">{{ b.units | number:'1.2-2' }}</td>
+                                                <td class="mono">{{ b.rate | number:'1.4-4' }}</td>
+                                                <td class="mono bold">{{ formatDebtAmt(b.amount) }}</td>
+                                              </tr>
+                                            }
+                                          </tbody>
+                                        </table>
+                                      }
+                                      <div class="est-totals">
+                                        <div class="est-total-line"><span>Subtotal</span><span class="mono">{{ formatDebtAmt(e.subtotal) }}</span></div>
+                                        <div class="est-total-line"><span>VAT ({{ est.vatRate }}%)</span><span class="mono">{{ formatDebtAmt(e.vatAmount) }}</span></div>
+                                        <div class="est-total-line est-grand-total"><span>Estimated Total</span><span class="mono bold accent-text">{{ formatDebtAmt(e.total) }}</span></div>
+                                        @if (est.factor !== 1) {
+                                          <div class="est-factor-note">Factor applied: {{ est.factor }}</div>
+                                        }
+                                      </div>
+                                    </div>
+                                  }
+                                } @else if (est.projection) {
+                                  <div class="est-projection">
+                                    <div class="est-proj-title">Projected Next Bill (based on {{ est.projection.months }}-month average of {{ est.projection.avg | number:'1.0-0' }} units)</div>
+                                    <div class="est-totals">
+                                      <div class="est-total-line"><span>Subtotal</span><span class="mono">{{ formatDebtAmt(est.projection.subtotal) }}</span></div>
+                                      <div class="est-total-line"><span>VAT ({{ est.vatRate }}%)</span><span class="mono">{{ formatDebtAmt(est.projection.vatAmount) }}</span></div>
+                                      <div class="est-total-line est-grand-total"><span>Projected Total</span><span class="mono bold accent-text">{{ formatDebtAmt(est.projection.total) }}</span></div>
+                                    </div>
+                                  </div>
+                                }
+
+                                @if (est.previousEstimates.length > 0) {
+                                  <div class="est-prev-warning">
+                                    <span class="est-prev-icon">⚠️</span>
+                                    <span>{{ est.previousEstimates.length }} previous levy estimate{{ est.previousEstimates.length !== 1 ? 's' : '' }} in billing history</span>
+                                  </div>
+                                }
+
+                                @if (est.tiers.length > 0) {
+                                  <details class="est-tiers-detail">
+                                    <summary>View Tariff Tiers ({{ est.tiers.length }})</summary>
+                                    <div class="est-tiers-list">
+                                      @for (t of est.tiers; track $index) {
+                                        <div class="est-tier-item">
+                                          <span class="est-tier-range">{{ t.label }}</span>
+                                          <span class="est-tier-rate mono">R {{ t.rate | number:'1.4-4' }}/unit</span>
+                                        </div>
+                                      }
+                                    </div>
+                                  </details>
+                                }
+                              </div>
+                            }
+                          </div>
+                        }
+                      }
+                    }
+
+                    @if (!consumptionHistoryLoading() && consumptionHistory().length === 0 && consumptionAllHistory().length === 0) {
                       <div class="empty-state">
                         <div class="empty-icon">📉</div>
                         <p class="empty-text">No reading history available for this meter</p>

@@ -143,10 +143,29 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   consumptionSelectedYears = signal<string[]>([]);
   consumptionViewMode = signal<'chart' | 'table'>('chart');
 
+  svcBalanceData = signal<any[]>([]);
+  svcBalanceLoading = signal(false);
+  svcBalanceError = signal('');
+  svcSelectedService = signal<any>(null);
+  svcBalanceFinYear = signal((() => {
+    const now = new Date();
+    const y = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+    return `${y}/${y + 1}`;
+  })());
+
+  consIntelligenceMonths = signal(6);
+  consIntelligenceShow = signal(true);
+  consBillingEstShow = signal(true);
+  consBillingVatRate = signal(15);
+
   meterSelectedConv = signal<any>(null);
   meterConvHistory = signal<any[]>([]);
   meterConvLoading = signal(false);
   meterConvInsights = signal<any>(null);
+  meterIntelMonths = signal(6);
+  meterIntelShow = signal(true);
+  meterEstShow = signal(true);
+  meterEstVatRate = signal(15);
   meterSelectedPrepaid = signal<any>(null);
   meterPrepaidSales = signal<any[]>([]);
   meterPrepaidLoading = signal(false);
@@ -3214,6 +3233,64 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     return this.formatDate(date);
   }
 
+  getConsumptionHistorySorted(): any[] {
+    const data = this.consumptionHistory();
+    if (!data.length) return [];
+    const seen = new Set<string>();
+    const deduped = data.filter(r => {
+      const bm = (r.billingmonth || r.billingMonth || '').toLowerCase().trim();
+      const fy = (r.financialYear || r.finYear || '').trim();
+      const key = `${bm}|${fy}`;
+      if (key === '|') return true;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    const monthOrder = ['july','august','september','october','november','december','january','february','march','april','may','june'];
+    const isAwaitingBilling = (r: any) => {
+      const bm = (r.billingmonth || r.billingMonth || '').toLowerCase().trim();
+      const rs = (r.readingStatus || '').toLowerCase();
+      const flag = (r.flag || '').toLowerCase();
+      if (bm === 'current open period' || bm.includes('open period')) return true;
+      if (rs.includes('awaiting') || rs.includes('unbilled') || rs.includes('pending')) return true;
+      if (flag.includes('awaiting') || flag.includes('unbilled')) return true;
+      return false;
+    };
+    const getSortKey = (r: any): number => {
+      const fy = (r.financialYear || r.finYear || '').trim();
+      const fyYear = fy ? parseInt(fy.split('/')[0]) || 0 : 0;
+      const bm = (r.billingmonth || r.billingMonth || '').toLowerCase().trim();
+      const mi = monthOrder.indexOf(bm);
+      return fyYear * 100 + (mi >= 0 ? mi : 50);
+    };
+    return [...deduped].sort((a, b) => {
+      const aAwait = isAwaitingBilling(a) ? 0 : 1;
+      const bAwait = isAwaitingBilling(b) ? 0 : 1;
+      if (aAwait !== bAwait) return aAwait - bAwait;
+      return getSortKey(b) - getSortKey(a);
+    });
+  }
+
+  getConsRowClass(r: any): string {
+    const flag = (r.flag || r.levyStatus || '').toLowerCase();
+    if (flag.includes('reversed') || flag.includes('cancel')) return 'cons-row-reversed';
+    if (flag.includes('estimate') || flag.includes('levy')) return 'cons-row-estimate';
+    return '';
+  }
+
+  getOpenMonthsCount(): { open: number; expected: number } {
+    const data = this.consumptionHistory();
+    const open = data.filter(r => {
+      const bm = (r.billingmonth || r.billingMonth || '').toLowerCase().trim();
+      const rs = (r.readingStatus || '').toLowerCase();
+      const flag = (r.flag || '').toLowerCase();
+      return bm.includes('open period') || rs.includes('awaiting') || rs.includes('unbilled') || rs.includes('pending') || flag.includes('awaiting');
+    }).length;
+    const years = this.consumptionSelectedYears();
+    const expected = years.length * 12;
+    return { open, expected: expected || 12 };
+  }
+
   initS129Years(records: any[]) {
     const currentYear = new Date().getFullYear();
     const years: string[] = [];
@@ -3709,6 +3786,379 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     }
     if (parts.length === 0) return '<div class="svc-rate-line">-</div>';
     return parts.join('');
+  }
+
+  async viewServiceBalance(svc: any) {
+    this.svcSelectedService.set(svc);
+    this.svcBalanceLoading.set(true);
+    this.svcBalanceData.set([]);
+    this.svcBalanceError.set('');
+    const account = this.selectedAccount();
+    const accountId = this.getAccountId(account);
+    try {
+      const data = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/service-type-balance`, { accountId: String(accountId), financialYear: this.svcBalanceFinYear() }));
+      this.svcBalanceData.set(this.normalizeArray(data));
+    } catch (err: any) {
+      this.svcBalanceData.set([]);
+      this.svcBalanceError.set(err?.message || 'Failed to load service balance data');
+    }
+    this.svcBalanceLoading.set(false);
+  }
+
+  async changeSvcBalanceFinYear(fy: string) {
+    this.svcBalanceFinYear.set(fy);
+    await this.viewServiceBalance(this.svcSelectedService());
+  }
+
+  getSvcBalanceFinYearOptions(): string[] {
+    const now = new Date();
+    const startYear = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+    return Array.from({ length: 5 }, (_, i) => {
+      const y = startYear - i;
+      return `${y}/${y + 1}`;
+    });
+  }
+
+  getSvcBalanceFiltered(): any[] {
+    const svc = this.svcSelectedService();
+    if (!svc) return [];
+    const svcDesc = svc.serviceDesc || svc.serviceDescription || svc.tariffType || '';
+    const svcTypeId = svc.tariffTypeID || svc.serviceTypeID || svc.serviceType_ID;
+    const filtered = this.svcBalanceData().filter((b: any) =>
+      (svcTypeId && b.serviceTypeID === svcTypeId) ||
+      (b.serviceDescription && svcDesc && b.serviceDescription.toLowerCase() === svcDesc.toLowerCase())
+    );
+    const monthOrder = ['July','August','September','October','November','December','January','February','March','April','May','June'];
+    return [...filtered].sort((a, b) => {
+      const ai = monthOrder.indexOf(a.month);
+      const bi = monthOrder.indexOf(b.month);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+  }
+
+  getSvcBalanceTotals(): any {
+    const rows = this.getSvcBalanceFiltered();
+    return rows.reduce((acc: any, r: any) => ({
+      openingBalance: (acc.openingBalance || 0) + (r.openingBalance || 0),
+      amount: (acc.amount || 0) + (r.amount || 0),
+      vat: (acc.vat || 0) + (r.vat || 0),
+      interestAmount: (acc.interestAmount || 0) + (r.interestAmount ?? r.interest ?? 0),
+      totalAmount: (acc.totalAmount || 0) + (r.totalAmount ?? r.total ?? 0),
+      currentInterestAmount: (acc.currentInterestAmount || 0) + (r.currentInterestAmount || 0),
+      currentCharge: (acc.currentCharge || 0) + (r.currentCharge || 0),
+      closingBalance: (acc.closingBalance || 0) + (r.closingBalance ?? r.closingBal ?? 0),
+    }), {});
+  }
+
+  getSvcBalanceChartData(): { month: string; amount: number }[] {
+    return this.getSvcBalanceFiltered()
+      .filter(r => (r.totalAmount || r.amount || 0) > 0)
+      .map(r => ({ month: r.month || '-', amount: r.totalAmount || r.amount || 0 }));
+  }
+
+  getSvcBalanceChartMax(): number {
+    const data = this.getSvcBalanceChartData();
+    if (!data.length) return 1;
+    return Math.max(...data.map(d => d.amount), 1);
+  }
+
+  getSvcBalanceBarHeight(amount: number): number {
+    const max = this.getSvcBalanceChartMax();
+    return max > 0 ? (amount / max) * 100 : 0;
+  }
+
+  getConsChartBarColor(r: any): string {
+    const flag = (r.flag || r.levyStatus || '').toLowerCase();
+    if (flag.includes('reversed') || flag.includes('cancel')) return 'cons-bar-reversed';
+    if (flag.includes('estimate') || flag.includes('levy')) return 'cons-bar-estimate';
+    return 'cons-bar-actual';
+  }
+
+  getConsChartSorted(): any[] {
+    const data = this.consumptionHistory();
+    if (!data.length) return [];
+    const monthOrder = ['july','august','september','october','november','december','january','february','march','april','may','june'];
+    const getSortKey = (r: any): number => {
+      const fy = (r.financialYear || r.finYear || '').trim();
+      const fyYear = fy ? parseInt(fy.split('/')[0]) || 0 : 0;
+      const bm = (r.billingmonth || r.billingMonth || '').toLowerCase().trim();
+      const mi = monthOrder.indexOf(bm);
+      return fyYear * 100 + (mi >= 0 ? mi : 50);
+    };
+    return [...data]
+      .filter(r => {
+        const bm = (r.billingmonth || r.billingMonth || '').toLowerCase().trim();
+        return !bm.includes('open period') && bm !== 'current open period';
+      })
+      .sort((a, b) => getSortKey(a) - getSortKey(b))
+      .slice(-12);
+  }
+
+  getConsChartMax(): number {
+    const data = this.getConsChartSorted();
+    if (!data.length) return 100;
+    return Math.max(...data.map(r => this.getConsumptionVal(r)), 1);
+  }
+
+  getConsChartBarPct(r: any): number {
+    const max = this.getConsChartMax();
+    const val = this.getConsumptionVal(r);
+    return max > 0 ? (val / max) * 100 : 0;
+  }
+
+  getConsChartMonthLabel(r: any): { mon: string; yr: string } {
+    const bm = r.billingmonth || r.billingMonth || '';
+    const fy = r.financialYear || r.finYear || '';
+    if (bm && fy) {
+      const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      const idx = monthNames.findIndex(m => m.toLowerCase() === bm.toLowerCase());
+      if (idx >= 0) {
+        const years = fy.split('/');
+        const year = idx >= 6 ? years[0] : years[1];
+        return { mon: bm.substring(0, 3), yr: year?.slice(-2) || '' };
+      }
+    }
+    if (bm.toLowerCase().includes('open period') || bm.toLowerCase().includes('current')) {
+      return { mon: 'Open', yr: '' };
+    }
+    return { mon: bm.substring(0, 3) || '?', yr: '' };
+  }
+
+  computeMeterIntelligence(allReadings: any[], monthsOverride?: number): any {
+    if (!allReadings || allReadings.length < 3) return null;
+    const SPIKE_HIGH = 1.5;
+    const SPIKE_LOW = 0.4;
+    const STD_DAYS = 30;
+    const months = monthsOverride ?? this.consIntelligenceMonths();
+
+    const processed = allReadings.map((r: any) => {
+      const cons = Number(r.consumption || r.units || r.totalConsumption || 0) || 0;
+      const rdRaw = r.readingdays || r.readingDays || r.days;
+      const rdNum = typeof rdRaw === 'number' ? rdRaw : (rdRaw ? parseInt(rdRaw) : NaN);
+      const readingDays = (!isNaN(rdNum) && rdNum > 0) ? rdNum : 0;
+      const dailyConsumption = readingDays > 0 ? cons / readingDays : 0;
+      return {
+        consumption: cons, readingDays, dailyConsumption,
+        billingMonth: r.billingmonth || r.billingMonth || '',
+        financialYear: r.financialYear || r.finYear || '',
+        flag: r.flag || '', readingStatus: r.readingStatus || '',
+        reading1Date: r.reading1Date || '', reading2Date: r.reading2Date || '',
+        isSpike: false, spikeType: 'none' as string, spikePercent: 0,
+      };
+    });
+
+    const billed = processed.filter(r => {
+      const bm = r.billingMonth.toLowerCase().trim();
+      const rs = r.readingStatus.toLowerCase();
+      const flag = r.flag.toLowerCase();
+      if (flag.includes('reversed') || flag.includes('cancel')) return false;
+      if (bm.includes('open period') || bm === 'current open period') return false;
+      if (rs.includes('awaiting') || rs.includes('unbilled') || rs.includes('pending')) return false;
+      if (flag.includes('awaiting') || flag.includes('unbilled')) return false;
+      if (flag.includes('estimate') || flag.includes('levy')) return false;
+      if (r.readingDays <= 0) return false;
+      return r.consumption > 0;
+    });
+
+    const selectedBilled = billed.slice(0, months);
+    if (selectedBilled.length < 2) return { processed, noData: true };
+
+    const totalConsumption = selectedBilled.reduce((s, r) => s + r.consumption, 0);
+    const totalDays = selectedBilled.reduce((s, r) => s + r.readingDays, 0);
+    const weightedAvgDaily = totalDays > 0 ? totalConsumption / totalDays : 0;
+    const avgMonthlyConsumption = weightedAvgDaily * STD_DAYS;
+
+    const dailyValues = selectedBilled.map(r => r.dailyConsumption);
+    const minDaily = Math.min(...dailyValues);
+    const maxDaily = Math.max(...dailyValues);
+
+    const allWithSpikes = processed.map(r => {
+      if (r.consumption <= 0 || weightedAvgDaily <= 0 || r.readingDays <= 0) return { ...r };
+      const ratio = r.dailyConsumption / weightedAvgDaily;
+      const isHigh = ratio >= SPIKE_HIGH;
+      const isLow = ratio <= SPIKE_LOW && r.dailyConsumption > 0;
+      const pctDev = ((r.dailyConsumption - weightedAvgDaily) / weightedAvgDaily) * 100;
+      return { ...r, isSpike: isHigh || isLow, spikeType: isHigh ? 'high' : isLow ? 'low' : 'none', spikePercent: pctDev };
+    });
+
+    const spikeCount = allWithSpikes.filter(r => r.isSpike).length;
+    const spikes = allWithSpikes.filter(r => r.isSpike);
+
+    const trendChart = allWithSpikes.filter(r => r.consumption > 0).slice(-(months + 4));
+    const trendMax = Math.max(...trendChart.map(r => r.dailyConsumption), weightedAvgDaily * 1.5);
+
+    return {
+      avgDailyConsumption: weightedAvgDaily, avgMonthlyConsumption,
+      minDaily, maxDaily, periodMonths: selectedBilled.length,
+      totalConsumption, totalDays, spikeCount, spikes,
+      allWithSpikes, trendChart, trendMax, noData: false,
+    };
+  }
+
+  parseTariffTiers(svc: any): { label: string; from: number; to: number; rate: number }[] {
+    const costInterVal = svc?.costInterVal || svc?.costInterval || '';
+    if (!costInterVal) return [];
+    const tiers: { label: string; from: number; to: number; rate: number }[] = [];
+    const normalize = (s: string) => s.replace(/[R$,]/g, '').replace(/\s*per\s*(unit|kl|kwh|kilolitre|kilowatt)\s*/gi, '').trim();
+    const lines = String(costInterVal).split(/[\n;|]+/).map(normalize).filter(Boolean);
+    for (const line of lines) {
+      const match = line.match(/([\d,.]+)\s*[-–—]\s*([\d,.]+)\s*[=:@]\s*([\d,.]+)/);
+      if (match) {
+        const from = parseFloat(match[1].replace(/,/g, ''));
+        const to = parseFloat(match[2].replace(/,/g, ''));
+        const rate = parseFloat(match[3].replace(/,/g, ''));
+        if (!isNaN(from) && !isNaN(to) && !isNaN(rate) && rate > 0) {
+          tiers.push({ label: `${from} – ${to}`, from, to, rate });
+        }
+        continue;
+      }
+      const above = line.match(/(?:above|over|>)\s*([\d,.]+)\s*[=:@]\s*([\d,.]+)/i);
+      if (above) {
+        const from = parseFloat(above[1].replace(/,/g, ''));
+        const rate = parseFloat(above[2].replace(/,/g, ''));
+        if (!isNaN(from) && !isNaN(rate) && rate > 0) {
+          tiers.push({ label: `Above ${from}`, from, to: Infinity, rate });
+        }
+        continue;
+      }
+      const upTo = line.match(/(?:up\s*to|first|<=?)\s*([\d,.]+)\s*[=:@]\s*([\d,.]+)/i);
+      if (upTo) {
+        const to = parseFloat(upTo[1].replace(/,/g, ''));
+        const rate = parseFloat(upTo[2].replace(/,/g, ''));
+        if (!isNaN(to) && !isNaN(rate) && rate > 0) {
+          tiers.push({ label: `0 – ${to}`, from: 0, to, rate });
+        }
+        continue;
+      }
+      const parts = line.trim().split(/\s+/);
+      if (parts.length >= 2) {
+        const val = parseFloat(parts[0].replace(/,/g, ''));
+        const rate = parseFloat(parts[parts.length - 1].replace(/,/g, ''));
+        if (!isNaN(val) && !isNaN(rate) && rate > 0) {
+          const lastTo = tiers.length > 0 ? tiers[tiers.length - 1].to : 0;
+          tiers.push({ label: parts[0], from: lastTo === Infinity ? 0 : lastTo, to: val > 0 ? val : Infinity, rate });
+        }
+      }
+    }
+    tiers.sort((a, b) => a.from - b.from);
+    return tiers;
+  }
+
+  computeBillingEstimate(allReadings: any[], meterOverride?: any, vatOverride?: number): any {
+    if (!allReadings || !allReadings.length) return null;
+    const meter = meterOverride ?? this.consumptionSelectedMeter();
+    if (!meter) return null;
+
+    const services = this.getServicesList();
+    let matchedSvc = meter;
+    if (services.length > 0) {
+      const meterDesc = (meter.serviceDesc || meter.serviceDescription || '').toLowerCase();
+      const meterTariff = (meter.tariff || '').toLowerCase();
+      const found = services.find((s: any) => {
+        const sType = (s.serviceType || s.serviceTypeDesc || s.serviceDesc || '').toLowerCase();
+        const sTariff = (s.tariff || '').toLowerCase();
+        if (meterDesc && sType && meterDesc.includes(sType.split(' ')[0])) return true;
+        if (meterTariff && sTariff && meterTariff === sTariff) return true;
+        return false;
+      });
+      if (found) matchedSvc = { ...meter, costInterVal: found.costInterVal, endDate: found.endDate, startDate: found.startDate };
+    }
+
+    const tiers = this.parseTariffTiers(matchedSvc);
+    if (!tiers.length) return null;
+
+    const factor = Number(matchedSvc.tarifffactor || matchedSvc.factorQuantity || 1) || 1;
+    const vatRate = vatOverride ?? this.consBillingVatRate();
+    const STD_DAYS = 30;
+
+    const unbilled = allReadings.filter(item => {
+      const bm = (item.billingmonth || item.billingMonth || '').toLowerCase().trim();
+      const rs = (item.readingStatus || '').toLowerCase();
+      const flag = (item.flag || '').toLowerCase();
+      if (flag.includes('reversed') || flag.includes('cancel')) return false;
+      if (flag.includes('estimate') || flag.includes('levy') || rs.includes('estimate')) return false;
+      if (bm === 'current open period' || bm.includes('open period')) return true;
+      if (rs.includes('awaiting') || rs.includes('unbilled') || rs.includes('pending')) return true;
+      return false;
+    });
+
+    const calcTiered = (consumption: number, readingDays?: number) => {
+      if (consumption <= 0 || !tiers.length) return { breakdown: [], subtotal: 0, isProRated: false };
+      const days = readingDays && readingDays > 0 ? readingDays : STD_DAYS;
+      const dayRatio = days / STD_DAYS;
+      const isProRated = days !== STD_DAYS;
+      const breakdown: { label: string; units: number; rate: number; amount: number; proFrom?: number; proTo?: number }[] = [];
+      let remaining = consumption;
+      for (const tier of tiers) {
+        if (remaining <= 0) break;
+        const proFrom = tier.from * dayRatio;
+        const proTo = tier.to === Infinity ? Infinity : tier.to * dayRatio;
+        const tierCap = proTo === Infinity ? remaining : Math.max(0, proTo - proFrom);
+        const units = Math.min(remaining, tierCap);
+        if (units > 0) {
+          breakdown.push({ label: tier.label, units, rate: tier.rate, amount: units * tier.rate * factor, proFrom: Math.round(proFrom * 100) / 100, proTo: proTo === Infinity ? undefined : Math.round(proTo * 100) / 100 });
+          remaining -= units;
+        }
+      }
+      const subtotal = breakdown.reduce((s, b) => s + b.amount, 0);
+      return { breakdown, subtotal, isProRated };
+    };
+
+    let estimates: any[] = [];
+    if (unbilled.length > 0) {
+      estimates = unbilled.map(r => {
+        const cons = Number(r.consumption || r.units || r.totalConsumption || 0) || 0;
+        if (cons <= 0) return null;
+        const rdRaw = r.readingdays || r.readingDays;
+        const rdNum = typeof rdRaw === 'number' ? rdRaw : (rdRaw ? parseInt(rdRaw) : NaN);
+        const readingDays = (!isNaN(rdNum) && rdNum > 0) ? rdNum : undefined;
+        const { breakdown, subtotal, isProRated } = calcTiered(cons, readingDays);
+        const vatAmount = subtotal * (vatRate / 100);
+        const dailyCons = readingDays ? cons / readingDays : undefined;
+        return {
+          consumption: cons, billingMonth: r.billingmonth || r.billingMonth || 'Current',
+          readingDate: r.reading2Date || r.reading1Date || '',
+          newReading: r.reading2 ?? '-', oldReading: r.reading1 ?? '-',
+          readingDays: readingDays ?? '-', dailyConsumption: dailyCons,
+          isProRated, breakdown, subtotal, vatAmount, total: subtotal + vatAmount, factor,
+        };
+      }).filter(Boolean);
+    }
+
+    const billedHist = allReadings.filter(item => {
+      const bm = (item.billingmonth || item.billingMonth || '').toLowerCase().trim();
+      const flag = (item.flag || '').toLowerCase();
+      if (bm === 'current open period' || bm.includes('open period')) return false;
+      if (flag.includes('reversed') || flag.includes('cancel')) return false;
+      const c = Number(item.consumption || item.units || 0) || 0;
+      return c > 0;
+    });
+    const historicalAvg = billedHist.length >= 2 ? (() => {
+      const recent = billedHist.slice(0, 6);
+      const total = recent.reduce((s: number, r: any) => s + (Number(r.consumption || r.units || 0) || 0), 0);
+      return { avg: total / recent.length, months: recent.length };
+    })() : null;
+
+    let projection: any = null;
+    if (estimates.length === 0 && historicalAvg) {
+      const { breakdown, subtotal } = calcTiered(historicalAvg.avg);
+      const vatAmount = subtotal * (vatRate / 100);
+      projection = { avg: historicalAvg.avg, months: historicalAvg.months, subtotal, vatAmount, total: subtotal + vatAmount };
+    }
+
+    const previousEstimates = allReadings.filter(item => {
+      const bm = (item.billingmonth || item.billingMonth || '').toLowerCase().trim();
+      const flag = (item.flag || '').toLowerCase();
+      if (bm === 'current open period' || bm.includes('open period')) return false;
+      if (flag.includes('reversed') || flag.includes('cancel')) return false;
+      if (!flag.includes('estimate') && !flag.includes('levy')) return false;
+      return (Number(item.consumption || item.units || 0) || 0) > 0;
+    });
+
+    return {
+      hasTiers: tiers.length > 0, estimates, historicalAvg, projection, previousEstimates,
+      tiers, factor, vatRate, STD_DAYS,
+    };
   }
 
   getDepositPaidAmt(dep: any): number {
