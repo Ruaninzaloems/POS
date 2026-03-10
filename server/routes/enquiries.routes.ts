@@ -407,6 +407,7 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
         "payment-incentive-by-account": "PaymentIncentiveByAccount",
         "linked-accounts-on-property": "LinkedAccountsOnProperty",
         "service-type-balance": "ServiceTypeBalanceDetails",
+        "transaction-summary-list": "TransactionSummaryList",
       };
 
       if (supervisorRoutes[mappedEndpoint]) {
@@ -416,7 +417,7 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
           console.log(`[billing-enquiry] PropertyDetailsByAccount keys:`, sample ? Object.keys(sample) : 'empty/null', `isArray=${Array.isArray(data)}`);
           if (sample) console.log(`[billing-enquiry] PropertyDetailsByAccount sample:`, JSON.stringify(sample).substring(0, 500));
         }
-        if (['total-balance-debt', 'total-balance-debt-inquiry', 'close-balance-detail', 'service-type-balance'].includes(mappedEndpoint)) {
+        if (['total-balance-debt', 'total-balance-debt-inquiry', 'close-balance-detail', 'service-type-balance', 'transaction-summary-list'].includes(mappedEndpoint)) {
           const sample = Array.isArray(data) ? data[0] : data;
           console.log(`[billing-enquiry] ${mappedEndpoint} queryParams:`, JSON.stringify(queryParams));
           console.log(`[billing-enquiry] ${mappedEndpoint} response keys:`, sample ? Object.keys(sample) : 'empty/null', `count=${Array.isArray(data) ? data.length : 'single'}`);

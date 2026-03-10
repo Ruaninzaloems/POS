@@ -109,6 +109,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   tabLoading = signal(false);
   tabError = signal<string | null>(null);
 
+  summaryFinYear = signal('');
+  summaryData = signal<any[]>([]);
+  summaryLoading = signal(false);
+  summaryError = signal<string | null>(null);
+  summaryAvailableYears = signal<string[]>([]);
+  summarySource = signal<'monthly' | 'aging' | ''>('');
+
   advancedSuggestions = signal<{ displayItem: string; accountId: number }[]>([]);
   activeFieldKey = signal<string | null>(null);
   advancedFieldLoading = signal(false);
@@ -1157,26 +1164,12 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           break;
 
         case 'txn-summary':
-          try {
-            const finYearForSummary = this.userFinYear();
-            let txnSummaryResult: any;
-            try {
-              txnSummaryResult = await firstValueFrom(
-                this.api.get<any>(`/api/platinum/billing-enquiry/service-type-balance/${accountId}`, finYearForSummary ? { financialYear: finYearForSummary } : undefined)
-              );
-            } catch {
-              txnSummaryResult = await firstValueFrom(
-                this.api.get<any>(`/api/platinum/billing-enquiry/service-type-balance/${accountId}`)
-              );
-            }
-            const summaryArr = this.normalizeArray(txnSummaryResult);
-            if (summaryArr.length > 0) {
-              console.log('[txn-summary] sample keys:', Object.keys(summaryArr[0]), 'sample:', JSON.stringify(summaryArr[0]).substring(0, 500));
-            }
-            data = { summary: summaryArr };
-          } catch {
-            data = { summary: [] };
+          this.initSummaryYears();
+          if (!this.summaryFinYear()) {
+            this.summaryFinYear.set(this.userFinYear() || this.getCurrentFinYear());
           }
+          await this.loadTransactionSummary(accountId, this.summaryFinYear());
+          data = { _summaryManaged: true };
           break;
 
         case 'billed-vs-paid':
@@ -1296,5 +1289,151 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
   getAccountAir(): any {
     return this.tabData()?.accountInfo || {};
+  }
+
+  getCurrentFinYear(): string {
+    const now = new Date();
+    const month = now.getMonth();
+    const year = now.getFullYear();
+    if (month >= 6) {
+      return `${year}/${year + 1}`;
+    }
+    return `${year - 1}/${year}`;
+  }
+
+  initSummaryYears(): void {
+    if (this.summaryAvailableYears().length > 0) return;
+    const currentFy = this.userFinYear() || this.getCurrentFinYear();
+    const [startYear] = currentFy.split('/').map(Number);
+    const years: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      const y = startYear - i;
+      years.push(`${y}/${y + 1}`);
+    }
+    this.summaryAvailableYears.set(years);
+  }
+
+  async loadTransactionSummary(accountId: number, finYear: string): Promise<void> {
+    this.summaryLoading.set(true);
+    this.summaryError.set(null);
+    this.summaryData.set([]);
+    this.summarySource.set('');
+
+    const params: Record<string, string> = { financialYear: finYear };
+    let loaded = false;
+
+    try {
+      const result = await firstValueFrom(
+        this.api.get<any>(`/api/platinum/billing-enquiry/transaction-summary-list/${accountId}`, params)
+      );
+      const arr = this.normalizeArray(result);
+      if (arr.length > 0 && !arr[0]._error) {
+        console.log('[txn-summary] TransactionSummaryList keys:', Object.keys(arr[0]), 'count:', arr.length);
+        console.log('[txn-summary] sample:', JSON.stringify(arr[0]).substring(0, 600));
+        this.summaryData.set(arr);
+        this.summarySource.set('monthly');
+        loaded = true;
+      }
+    } catch {
+      console.log('[txn-summary] TransactionSummaryList failed for', accountId);
+    }
+
+    if (!loaded) {
+      try {
+        const result = await firstValueFrom(
+          this.api.get<any>(`/api/platinum/billing-enquiry/service-type-balance/${accountId}`, params)
+        );
+        const arr = this.normalizeArray(result);
+        if (arr.length > 0 && !arr[0]._error) {
+          console.log('[txn-summary-fallback] ServiceTypeBalance keys:', Object.keys(arr[0]), 'count:', arr.length);
+          this.summaryData.set(arr);
+          this.summarySource.set('aging');
+          loaded = true;
+        }
+      } catch {
+        console.log('[txn-summary] ServiceTypeBalance also failed');
+      }
+    }
+
+    if (!loaded) {
+      this.summaryError.set('Failed to load transaction summary');
+    }
+    this.summaryLoading.set(false);
+  }
+
+  async onSummaryYearChange(year: string): Promise<void> {
+    this.summaryFinYear.set(year);
+    const acct = this.selectedAccount();
+    const accountId = acct ? (acct.account_ID || acct.accountID) : null;
+    if (accountId) {
+      await this.loadTransactionSummary(accountId, year);
+    }
+  }
+
+  getSummaryMonthValue(row: any, month: string): number {
+    const fieldMap: Record<string, string[]> = {
+      'Jul': ['july', 'jul', 'month1'],
+      'Aug': ['august', 'aug', 'month2'],
+      'Sep': ['september', 'sep', 'month3'],
+      'Oct': ['october', 'oct', 'month4'],
+      'Nov': ['november', 'nov', 'month5'],
+      'Dec': ['december', 'dec', 'month6'],
+      'Jan': ['january', 'jan', 'month7'],
+      'Feb': ['february', 'feb', 'month8'],
+      'Mar': ['march', 'mar', 'month9'],
+      'Apr': ['april', 'apr', 'month10'],
+      'May': ['may', 'month11'],
+      'Jun': ['june', 'jun', 'month12'],
+    };
+    const candidates = fieldMap[month] || [];
+    for (const key of candidates) {
+      if (row[key] !== undefined && row[key] !== null) return Number(row[key]) || 0;
+    }
+    for (const k of Object.keys(row)) {
+      if (k.toLowerCase() === month.toLowerCase()) return Number(row[k]) || 0;
+    }
+    return 0;
+  }
+
+  getSummaryDescription(row: any): string {
+    return row.description || row.serviceTypeDesc || row.serviceDescription || row.serviceDesc || row.chargeType || row.descr || '-';
+  }
+
+  getSummaryFinYear(row: any): string {
+    return row.financialYear || row.finYear || row.financial_Year || this.summaryFinYear() || '';
+  }
+
+  getSummaryRowTotal(row: any): number {
+    const months = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+    return months.reduce((sum, m) => sum + this.getSummaryMonthValue(row, m), 0);
+  }
+
+  downloadSummaryCsv(): void {
+    const data = this.summaryData();
+    if (!data.length) return;
+    const months = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+    const headers = ['Description', 'Financial Year', ...months, 'Total'];
+    const rows = data.map(row => {
+      const vals = months.map(m => this.getSummaryMonthValue(row, m).toFixed(2));
+      return [
+        this.getSummaryDescription(row),
+        this.getSummaryFinYear(row),
+        ...vals,
+        this.getSummaryRowTotal(row).toFixed(2),
+      ];
+    });
+    const csv = [headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `transaction_summary_${this.summaryFinYear().replace('/', '-')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  isSummaryTotalRow(row: any): boolean {
+    const desc = this.getSummaryDescription(row).toLowerCase();
+    return desc === 'total' || desc === 'closing balance' || desc === 'receipts' || desc === 'opening balance';
   }
 }
