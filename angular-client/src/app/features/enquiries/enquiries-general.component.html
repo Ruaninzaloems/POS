@@ -1825,9 +1825,119 @@
 
         @if (activeTab() === 'notifications') {
           <div class="tab-panel" data-testid="notifications-tab">
+            <div class="comm-compose-section">
+              <div class="comm-compose-header">
+                <div class="comm-compose-title-row">
+                  <span class="comm-compose-icon">✉️</span>
+                  <span class="comm-compose-title">Send Communication</span>
+                </div>
+                @if (!commShowCompose()) {
+                  <button class="comm-compose-btn" (click)="openCompose()" data-testid="btn-open-compose">
+                    + Compose Email / SMS
+                  </button>
+                } @else {
+                  <button class="comm-close-btn" (click)="commShowCompose.set(false)" data-testid="btn-close-compose">
+                    Close
+                  </button>
+                }
+              </div>
+
+              @if (commShowCompose()) {
+                <div class="comm-compose-body" data-testid="comm-compose-panel">
+                  <div class="comm-method-toggle">
+                    <button class="comm-method-btn" [class.comm-method-active]="commMethod() === 'email'" (click)="commMethod.set('email'); onCommMethodChange()" data-testid="btn-comm-email">
+                      📧 Email
+                    </button>
+                    <button class="comm-method-btn" [class.comm-method-active]="commMethod() === 'sms'" (click)="commMethod.set('sms'); onCommMethodChange()" data-testid="btn-comm-sms">
+                      📱 SMS
+                    </button>
+                  </div>
+
+                  <div class="comm-form">
+                    <div class="comm-field">
+                      <label class="comm-label">{{ commMethod() === 'email' ? 'Email Address' : 'Phone Number' }}</label>
+                      <input
+                        [type]="commMethod() === 'email' ? 'email' : 'tel'"
+                        class="comm-input"
+                        [placeholder]="commMethod() === 'email' ? 'recipient@email.com' : '0821234567'"
+                        [ngModel]="commRecipient()"
+                        (ngModelChange)="commRecipient.set($event)"
+                        [attr.data-testid]="'input-comm-recipient'"
+                      />
+                      <div class="comm-hint">Auto-filled from account contact details. Edit if needed.</div>
+                    </div>
+
+                    <div class="comm-field">
+                      <label class="comm-label">Template (optional)</label>
+                      <select
+                        class="comm-input"
+                        [ngModel]="commSelectedTemplate()"
+                        (ngModelChange)="commSelectedTemplate.set($event); onCommTemplateChange()"
+                        data-testid="select-comm-template"
+                      >
+                        <option value="">-- Custom Message --</option>
+                        @for (t of commTemplates(); track t.id || t.templateId) {
+                          <option [value]="t.id || t.templateId">{{ t.name || t.templateName || t.subject }}</option>
+                        }
+                      </select>
+                    </div>
+
+                    @if (commMethod() === 'email') {
+                      <div class="comm-field">
+                        <label class="comm-label">Subject</label>
+                        <input
+                          type="text"
+                          class="comm-input"
+                          placeholder="Enter email subject..."
+                          [ngModel]="commSubject()"
+                          (ngModelChange)="commSubject.set($event)"
+                          data-testid="input-comm-subject"
+                        />
+                      </div>
+                    }
+
+                    <div class="comm-field">
+                      <label class="comm-label">Message</label>
+                      <textarea
+                        class="comm-textarea"
+                        rows="6"
+                        [placeholder]="commMethod() === 'email' ? 'Type your email message here...' : 'Type your SMS message here (160 chars recommended)...'"
+                        [ngModel]="commMessage()"
+                        (ngModelChange)="commMessage.set($event)"
+                        data-testid="input-comm-message"
+                      ></textarea>
+                      @if (commMethod() === 'sms') {
+                        <div class="comm-char-count" [class.comm-char-over]="commMessage().length > 160">
+                          {{ commMessage().length }} / 160 characters
+                        </div>
+                      }
+                    </div>
+
+                    <div class="comm-actions">
+                      <button
+                        class="comm-send-btn"
+                        (click)="sendNotification()"
+                        [disabled]="commSending() || !commRecipient() || !commMessage()"
+                        data-testid="btn-comm-send"
+                      >
+                        @if (commSending()) {
+                          <span class="stmt-spinner"></span> Sending...
+                        } @else {
+                          {{ commMethod() === 'email' ? '📧 Send Email' : '📱 Send SMS' }}
+                        }
+                      </button>
+                      <button class="comm-cancel-btn" (click)="commShowCompose.set(false); commMessage.set(''); commSubject.set(''); commSelectedTemplate.set('')" data-testid="btn-comm-cancel">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+
             @if ((tabData()?.accountNotifications || []).length > 0 || (tabData()?.propertyNotifications || []).length > 0) {
-              <div class="detail-section">
-                <div class="section-header-bar">🔔 Account Notifications</div>
+              <div class="detail-section" style="margin-top: 1rem;">
+                <div class="section-header-bar">🔔 Notification History</div>
                 <div class="data-table-wrapper">
                   <table class="data-table" data-testid="table-notifications">
                     <thead>
@@ -1852,9 +1962,9 @@
                 </div>
               </div>
             } @else {
-              <div class="empty-state">
+              <div class="empty-state" style="margin-top: 1rem;">
                 <div class="empty-icon">🔔</div>
-                <p class="empty-text">No notifications found</p>
+                <p class="empty-text">No notification history found</p>
               </div>
             }
           </div>

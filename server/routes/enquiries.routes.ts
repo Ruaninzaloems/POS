@@ -572,4 +572,112 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
       res.status(502).json({ message: "Statement delivery failed", detail: e.message });
     }
   });
+
+  app.post("/api/platinum/billing-enquiry/send-notification", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const { accountId, method, recipient, subject, message, templateId } = req.body;
+      if (!accountId) return res.status(400).json({ message: "accountId is required" });
+      if (!method) return res.status(400).json({ message: "method is required (email|sms)" });
+      if (!recipient) return res.status(400).json({ message: "recipient is required" });
+      if (!message && !templateId) return res.status(400).json({ message: "message or templateId is required" });
+
+      console.log(`[send-notification] Sending ${method} to ${recipient} for account ${accountId}, template=${templateId || 'custom'}`);
+
+      if (method === 'email') {
+        const strategies = [
+          { label: 'EmailBillingNotification', path: '/api/BillingEnquiry/EmailBillingNotification' },
+          { label: 'communication-dispatch', path: '/api/BillingDebt/communication-dispatch' },
+          { label: 'EmailBillingStatement', path: '/api/BillingEnquiry/EmailBillingStatement' },
+        ];
+        const emailPayload = {
+          accountId: String(accountId),
+          emailAddress: recipient,
+          subject: subject || 'Municipal Notification',
+          message: message || '',
+          templateId: templateId || null,
+        };
+        let sent = false;
+        for (const strat of strategies) {
+          try {
+            console.log(`[send-notification] Trying ${strat.label}`);
+            const result = await platinumPost(session, strat.path, emailPayload);
+            if (result && !result._error) {
+              console.log(`[send-notification] ${strat.label} succeeded`);
+              res.json({ success: true, method: 'email', recipient, data: result });
+              sent = true;
+              break;
+            }
+          } catch (err: any) {
+            console.log(`[send-notification] ${strat.label} failed: ${err.message}`);
+          }
+        }
+        if (!sent) {
+          res.status(502).json({ success: false, method: 'email', message: 'All email dispatch strategies failed. Please try again later.' });
+        }
+      } else if (method === 'sms') {
+        const strategies = [
+          { label: 'SmsBillingNotification', path: '/api/BillingEnquiry/SmsBillingNotification' },
+          { label: 'communication-dispatch', path: '/api/BillingDebt/communication-dispatch' },
+          { label: 'SmsBillingStatement', path: '/api/BillingEnquiry/SmsBillingStatement' },
+        ];
+        const smsPayload = {
+          accountId: String(accountId),
+          phoneNumber: recipient,
+          message: message || '',
+          templateId: templateId || null,
+        };
+        let sent = false;
+        for (const strat of strategies) {
+          try {
+            console.log(`[send-notification] Trying ${strat.label}`);
+            const result = await platinumPost(session, strat.path, smsPayload);
+            if (result && !result._error) {
+              console.log(`[send-notification] ${strat.label} succeeded`);
+              res.json({ success: true, method: 'sms', recipient, data: result });
+              sent = true;
+              break;
+            }
+          } catch (err: any) {
+            console.log(`[send-notification] ${strat.label} failed: ${err.message}`);
+          }
+        }
+        if (!sent) {
+          res.status(502).json({ success: false, method: 'sms', message: 'All SMS dispatch strategies failed. Please try again later.' });
+        }
+      } else {
+        res.status(400).json({ message: "Invalid method. Use 'email' or 'sms'" });
+      }
+    } catch (e: any) {
+      console.error(`[send-notification] Error:`, e.message);
+      res.status(502).json({ message: "Notification delivery failed", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-enquiry/communication-templates", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      console.log(`[comm-templates] Fetching communication templates`);
+      const strategies = [
+        { label: 'notification-templates', path: '/api/BillingEnquiry/getNotificationTemplates' },
+        { label: 'communication-templates', path: '/api/BillingDebt/communication-templates' },
+        { label: 'message-templates', path: '/api/BillingEnquiry/getMessageTemplates' },
+      ];
+      for (const strat of strategies) {
+        try {
+          const data = await platinumGet(session, strat.path, req.query as Record<string, string>);
+          if (data && !data._error) {
+            console.log(`[comm-templates] ${strat.label} succeeded`);
+            handlePlatinumResult(res, data);
+            return;
+          }
+        } catch (err: any) {
+          console.log(`[comm-templates] ${strat.label} failed: ${err.message}`);
+        }
+      }
+      res.json([]);
+    } catch (e: any) {
+      res.status(502).json({ message: "Failed to fetch templates", detail: e.message });
+    }
+  });
 }

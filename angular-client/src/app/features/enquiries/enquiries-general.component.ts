@@ -166,6 +166,16 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   stmtAvailableYears = signal<string[]>([]);
   stmtMonths: string[] = ['', 'July', 'August', 'September', 'October', 'November', 'December', 'January', 'February', 'March', 'April', 'May', 'June'];
 
+  commMethod = signal<'email' | 'sms'>('email');
+  commRecipient = signal('');
+  commSubject = signal('');
+  commMessage = signal('');
+  commSending = signal(false);
+  commTemplates = signal<any[]>([]);
+  commTemplatesLoading = signal(false);
+  commSelectedTemplate = signal('');
+  commShowCompose = signal(false);
+
   linkedAccounts = signal<any[]>([]);
   linkedAccountsLoading = signal(false);
   linkedTotalOutstanding = signal(0);
@@ -1656,6 +1666,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   sumReceiptAmounts = (sum: number, t: any) => sum + Number(t.amount || t.tenderAmount || 0);
 
   getReceiptKey(txn: any): number {
+    if (!txn) return 0;
     return Number(txn.receiptID || txn.receipt_ID || txn.receiptId || 0);
   }
 
@@ -2502,6 +2513,95 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       this.toast.show(e?.error?.message || `Failed to send via ${method}`, 'error');
     } finally {
       this.stmtSending.set(false);
+    }
+  }
+
+  async loadCommTemplates(): Promise<void> {
+    if (this.commTemplates().length > 0) return;
+    this.commTemplatesLoading.set(true);
+    try {
+      const data: any = await firstValueFrom(
+        this.api.get('/api/platinum/billing-enquiry/communication-templates')
+      );
+      const items = Array.isArray(data) ? data : (data?.items || data?.value || data?.results || data?.data || []);
+      this.commTemplates.set(items);
+    } catch {
+      this.commTemplates.set([]);
+    } finally {
+      this.commTemplatesLoading.set(false);
+    }
+  }
+
+  openCompose(): void {
+    this.commShowCompose.set(true);
+    this.loadCommTemplates();
+    const basic = this.getAccountBasic();
+    const contact = this.tabData()?.contact;
+    if (this.commMethod() === 'email') {
+      const email = contact?.email || contact?.emailId || contact?.emailAddress || basic?.emailId || basic?.email || '';
+      this.commRecipient.set(email);
+    } else {
+      const phone = contact?.tel_Mobile || contact?.cellPhone || contact?.contactNo || basic?.contactNo || basic?.tel_Mobile || '';
+      this.commRecipient.set(phone);
+    }
+  }
+
+  onCommMethodChange(): void {
+    const basic = this.getAccountBasic();
+    const contact = this.tabData()?.contact;
+    if (this.commMethod() === 'email') {
+      const email = contact?.email || contact?.emailId || contact?.emailAddress || basic?.emailId || basic?.email || '';
+      this.commRecipient.set(email);
+    } else {
+      const phone = contact?.tel_Mobile || contact?.cellPhone || contact?.contactNo || basic?.contactNo || basic?.tel_Mobile || '';
+      this.commRecipient.set(phone);
+    }
+  }
+
+  onCommTemplateChange(): void {
+    const tplId = this.commSelectedTemplate();
+    if (!tplId) return;
+    const tpl = this.commTemplates().find((t: any) => (t.id || t.templateId) === tplId);
+    if (tpl) {
+      this.commSubject.set(tpl.subject || tpl.name || '');
+      this.commMessage.set(tpl.body || tpl.message || tpl.content || '');
+    }
+  }
+
+  async sendNotification(): Promise<void> {
+    const account = this.selectedAccount();
+    if (!account) return;
+    const accountId = this.getAccountId(account);
+    if (!accountId) return;
+    if (!this.commRecipient()) {
+      this.toast.show(`Please enter ${this.commMethod() === 'email' ? 'an email address' : 'a phone number'}`, 'error');
+      return;
+    }
+    if (!this.commMessage()) {
+      this.toast.show('Please enter a message or select a template', 'error');
+      return;
+    }
+    this.commSending.set(true);
+    try {
+      await firstValueFrom(
+        this.api.post<any>('/api/platinum/billing-enquiry/send-notification', {
+          accountId,
+          method: this.commMethod(),
+          recipient: this.commRecipient(),
+          subject: this.commSubject(),
+          message: this.commMessage(),
+          templateId: this.commSelectedTemplate() || undefined,
+        })
+      );
+      this.toast.show(`${this.commMethod() === 'email' ? 'Email' : 'SMS'} sent successfully to ${this.commRecipient()}`, 'success');
+      this.commMessage.set('');
+      this.commSubject.set('');
+      this.commSelectedTemplate.set('');
+      this.commShowCompose.set(false);
+    } catch (e: any) {
+      this.toast.show(e?.error?.message || `Failed to send ${this.commMethod()}`, 'error');
+    } finally {
+      this.commSending.set(false);
     }
   }
 
