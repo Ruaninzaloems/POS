@@ -1357,6 +1357,12 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             this.api.get<any>(`/api/platinum/billing-enquiry/generated-statements/${accountId}`)
           );
           const stmtArr = this.normalizeArray(stmtResult);
+          if (stmtArr.length > 0) {
+            console.log('[statements] API response keys:', Object.keys(stmtArr[0]));
+            console.log('[statements] Sample row:', JSON.stringify(stmtArr[0]).substring(0, 500));
+          } else {
+            console.log('[statements] No statement history returned');
+          }
           data = { statements: stmtArr };
           this.stmtGenerated.set(null);
           this.stmtSendMode.set(null);
@@ -2560,6 +2566,52 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       this.toast.show(e?.error?.message || `Failed to send via ${method}`, 'error');
     } finally {
       this.stmtSending.set(false);
+    }
+  }
+
+  async viewStatementRow(stmt: any): Promise<void> {
+    const fy = stmt.financialYear || stmt.billingPeriod || stmt.period || this.stmtFinYear();
+    const month = stmt.month || stmt.billingMonth || '';
+    const stType = (stmt.statementType || stmt.type || '').toLowerCase().includes('detail') ? 'detailed' : 'standard';
+
+    if (stmt.fileUrl || stmt.downloadUrl || stmt.url) {
+      this.downloadStatement(stmt.fileUrl || stmt.downloadUrl || stmt.url);
+      return;
+    }
+
+    this.stmtType.set(stType as 'standard' | 'detailed');
+    this.stmtFinYear.set(fy);
+    this.stmtMonth.set(month);
+    await this.generateStatement();
+  }
+
+  async sendStatementRow(stmt: any): Promise<void> {
+    const fy = stmt.financialYear || stmt.billingPeriod || stmt.period || this.stmtFinYear();
+    const month = stmt.month || stmt.billingMonth || '';
+    const stType = (stmt.statementType || stmt.type || '').toLowerCase().includes('detail') ? 'detailed' : 'standard';
+
+    this.stmtType.set(stType as 'standard' | 'detailed');
+    this.stmtFinYear.set(fy);
+    this.stmtMonth.set(month);
+
+    const basic = this.getAccountBasic();
+    const contact = this.tabData()?.contact;
+    const email = contact?.email || contact?.emailId || basic?.emailId || basic?.email || '';
+
+    if (email) {
+      this.stmtEmail.set(email);
+      this.stmtSendMode.set('email');
+      await this.sendStatement('email');
+    } else {
+      const phone = contact?.tel_Mobile || contact?.cellPhone || contact?.contactNo || basic?.contactNo || '';
+      if (phone) {
+        this.stmtPhone.set(phone);
+        this.stmtSendMode.set('sms');
+        await this.sendStatement('sms');
+      } else {
+        this.stmtSendMode.set('email');
+        this.toast.show('No email or phone on file — please enter manually and use the generator above', 'error');
+      }
     }
   }
 

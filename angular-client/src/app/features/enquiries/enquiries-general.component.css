@@ -1086,7 +1086,11 @@
   font-size: 0.85rem;
   transition: background 0.15s;
 }
-.stmt-act-btn:hover { background: rgba(15,43,70,0.04); }
+.stmt-act-btn:hover { background: rgba(15,43,70,0.08); }
+.stmt-act-view { color: var(--platinum-primary, #0f2b46); }
+.stmt-act-view:hover { background: rgba(15,43,70,0.08); }
+.stmt-act-send { color: #2563eb; }
+.stmt-act-send:hover { background: rgba(37,99,235,0.08); }
 .stmt-act-email:hover { background: rgba(37,99,235,0.06); }
 .stmt-act-sms:hover { background: rgba(5,150,105,0.06); }
 .stmt-actions-group { align-self: flex-end; }

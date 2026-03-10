@@ -2071,20 +2071,20 @@
                       <tr [attr.data-testid]="'row-statement-' + $index">
                         <td class="debt-td-desc">{{ s.financialYear || s.billingPeriod || s.period || '-' }}</td>
                         <td class="debt-td-desc">{{ s.month || s.billingMonth || '-' }}</td>
-                        <td class="debt-td-desc"><span class="stmt-type-badge" [class.stmt-detailed]="(s.statementType || s.type || '').toLowerCase().includes('detail')">{{ s.statementType || s.type || 'Standard' }}</span></td>
-                        <td class="debt-td-desc">{{ formatDate(s.generatedDate || s.dateGenerated || s.date) }}</td>
-                        <td class="debt-td-desc"><span class="ind-status-badge ind-active">{{ s.status || 'Available' }}</span></td>
+                        <td class="debt-td-desc"><span class="stmt-type-badge" [class.stmt-detailed]="(s.statementType || s.type || '').toLowerCase().includes('detail')">{{ s.statementType || s.type || '-' }}</span></td>
+                        <td class="debt-td-desc">{{ formatDate(s.generatedDate || s.dateGenerated || s.date || s.dateCaptured) }}</td>
+                        <td class="debt-td-desc"><span class="ind-status-badge" [class.ind-active]="(s.status || '').toLowerCase() !== 'failed'">{{ s.status || '-' }}</span></td>
                         <td class="debt-td-desc">
                           @if (s.fileUrl || s.downloadUrl || s.url) {
-                            <button class="stmt-dl-btn" (click)="downloadStatement(s.fileUrl || s.downloadUrl || s.url)" [attr.data-testid]="'btn-download-stmt-' + $index">📥</button>
+                            <button class="stmt-dl-btn" (click)="downloadStatement(s.fileUrl || s.downloadUrl || s.url)" [attr.data-testid]="'btn-download-stmt-' + $index" title="Download PDF">📥</button>
                           } @else {
                             <span class="stmt-no-dl">-</span>
                           }
                         </td>
                         <td class="debt-td-desc">
                           <div class="stmt-row-actions">
-                            <button class="stmt-act-btn stmt-act-email" (click)="stmtSendMode.set('email'); stmtFinYear.set(s.financialYear || stmtFinYear()); stmtMonth.set(s.month || '')" title="Email this statement" [attr.data-testid]="'btn-email-stmt-' + $index">📧</button>
-                            <button class="stmt-act-btn stmt-act-sms" (click)="stmtSendMode.set('sms'); stmtFinYear.set(s.financialYear || stmtFinYear()); stmtMonth.set(s.month || '')" title="SMS this statement" [attr.data-testid]="'btn-sms-stmt-' + $index">📱</button>
+                            <button class="stmt-act-btn stmt-act-view" (click)="viewStatementRow(s)" title="View / regenerate this statement" [attr.data-testid]="'btn-view-stmt-' + $index">👁️</button>
+                            <button class="stmt-act-btn stmt-act-send" (click)="sendStatementRow(s)" title="Email this statement to account holder" [attr.data-testid]="'btn-send-stmt-' + $index">📧</button>
                           </div>
                         </td>
                       </tr>
