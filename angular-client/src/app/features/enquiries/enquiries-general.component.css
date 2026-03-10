@@ -2115,3 +2115,36 @@
 .rates-highlight-row td:first-child { font-weight: 700; color: var(--platinum-primary, #0f2b46); }
 
 .empty-sub { font-size: 0.75rem; color: var(--platinum-text-muted, #94a3b8); margin-top: 0.25rem; }
+
+.export-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0;
+}
+
+.export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.875rem;
+  border: 1px solid var(--platinum-border, #e2e8f0);
+  border-radius: 0.375rem;
+  background: #fff;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--platinum-text, #334155);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.export-btn:hover {
+  background: var(--platinum-bg, #f8fafc);
+  border-color: var(--platinum-primary, #0f2b46);
+  color: var(--platinum-primary, #0f2b46);
+}
+
+.export-csv:hover { border-color: #059669; color: #059669; }
+.export-pdf:hover { border-color: var(--platinum-accent, #c9a84c); color: var(--platinum-accent-dark, #9e842e); }

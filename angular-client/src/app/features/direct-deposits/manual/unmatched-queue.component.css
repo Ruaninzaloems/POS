@@ -157,6 +157,7 @@
 .spinner-sm { display: inline-block; width: 1rem; height: 1rem; border: 2px solid #E5E7EB; border-top-color: var(--platinum-primary); border-radius: 50%; animation: spin 0.6s linear infinite; }
 .spinner-xs { display: inline-block; width: 0.75rem; height: 0.75rem; border: 1.5px solid rgba(201,168,76,0.3); border-top-color: var(--platinum-accent-dark, #9e842e); border-radius: 50%; animation: spin 0.6s linear infinite; }
 .spinning { animation: spin 0.6s linear infinite; }
+.loading-more-badge { display: inline-flex; align-items: center; gap: 6px; margin-left: 12px; padding: 2px 10px; background: rgba(201,168,76,0.12); color: var(--platinum-accent-dark, #9e842e); border-radius: 12px; font-size: 0.78rem; font-weight: 500; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 768px) {

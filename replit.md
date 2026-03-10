@@ -83,7 +83,7 @@ angular-client/src/app/
 │   ├── settings/
 │   └── bulk-allocation/
 ├── models/           (debt.models.ts, legal.models.ts, analytics.models.ts)
-├── services/         (format.service.ts, validation.service.ts, debt-config.ts)
+├── services/         (format.service.ts, validation.service.ts, debt-config.ts, export.service.ts)
 ├── app.routes.ts     (50+ lazy-loaded routes)
 ├── app.config.ts     (HttpClient, Router providers)
 └── app.ts            (root component)
@@ -96,7 +96,7 @@ The Debt & Legal solution employs a hybrid architecture where Replit handles the
 - **POS Workflow (Tabbed)**: Single-page workflow at `/pos` with 3 tabs: (1) Session Setup (cashier registration, office selection, float), (2) POS Receipting (unified multi-type basket, split tender, cash rounding, receipt delivery), (3) Day-End Reconciliation (denomination counting, recon submission). Auto-advances to Transact tab when session is active. Wrapper: `PosWorkflowComponent` embeds `CashierSetupComponent`, `PosComponent`, `CashierDayEndComponent`. Old routes `/cashier-setup` and `/cashier-day-end` redirect to `/pos`.
 - **POS Basket System**: Signal-based `PosBasketService` (`services/pos-basket.service.ts`) with typed models (`models/pos-basket.models.ts`). Multi-type basket supports 4 item types: `account` (consumer), `clearance`, `prepaid`, `misc`. Processing order enforced: account→clearance→prepaid→misc. SA cash rounding (nearest 10c) adjusts first basket item. Split tender (cash+card) creates separate API receipt calls with smart item allocation. Unified dynamic search searches accounts, groups, misc items, and prepaid meters simultaneously. Account group/institution search with expandable drill-down. Misc SCOA auto-populates from API (first item, read-only). Prepaid meter can be added from account's linked meter chip. Receipt delivery via print, email, WhatsApp, or SMS.
 - **Direct Deposits**: Auto-loading smart grid with column sorting, pagination, search/filter, auto-allocate (description-based account detection), manual allocation queue, auto-allocation with AI matching, bulk CSV processing
-- **Enquiries**: Multi-tab account detail view with 25+ tab categories, quick/advanced search
+- **Enquiries**: Multi-tab account detail view with 25+ tab categories, quick/advanced search, Excel/CSV and PDF/Print export on all tabs with standardized naming (GEORGE_MUNICIPALITY_[TAB]_[ACCOUNT]_[DATE])
 - **Supervisor Dashboard**: Day-end approval/decline, cancellation requests, cash reports
 - **Receipts**: Search, view, print, cashbook trace, bank statement notes
 - **Billing Dashboard**: Category-based alerts with drill-down

@@ -209,6 +209,12 @@
           @if (searchQuery() || statusFilter() !== 'all') {
             <span class="pagination-filter-note">(filtered from {{ items().length }})</span>
           }
+          @if (loadingMore()) {
+            <span class="loading-more-badge">
+              <span class="spinner-xs"></span>
+              {{ loadProgress() || 'Loading more...' }}
+            </span>
+          }
         </div>
         <div class="pagination-controls">
           <button class="page-btn" [disabled]="page() === 1" (click)="changePage(page() - 1)" data-testid="button-prev-page">

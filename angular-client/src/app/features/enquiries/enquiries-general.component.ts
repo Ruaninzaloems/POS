@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { ToastService } from '../../core/services/toast.service';
 import { AuthService } from '../../core/services/auth.service';
+import { ExportService, ExportOptions } from '../../services/export.service';
 import { firstValueFrom } from 'rxjs';
 
 interface SearchCriteria {
@@ -286,11 +287,15 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
   private userFinYear = computed(() => this.auth.user()?.finYear || '');
 
+  private exportService: ExportService;
+
   constructor(
     private api: ApiService,
     private toast: ToastService,
     private auth: AuthService,
-  ) {}
+  ) {
+    this.exportService = new ExportService();
+  }
 
   ngOnInit(): void {}
 
@@ -2166,7 +2171,10 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `transaction_summary_${this.summaryFinYear().replace('/', '-')}.csv`;
+    const acctNo = this.getAccountNum(this.selectedAccount());
+    const now = new Date();
+    const fileDate = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+    a.download = `GEORGE_MUNICIPALITY_Transaction_Summary_${acctNo}_${fileDate}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -2465,7 +2473,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       const a = document.createElement('a');
       a.href = url;
       const safeName = acctName.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '_').substring(0, 30);
-      a.download = `Transaction_Report_${acctNo}_${safeName}_${finYear.replace('/', '-')}_${fromMonth}-${toMonth}.csv`;
+      const fd = new Date();
+      const fdStr = `${fd.getFullYear()}${String(fd.getMonth()+1).padStart(2,'0')}${String(fd.getDate()).padStart(2,'0')}`;
+      a.download = `GEORGE_MUNICIPALITY_Transaction_Detail_${acctNo}_${fdStr}.csv`;
       a.click();
       URL.revokeObjectURL(url);
       this.toast.show(`Exported ${months.length} month(s) of transactions`, 'success');
@@ -3446,5 +3456,496 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
   getLinkedAcctId(acct: any): string {
     return String(acct.account_ID || acct.accountID || acct.accountNumber || acct.account || '');
+  }
+
+  private getExportOpts(tabName: string, title: string): ExportOptions {
+    const acct = this.selectedAccount();
+    const basic = this.getAccountBasic();
+    return {
+      title,
+      tabName,
+      accountNo: this.getAccountNum(acct),
+      accountName: this.getAccountName(acct),
+      accountStatus: basic?.accountStatus || acct?.accountStatus || acct?.statusDesc || '',
+      address: basic?.deliveryAddress || acct?.deliveryAddress || acct?.locationAddress || '',
+      financialYear: this.userFinYear(),
+    };
+  }
+
+  exportBalanceCsv(): void {
+    const items = this.getBalanceItems();
+    if (!items.length) { this.toast.show('No balance data to export', 'error'); return; }
+    const headers = ['Service', 'New Charge', 'Current', '30 Days', '60 Days', '90 Days', '120 Days', '150 Days', '180+ Days', 'Total Outstanding'];
+    const rows = items.map((i: any) => [
+      i.serviceType || i.serviceTypeDesc || i.description || i.serviceDescription || '',
+      this.getDebtVal(i, 'newCharge'), this.getDebtVal(i, 'current'),
+      this.getDebtVal(i, 'days30'), this.getDebtVal(i, 'days60'), this.getDebtVal(i, 'days90'),
+      this.getDebtVal(i, 'days120'), this.getDebtVal(i, 'days150'), this.getDebtVal(i, 'days180'),
+      this.getDebtVal(i, 'totalOutStanding'),
+    ]);
+    this.exportService.exportCsv(this.getExportOpts('Balance_Debt', 'BALANCE / DEBT AGING REPORT'), headers, rows);
+    this.toast.show('Balance report exported', 'success');
+  }
+
+  exportBalancePdf(): void {
+    const items = this.getBalanceItems();
+    if (!items.length) { this.toast.show('No balance data to export', 'error'); return; }
+    const headers = ['Service', 'New Charge', 'Current', '30 Days', '60 Days', '90 Days', '120 Days', '150 Days', '180+ Days', 'Total'];
+    const aligns: ('left' | 'right')[] = ['left', 'right', 'right', 'right', 'right', 'right', 'right', 'right', 'right', 'right'];
+    const rows = items.map((i: any) => [
+      i.serviceType || i.serviceTypeDesc || i.description || i.serviceDescription || '',
+      this.formatCurrency(this.getDebtVal(i, 'newCharge')), this.formatCurrency(this.getDebtVal(i, 'current')),
+      this.formatCurrency(this.getDebtVal(i, 'days30')), this.formatCurrency(this.getDebtVal(i, 'days60')),
+      this.formatCurrency(this.getDebtVal(i, 'days90')), this.formatCurrency(this.getDebtVal(i, 'days120')),
+      this.formatCurrency(this.getDebtVal(i, 'days150')), this.formatCurrency(this.getDebtVal(i, 'days180')),
+      this.formatCurrency(this.getDebtVal(i, 'totalOutStanding')),
+    ]);
+    this.exportService.exportPdf(this.getExportOpts('Balance_Debt', 'BALANCE / DEBT AGING REPORT'), headers, rows, aligns);
+  }
+
+  exportPropertyDebtCsv(): void {
+    const accounts = this.propDebtAccounts();
+    if (!accounts.length) { this.toast.show('No property debt data to export', 'error'); return; }
+    const headers = ['Account Number', 'Account Name', 'Status', 'Total Outstanding', 'Current', '30 Days', '60 Days', '90 Days', '120+ Days'];
+    const rows = accounts.map((a: any) => [
+      a.accountNumber || a.accountNo || '', a.name || a.accountName || '',
+      a.accountStatus || a.status || '', a.totalOutstanding || 0,
+      a.agingCurrent || 0, a.agingD30 || 0, a.agingD60 || 0, a.agingD90 || 0, a.agingD120Plus || 0,
+    ]);
+    this.exportService.exportCsv(this.getExportOpts('Property_Debt', 'PROPERTY DEBT REPORT'), headers, rows);
+    this.toast.show('Property debt report exported', 'success');
+  }
+
+  exportPropertyDebtPdf(): void {
+    const accounts = this.propDebtAccounts();
+    if (!accounts.length) { this.toast.show('No property debt data to export', 'error'); return; }
+    const headers = ['Account Number', 'Name', 'Status', 'Total Outstanding', 'Current', '30 Days', '60 Days', '90 Days', '120+ Days'];
+    const aligns: ('left' | 'right')[] = ['left', 'left', 'left', 'right', 'right', 'right', 'right', 'right', 'right'];
+    const rows = accounts.map((a: any) => [
+      a.accountNumber || a.accountNo || '', a.name || a.accountName || '',
+      a.accountStatus || a.status || '',
+      this.formatCurrency(a.totalOutstanding || 0), this.formatCurrency(a.agingCurrent || 0),
+      this.formatCurrency(a.agingD30 || 0), this.formatCurrency(a.agingD60 || 0),
+      this.formatCurrency(a.agingD90 || 0), this.formatCurrency(a.agingD120Plus || 0),
+    ]);
+    this.exportService.exportPdf(this.getExportOpts('Property_Debt', 'PROPERTY DEBT REPORT'), headers, rows, aligns);
+  }
+
+  exportReceiptsCsv(): void {
+    const txns = this.getFilteredReceipts();
+    if (!txns.length) { this.toast.show('No receipts to export', 'error'); return; }
+    const headers = ['Receipt No', 'Date', 'Payment Type', 'Amount', 'Cashier', 'Office', 'Status'];
+    const rows = txns.map((t: any) => [
+      this.getReceiptNo(t), this.formatDate(t.receiptDate || t.transactionDate || t.date),
+      t.paymentType || '', Number(t.receiptAmount || t.amount || t.tenderAmount || 0),
+      t.cashierName || t.cashier || '', t.officeName || t.office || '',
+      (t.isCancelled || t.cancelReson || t.cancelReason) ? 'Cancelled' : 'Active',
+    ]);
+    this.exportService.exportCsv(this.getExportOpts('Receipts', 'RECEIPT HISTORY REPORT'), headers, rows);
+    this.toast.show('Receipts exported', 'success');
+  }
+
+  exportReceiptsPdf(): void {
+    const txns = this.getFilteredReceipts();
+    if (!txns.length) { this.toast.show('No receipts to export', 'error'); return; }
+    const headers = ['Receipt No', 'Date', 'Type', 'Amount', 'Cashier', 'Office', 'Status'];
+    const aligns: ('left' | 'right')[] = ['left', 'left', 'left', 'right', 'left', 'left', 'left'];
+    const rows = txns.map((t: any) => [
+      this.getReceiptNo(t), this.formatDate(t.receiptDate || t.transactionDate || t.date),
+      t.paymentType || '', this.formatCurrency(Number(t.receiptAmount || t.amount || t.tenderAmount || 0)),
+      t.cashierName || t.cashier || '', t.officeName || t.office || '',
+      (t.isCancelled || t.cancelReson || t.cancelReason) ? 'Cancelled' : 'Active',
+    ]);
+    this.exportService.exportPdf(this.getExportOpts('Receipts', 'RECEIPT HISTORY REPORT'), headers, rows, aligns);
+  }
+
+  exportDepositsCsv(): void {
+    const data = this.tabData();
+    const deposits = data?.deposits || [];
+    if (!deposits.length) { this.toast.show('No deposit data to export', 'error'); return; }
+    const headers = ['Date', 'Description', 'Amount Paid', 'Interest Accrued', 'Type', 'Status'];
+    const rows = deposits.map((d: any) => [
+      this.formatDate(d.depositDate || d.date || d.datePaid),
+      d.description || d.depositType || d.type || '',
+      Number(d.amountPaid || d.amount || d.depositAmount || 0),
+      Number(d.interestAccrued || d.interest || 0),
+      d.depositType || d.type || '', d.status || '',
+    ]);
+    this.exportService.exportCsv(this.getExportOpts('Deposits', 'DEPOSITS REPORT'), headers, rows);
+    this.toast.show('Deposits exported', 'success');
+  }
+
+  exportDepositsPdf(): void {
+    const data = this.tabData();
+    const deposits = data?.deposits || [];
+    if (!deposits.length) { this.toast.show('No deposit data to export', 'error'); return; }
+    const headers = ['Date', 'Description', 'Amount Paid', 'Interest', 'Type', 'Status'];
+    const aligns: ('left' | 'right')[] = ['left', 'left', 'right', 'right', 'left', 'left'];
+    const rows = deposits.map((d: any) => [
+      this.formatDate(d.depositDate || d.date || d.datePaid),
+      d.description || d.depositType || d.type || '',
+      this.formatCurrency(Number(d.amountPaid || d.amount || d.depositAmount || 0)),
+      this.formatCurrency(Number(d.interestAccrued || d.interest || 0)),
+      d.depositType || d.type || '', d.status || '',
+    ]);
+    this.exportService.exportPdf(this.getExportOpts('Deposits', 'DEPOSITS REPORT'), headers, rows, aligns);
+  }
+
+  exportPaymentPlansCsv(): void {
+    const data = this.tabData();
+    const plans = data?.plans || data?.paymentPlans || [];
+    if (!plans.length) { this.toast.show('No payment plan data to export', 'error'); return; }
+    const headers = ['Plan Type', 'Start Date', 'End Date', 'Installment Amount', 'Total Amount', 'Remaining', 'Status'];
+    const rows = plans.map((p: any) => [
+      p.planType || p.type || p.arrangementType || p.capitalCostType || '',
+      this.formatDate(p.startDate || p.dateFrom), this.formatDate(p.endDate || p.dateTo),
+      Number(p.installmentAmount || p.installment || p.instalment || 0), Number(p.totalAmount || p.total || p.originalAmount || 0),
+      Number(p.remainingCapital || p.remaining || p.balance || 0), p.status || '',
+    ]);
+    this.exportService.exportCsv(this.getExportOpts('Payment_Plans', 'PAYMENT PLANS REPORT'), headers, rows);
+    this.toast.show('Payment plans exported', 'success');
+  }
+
+  exportPaymentPlansPdf(): void {
+    const data = this.tabData();
+    const plans = data?.plans || data?.paymentPlans || [];
+    if (!plans.length) { this.toast.show('No payment plan data to export', 'error'); return; }
+    const headers = ['Plan Type', 'Start Date', 'End Date', 'Installment', 'Total', 'Remaining', 'Status'];
+    const aligns: ('left' | 'right')[] = ['left', 'left', 'left', 'right', 'right', 'right', 'left'];
+    const rows = plans.map((p: any) => [
+      p.planType || p.type || p.arrangementType || p.capitalCostType || '',
+      this.formatDate(p.startDate || p.dateFrom), this.formatDate(p.endDate || p.dateTo),
+      this.formatCurrency(Number(p.installmentAmount || p.installment || p.instalment || 0)),
+      this.formatCurrency(Number(p.totalAmount || p.total || p.originalAmount || 0)),
+      this.formatCurrency(Number(p.remainingCapital || p.remaining || p.balance || 0)),
+      p.status || '',
+    ]);
+    this.exportService.exportPdf(this.getExportOpts('Payment_Plans', 'PAYMENT PLANS REPORT'), headers, rows, aligns);
+  }
+
+  exportBilledVsPaidCsv(): void {
+    const rows_data = this.tabData()?.billedVsPaid || [];
+    if (!rows_data.length) { this.toast.show('No billed vs paid data to export', 'error'); return; }
+    const headers = ['Service', 'Billed Amount', 'Paid Amount', 'Variance', 'Collection Rate %'];
+    const rows = rows_data.map((r: any) => {
+      const billed = this.getBvpRowBilled(r);
+      const paid = this.getBvpRowPaid(r);
+      const variance = billed - paid;
+      const rate = billed > 0 ? Math.round((paid / billed) * 1000) / 10 : 0;
+      return [r.serviceType || r.serviceTypeDesc || r.description || '', billed, paid, variance, rate];
+    });
+    this.exportService.exportCsv(this.getExportOpts('Billed_vs_Paid', 'BILLED VS PAID REPORT'), headers, rows);
+    this.toast.show('Billed vs Paid report exported', 'success');
+  }
+
+  exportBilledVsPaidPdf(): void {
+    const rows_data = this.tabData()?.billedVsPaid || [];
+    if (!rows_data.length) { this.toast.show('No billed vs paid data to export', 'error'); return; }
+    const headers = ['Service', 'Billed Amount', 'Paid Amount', 'Variance', 'Collection Rate %'];
+    const aligns: ('left' | 'right')[] = ['left', 'right', 'right', 'right', 'right'];
+    const rows = rows_data.map((r: any) => {
+      const billed = this.getBvpRowBilled(r);
+      const paid = this.getBvpRowPaid(r);
+      const variance = billed - paid;
+      const rate = billed > 0 ? Math.round((paid / billed) * 1000) / 10 : 0;
+      return [r.serviceType || r.serviceTypeDesc || r.description || '',
+        this.formatCurrency(billed), this.formatCurrency(paid),
+        this.formatCurrency(variance), `${rate}%`];
+    });
+    this.exportService.exportPdf(this.getExportOpts('Billed_vs_Paid', 'BILLED VS PAID REPORT'), headers, rows, aligns);
+  }
+
+  exportServicesCsv(): void {
+    const services = this.getServicesList();
+    if (!services.length) { this.toast.show('No services data to export', 'error'); return; }
+    const headers = ['Service Description', 'Status', 'Tariff Code', 'Tariff Rate', 'Meter Number', 'Frequency', 'Connection Size'];
+    const rows = services.map((s: any) => [
+      s.serviceDescription || s.description || s.serviceTypeDescription || '',
+      s.status || s.serviceStatus || '', s.tariffCode || s.tariff || '',
+      s.tariffRate || s.rate || '', s.meterNo || s.physicalMeterNo || '',
+      s.frequency || '', s.connectionSize || '',
+    ]);
+    this.exportService.exportCsv(this.getExportOpts('Services', 'SERVICES REPORT'), headers, rows);
+    this.toast.show('Services exported', 'success');
+  }
+
+  exportServicesPdf(): void {
+    const services = this.getServicesList();
+    if (!services.length) { this.toast.show('No services data to export', 'error'); return; }
+    const headers = ['Service Description', 'Status', 'Tariff Code', 'Rate', 'Meter No', 'Frequency'];
+    const rows = services.map((s: any) => [
+      s.serviceDescription || s.description || s.serviceTypeDescription || '',
+      s.status || s.serviceStatus || '', s.tariffCode || s.tariff || '',
+      s.tariffRate || s.rate || '', s.meterNo || s.physicalMeterNo || '', s.frequency || '',
+    ]);
+    this.exportService.exportPdf(this.getExportOpts('Services', 'SERVICES REPORT'), headers, rows);
+  }
+
+  exportConsumptionCsv(): void {
+    const history = this.consumptionHistory();
+    const meter = this.consumptionSelectedMeter();
+    if (!history.length) { this.toast.show('No consumption data to export', 'error'); return; }
+    const meterNo = meter?.physicalMeterNo || meter?.meterNo || '';
+    const opts = this.getExportOpts('Consumption', 'CONSUMPTION HISTORY REPORT');
+    opts.extraHeaders = [{ label: 'Meter Number', value: meterNo }];
+    const headers = ['Reading Date', 'Previous Reading', 'Current Reading', 'Consumption', 'Reading Type', 'Days', 'Avg Daily'];
+    const rows = history.map((r: any) => [
+      this.formatDate(r.readingDate || r.billingDate || r.date),
+      r.previousReading || r.prevReading || '', r.currentReading || r.reading || '',
+      this.getConsumptionVal(r), r.readingType || r.type || '',
+      r.days || r.numberOfDays || r.readingDays || '', this.getAvgDailyConsumption(r),
+    ]);
+    this.exportService.exportCsv(opts, headers, rows);
+    this.toast.show('Consumption history exported', 'success');
+  }
+
+  exportConsumptionPdf(): void {
+    const history = this.consumptionHistory();
+    const meter = this.consumptionSelectedMeter();
+    if (!history.length) { this.toast.show('No consumption data to export', 'error'); return; }
+    const meterNo = meter?.physicalMeterNo || meter?.meterNo || '';
+    const opts = this.getExportOpts('Consumption', 'CONSUMPTION HISTORY REPORT');
+    opts.extraHeaders = [{ label: 'Meter Number', value: meterNo }];
+    const headers = ['Reading Date', 'Prev Reading', 'Current Reading', 'Consumption', 'Type', 'Days', 'Avg Daily'];
+    const aligns: ('left' | 'right')[] = ['left', 'right', 'right', 'right', 'left', 'right', 'right'];
+    const rows = history.map((r: any) => [
+      this.formatDate(r.readingDate || r.billingDate || r.date),
+      r.previousReading || r.prevReading || '', r.currentReading || r.reading || '',
+      String(this.getConsumptionVal(r)), r.readingType || r.type || '',
+      r.days || r.numberOfDays || r.readingDays || '', this.getAvgDailyConsumption(r),
+    ]);
+    this.exportService.exportPdf(opts, headers, rows, aligns);
+  }
+
+  exportMetersCsv(): void {
+    const data = this.tabData();
+    const meters = data?.meters || data?.meterServices || [];
+    if (!meters.length) { this.toast.show('No meter data to export', 'error'); return; }
+    const headers = ['Meter Number', 'Type', 'Status', 'Make', 'Model', 'Digits', 'Multiplier', 'Service'];
+    const rows = meters.map((m: any) => [
+      m.physicalMeterNo || m.meterNo || m.meterNumber || '',
+      m.meterType || m.type || '', m.status || m.meterStatus || '',
+      m.make || '', m.model || '', m.digits || m.noOfDigits || '',
+      m.multiplier || '', m.serviceDescription || m.service || '',
+    ]);
+    this.exportService.exportCsv(this.getExportOpts('Meters', 'METER DETAILS REPORT'), headers, rows);
+    this.toast.show('Meters exported', 'success');
+  }
+
+  exportContactCsv(): void {
+    const data = this.tabData();
+    const contact = data?.contact || {};
+    const contactHistory = data?.contactHistory || [];
+    const addressHistory = data?.addressHistory || [];
+    const headers = ['Field', 'Value'];
+    const rows: (string | number)[][] = [
+      ['Home Phone', contact.homePhone || contact.homePhoneNo || '-'],
+      ['Work Phone', contact.workPhone || contact.workPhoneNo || '-'],
+      ['Mobile', contact.mobilePhone || contact.cellPhone || contact.cellPhoneNo || '-'],
+      ['Email', contact.emailAddress || contact.email || '-'],
+      ['Fax', contact.fax || contact.faxNo || '-'],
+    ];
+    if (contactHistory.length > 0) {
+      rows.push(['', ''], ['--- Contact Change History ---', '']);
+      rows.push(['Date Changed', 'Field', 'Old Value', 'New Value'] as any);
+      contactHistory.forEach((h: any) => rows.push([
+        this.formatDate(h.dateChanged || h.date), h.fieldChanged || h.field || '',
+        h.oldValue || '', h.newValue || '',
+      ]));
+    }
+    this.exportService.exportCsv(this.getExportOpts('Contact', 'CONTACT DETAILS REPORT'), headers, rows);
+    this.toast.show('Contact details exported', 'success');
+  }
+
+  exportLinkedAccountsCsv(): void {
+    const data = this.tabData();
+    const linked = data?.linkedAccounts || [];
+    if (!linked.length) { this.toast.show('No linked accounts to export', 'error'); return; }
+    const headers = ['Account Number', 'Name', 'Status', 'Type', 'Outstanding Balance'];
+    const rows = linked.map((a: any) => [
+      a.accountNumber || a.accountNo || '', a.name || a.accountName || a.surname_Company || '',
+      a.accountStatus || a.status || '', a.accountType || a.type || '',
+      Number(a.totalOutstanding || a.outstandingAmount || a.outStandingAmt || 0),
+    ]);
+    this.exportService.exportCsv(this.getExportOpts('Linked_Accounts', 'LINKED ACCOUNTS REPORT'), headers, rows);
+    this.toast.show('Linked accounts exported', 'success');
+  }
+
+  exportLinkedAccountsPdf(): void {
+    const data = this.tabData();
+    const linked = data?.linkedAccounts || [];
+    if (!linked.length) { this.toast.show('No linked accounts to export', 'error'); return; }
+    const headers = ['Account Number', 'Name', 'Status', 'Type', 'Outstanding'];
+    const aligns: ('left' | 'right')[] = ['left', 'left', 'left', 'left', 'right'];
+    const rows = linked.map((a: any) => [
+      a.accountNumber || a.accountNo || '', a.name || a.accountName || a.surname_Company || '',
+      a.accountStatus || a.status || '', a.accountType || a.type || '',
+      this.formatCurrency(Number(a.totalOutstanding || a.outstandingAmount || a.outStandingAmt || 0)),
+    ]);
+    this.exportService.exportPdf(this.getExportOpts('Linked_Accounts', 'LINKED ACCOUNTS REPORT'), headers, rows, aligns);
+  }
+
+  exportHandoverCsv(): void {
+    const data = this.tabData();
+    const handover = this.normalizeArray(data?.info || data?.handover || data?.enquiry || []);
+    if (!handover.length) { this.toast.show('No handover data to export', 'error'); return; }
+    const headers = ['Status', 'Attorney', 'Instruction Date', 'Amount', 'Legal Fees', 'Reference', 'Payment Status'];
+    const rows = handover.map((h: any) => [
+      h.handoverStatus || h.status || '', h.attorney || h.attorneyName || '',
+      this.formatDate(h.instructionDate || h.handoverDate || h.date),
+      Number(h.handoverAmount || h.amount || 0), Number(h.legalFees || h.fees || 0),
+      h.reference || h.caseNumber || '', h.paymentStatus || '',
+    ]);
+    this.exportService.exportCsv(this.getExportOpts('Handover', 'HANDOVER REPORT'), headers, rows);
+    this.toast.show('Handover data exported', 'success');
+  }
+
+  exportHandoverPdf(): void {
+    const data = this.tabData();
+    const handover = this.normalizeArray(data?.info || data?.handover || data?.enquiry || []);
+    if (!handover.length) { this.toast.show('No handover data to export', 'error'); return; }
+    const headers = ['Status', 'Attorney', 'Instruction Date', 'Amount', 'Legal Fees', 'Reference'];
+    const aligns: ('left' | 'right')[] = ['left', 'left', 'left', 'right', 'right', 'left'];
+    const rows = handover.map((h: any) => [
+      h.handoverStatus || h.status || '', h.attorney || h.attorneyName || '',
+      this.formatDate(h.instructionDate || h.handoverDate || h.date),
+      this.formatCurrency(Number(h.handoverAmount || h.amount || 0)),
+      this.formatCurrency(Number(h.legalFees || h.fees || 0)),
+      h.reference || h.caseNumber || '',
+    ]);
+    this.exportService.exportPdf(this.getExportOpts('Handover', 'HANDOVER REPORT'), headers, rows, aligns);
+  }
+
+  exportRatesCsv(): void {
+    const data = this.tabData();
+    const rates = data?.rates || data?.ratesDetails || [];
+    if (!rates.length) { this.toast.show('No rates data to export', 'error'); return; }
+    const headers = ['Description', 'Rate Code', 'Tariff', 'Annual Rate', 'Monthly Rate', 'Market Value', 'Rebate'];
+    const rows = rates.map((r: any) => [
+      r.description || r.rateDescription || '', r.rateCode || r.code || '',
+      r.tariff || r.tariffCode || '', r.annualRate || r.annual || '',
+      r.monthlyRate || r.monthly || '', r.marketValue || '', r.rebate || r.rebateAmount || '',
+    ]);
+    this.exportService.exportCsv(this.getExportOpts('Rates', 'RATES & VALUATION REPORT'), headers, rows);
+    this.toast.show('Rates exported', 'success');
+  }
+
+  exportDebitOrdersCsv(): void {
+    const data = this.tabData();
+    const orders = data?.debitOrders || [];
+    if (!orders.length) { this.toast.show('No debit order data to export', 'error'); return; }
+    const headers = ['Bank Name', 'Account Number', 'Deduction Amount', 'Start Date', 'End Date', 'Status'];
+    const rows = orders.map((o: any) => [
+      o.bankName || o.bank || '', o.bankAccountNumber || o.accountNo || '',
+      Number(o.deductionAmount || o.amount || 0),
+      this.formatDate(o.startDate || o.dateFrom), this.formatDate(o.endDate || o.dateTo),
+      o.status || '',
+    ]);
+    this.exportService.exportCsv(this.getExportOpts('Debit_Orders', 'DEBIT ORDERS REPORT'), headers, rows);
+    this.toast.show('Debit orders exported', 'success');
+  }
+
+  exportClearanceCsv(): void {
+    const data = this.tabData();
+    const clearance = data?.clearances || data?.clearance || [];
+    if (!clearance.length) { this.toast.show('No clearance data to export', 'error'); return; }
+    const headers = ['Application No', 'Date', 'Status', 'Expiry Date', 'Type', 'Applicant'];
+    const rows = clearance.map((c: any) => [
+      c.applicationNo || c.clearanceNo || c.certificateNo || '',
+      this.formatDate(c.applicationDate || c.date), c.status || c.clearanceStatus || '',
+      this.formatDate(c.expiryDate || c.expiry), c.type || c.clearanceType || '',
+      c.applicant || c.applicantName || '',
+    ]);
+    this.exportService.exportCsv(this.getExportOpts('Clearance', 'CLEARANCE CERTIFICATES REPORT'), headers, rows);
+    this.toast.show('Clearance data exported', 'success');
+  }
+
+  exportDebtorNotesCsv(): void {
+    const data = this.tabData();
+    const notes = data?.notes || data?.debtorNotes || [];
+    if (!notes.length) { this.toast.show('No debtor notes to export', 'error'); return; }
+    const headers = ['Date', 'User', 'Category', 'Note'];
+    const rows = notes.map((n: any) => [
+      this.formatDate(n.noteDate || n.date || n.createdDate),
+      n.userName || n.user || n.capturer || '', n.category || n.noteType || '',
+      n.noteContent || n.note || n.notes || '',
+    ]);
+    this.exportService.exportCsv(this.getExportOpts('Debtor_Notes', 'DEBTOR NOTES REPORT'), headers, rows);
+    this.toast.show('Debtor notes exported', 'success');
+  }
+
+  exportSection129Csv(): void {
+    const data = this.tabData();
+    const records = data?.section129 || [];
+    if (!records.length) { this.toast.show('No Section 129 data to export', 'error'); return; }
+    const headers = ['Notice Type', 'Issue Date', 'Delivery Method', 'Status', 'Amount', 'Attorney', 'Financial Year'];
+    const rows = records.map((r: any) => [
+      r.noticeType || r.type || '', this.formatDate(r.issueDate || r.noticeDate || r.date || r.createdDate),
+      r.deliveryMethod || r.deliveryType || '', r.proofOfDeliveryStatus || r.status || '',
+      Number(r.qualifyingAmount || r.amount || r.noticeAmount || 0),
+      r.attorney || '', r.financialYear || r.billingPeriod || '',
+    ]);
+    this.exportService.exportCsv(this.getExportOpts('Section_129', 'SECTION 129 NOTICES REPORT'), headers, rows);
+    this.toast.show('Section 129 data exported', 'success');
+  }
+
+  exportSection129Pdf(): void {
+    const data = this.tabData();
+    const records = data?.section129 || [];
+    if (!records.length) { this.toast.show('No Section 129 data to export', 'error'); return; }
+    const headers = ['Notice Type', 'Issue Date', 'Delivery', 'Status', 'Amount', 'Attorney', 'FY'];
+    const aligns: ('left' | 'right')[] = ['left', 'left', 'left', 'left', 'right', 'left', 'left'];
+    const rows = records.map((r: any) => [
+      r.noticeType || r.type || '', this.formatDate(r.issueDate || r.noticeDate || r.date || r.createdDate),
+      r.deliveryMethod || r.deliveryType || '', r.proofOfDeliveryStatus || r.status || '',
+      this.formatCurrency(Number(r.qualifyingAmount || r.amount || r.noticeAmount || 0)),
+      r.attorney || '', r.financialYear || r.billingPeriod || '',
+    ]);
+    this.exportService.exportPdf(this.getExportOpts('Section_129', 'SECTION 129 NOTICES REPORT'), headers, rows, aligns);
+  }
+
+  exportNotificationsCsv(): void {
+    const data = this.tabData();
+    const notifications = data?.notifications || data?.accountNotifications || data?.propertyNotifications || [];
+    if (!notifications.length) { this.toast.show('No notifications to export', 'error'); return; }
+    const headers = ['Date', 'Type', 'Method', 'Recipient', 'Subject', 'Status'];
+    const rows = notifications.map((n: any) => [
+      this.formatDate(n.sentDate || n.date || n.createdDate),
+      n.notificationType || n.type || '', n.deliveryMethod || n.method || '',
+      n.recipient || n.emailAddress || n.phoneNumber || '',
+      n.subject || n.title || '', n.status || n.deliveryStatus || '',
+    ]);
+    this.exportService.exportCsv(this.getExportOpts('Notifications', 'NOTIFICATIONS REPORT'), headers, rows);
+    this.toast.show('Notifications exported', 'success');
+  }
+
+  exportIncentivesCsv(): void {
+    const data = this.tabData();
+    const incentives = data?.incentives || [];
+    if (!incentives.length) { this.toast.show('No incentive data to export', 'error'); return; }
+    const headers = ['Scheme', 'Qualification Date', 'Benefit Amount', 'Status', 'Description'];
+    const rows = incentives.map((i: any) => [
+      i.schemeName || i.incentiveScheme || i.scheme || '',
+      this.formatDate(i.qualificationDate || i.date),
+      Number(i.benefitAmount || i.amount || 0), i.status || '',
+      i.description || i.notes || '',
+    ]);
+    this.exportService.exportCsv(this.getExportOpts('Incentives', 'INCENTIVES REPORT'), headers, rows);
+    this.toast.show('Incentives exported', 'success');
+  }
+
+  exportIndigentCsv(): void {
+    const data = this.tabData();
+    const indigent = data?.indigent || data?.attpHistory || [];
+    if (!indigent.length) { this.toast.show('No indigent data to export', 'error'); return; }
+    const headers = ['Application Date', 'Subsidy Type', 'Expiry Date', 'Status', 'Description'];
+    const rows = indigent.map((i: any) => [
+      this.formatDate(i.applicationDate || i.date || i.startDate),
+      i.subsidyType || i.type || i.applicationStatus || '',
+      this.formatDate(i.expiryDate || i.endDate),
+      i.status || i.applicationStatus || '', i.description || i.notes || '',
+    ]);
+    this.exportService.exportCsv(this.getExportOpts('Indigent_Subsidy', 'INDIGENT SUBSIDY REPORT'), headers, rows);
+    this.toast.show('Indigent data exported', 'success');
   }
 }

@@ -169,16 +169,52 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {}
 
+  loadingMore = signal(false);
+  loadProgress = signal('');
+
   async loadData(): Promise<void> {
     this.loading.set(true);
     this.error.set('');
+    this.loadProgress.set('');
     try {
-      const allItems: BankReconPosItem[] = [];
-      let currentPage = 1;
       const pageSize = 200;
-      const maxPages = 10;
+      const result: any = await firstValueFrom(
+        this.api.post('/api/platinum/direct-deposit-allocation/get-bank-recon-positem-list', {
+          page: 1,
+          pageSize,
+          orderby: 'dateOfTransaction',
+          shortDirection: 'desc',
+        })
+      );
 
-      while (currentPage <= maxPages) {
+      const firstPageItems = this.extractItems(result);
+      const serverTotal = result?.totalCount ?? firstPageItems.length;
+
+      this.items.set(firstPageItems);
+      this.totalCount.set(serverTotal);
+      this.selectedItems.set(new Set());
+      this.page.set(1);
+      this.loading.set(false);
+
+      if (firstPageItems.length < serverTotal && firstPageItems.length >= pageSize) {
+        this.loadRemainingPages(firstPageItems, pageSize, serverTotal);
+      }
+    } catch (e: any) {
+      this.error.set(e?.error?.message || e?.message || 'Failed to load deposits');
+      this.toast.error('Failed to load deposits');
+      this.loading.set(false);
+    }
+  }
+
+  private async loadRemainingPages(initialItems: BankReconPosItem[], pageSize: number, serverTotal: number): Promise<void> {
+    this.loadingMore.set(true);
+    const allItems = [...initialItems];
+    let currentPage = 2;
+    const maxPages = 10;
+
+    try {
+      while (currentPage <= maxPages && allItems.length < serverTotal) {
+        this.loadProgress.set(`Loading page ${currentPage}...`);
         const result: any = await firstValueFrom(
           this.api.post('/api/platinum/direct-deposit-allocation/get-bank-recon-positem-list', {
             page: currentPage,
@@ -188,34 +224,31 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
           })
         );
 
-        const pageItems: BankReconPosItem[] = Array.isArray(result?.items)
-          ? result.items
-          : Array.isArray(result)
-            ? result
-            : Array.isArray(result?.value)
-              ? result.value
-              : Array.isArray(result?.data)
-                ? result.data
-                : [];
-
+        const pageItems = this.extractItems(result);
         if (pageItems.length === 0) break;
         allItems.push(...pageItems);
-
-        const totalCount = result?.totalCount ?? pageItems.length;
-        if (allItems.length >= totalCount) break;
+        this.items.set([...allItems]);
+        this.totalCount.set(allItems.length);
         currentPage++;
       }
-
-      this.items.set(allItems);
-      this.totalCount.set(allItems.length);
-      this.selectedItems.set(new Set());
-      this.page.set(1);
     } catch (e: any) {
-      this.error.set(e?.error?.message || e?.message || 'Failed to load deposits');
-      this.toast.error('Failed to load deposits');
-    } finally {
-      this.loading.set(false);
+      console.error('[deposits] Background page load failed at page', currentPage, e);
+      this.toast.show(`Loaded ${allItems.length} of ~${serverTotal} deposits (some pages failed)`, 'info');
     }
+    this.loadingMore.set(false);
+    this.loadProgress.set('');
+  }
+
+  private extractItems(result: any): BankReconPosItem[] {
+    return Array.isArray(result?.items)
+      ? result.items
+      : Array.isArray(result)
+        ? result
+        : Array.isArray(result?.value)
+          ? result.value
+          : Array.isArray(result?.data)
+            ? result.data
+            : [];
   }
 
   sort(field: SortField): void {

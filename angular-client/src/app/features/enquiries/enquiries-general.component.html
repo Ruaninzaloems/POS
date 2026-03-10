@@ -378,6 +378,10 @@
         @if (activeTab() === 'balance') {
           <div class="tab-panel" data-testid="balance-debt-panel">
             @if (getBalanceItems().length > 0) {
+              <div class="export-toolbar">
+                <button class="export-btn export-csv" (click)="exportBalanceCsv()" data-testid="button-export-balance-csv">📥 Excel/CSV</button>
+                <button class="export-btn export-pdf" (click)="exportBalancePdf()" data-testid="button-export-balance-pdf">🖨️ Print/PDF</button>
+              </div>
               <div class="debt-table-section">
                 <div class="debt-table-header">
                   <span class="debt-table-title">Total Balance/Debt</span>
@@ -455,6 +459,10 @@
                 <p class="empty-text">No linked accounts found for this property</p>
               </div>
             } @else {
+              <div class="export-toolbar">
+                <button class="export-btn export-csv" (click)="exportPropertyDebtCsv()" data-testid="button-export-propdebt-csv">📥 Excel/CSV</button>
+                <button class="export-btn export-pdf" (click)="exportPropertyDebtPdf()" data-testid="button-export-propdebt-pdf">🖨️ Print/PDF</button>
+              </div>
               @if (propDebtTotals()) {
                 <div class="propdebt-summary">
                   <div class="propdebt-summary-title">Property-Level Debt Summary</div>
@@ -594,6 +602,10 @@
         @if (activeTab() === 'services') {
           <div class="tab-panel" data-testid="services-panel">
             @if (getServicesList().length > 0 || (tabData()?.additionalBilling || []).length > 0 || (tabData()?.additionalInfo || []).length > 0) {
+              <div class="export-toolbar">
+                <button class="export-btn export-csv" (click)="exportServicesCsv()" data-testid="button-export-services-csv">📥 Excel/CSV</button>
+                <button class="export-btn export-pdf" (click)="exportServicesPdf()" data-testid="button-export-services-pdf">🖨️ Print/PDF</button>
+              </div>
               <div class="svc-sections">
                 @if (getFilteredServices('metered').length > 0) {
                   <div class="debt-table-section">
@@ -928,6 +940,9 @@
         @if (activeTab() === 'contact') {
           <div class="tab-panel" data-testid="contact-info-tab">
             @if (tabData()?.contact) {
+              <div class="export-toolbar">
+                <button class="export-btn export-csv" (click)="exportContactCsv()" data-testid="button-export-contact-csv">📥 Excel/CSV</button>
+              </div>
               <div class="contact-page-title">Consumer Contact Details</div>
 
               <div class="acct-section-card">
@@ -1111,6 +1126,10 @@
         @if (activeTab() === 'handover') {
           <div class="tab-panel" data-testid="handover-tab">
             @if (tabData()?.info) {
+              <div class="export-toolbar">
+                <button class="export-btn export-csv" (click)="exportHandoverCsv()" data-testid="button-export-handover-csv">📥 Excel/CSV</button>
+                <button class="export-btn export-pdf" (click)="exportHandoverPdf()" data-testid="button-export-handover-pdf">🖨️ Print/PDF</button>
+              </div>
               <div class="detail-section">
                 <div class="section-header-bar">➡️ Handover Information</div>
                 @for (item of normalizeArray(tabData()?.info); track $index) {
@@ -1159,7 +1178,10 @@
         @if (activeTab() === 'transactions') {
           <div class="tab-panel" data-testid="transactions-tab">
             @if ((tabData()?.transactions || []).length > 0) {
-              <!-- Stats Summary Cards -->
+              <div class="export-toolbar">
+                <button class="export-btn export-csv" (click)="exportReceiptsCsv()" data-testid="button-export-receipts-csv">📥 Excel/CSV</button>
+                <button class="export-btn export-pdf" (click)="exportReceiptsPdf()" data-testid="button-export-receipts-pdf">🖨️ Print/PDF</button>
+              </div>
               <div class="rcpt-stats-row">
                 <div class="rcpt-stat-card rcpt-stat-total">
                   <div class="rcpt-stat-value">R {{ formatCurrency(getReceiptStats().total) }}</div>
@@ -1579,6 +1601,10 @@
         @if (activeTab() === 'deposits') {
           <div class="tab-panel" data-testid="deposits-tab">
             @if ((tabData()?.deposits || []).length > 0) {
+              <div class="export-toolbar">
+                <button class="export-btn export-csv" (click)="exportDepositsCsv()" data-testid="button-export-deposits-csv">📥 Excel/CSV</button>
+                <button class="export-btn export-pdf" (click)="exportDepositsPdf()" data-testid="button-export-deposits-pdf">🖨️ Print/PDF</button>
+              </div>
               <div class="debt-table-section">
                 <div class="debt-table-header">
                   <span class="debt-table-title">Deposit</span>
@@ -1759,6 +1785,10 @@
         @if (activeTab() === 'payment-plans') {
           <div class="tab-panel" data-testid="payment-plans-tab">
             @if ((tabData()?.plans || []).length > 0) {
+              <div class="export-toolbar">
+                <button class="export-btn export-csv" (click)="exportPaymentPlansCsv()" data-testid="button-export-plans-csv">📥 Excel/CSV</button>
+                <button class="export-btn export-pdf" (click)="exportPaymentPlansPdf()" data-testid="button-export-plans-pdf">🖨️ Print/PDF</button>
+              </div>
               <div class="detail-section">
                 <div class="section-header-bar">📅 Payment Plans - Capital Cost</div>
                 <div class="data-table-wrapper">
@@ -1802,6 +1832,9 @@
         @if (activeTab() === 'incentives') {
           <div class="tab-panel" data-testid="incentives-tab">
             @if ((tabData()?.incentives || []).length > 0) {
+              <div class="export-toolbar">
+                <button class="export-btn export-csv" (click)="exportIncentivesCsv()" data-testid="button-export-incentives-csv">📥 Excel/CSV</button>
+              </div>
               @for (item of tabData()?.incentives || []; track $index) {
                 <div class="detail-section">
                   <div class="section-header-bar">🎁 Payment Incentive</div>
@@ -1825,6 +1858,11 @@
 
         @if (activeTab() === 'notifications') {
           <div class="tab-panel" data-testid="notifications-tab">
+            @if ((tabData()?.notifications || tabData()?.accountNotifications || tabData()?.propertyNotifications || []).length > 0) {
+              <div class="export-toolbar">
+                <button class="export-btn export-csv" (click)="exportNotificationsCsv()" data-testid="button-export-notifications-csv">📥 Excel/CSV</button>
+              </div>
+            }
             <div class="comm-compose-section">
               <div class="comm-compose-header">
                 <div class="comm-compose-title-row">
@@ -2101,6 +2139,9 @@
         @if (activeTab() === 'clearance') {
           <div class="tab-panel" data-testid="clearance-tab">
             @if ((tabData()?.clearances || []).length > 0) {
+              <div class="export-toolbar">
+                <button class="export-btn export-csv" (click)="exportClearanceCsv()" data-testid="button-export-clearance-csv">📥 Excel/CSV</button>
+              </div>
               <div class="detail-section">
                 <div class="section-header-bar">🛡️ Clearance Certificates</div>
                 <div class="data-table-wrapper">
@@ -2138,6 +2179,9 @@
         @if (activeTab() === 'debtor-notes') {
           <div class="tab-panel" data-testid="debtor-notes-tab">
             @if ((tabData()?.notes || []).length > 0) {
+              <div class="export-toolbar">
+                <button class="export-btn export-csv" (click)="exportDebtorNotesCsv()" data-testid="button-export-notes-csv">📥 Excel/CSV</button>
+              </div>
               <div class="detail-section">
                 <div class="section-header-bar">📝 Debtor Notes</div>
                 <div class="data-table-wrapper">
@@ -2174,7 +2218,10 @@
 
         @if (activeTab() === 'section129') {
           <div class="tab-panel" data-testid="section129-tab">
-
+            <div class="export-toolbar">
+              <button class="export-btn export-csv" (click)="exportSection129Csv()" data-testid="button-export-s129-csv">📥 Excel/CSV</button>
+              <button class="export-btn export-pdf" (click)="exportSection129Pdf()" data-testid="button-export-s129-pdf">🖨️ Print/PDF</button>
+            </div>
             @if (s129Insights()) {
               <div class="cons-insights-row" style="margin-bottom: 1rem;">
                 <div class="cons-insight-card s129-card">
@@ -2295,6 +2342,10 @@
         @if (activeTab() === 'linked-accounts') {
           <div class="tab-panel" data-testid="linked-accounts-tab">
             @if ((tabData()?.linkedAccounts || []).length > 0) {
+              <div class="export-toolbar">
+                <button class="export-btn export-csv" (click)="exportLinkedAccountsCsv()" data-testid="button-export-linked-csv">📥 Excel/CSV</button>
+                <button class="export-btn export-pdf" (click)="exportLinkedAccountsPdf()" data-testid="button-export-linked-pdf">🖨️ Print/PDF</button>
+              </div>
               <div class="detail-section">
                 <div class="section-header-bar">🏢 Linked Accounts</div>
                 <div class="data-table-wrapper">
@@ -2332,6 +2383,9 @@
         @if (activeTab() === 'debit-orders') {
           <div class="tab-panel" data-testid="debit-orders-tab">
             @if ((tabData()?.debitOrders || []).length > 0) {
+              <div class="export-toolbar">
+                <button class="export-btn export-csv" (click)="exportDebitOrdersCsv()" data-testid="button-export-debitorders-csv">📥 Excel/CSV</button>
+              </div>
               <div class="detail-section">
                 <div class="section-header-bar">🏦 Debit Orders</div>
                 <div class="data-table-wrapper">
@@ -2373,7 +2427,9 @@
         @if (activeTab() === 'rates') {
           <div class="tab-panel" data-testid="rates-tab">
             @if (tabData()?.ratesDetails || (tabData()?.allBalanceItems || []).length > 0 || tabData()?.propertyDetails || (tabData()?.ratesHistory || []).length > 0 || (tabData()?.ratesBalanceItems || []).length > 0 || (tabData()?.ratesServiceItems || []).length > 0) {
-
+              <div class="export-toolbar">
+                <button class="export-btn export-csv" (click)="exportRatesCsv()" data-testid="button-export-rates-csv">📥 Excel/CSV</button>
+              </div>
               @if (tabData()?.propertyDetails) {
                 <div class="detail-section">
                   <div class="section-header-bar">🏠 Property Information</div>
@@ -2632,6 +2688,9 @@
 
         @if (activeTab() === 'indigent') {
           <div class="tab-panel" data-testid="indigent-tab">
+            <div class="export-toolbar">
+              <button class="export-btn export-csv" (click)="exportIndigentCsv()" data-testid="button-export-indigent-csv">📥 Excel/CSV</button>
+            </div>
             @if (indigentInsights()) {
               <div class="cons-insights-row" style="margin-bottom: 1rem;">
                 <div class="cons-insight-card ind-card">
@@ -2723,6 +2782,9 @@
         @if (activeTab() === 'services-meters') {
           <div class="tab-panel" data-testid="meters-tab">
             @if ((tabData()?.meters || []).length > 0 || (tabData()?.prepaidMeters || []).length > 0) {
+              <div class="export-toolbar">
+                <button class="export-btn export-csv" (click)="exportMetersCsv()" data-testid="button-export-meters-csv">📥 Excel/CSV</button>
+              </div>
               <div class="meter-sections">
 
                 <div class="debt-table-section">
@@ -3031,6 +3093,12 @@
         @if (activeTab() === 'consumption') {
           <div class="tab-panel" data-testid="consumption-tab">
             @if ((tabData()?.meters || []).length > 0) {
+              @if (consumptionHistory().length > 0) {
+                <div class="export-toolbar">
+                  <button class="export-btn export-csv" (click)="exportConsumptionCsv()" data-testid="button-export-consumption-csv">📥 Excel/CSV</button>
+                  <button class="export-btn export-pdf" (click)="exportConsumptionPdf()" data-testid="button-export-consumption-pdf">🖨️ Print/PDF</button>
+                </div>
+              }
               <div class="cons-layout">
                 <div class="cons-meter-sidebar">
                   <div class="cons-sidebar-title">Meters on Account</div>
@@ -3599,6 +3667,10 @@
         @if (activeTab() === 'billed-vs-paid') {
           <div class="tab-panel" data-testid="tab-billed-vs-paid">
             @if (tabData()?.billedVsPaid?.length || tabData()?.balance?.length) {
+              <div class="export-toolbar">
+                <button class="export-btn export-csv" (click)="exportBilledVsPaidCsv()" data-testid="button-export-bvp-csv">📥 Excel/CSV</button>
+                <button class="export-btn export-pdf" (click)="exportBilledVsPaidPdf()" data-testid="button-export-bvp-pdf">🖨️ Print/PDF</button>
+              </div>
               <div class="bvp-dashboard">
 
                 <div class="bvp-hero-row">
