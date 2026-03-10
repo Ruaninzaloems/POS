@@ -1120,11 +1120,19 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           break;
 
         case 'txn-detailed':
-          const finYearForDetail = this.userFinYear();
-          const txnDetailResult = await firstValueFrom(
-            this.api.get<any>(`/api/platinum/billing-enquiry/transaction-history/${accountId}`, finYearForDetail ? { finYear: finYearForDetail } : undefined)
-          );
-          data = { transactions: this.normalizeArray(txnDetailResult) };
+          try {
+            const finYearForDetail = this.userFinYear();
+            const txnDetailResult = await firstValueFrom(
+              this.api.get<any>(`/api/platinum/billing-enquiry/transaction-history/${accountId}`, finYearForDetail ? { finYear: finYearForDetail } : undefined)
+            );
+            const txnArr = this.normalizeArray(txnDetailResult);
+            if (txnArr.length > 0) {
+              console.log('[txn-detailed] sample keys:', Object.keys(txnArr[0]), 'sample:', JSON.stringify(txnArr[0]).substring(0, 500));
+            }
+            data = { transactions: txnArr };
+          } catch {
+            data = { transactions: [] };
+          }
           break;
 
         case 'txn-summary':
