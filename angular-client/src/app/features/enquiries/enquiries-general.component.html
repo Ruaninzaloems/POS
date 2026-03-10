@@ -199,22 +199,59 @@
         @if (activeTab() === 'balance') {
           <div class="tab-panel" data-testid="balance-debt-panel">
             @if (getBalanceItems().length > 0) {
-              <div class="balance-overview">
-                @for (item of getBalanceItems(); track $index) {
-                  <div class="balance-card">
-                    <div class="balance-card-header">
-                      <span class="balance-service-name">{{ item.serviceDescription || item.serviceDesc || 'Service' }}</span>
-                    </div>
-                    <div class="balance-card-body">
-                      <div class="balance-row"><span>Current</span><span class="mono">R {{ formatCurrency(item.current || 0) }}</span></div>
-                      <div class="balance-row"><span>30 Days</span><span class="mono">R {{ formatCurrency(item.days30 || item['30days'] || 0) }}</span></div>
-                      <div class="balance-row"><span>60 Days</span><span class="mono">R {{ formatCurrency(item.days60 || item['60days'] || 0) }}</span></div>
-                      <div class="balance-row"><span>90 Days</span><span class="mono">R {{ formatCurrency(item.days90 || item['90days'] || 0) }}</span></div>
-                      <div class="balance-row"><span>120+ Days</span><span class="mono">R {{ formatCurrency(item.days120 || item['120days'] || 0) }}</span></div>
-                      <div class="balance-row total"><span>Total Outstanding</span><span class="mono bold">R {{ formatCurrency(item.totalOutStanding || item.totalOutstandingAmount || item.totalBalance || 0) }}</span></div>
-                    </div>
-                  </div>
-                }
+              <div class="debt-table-section">
+                <div class="debt-table-header">
+                  <span class="debt-table-title">Total Balance/Debt</span>
+                  <span class="debt-table-count">{{ getBalanceItems().length }} service{{ getBalanceItems().length !== 1 ? 's' : '' }}</span>
+                </div>
+                <div class="debt-table-wrapper">
+                  <table class="debt-table" data-testid="table-balance-debt">
+                    <thead>
+                      <tr>
+                        <th class="debt-th-desc">Service Description</th>
+                        <th class="debt-th-amt">Total Outstanding</th>
+                        <th class="debt-th-amt">New Charge</th>
+                        <th class="debt-th-amt">Current Account</th>
+                        <th class="debt-th-amt">30 Days</th>
+                        <th class="debt-th-amt">60 Days</th>
+                        <th class="debt-th-amt">90 Days</th>
+                        <th class="debt-th-amt">120 Days</th>
+                        <th class="debt-th-amt">150 Days</th>
+                        <th class="debt-th-amt">180+ Days</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (item of getBalanceItems(); track $index) {
+                        <tr>
+                          <td class="debt-td-desc">{{ item.serviceDescription || item.serviceDesc || item.description || item.serviceTypeDesc || 'Service' }}</td>
+                          <td class="debt-td-amt" [class.debt-negative]="getDebtVal(item, 'totalOutStanding') < 0">{{ formatDebtAmt(getDebtVal(item, 'totalOutStanding')) }}</td>
+                          <td class="debt-td-amt" [class.debt-negative]="getDebtVal(item, 'newCharge') < 0">{{ formatDebtAmt(getDebtVal(item, 'newCharge')) }}</td>
+                          <td class="debt-td-amt" [class.debt-negative]="getDebtVal(item, 'current') < 0">{{ formatDebtAmt(getDebtVal(item, 'current')) }}</td>
+                          <td class="debt-td-amt" [class.debt-negative]="getDebtVal(item, 'days30') < 0">{{ formatDebtAmt(getDebtVal(item, 'days30')) }}</td>
+                          <td class="debt-td-amt" [class.debt-negative]="getDebtVal(item, 'days60') < 0">{{ formatDebtAmt(getDebtVal(item, 'days60')) }}</td>
+                          <td class="debt-td-amt" [class.debt-negative]="getDebtVal(item, 'days90') < 0">{{ formatDebtAmt(getDebtVal(item, 'days90')) }}</td>
+                          <td class="debt-td-amt" [class.debt-negative]="getDebtVal(item, 'days120') < 0">{{ formatDebtAmt(getDebtVal(item, 'days120')) }}</td>
+                          <td class="debt-td-amt" [class.debt-negative]="getDebtVal(item, 'days150') < 0">{{ formatDebtAmt(getDebtVal(item, 'days150')) }}</td>
+                          <td class="debt-td-amt" [class.debt-negative]="getDebtVal(item, 'days180') < 0">{{ formatDebtAmt(getDebtVal(item, 'days180')) }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                    <tfoot>
+                      <tr class="debt-totals-row">
+                        <td class="debt-td-desc debt-total-label"></td>
+                        <td class="debt-td-amt debt-total-val" [class.debt-negative]="getDebtColumnTotal('totalOutStanding') < 0">{{ formatDebtAmt(getDebtColumnTotal('totalOutStanding')) }}</td>
+                        <td class="debt-td-amt debt-total-val" [class.debt-negative]="getDebtColumnTotal('newCharge') < 0">{{ formatDebtAmt(getDebtColumnTotal('newCharge')) }}</td>
+                        <td class="debt-td-amt debt-total-val" [class.debt-negative]="getDebtColumnTotal('current') < 0">{{ formatDebtAmt(getDebtColumnTotal('current')) }}</td>
+                        <td class="debt-td-amt debt-total-val" [class.debt-negative]="getDebtColumnTotal('days30') < 0">{{ formatDebtAmt(getDebtColumnTotal('days30')) }}</td>
+                        <td class="debt-td-amt debt-total-val" [class.debt-negative]="getDebtColumnTotal('days60') < 0">{{ formatDebtAmt(getDebtColumnTotal('days60')) }}</td>
+                        <td class="debt-td-amt debt-total-val" [class.debt-negative]="getDebtColumnTotal('days90') < 0">{{ formatDebtAmt(getDebtColumnTotal('days90')) }}</td>
+                        <td class="debt-td-amt debt-total-val" [class.debt-negative]="getDebtColumnTotal('days120') < 0">{{ formatDebtAmt(getDebtColumnTotal('days120')) }}</td>
+                        <td class="debt-td-amt debt-total-val" [class.debt-negative]="getDebtColumnTotal('days150') < 0">{{ formatDebtAmt(getDebtColumnTotal('days150')) }}</td>
+                        <td class="debt-td-amt debt-total-val" [class.debt-negative]="getDebtColumnTotal('days180') < 0">{{ formatDebtAmt(getDebtColumnTotal('days180')) }}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
               </div>
             } @else {
               <div class="empty-state">

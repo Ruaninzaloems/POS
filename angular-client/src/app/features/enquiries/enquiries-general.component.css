@@ -487,6 +487,104 @@
   font-size: 0.75rem;
   color: var(--pos-text-muted);
 }
+.debt-table-section { margin-top: 0.5rem; }
+.debt-table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: #F8F9FB;
+  border: 1px solid #E5E7EB;
+  border-radius: 0.5rem 0.5rem 0 0;
+}
+.debt-table-title {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--platinum-primary, #0f2b46);
+}
+.debt-table-count {
+  font-size: 0.75rem;
+  color: var(--pos-text-muted);
+}
+.debt-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid #E5E7EB;
+  border-top: none;
+  border-radius: 0 0 0.5rem 0.5rem;
+  background: #fff;
+}
+.debt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  min-width: 900px;
+}
+.debt-table thead { background: #F8F9FB; }
+.debt-th-desc {
+  text-align: left;
+  padding: 0.625rem 0.75rem;
+  font-weight: 700;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--platinum-primary, #0f2b46);
+  border-bottom: 2px solid #E5E7EB;
+  min-width: 160px;
+  position: sticky;
+  left: 0;
+  background: #F8F9FB;
+  z-index: 2;
+}
+.debt-th-amt {
+  text-align: right;
+  padding: 0.625rem 0.5rem;
+  font-weight: 700;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--platinum-primary, #0f2b46);
+  border-bottom: 2px solid #E5E7EB;
+  white-space: nowrap;
+  min-width: 90px;
+}
+.debt-td-desc {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  font-weight: 500;
+  color: var(--platinum-primary, #0f2b46);
+  border-bottom: 1px solid #F0F0F0;
+  position: sticky;
+  left: 0;
+  background: #fff;
+  z-index: 1;
+}
+.debt-td-amt {
+  text-align: right;
+  padding: 0.5rem 0.5rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.8rem;
+  color: #374151;
+  border-bottom: 1px solid #F0F0F0;
+  white-space: nowrap;
+}
+.debt-negative { color: #DC2626; }
+.debt-table tbody tr:hover { background: #F7F9FC; }
+.debt-table tbody tr:hover .debt-td-desc { background: #F7F9FC; }
+.debt-totals-row {
+  background: #F8F9FB;
+  border-top: 2px solid var(--platinum-primary, #0f2b46);
+}
+.debt-totals-row td { border-bottom: none; }
+.debt-total-label {
+  font-weight: 700;
+  color: var(--platinum-primary, #0f2b46);
+  background: #F8F9FB !important;
+}
+.debt-total-val {
+  font-weight: 700 !important;
+  color: var(--platinum-primary, #0f2b46) !important;
+}
+
 .summary-source-tag {
   font-size: 0.7rem;
   font-weight: 600;

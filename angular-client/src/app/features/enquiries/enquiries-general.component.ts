@@ -1450,6 +1450,38 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     URL.revokeObjectURL(url);
   }
 
+  getDebtVal(item: any, field: string): number {
+    const fieldMap: Record<string, string[]> = {
+      'totalOutStanding': ['totalOutStanding', 'totalOutstandingAmount', 'totalOutstanding', 'totalBalance', 'total'],
+      'newCharge': ['newCharge', 'newCharges', 'new_charge'],
+      'current': ['current', 'currentAmount', 'currentAccount', 'current_account'],
+      'days30': ['days30', '30days', 'thirtyDays', 'thirty_days'],
+      'days60': ['days60', '60days', 'sixtyDays', 'sixty_days'],
+      'days90': ['days90', '90days', 'ninetyDays', 'ninety_days'],
+      'days120': ['days120', '120days', 'hundredTwentyDays', 'hundred_twenty_days'],
+      'days150': ['days150', '150days', 'hundredFiftyDays', 'hundred_fifty_days'],
+      'days180': ['days180', '180days', 'overHundredEighty', 'hundredEightyPlusDays', 'over_180_days'],
+    };
+    const candidates = fieldMap[field] || [field];
+    for (const key of candidates) {
+      if (item[key] !== undefined && item[key] !== null) return Number(item[key]) || 0;
+    }
+    return 0;
+  }
+
+  getDebtColumnTotal(field: string): number {
+    return this.getBalanceItems().reduce((sum: number, item: any) => sum + this.getDebtVal(item, field), 0);
+  }
+
+  formatDebtAmt(val: number): string {
+    if (val === 0) return '0.00';
+    const abs = Math.abs(val);
+    const parts = abs.toFixed(2).split('.');
+    const intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    const formatted = intPart + '.' + parts[1];
+    return val < 0 ? `(${formatted})` : formatted;
+  }
+
   isSummaryTotalRow(row: any): boolean {
     const desc = this.getSummaryDescription(row).toLowerCase();
     return desc === 'total' || desc === 'closing balance' || desc === 'receipts' || desc === 'opening balance';
