@@ -394,21 +394,20 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   }
 
   private async enrichAutocompleteResults(results: SearchResult[], token: number): Promise<void> {
-    const toEnrich = results.filter((r: any) => r._fromAutocomplete);
-    if (toEnrich.length === 0) return;
+    const autocompleteItems = results.filter((r: any) => r._fromAutocomplete);
+    const allItems = results.slice(0, 10);
 
-    const enrichPromises = toEnrich.slice(0, 5).map(async (item) => {
+    const enrichPromises = autocompleteItems.slice(0, 5).map(async (item) => {
       try {
         const id = item.account_ID || item.accountID;
-        const [details, balance] = await Promise.allSettled([
+        const detailResult = await Promise.allSettled([
           this.withTimeout(firstValueFrom(this.api.post<any>('/api/platinum/billing-enquiry/enquiry-results', { accountID: String(id) })), 8000),
-          this.withTimeout(firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-balance/${id}`)), 6000),
         ]);
 
         if (this.quickSearchToken !== token) return;
 
-        if (details.status === 'fulfilled') {
-          const arr = this.normalizeArray(details.value);
+        if (detailResult[0].status === 'fulfilled') {
+          const arr = this.normalizeArray(detailResult[0].value);
           if (arr.length > 0) {
             const full = arr[0];
             if (full.name || full.surname_Company) item.name = full.name || full.surname_Company;
@@ -429,17 +428,28 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             delete (item as any)._fromAutocomplete;
           }
         }
-        if (balance.status === 'fulfilled') {
-          const bal = balance.value;
-          const amount = bal?.totalBalance ?? bal?.balance ?? bal?.outstandingAmount;
-          if (amount != null) {
-            item.outStandingAmount = amount;
-          }
+      } catch {}
+    });
+
+    const balancePromises = allItems.map(async (item) => {
+      try {
+        const id = item.account_ID || item.accountID;
+        if (!id) return;
+        const bal = await this.withTimeout(
+          firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-balance/${id}`)), 6000
+        );
+        if (this.quickSearchToken !== token) return;
+        if (Array.isArray(bal)) {
+          const total = bal.reduce((sum: number, s: any) => sum + (s.totalOutStanding ?? s.totalOutstandingAmount ?? 0), 0);
+          item.outStandingAmount = total;
+        } else if (bal) {
+          const amount = bal.totalOutStanding ?? bal.totalBalance ?? bal.balance ?? bal.outstandingAmount ?? bal.outStandingAmount;
+          if (amount != null) item.outStandingAmount = Number(amount);
         }
       } catch {}
     });
 
-    await Promise.allSettled(enrichPromises);
+    await Promise.allSettled([...enrichPromises, ...balancePromises]);
     if (this.quickSearchToken === token) {
       this.dropdownResults.set([...this.dropdownResults()]);
     }
