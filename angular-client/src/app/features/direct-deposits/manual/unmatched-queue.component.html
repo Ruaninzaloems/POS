@@ -161,9 +161,9 @@
                 <td class="cell-note">
                   <span class="cell-truncate">{{ item.note || '-' }}</span>
                   @if (hasAccountClue(item) && !item.billingAllocated) {
-                    <span class="clue-badge" title="Account number detected in description">
+                    <span class="clue-badge" [title]="'Detected: ' + getClueTypeBadge(item)">
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                      Match
+                      {{ getClueTypeBadge(item) }}
                     </span>
                   }
                 </td>
@@ -237,7 +237,7 @@
 
   @if (detailOpen() && selectedItem()) {
     <div class="dialog-overlay" (click)="closeDetail()">
-      <div class="dialog-panel" (click)="$event.stopPropagation()">
+      <div class="dialog-panel dialog-panel-wide" (click)="$event.stopPropagation()">
         <div class="dialog-header">
           <div class="dialog-header-info">
             <h3>Deposit #{{ selectedItem()!.posItem_ID }}</h3>
@@ -296,16 +296,91 @@
             </div>
           </div>
 
+          @if (parsedClues()) {
+            <div class="detail-section clues-section">
+              <h4 class="detail-section-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                Parsed Clues
+              </h4>
+              <div class="clues-grid">
+                @if (parsedClues()!.accountNumbers.length > 0) {
+                  <div class="clue-item">
+                    <span class="clue-type-label">Account Numbers</span>
+                    <div class="clue-values">
+                      @for (acc of parsedClues()!.accountNumbers; track acc) {
+                        <span class="clue-tag clue-tag-blue">{{ acc }}</span>
+                      }
+                    </div>
+                  </div>
+                }
+                @if (parsedClues()!.erfNumbers.length > 0) {
+                  <div class="clue-item">
+                    <span class="clue-type-label">ERF Numbers</span>
+                    <div class="clue-values">
+                      @for (erf of parsedClues()!.erfNumbers; track erf.erf) {
+                        <span class="clue-tag clue-tag-green">ERF {{ erf.erf }}{{ erf.portion ? '/' + erf.portion : '' }}{{ erf.area ? ' ' + erf.area : '' }}</span>
+                      }
+                    </div>
+                  </div>
+                }
+                @if (parsedClues()!.meterNumbers.length > 0) {
+                  <div class="clue-item">
+                    <span class="clue-type-label">Meter Numbers</span>
+                    <div class="clue-values">
+                      @for (mtr of parsedClues()!.meterNumbers; track mtr) {
+                        <span class="clue-tag clue-tag-purple">{{ mtr }}</span>
+                      }
+                    </div>
+                  </div>
+                }
+                @if (parsedClues()!.oldAccountCodes.length > 0) {
+                  <div class="clue-item">
+                    <span class="clue-type-label">Old Account Codes</span>
+                    <div class="clue-values">
+                      @for (code of parsedClues()!.oldAccountCodes; track code) {
+                        <span class="clue-tag clue-tag-amber">{{ code }}</span>
+                      }
+                    </div>
+                  </div>
+                }
+                @if (parsedClues()!.nameSearchTerms.length > 0) {
+                  <div class="clue-item">
+                    <span class="clue-type-label">Name Terms</span>
+                    <div class="clue-values">
+                      @for (name of parsedClues()!.nameSearchTerms; track name) {
+                        <span class="clue-tag clue-tag-teal">{{ name }}</span>
+                      }
+                    </div>
+                  </div>
+                }
+                @if (parsedClues()!.serviceType) {
+                  <div class="clue-item">
+                    <span class="clue-type-label">Service Type</span>
+                    <span class="clue-tag clue-tag-blue">{{ parsedClues()!.serviceType }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
           @if (!selectedItem()!.billingAllocated) {
             <div class="detail-section">
               <h4 class="detail-section-title">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                 Suggested Matches
+                @if (suggestedMatches().length > 0) {
+                  <span class="match-count-badge">{{ suggestedMatches().length }}</span>
+                }
               </h4>
               @if (matchLoading()) {
                 <div class="matches-loading">
                   <div class="spinner-sm"></div>
-                  <span>Searching for account matches...</span>
+                  <div class="match-loading-info">
+                    <span>Searching for account matches...</span>
+                    @if (matchProgress()) {
+                      <span class="match-progress-text">{{ matchProgress() }}</span>
+                    }
+                  </div>
                 </div>
               } @else if (suggestedMatches().length === 0) {
                 <div class="matches-empty">
@@ -318,16 +393,46 @@
                     <div class="match-card" [attr.data-testid]="'match-' + match.accountId">
                       <div class="match-info">
                         <div class="match-top">
+                          <span class="match-type-icon" [title]="match.matchType">{{ getMatchTypeIcon(match.matchType) }}</span>
                           <span class="match-acc mono">{{ match.accountNo }}</span>
                           <span class="confidence-badge" [ngClass]="getConfidenceBadgeClass(match.confidence)">{{ match.confidence }}%</span>
+                          @if (match.matchSources && match.matchSources.length > 1) {
+                            <span class="multi-source-badge" [title]="'Confirmed by: ' + match.matchSources.join(', ')">{{ match.matchSources.length }} sources</span>
+                          }
                         </div>
                         <div class="match-name">{{ match.name }}</div>
                         <div class="match-detail">{{ match.matchDetail }}</div>
+                        @if (match.address) {
+                          <div class="match-address">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                            {{ match.address }}{{ match.town ? ', ' + match.town : '' }}
+                          </div>
+                        }
+                        @if (match.erfNumber || match.sgNumber) {
+                          <div class="match-property-info">
+                            @if (match.erfNumber) {
+                              <span class="match-tag">ERF {{ match.erfNumber }}</span>
+                            }
+                            @if (match.sgNumber) {
+                              <span class="match-tag">SG: {{ match.sgNumber }}</span>
+                            }
+                            @if (match.suburb) {
+                              <span class="match-tag">{{ match.suburb }}</span>
+                            }
+                          </div>
+                        }
                         @if (match.outstandingAmount) {
                           <div class="match-outstanding">Outstanding: {{ formatCurrency(match.outstandingAmount) }}</div>
                         }
+                        @if (match.matchReasoning && match.matchReasoning.length > 0) {
+                          <div class="match-reasoning">
+                            @for (reason of match.matchReasoning.slice(0, 3); track reason) {
+                              <div class="reasoning-item">{{ reason }}</div>
+                            }
+                          </div>
+                        }
                       </div>
-                      <button class="btn-primary btn-sm" (click)="navigateToAllocate(selectedItem()!)" [attr.data-testid]="'button-allocate-match-' + match.accountId">
+                      <button class="btn-primary btn-sm" (click)="navigateToAllocateWithAccount(selectedItem()!, match)" [attr.data-testid]="'button-allocate-match-' + match.accountId">
                         Allocate
                       </button>
                     </div>

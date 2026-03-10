@@ -115,11 +115,23 @@
       <div class="allocation-panel">
         <div class="search-section card">
           <div class="panel-header">
-            <h3>Search Account</h3>
+            <h3>Search</h3>
           </div>
           <div class="panel-body">
+            <div class="scope-selector" data-testid="scope-selector">
+              @for (opt of scopeOptions; track opt.value) {
+                <button
+                  class="scope-btn"
+                  [class.scope-btn-active]="searchScope() === opt.value"
+                  (click)="setSearchScope(opt.value)"
+                  [attr.data-testid]="'scope-' + opt.value">
+                  {{ opt.label }}
+                </button>
+              }
+            </div>
+
             <div class="search-input-wrapper">
-              <input type="text" class="form-input" placeholder="Search by account number, name, or ID..."
+              <input type="text" class="form-input" [placeholder]="searchPlaceholder()"
                 [ngModel]="searchQuery()" (ngModelChange)="onSearchInput($event)"
                 data-testid="input-account-search" />
               @if (searching()) {
@@ -127,11 +139,19 @@
               }
             </div>
 
+            @if (detectedSearchType() && searchQuery().length >= 2 && (searchScope() === 'ALL' || searchScope() === 'ACCOUNT' || searchScope() === 'PREPAID')) {
+              <div class="detected-type-hint" data-testid="text-detected-type">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                Searching as: <strong>{{ detectedSearchType()!.label }}</strong>
+              </div>
+            }
+
             @if (dropdownOpen() && searchResults().length > 0) {
               <div class="search-dropdown" data-testid="dropdown-search-results">
-                @for (result of searchResults(); track result.accountId) {
-                  <div class="search-result-item" (click)="selectSearchResult(result)" [attr.data-testid]="'result-' + result.accountId">
+                @for (result of searchResults(); track result.accountNo + result.type) {
+                  <div class="search-result-item" (click)="selectSearchResult(result)" [attr.data-testid]="'result-' + result.accountId + '-' + result.type">
                     <div class="result-main">
+                      <span class="badge" [ngClass]="getResultTypeClass(result.type)">{{ result.type }}</span>
                       <span class="font-mono font-semibold">{{ result.accountNo }}</span>
                       <span class="result-name">{{ result.name }}</span>
                     </div>
@@ -139,17 +159,180 @@
                       @if (result.outstandingAmount) {
                         <span class="text-muted">Owing: {{ formatCurrency(result.outstandingAmount) }}</span>
                       }
-                      <span class="badge badge-info">{{ result.type }}</span>
+                      @if (result.description) {
+                        <span class="text-muted result-desc">{{ result.description }}</span>
+                      }
                     </div>
                   </div>
                 }
               </div>
             }
 
+            @if (loadingInstitution()) {
+              <div class="loading-inline" data-testid="loading-institution">
+                <div class="spinner-sm"></div>
+                <span>Loading institution accounts...</span>
+              </div>
+            }
+
+            @if (loadingClearanceDetails()) {
+              <div class="loading-inline" data-testid="loading-clearance">
+                <div class="spinner-sm"></div>
+                <span>Loading clearance details...</span>
+              </div>
+            }
+
+            @if (clearanceLoadError() && !selectedClearance() && !loadingClearanceDetails()) {
+              <div class="clearance-error" data-testid="text-clearance-error">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span>{{ clearanceLoadError() }}</span>
+              </div>
+            }
+
+            @if (selectedClearance()) {
+              <div class="clearance-panel" data-testid="clearance-panel">
+                <div class="clearance-header">
+                  <div class="clearance-header-left">
+                    <div class="clearance-icon">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B45309" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></svg>
+                    </div>
+                    <div>
+                      <div class="font-semibold" data-testid="clearance-schedule-no">{{ selectedClearance()!.scheduleNo }}</div>
+                      <div class="text-muted" style="font-size:0.75rem">
+                        {{ selectedClearance()!.linkedAccounts.length }} account{{ selectedClearance()!.linkedAccounts.length !== 1 ? 's' : '' }} | Total Due: <span class="font-mono font-semibold">{{ formatCurrency(selectedClearance()!.totalDue) }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="clearance-header-actions">
+                    <button class="btn-outline btn-sm" (click)="clearanceAutoFill()" data-testid="btn-auto-fill-clearance">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                      Auto-fill
+                    </button>
+                    <button class="btn-close-sm" (click)="selectedClearance.set(null)" data-testid="btn-close-clearance">✕</button>
+                  </div>
+                </div>
+
+                @if (selectedClearance()!.clearanceData) {
+                  <div class="clearance-property-details" data-testid="clearance-property-details">
+                    <div class="clearance-detail-item">
+                      <span class="clearance-detail-label">Account</span>
+                      <span class="clearance-detail-value">{{ selectedClearance()!.clearanceData!.accountName || '—' }}</span>
+                    </div>
+                    <div class="clearance-detail-item">
+                      <span class="clearance-detail-label">SG Number</span>
+                      <span class="clearance-detail-value font-mono">{{ selectedClearance()!.clearanceData!.sgNumber || '—' }}</span>
+                    </div>
+                    <div class="clearance-detail-item">
+                      <span class="clearance-detail-label">Address</span>
+                      <span class="clearance-detail-value">{{ selectedClearance()!.clearanceData!.locationAddress || '—' }}</span>
+                    </div>
+                    <div class="clearance-detail-item">
+                      <span class="clearance-detail-label">Expiry</span>
+                      <span class="clearance-detail-value">{{ formatDate(selectedClearance()!.clearanceData!.expiryDate || '') }}</span>
+                    </div>
+                    <div class="clearance-detail-item">
+                      <span class="clearance-detail-label">Paid</span>
+                      <span class="clearance-detail-value font-mono text-success">{{ formatCurrency(selectedClearance()!.clearanceData!.paid || 0) }}</span>
+                    </div>
+                    <div class="clearance-detail-item">
+                      <span class="clearance-detail-label">Remaining</span>
+                      <span class="clearance-detail-value font-mono" style="color:#B45309">{{ formatCurrency(selectedClearance()!.clearanceData!.remaining || 0) }}</span>
+                    </div>
+                  </div>
+                }
+
+                <div class="clearance-sections">
+                  @if (selectedClearance()!.linkedAccounts.length > 0) {
+                    <div class="clearance-linked-accounts">
+                      <span class="section-label">Linked Accounts</span>
+                      <div class="linked-accounts-list">
+                        @for (acc of selectedClearance()!.linkedAccounts; track acc.accountNo) {
+                          <span class="badge badge-warning font-mono">{{ acc.accountNo }}{{ acc.name ? ' - ' + acc.name : '' }}</span>
+                        }
+                      </div>
+                    </div>
+                  }
+
+                  @if (selectedClearance()!.section118_1_Breakdown.length > 0) {
+                    <div class="clearance-section-block">
+                      <div class="section-header-row">
+                        <span class="section-label">Section 118(1)</span>
+                        <span class="section-label">Due / Allocate</span>
+                      </div>
+                      @for (item of selectedClearance()!.section118_1_Breakdown; track trackByIndex($index); let idx = $index) {
+                        <div class="clearance-item-row" [attr.data-testid]="'clearance-item-118_1_' + item.accountNo + '_' + idx">
+                          <div class="clearance-item-desc">
+                            <span class="item-name" [title]="item.item">{{ item.item }}</span>
+                            @if (item.accountNo) {
+                              <span class="item-account font-mono">{{ item.accountNo }}</span>
+                            }
+                          </div>
+                          <span class="item-due font-mono">{{ formatCurrency(item.amount) }}</span>
+                          <div class="amount-input-group clearance-amount-input">
+                            <span class="currency-prefix">R</span>
+                            <input type="number" class="form-input amount-input" step="0.01" min="0" [max]="item.amount"
+                              placeholder="0.00"
+                              [ngModel]="clearanceAllocations()['118_1_' + item.accountNo + '_' + idx] || ''"
+                              (ngModelChange)="updateClearanceAllocation('118_1_' + item.accountNo + '_' + idx, $event)"
+                              [attr.data-testid]="'input-118_1_' + item.accountNo + '_' + idx" />
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
+
+                  @if (selectedClearance()!.section118_3_Breakdown.length > 0) {
+                    <div class="clearance-section-block">
+                      <div class="section-header-row">
+                        <span class="section-label">Section 118(3)</span>
+                        <span class="section-label">Due / Allocate</span>
+                      </div>
+                      @for (item of selectedClearance()!.section118_3_Breakdown; track trackByIndex($index); let idx = $index) {
+                        <div class="clearance-item-row" [attr.data-testid]="'clearance-item-118_3_' + item.accountNo + '_' + idx">
+                          <div class="clearance-item-desc">
+                            <span class="item-name" [title]="item.item">{{ item.item }}</span>
+                            @if (item.accountNo) {
+                              <span class="item-account font-mono">{{ item.accountNo }}</span>
+                            }
+                          </div>
+                          <span class="item-due font-mono">{{ formatCurrency(item.amount) }}</span>
+                          <div class="amount-input-group clearance-amount-input">
+                            <span class="currency-prefix">R</span>
+                            <input type="number" class="form-input amount-input" step="0.01" min="0" [max]="item.amount"
+                              placeholder="0.00"
+                              [ngModel]="clearanceAllocations()['118_3_' + item.accountNo + '_' + idx] || ''"
+                              (ngModelChange)="updateClearanceAllocation('118_3_' + item.accountNo + '_' + idx, $event)"
+                              [attr.data-testid]="'input-118_3_' + item.accountNo + '_' + idx" />
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+
+                <div class="clearance-footer">
+                  <div class="clearance-summary">
+                    <span>Allocated: <strong class="font-mono" [class.text-success]="Math.abs(clearanceRemaining()) < 0.01" [class.text-danger]="clearanceAllocTotal() > selectedClearance()!.totalDue" data-testid="clearance-alloc-total">{{ formatCurrency(clearanceAllocTotal()) }}</strong></span>
+                    @if (Math.abs(clearanceRemaining()) >= 0.01) {
+                      <span class="text-muted" style="font-size:0.75rem">Remaining: <span class="font-mono font-semibold">{{ formatCurrency(clearanceRemaining()) }}</span></span>
+                    }
+                    @if (Math.abs(clearanceRemaining()) < 0.01 && clearanceAllocTotal() > 0) {
+                      <span class="badge badge-success" style="font-size:0.625rem">Fully matched</span>
+                    }
+                  </div>
+                  <button class="btn-primary" (click)="addClearanceLines()" data-testid="btn-add-clearance-lines">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Add Lines
+                  </button>
+                </div>
+              </div>
+            }
+
             @if (selectedAccount()) {
               <div class="selected-account card" data-testid="selected-account">
                 <div class="selected-header">
-                  <div>
+                  <div class="selected-info">
+                    <span class="badge" [ngClass]="getResultTypeClass(selectedAccount()!.type)">{{ selectedAccount()!.type }}</span>
                     <span class="font-mono font-semibold">{{ selectedAccount()!.accountNo }}</span>
                     <span class="selected-name">{{ selectedAccount()!.name }}</span>
                   </div>
@@ -173,6 +356,13 @@
           </div>
         </div>
 
+        <div class="csv-import-bar">
+          <button class="btn-outline csv-import-btn" (click)="openCsvDialog()" data-testid="button-import-csv">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+            Import CSV
+          </button>
+        </div>
+
         @if (lines().length > 0) {
           <div class="lines-section card">
             <div class="panel-header">
@@ -194,7 +384,7 @@
                     <tr [attr.data-testid]="'row-line-' + i">
                       <td class="font-mono">{{ line.accountNo }}</td>
                       <td>{{ line.name }}</td>
-                      <td><span class="badge badge-info">{{ line.allocationType }}</span></td>
+                      <td><span class="badge" [ngClass]="getResultTypeClass(line.allocationType)">{{ line.allocationType }}</span></td>
                       <td class="text-right font-mono font-semibold">{{ formatCurrency(line.amount) }}</td>
                       <td class="text-center">
                         <button class="btn-danger btn-sm icon-btn" (click)="removeLine(i)" [attr.data-testid]="'button-remove-' + i">
@@ -220,6 +410,200 @@
               Submit Allocation
             }
           </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <input type="file" #csvFileInput accept=".csv,.txt" class="csv-file-hidden" (change)="onCsvFileSelected($event)" data-testid="input-csv-file" />
+
+  @if (csvDialogOpen()) {
+    <div class="csv-overlay" (click)="closeCsvDialog()">
+      <div class="csv-dialog card" (click)="$event.stopPropagation()" data-testid="dialog-csv-import">
+        <div class="csv-dialog-header">
+          <div class="csv-dialog-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--platinum-accent, #2563EB)" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+            <h3>Import File</h3>
+          </div>
+          <button class="btn-close-sm" (click)="closeCsvDialog()" data-testid="button-close-csv-dialog">✕</button>
+        </div>
+        <p class="csv-dialog-desc">
+          @if (csvStep() === 'upload') { Upload a CSV file with account numbers and amounts to bulk-add allocation lines. }
+          @if (csvStep() === 'preview') { {{ csvParsedRows().length }} row(s) parsed from the file. Review and proceed to look up accounts. }
+          @if (csvStep() === 'lookup') { Looking up account information from Platinum API... }
+          @if (csvStep() === 'done') { Lookup complete. Add the found accounts to your allocation lines. }
+        </p>
+
+        <div class="csv-dialog-body">
+          @if (csvStep() === 'upload') {
+            <div class="csv-upload-zone" (click)="triggerCsvFileInput()" data-testid="csv-dropzone">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <p class="csv-upload-label">Click to select a file</p>
+              <p class="csv-upload-hint">Supported formats: .csv, .txt</p>
+            </div>
+            <div class="csv-format-info">
+              <p class="csv-format-title">Expected file format:</p>
+              <p class="csv-format-example">AccountNumber, Amount</p>
+              <p class="csv-format-example">100234, 500.00</p>
+              <p class="csv-format-example">100567, 1200.50</p>
+              <p class="csv-format-note">Headers are auto-detected. CSV supports comma, semicolon, and tab delimiters.</p>
+              <div class="csv-template-section">
+                <p class="csv-format-title">Download template:</p>
+                <button class="btn-outline btn-sm" (click)="downloadCsvTemplate(); $event.stopPropagation()" data-testid="button-download-template-csv">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  CSV (.csv)
+                </button>
+              </div>
+            </div>
+          }
+
+          @if (csvStep() === 'preview') {
+            <div class="csv-preview-header">
+              <span class="csv-preview-count">{{ csvParsedRows().length }} row(s) from <span class="font-mono csv-filename">{{ csvFileName() }}</span></span>
+              <button class="btn-outline btn-sm" (click)="csvChangeFile()" data-testid="button-change-file">✕ Change file</button>
+            </div>
+            <div class="csv-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="csv-col-num">#</th>
+                    <th>Account No</th>
+                    <th class="text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of getCsvPreviewPage(); track trackByIndex($index); let i = $index) {
+                    <tr>
+                      <td class="csv-col-num text-muted">{{ getCsvPageStart() + i + 1 }}</td>
+                      <td class="font-mono">{{ row.accountNo }}</td>
+                      <td class="text-right font-mono font-semibold">R {{ row.amount.toFixed(2) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            @if (csvParsedRows().length > CSV_PAGE_SIZE) {
+              <div class="csv-pagination">
+                <span class="text-muted csv-page-info">Showing {{ getCsvPageStart() + 1 }}–{{ Math.min(getCsvPageStart() + CSV_PAGE_SIZE, csvParsedRows().length) }} of {{ csvParsedRows().length }}</span>
+                <div class="csv-page-btns">
+                  <button class="btn-outline btn-sm" [disabled]="csvPage() <= 1" (click)="csvPrevPage()">‹</button>
+                  <span class="text-muted csv-page-info">Page {{ csvPage() }} of {{ csvPreviewTotalPages() }}</span>
+                  <button class="btn-outline btn-sm" [disabled]="csvPage() >= csvPreviewTotalPages()" (click)="csvNextPage()">›</button>
+                </div>
+              </div>
+            }
+            <div class="csv-summary-bar">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+              <span>Total import amount: <strong class="font-mono">R {{ csvTotalImportAmount().toFixed(2) }}</strong> | Remaining to allocate: <strong class="font-mono">R {{ remaining().toFixed(2) }}</strong></span>
+            </div>
+          }
+
+          @if (csvStep() === 'lookup' || csvStep() === 'done') {
+            @if (csvProcessing()) {
+              <div class="csv-progress-section">
+                <div class="csv-progress-header">
+                  <div class="csv-progress-label">
+                    <span class="spinner-sm"></span>
+                    <span>Looking up accounts... {{ csvDoneCount() }} / {{ csvLookupResults().length }}</span>
+                  </div>
+                  <button class="btn-outline btn-sm csv-stop-btn" (click)="csvCancelLookup()" data-testid="button-cancel-lookup">✕ Stop</button>
+                </div>
+                <div class="csv-progress-bar-outer">
+                  <div class="csv-progress-bar-fill" [style.width.%]="csvLookupProgressPct()"></div>
+                </div>
+                <div class="csv-progress-pct">{{ csvLookupProgressPct() }}%</div>
+              </div>
+            }
+            @if (csvStep() === 'done') {
+              <div class="csv-stats-grid">
+                <div class="csv-stat csv-stat-found">
+                  <div class="csv-stat-value">{{ csvFoundCount() }}</div>
+                  <div class="csv-stat-label">Found</div>
+                </div>
+                <div class="csv-stat csv-stat-notfound">
+                  <div class="csv-stat-value">{{ csvNotFoundCount() }}</div>
+                  <div class="csv-stat-label">Not Found</div>
+                </div>
+                <div class="csv-stat csv-stat-error">
+                  <div class="csv-stat-value">{{ csvErrorCount() }}</div>
+                  <div class="csv-stat-label">Errors</div>
+                </div>
+              </div>
+            }
+            <div class="csv-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="csv-col-num">#</th>
+                    <th>Account</th>
+                    <th>Name</th>
+                    <th class="text-right">Amount</th>
+                    <th class="text-center csv-col-status">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of getCsvLookupPage(); track trackByIndex($index); let i = $index) {
+                    <tr [class.csv-row-found]="row.status === 'found'" [class.csv-row-fail]="row.status === 'not_found' || row.status === 'error'">
+                      <td class="csv-col-num text-muted">{{ getCsvPageStart() + i + 1 }}</td>
+                      <td class="font-mono" style="font-size:0.75rem">{{ row.accountNo }}</td>
+                      <td style="font-size:0.75rem; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ row.name || row.errorMsg || '-' }}</td>
+                      <td class="text-right font-mono font-semibold" style="font-size:0.75rem">R {{ row.amount.toFixed(2) }}</td>
+                      <td class="text-center csv-col-status">
+                        @if (row.status === 'pending') { <span class="text-muted" style="font-size:0.75rem">Pending</span> }
+                        @if (row.status === 'loading') { <span class="spinner-sm"></span> }
+                        @if (row.status === 'found') {
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        }
+                        @if (row.status === 'not_found') {
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        }
+                        @if (row.status === 'error') {
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            @if (csvLookupResults().length > CSV_PAGE_SIZE) {
+              <div class="csv-pagination">
+                <span class="text-muted csv-page-info">Showing {{ getCsvPageStart() + 1 }}–{{ Math.min(getCsvPageStart() + CSV_PAGE_SIZE, csvLookupResults().length) }} of {{ csvLookupResults().length }}</span>
+                <div class="csv-page-btns">
+                  <button class="btn-outline btn-sm" [disabled]="csvPage() <= 1" (click)="csvPrevPage()">‹</button>
+                  <span class="text-muted csv-page-info">Page {{ csvPage() }} of {{ csvLookupTotalPages() }}</span>
+                  <button class="btn-outline btn-sm" [disabled]="csvPage() >= csvLookupTotalPages()" (click)="csvNextPage()">›</button>
+                </div>
+              </div>
+            }
+          }
+        </div>
+
+        <div class="csv-dialog-footer">
+          @if (csvStep() === 'upload') {
+            <button class="btn-outline" (click)="closeCsvDialog()">Cancel</button>
+          }
+          @if (csvStep() === 'preview') {
+            <button class="btn-outline" (click)="closeCsvDialog()">Cancel</button>
+            <button class="btn-primary csv-lookup-btn" (click)="csvLookupAccounts()" data-testid="button-csv-lookup">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              Look Up Accounts
+            </button>
+          }
+          @if (csvStep() === 'lookup') {
+            <button class="btn-outline csv-stop-btn" (click)="csvCancelLookup()">
+              ✕ Stop Lookup
+            </button>
+          }
+          @if (csvStep() === 'done') {
+            <button class="btn-outline" (click)="closeCsvDialog()">Cancel</button>
+            @if (csvFoundCount() > 0) {
+              <button class="btn-primary csv-add-btn" (click)="csvAddToLines()" data-testid="button-csv-add">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add {{ csvFoundCount() }} Account(s)
+              </button>
+            }
+          }
         </div>
       </div>
     </div>

@@ -131,8 +131,14 @@
                       <button class="btn-outline icon-btn-sm" (click)="openDetails(item)" title="View Details" [attr.data-testid]="'button-view-' + item.directDepositJob_ID">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                       </button>
+                      @if (isPolling(item.directDepositJob_ID)) {
+                        <span class="polling-indicator" [attr.data-testid]="'polling-' + item.directDepositJob_ID">
+                          <span class="spinner-sm"></span>
+                          <span class="polling-text">Polling...</span>
+                        </span>
+                      }
                       @if (canRetryJob(item)) {
-                        <button class="btn-outline icon-btn-sm btn-retry" (click)="handleRetry(item)" [disabled]="retrying() === item.directDepositJob_ID" title="Retry" [attr.data-testid]="'button-retry-' + item.directDepositJob_ID">
+                        <button class="btn-outline icon-btn-sm btn-retry" (click)="handleRetry(item)" [disabled]="retrying() === item.directDepositJob_ID || isPolling(item.directDepositJob_ID)" title="Retry" [attr.data-testid]="'button-retry-' + item.directDepositJob_ID">
                           @if (retrying() === item.directDepositJob_ID) {
                             <span class="spinner-sm"></span>
                           } @else {

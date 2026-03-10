@@ -59,11 +59,14 @@ export class AllocationHistoryComponent implements OnInit {
   page = signal(1);
   pageSize = 20;
   retrying = signal<number | null>(null);
+  pollingJobs = signal<Set<number>>(new Set());
 
   detailOpen = signal(false);
   selectedTx = signal<AllocationRecord | null>(null);
   detailsLoading = signal(false);
   jobAccountDetails = signal<any[] | null>(null);
+
+  private posItemNoteCache: Record<number, string> = {};
 
   totalPages = computed(() => Math.max(1, Math.ceil(this.totalCount() / this.pageSize)));
 
@@ -132,7 +135,39 @@ export class AllocationHistoryComponent implements OnInit {
         this.api.post('/api/platinum/bulk-progress/get-bulk-allocation-list', body)
       );
       const items: AllocationRecord[] = Array.isArray(result?.items || result?.data) ? (result?.items || result?.data) : [];
-      this.allocationData.set(items);
+
+      const needsNote = items.filter(item =>
+        (!item.paymentReference || item.paymentReference === '0') &&
+        item.posItemID > 0 &&
+        !this.posItemNoteCache[item.posItemID]
+      );
+      const uniquePosItemIds = [...new Set(needsNote.map(i => i.posItemID))];
+
+      if (uniquePosItemIds.length > 0) {
+        try {
+          const notes: Record<string, string> = await firstValueFrom(
+            this.api.post('/api/platinum/bank-statement-notes', { posItemIds: uniquePosItemIds })
+          );
+          if (notes) {
+            Object.entries(notes).forEach(([id, note]) => {
+              if (note && note !== '0') {
+                this.posItemNoteCache[Number(id)] = note;
+              }
+            });
+          }
+        } catch (err) {
+          console.error('[AllocationHistory] Failed to fetch POS item notes:', err);
+        }
+      }
+
+      const enriched = items.map(item => {
+        if ((!item.paymentReference || item.paymentReference === '0') && this.posItemNoteCache[item.posItemID]) {
+          return { ...item, paymentReference: this.posItemNoteCache[item.posItemID] };
+        }
+        return item;
+      });
+
+      this.allocationData.set(enriched);
       this.totalCount.set(result?.totalCount || items.length);
     } catch (e: any) {
       this.toast.error('Failed to load allocation history');
@@ -159,11 +194,44 @@ export class AllocationHistoryComponent implements OnInit {
           ? { ...item, job_Status: 'Resubmitted' }
           : item
       ));
+
+      this.pollingJobs.update(prev => { const n = new Set(prev); n.add(tx.directDepositJob_ID); return n; });
+
+      let pollAttempts = 0;
+      const maxPolls = 20;
+      while (pollAttempts < maxPolls) {
+        await new Promise(r => setTimeout(r, 3000));
+        try {
+          const details: any = await firstValueFrom(
+            this.api.get(`/api/platinum/direct-deposit-errors/job-details/${tx.directDepositJob_ID}`)
+          );
+          const newStatus = details?.job_Status || details?.status;
+          if (newStatus && newStatus !== 'Resubmitted' && newStatus !== 'Processing') {
+            this.allocationData.update(prev => prev.map(item =>
+              item.directDepositJob_ID === tx.directDepositJob_ID
+                ? { ...item, job_Status: newStatus, allocatedAmount: details.allocatedAmount ?? item.allocatedAmount, records: details.records ?? item.records }
+                : item
+            ));
+            this.pollingJobs.update(prev => { const n = new Set(prev); n.delete(tx.directDepositJob_ID); return n; });
+            this.toast.success(`Job #${tx.directDepositJob_ID} status: ${newStatus}`);
+            return;
+          }
+        } catch (pollErr: any) {
+          console.warn(`[RetryPoll] Error polling job ${tx.directDepositJob_ID}:`, pollErr?.message);
+        }
+        pollAttempts++;
+      }
+      this.pollingJobs.update(prev => { const n = new Set(prev); n.delete(tx.directDepositJob_ID); return n; });
+      this.toast.info(`Job #${tx.directDepositJob_ID} is still processing. Use Refresh to check status.`);
     } catch (e: any) {
       this.toast.error(e?.error?.message || e?.message || 'Failed to retry allocation job.');
     } finally {
       this.retrying.set(null);
     }
+  }
+
+  isPolling(jobId: number): boolean {
+    return this.pollingJobs().has(jobId);
   }
 
   async openDetails(tx: AllocationRecord): Promise<void> {
@@ -172,22 +240,121 @@ export class AllocationHistoryComponent implements OnInit {
     this.jobAccountDetails.set(null);
     this.detailsLoading.set(true);
     try {
-      const [jobResult, errorResult]: any[] = await Promise.allSettled([
+      const [jobAccountResult, errorAccountResult, importErrorsResult, statusResult] = await Promise.allSettled([
         firstValueFrom(this.api.get(`/api/platinum/bulk-progress/job-account-details/${tx.directDepositJob_ID}`)),
         firstValueFrom(this.api.get(`/api/platinum/direct-deposit-errors/account-details/${tx.directDepositJob_ID}`)),
+        firstValueFrom(this.api.get(`/api/platinum/direct-deposit-allocation/generic-import-errors/${tx.directDepositJob_ID}`)),
+        firstValueFrom(this.api.get(`/api/platinum/direct-deposit-allocation/generic-import-status/${tx.directDepositJob_ID}`)),
       ]);
 
+      const errorMap = new Map<string, string>();
+      if (importErrorsResult.status === 'fulfilled') {
+        const errData: any = importErrorsResult.value;
+        const errList = errData?.errors || (Array.isArray(errData) ? errData : []);
+        errList.forEach((e: any) => {
+          const accNo = e.accountNumber || e.accountNo || e.account_No || '';
+          const msg = e.message || e.errorMessage || e.error || e.failedStep || '';
+          if (accNo && msg) errorMap.set(accNo, msg);
+        });
+      }
+
+      const receiptMap = new Map<string, string>();
+      if (errorAccountResult.status === 'fulfilled') {
+        const errAccts: any = errorAccountResult.value;
+        const errItems = Array.isArray(errAccts) ? errAccts : errAccts?.items || [];
+        errItems.forEach((r: any) => {
+          const accNo = r.accountNumber || r.accountNo || '';
+          const rcpt = String(r.receiptNumber ?? '').trim();
+          if (accNo && rcpt) receiptMap.set(accNo, rcpt);
+        });
+      }
+      if (statusResult.status === 'fulfilled') {
+        const statusData: any = statusResult.value;
+        const statusRows = Array.isArray(statusData?.rows) ? statusData.rows : Array.isArray(statusData) ? statusData : [];
+        statusRows.forEach((r: any) => {
+          const accNo = r.accountNumber || r.accountNo || '';
+          const rcpt = String(r.receiptNumber ?? '').trim();
+          if (accNo && rcpt && !receiptMap.has(accNo)) receiptMap.set(accNo, rcpt);
+        });
+      }
+
       let details: any[] | null = null;
-      if (jobResult.status === 'fulfilled') {
-        const data = jobResult.value;
+
+      if (jobAccountResult.status === 'fulfilled') {
+        const data: any = jobAccountResult.value;
         const items = Array.isArray(data) ? data : data?.items || data?.data || null;
         if (items && items.length > 0) details = items;
       }
-      if (!details && errorResult.status === 'fulfilled') {
-        const data = errorResult.value;
+
+      if (!details && errorAccountResult.status === 'fulfilled') {
+        const data: any = errorAccountResult.value;
         const items = Array.isArray(data) ? data : data?.items || data?.data || null;
         if (items && items.length > 0) details = items;
       }
+
+      if (details) {
+        details = details.map((acc: any) => {
+          const accNo = acc.accountNo || acc.accountNumber || acc.account_No || '';
+          const isFailed = acc.status === 'Error' || acc.isAllocated === false;
+          const merged: any = { ...acc };
+          if (!merged.receiptNumber && !merged.receiptNo) {
+            const rcpt = receiptMap.get(accNo);
+            if (rcpt) merged.receiptNumber = rcpt;
+          }
+          const errMsg = errorMap.get(accNo);
+          if (errMsg && !merged.errorMessage) {
+            merged.errorMessage = errMsg;
+          }
+          if (isFailed && !merged.errorMessage && !errMsg) {
+            merged.errorMessage = 'Allocation failed — error details not available from API. Use the Retry button or check the account manually.';
+          }
+          return merged;
+        });
+
+        const needsNameLookup = details.filter((a: any) => {
+          const name = a.name || a.accountName || a.surname || a.companyName || '';
+          return !name;
+        });
+        if (needsNameLookup.length > 0) {
+          const nameMap = new Map<string, string>();
+          const uniqueAccNos = Array.from(new Set(
+            needsNameLookup.map((a: any) =>
+              (a.accountNo || a.accountNumber || a.account_No || '').replace(/^0+/, '')
+            ).filter(Boolean)
+          ));
+          const batchSize = 10;
+          for (let i = 0; i < uniqueAccNos.length; i += batchSize) {
+            const batch = uniqueAccNos.slice(i, i + batchSize);
+            const lookups = batch.map(async (accNo) => {
+              try {
+                const results: any = await firstValueFrom(
+                  this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: accNo })
+                );
+                const items = Array.isArray(results) ? results : results?.value || [];
+                if (items.length > 0) {
+                  const r = items[0];
+                  const name = r.name || r.ownerName || r.companyName || r.fullName ||
+                    [r.initials, r.lastName].filter(Boolean).join(' ') || '';
+                  if (name) nameMap.set(accNo, name);
+                }
+              } catch (e: any) {
+                console.warn(`[AllocationHistory] Name lookup failed for ${accNo}:`, e?.message);
+              }
+            });
+            await Promise.all(lookups);
+          }
+          if (nameMap.size > 0) {
+            details = details!.map((acc: any) => {
+              const existingName = acc.name || acc.accountName || acc.surname || acc.companyName || '';
+              if (existingName) return acc;
+              const accNo = (acc.accountNo || acc.accountNumber || acc.account_No || '').replace(/^0+/, '');
+              const lookedUpName = nameMap.get(accNo);
+              return lookedUpName ? { ...acc, accountName: lookedUpName } : acc;
+            });
+          }
+        }
+      }
+
       this.jobAccountDetails.set(details);
     } catch (e: any) {
       console.error('Failed to load job details:', e);
