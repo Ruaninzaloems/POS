@@ -1146,6 +1146,42 @@
   line-height: 1.4;
 }
 
+.result-card-addresses {
+  padding: 0.35rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.result-addr-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--pos-text-muted);
+  line-height: 1.3;
+}
+.result-addr-icon { flex-shrink: 0; font-size: 0.7rem; }
+.result-addr-text { word-break: break-word; }
+.result-card-contact {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  padding: 0.3rem 0;
+  font-size: 0.72rem;
+  color: var(--pos-text-muted);
+  border-top: 1px solid rgba(15,43,70,0.05);
+}
+.result-contact-icon { flex-shrink: 0; font-size: 0.7rem; }
+.result-contact-text { white-space: pre-line; word-break: break-word; line-height: 1.4; }
+.contact-cell { max-width: 180px; }
+.contact-cell-text {
+  font-size: 0.72rem;
+  color: var(--pos-text-muted);
+  white-space: pre-line;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
 @media (max-width: 768px) {
   .acct-two-col { grid-template-columns: 1fr; }
   .acct-col:first-child { border-right: none; border-bottom: 1px solid rgba(15,43,70,0.06); }

@@ -2828,16 +2828,34 @@
                 @if (account.unitID) {
                   <span class="meta-tag"><span class="meta-label">Unit:</span> {{ account.unitID }}</span>
                 }
+                @if (account.unitPartitionID) {
+                  <span class="meta-tag"><span class="meta-label">Partition:</span> {{ account.unitPartitionID }}</span>
+                }
                 @if (account.accountType || account.accountDesc) {
                   <span class="meta-tag"><span class="meta-label">Type:</span> {{ account.accountType || account.accountDesc }}</span>
                 }
                 @if (account.oldAccountCode) {
-                  <span class="meta-tag"><span class="meta-label">Old:</span> {{ account.oldAccountCode }}</span>
+                  <span class="meta-tag"><span class="meta-label">Old Code:</span> {{ account.oldAccountCode }}</span>
                 }
               </div>
+              @if (account.deliveryAddress || account.locationAddress || account.address) {
+                <div class="result-card-addresses">
+                  @if (account.deliveryAddress) {
+                    <div class="result-addr-line"><span class="result-addr-icon">📬</span><span class="result-addr-text">{{ account.deliveryAddress.replace('\r\n', ', ') }}</span></div>
+                  }
+                  @if (account.locationAddress || account.address) {
+                    <div class="result-addr-line"><span class="result-addr-icon">📍</span><span class="result-addr-text">{{ (account.locationAddress || account.address || '').replace('\r\n', ', ') }}</span></div>
+                  }
+                </div>
+              }
+              @if (account.contactDetails) {
+                <div class="result-card-contact">
+                  <span class="result-contact-icon">📞</span>
+                  <span class="result-contact-text">{{ account.contactDetails }}</span>
+                </div>
+              }
               <div class="result-card-bottom">
                 <span class="inline-badge" [class.active]="isAccountActive(account)">{{ account.accountStatus || account.statusDesc || '-' }}</span>
-                <span class="result-address">{{ (account.locationAddress || account.address || '-').replace('\r\n', ', ') }}</span>
               </div>
             </div>
           }
@@ -2851,14 +2869,16 @@
                 <tr>
                   <th style="width:40px"></th>
                   <th>Account No</th>
-                  <th>Name</th>
-                  <th>Address</th>
-                  <th>Status</th>
-                  <th>Type</th>
-                  <th class="text-right">Outstanding</th>
-                  <th>SG Number</th>
                   <th>Unit ID</th>
+                  <th>Partition ID</th>
                   <th>Old Code</th>
+                  <th>Type</th>
+                  <th>Name</th>
+                  <th>SG Number / Property Desc.</th>
+                  <th>Delivery Address</th>
+                  <th>Location Address</th>
+                  <th>Contact Details</th>
+                  <th>Status</th>
                   <th style="width:80px"></th>
                 </tr>
               </thead>
@@ -2875,25 +2895,29 @@
                         {{ getAccountNum(account) }}
                       </button>
                     </td>
-                    <td [attr.data-testid]="'text-name-' +  getAccountId(account)  + ''">{{ getAccountName(account) }}</td>
-                    <td class="address-cell" [attr.data-testid]="'text-address-' +  getAccountId(account)  + ''">{{ (account.locationAddress || account.address || account.deliveryAddress || '-').replace('\r\n', ', ') }}</td>
-                    <td><span class="inline-badge" [class.active]="isAccountActive(account)" [attr.data-testid]="'badge-status-' +  getAccountId(account)  + ''">{{ account.accountStatus || account.statusDesc || '-' }}</span></td>
-                    <td><span class="inline-badge outline" [attr.data-testid]="'badge-type-' +  getAccountId(account)  + ''">{{ account.accountType || account.accountDesc || '-' }}</span></td>
-                    <td class="text-right" [attr.data-testid]="'text-outstanding-' +  getAccountId(account)  + ''">
-                      <span class="mono bold" [class.positive]="getOutstanding(account) > 0" [class.negative]="getOutstanding(account) <= 0">
-                        R {{ formatCurrency(getOutstanding(account)) }}
-                      </span>
-                    </td>
-                    <td class="mono muted address-cell" [title]="account.sgNumber ? formatSgBreakdown(account.sgNumber) : ''">{{ account.sgNumber || '-' }}@if (account.sgNumber) {<br><span class="sg-breakdown-sm">{{ formatSgBreakdown(account.sgNumber) }}</span>}</td>
                     <td class="mono muted">{{ account.unitID || '-' }}</td>
+                    <td class="mono muted">{{ account.unitPartitionID || '-' }}</td>
                     <td class="mono muted">{{ account.oldAccountCode || '-' }}</td>
+                    <td><span class="inline-badge outline" [attr.data-testid]="'badge-type-' +  getAccountId(account)  + ''">{{ account.accountType || account.accountDesc || '-' }}</span></td>
+                    <td [attr.data-testid]="'text-name-' +  getAccountId(account)  + ''">{{ getAccountName(account) }}</td>
+                    <td class="mono muted address-cell" [title]="account.sgNumber ? formatSgBreakdown(account.sgNumber) : ''">{{ account.sgNumber || '-' }}@if (account.sgNumber) {<br><span class="sg-breakdown-sm">{{ formatSgBreakdown(account.sgNumber) }}</span>}</td>
+                    <td class="address-cell">{{ (account.deliveryAddress || '-').replace('\r\n', ', ') }}</td>
+                    <td class="address-cell" [attr.data-testid]="'text-address-' +  getAccountId(account)  + ''">{{ (account.locationAddress || account.address || '-').replace('\r\n', ', ') }}</td>
+                    <td class="contact-cell">
+                      @if (account.contactDetails) {
+                        <div class="contact-cell-text">{{ account.contactDetails }}</div>
+                      } @else {
+                        <span class="muted">-</span>
+                      }
+                    </td>
+                    <td><span class="inline-badge" [class.active]="isAccountActive(account)" [attr.data-testid]="'badge-status-' +  getAccountId(account)  + ''">{{ account.accountStatus || account.statusDesc || '-' }}</span></td>
                     <td class="text-center">
                       <button class="btn-sm btn-outline" (click)="selectAccount(account)" [attr.data-testid]="'btn-open-' +  getAccountId(account)  + ''">Open</button>
                     </td>
                   </tr>
                   @if (expandedRowId() === getAccountId(account)) {
                     <tr>
-                      <td colspan="11" class="expanded-content">
+                      <td colspan="13" class="expanded-content">
                         @if (expandedRowLoading()) {
                           <div class="qv-loading">
                             <div class="search-spinner"></div>
