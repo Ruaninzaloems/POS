@@ -1060,6 +1060,72 @@
 .stmt-act-sms:hover { background: rgba(5,150,105,0.06); }
 .stmt-actions-group { align-self: flex-end; }
 
+.acct-section-card {
+  background: #fff;
+  border: 1px solid rgba(15,43,70,0.10);
+  border-radius: 0.5rem;
+  margin-bottom: 0.75rem;
+  overflow: hidden;
+}
+.acct-section-header {
+  background: rgba(15,43,70,0.04);
+  padding: 0.6rem 1rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--platinum-primary, #0f2b46);
+  border-bottom: 1px solid rgba(15,43,70,0.08);
+  letter-spacing: 0.02em;
+}
+.acct-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+.acct-col {
+  padding: 0.5rem 1rem;
+}
+.acct-col:first-child {
+  border-right: 1px solid rgba(15,43,70,0.06);
+}
+.acct-field {
+  display: flex;
+  align-items: baseline;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid rgba(15,43,70,0.04);
+  gap: 0.75rem;
+}
+.acct-field:last-child { border-bottom: none; }
+.acct-field-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--pos-text-muted);
+  min-width: 160px;
+  flex-shrink: 0;
+}
+.acct-field-value {
+  font-size: 0.82rem;
+  color: var(--platinum-primary, #0f2b46);
+  word-break: break-word;
+}
+.acct-highlight { color: var(--platinum-accent, #c9a84c); font-weight: 600; }
+.acct-status-val { font-weight: 600; }
+.acct-status-val.acct-status-active { color: #15803d; }
+.acct-status-pill {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: rgba(15,43,70,0.06);
+  color: var(--pos-text-muted);
+}
+.acct-status-pill.acct-status-active { background: rgba(34,197,94,0.12); color: #15803d; }
+@media (max-width: 768px) {
+  .acct-two-col { grid-template-columns: 1fr; }
+  .acct-col:first-child { border-right: none; border-bottom: 1px solid rgba(15,43,70,0.06); }
+  .acct-field-label { min-width: 130px; }
+}
+
 .s129-card { border-top: 3px solid rgba(245,158,11,0.3); }
 .s129-gen-header { background: linear-gradient(135deg, rgba(15,43,70,0.06) 0%, rgba(245,158,11,0.10) 100%) !important; }
 .s129-tbl-header { background: linear-gradient(135deg, rgba(15,43,70,0.06) 0%, rgba(245,158,11,0.06) 100%) !important; }
