@@ -1518,7 +1518,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           const currentMonth = new Date().toLocaleString('en-US', { month: 'long' });
           const finMonths = this.detailMonths;
           const matchMonth = finMonths.find(m => m === currentMonth);
-          if (!this.detailMonth() && matchMonth) {
+          if (matchMonth) {
             this.detailMonth.set(matchMonth);
           }
           this.loadDetailedTransactions();
