@@ -3854,6 +3854,14 @@
         <!-- Billed vs Paid Tab -->
         @if (activeTab() === 'billed-vs-paid') {
           <div class="tab-panel" data-testid="tab-billed-vs-paid">
+            <div class="bvp-year-toolbar">
+              <label class="bvp-year-label">Financial Year</label>
+              <select class="bvp-year-select" [ngModel]="bvpFinYear()" (ngModelChange)="onBvpYearChange($event)" data-testid="select-bvp-year">
+                @for (yr of bvpAvailableYears(); track yr) {
+                  <option [value]="yr">{{ yr }}</option>
+                }
+              </select>
+            </div>
             @if (tabData()?.billedVsPaid?.length || tabData()?.balance?.length) {
               <div class="export-toolbar">
                 <button class="export-btn export-csv" (click)="exportBilledVsPaidCsv()" data-testid="button-export-bvp-csv">📥 Excel/CSV</button>
@@ -3913,7 +3921,7 @@
                       @for (row of tabData()?.billedVsPaid; track $index) {
                         <div class="bvp-bar-card" [attr.data-testid]="'bvp-service-' + $index">
                           <div class="bvp-bar-header">
-                            <span class="bvp-bar-name">{{ safeStr(row.serviceType || row.serviceTypeDesc || row.description || 'Service ' + ($index + 1)) }}</span>
+                            <span class="bvp-bar-name">{{ safeStr(row.processingMonth || row.month || row.billingMonth || row.period || row.serviceDescription || row.serviceType || 'Period ' + ($index + 1)) }}</span>
                             <span class="bvp-bar-period">{{ safeStr(row.period || row.billingPeriod || row.month || '') }}</span>
                           </div>
                           <div class="bvp-bar-amounts">
@@ -3963,7 +3971,7 @@
                         <tbody>
                           @for (svc of tabData()?.balance; track $index) {
                             <tr class="bvp-aging-row" [attr.data-testid]="'bvp-aging-' + $index">
-                              <td class="bvp-aging-td bvp-aging-name">{{ safeStr(svc.serviceTypeDesc || svc.serviceType || 'Service ' + ($index + 1)) }}</td>
+                              <td class="bvp-aging-td bvp-aging-name">{{ safeStr(svc.serviceDescription || svc.serviceTypeDesc || svc.serviceType || 'Service ' + ($index + 1)) }}</td>
                               <td class="bvp-aging-td bvp-aging-amt">R {{ formatCurrency(svc.current || 0) }}</td>
                               <td class="bvp-aging-td bvp-aging-amt" [class.bvp-overdue]="(svc.days30 || 0) > 0">R {{ formatCurrency(svc.days30 || 0) }}</td>
                               <td class="bvp-aging-td bvp-aging-amt" [class.bvp-overdue]="(svc.days60 || 0) > 0">R {{ formatCurrency(svc.days60 || 0) }}</td>

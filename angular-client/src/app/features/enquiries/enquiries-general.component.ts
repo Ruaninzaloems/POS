@@ -115,6 +115,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   summaryLoading = signal(false);
   summaryError = signal<string | null>(null);
   summaryAvailableYears = signal<string[]>([]);
+
+  bvpFinYear = signal('');
+  bvpAvailableYears = signal<string[]>([]);
   summarySource = signal<'monthly' | 'aging' | ''>('');
 
   detailFinYear = signal('');
@@ -1763,8 +1766,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           break;
 
         case 'billed-vs-paid':
+          this.initBvpYears();
+          if (!this.bvpFinYear()) {
+            this.bvpFinYear.set(this.userFinYear() || this.getCurrentFinYear());
+          }
+          const bvpYear = this.bvpFinYear();
           const [billedVsPaid, billedBalance2] = await Promise.allSettled([
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/billed-vs-paid-amounts/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/billed-vs-paid-amounts`, { accountId: String(accountId), financialYear: bvpYear })),
             this.fetchAccountBalance(accountId),
           ]);
           const bvpArr = billedVsPaid.status === 'fulfilled' ? this.normalizeArray(billedVsPaid.value) : [];
@@ -2172,6 +2180,40 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       years.push(`${y}/${y + 1}`);
     }
     this.summaryAvailableYears.set(years);
+  }
+
+  initBvpYears(): void {
+    if (this.bvpAvailableYears().length > 0) return;
+    const currentFy = this.userFinYear() || this.getCurrentFinYear();
+    const [startYear] = currentFy.split('/').map(Number);
+    const years: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      const y = startYear - i;
+      years.push(`${y}/${y + 1}`);
+    }
+    this.bvpAvailableYears.set(years);
+  }
+
+  async onBvpYearChange(year: string): Promise<void> {
+    this.bvpFinYear.set(year);
+    const acct = this.selectedAccount();
+    const accountId = acct ? this.getAccountId(acct) : null;
+    if (!accountId) return;
+    this.tabLoading.set(true);
+    this.tabError.set(null);
+    try {
+      const [billedVsPaid, billedBalance2] = await Promise.allSettled([
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/billed-vs-paid-amounts`, { accountId: String(accountId), financialYear: year })),
+        this.fetchAccountBalance(accountId),
+      ]);
+      const bvpArr = billedVsPaid.status === 'fulfilled' ? this.normalizeArray(billedVsPaid.value) : [];
+      const balArr = billedBalance2.status === 'fulfilled' ? this.normalizeArray(billedBalance2.value) : [];
+      this.tabData.set({ billedVsPaid: bvpArr, balance: balArr });
+    } catch (e: any) {
+      this.tabError.set(e.message || 'Failed to load billed vs paid data');
+    } finally {
+      this.tabLoading.set(false);
+    }
   }
 
   async loadTransactionSummary(accountId: number, finYear: string): Promise<void> {
@@ -3981,16 +4023,20 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.exportService.exportPdf(this.getExportOpts('Payment_Plans', 'PAYMENT PLANS REPORT'), headers, rows, aligns);
   }
 
+  getBvpRowLabel(r: any): string {
+    return r.processingMonth || r.month || r.billingMonth || r.period || r.serviceDescription || r.serviceType || r.serviceTypeDesc || r.description || '';
+  }
+
   exportBilledVsPaidCsv(): void {
     const rows_data = this.tabData()?.billedVsPaid || [];
     if (!rows_data.length) { this.toast.show('No billed vs paid data to export', 'error'); return; }
-    const headers = ['Service', 'Billed Amount', 'Paid Amount', 'Variance', 'Collection Rate %'];
+    const headers = ['Period', 'Financial Year', 'Billed Amount', 'Paid Amount', 'Variance', 'Collection Rate %'];
     const rows = rows_data.map((r: any) => {
       const billed = this.getBvpRowBilled(r);
       const paid = this.getBvpRowPaid(r);
       const variance = billed - paid;
       const rate = billed > 0 ? Math.round((paid / billed) * 1000) / 10 : 0;
-      return [r.serviceType || r.serviceTypeDesc || r.description || '', billed, paid, variance, rate];
+      return [this.getBvpRowLabel(r), r.financialYear || this.bvpFinYear() || '', billed, paid, variance, rate];
     });
     this.exportService.exportCsv(this.getExportOpts('Billed_vs_Paid', 'BILLED VS PAID REPORT'), headers, rows);
     this.toast.show('Billed vs Paid report exported', 'success');
@@ -3999,14 +4045,14 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   exportBilledVsPaidPdf(): void {
     const rows_data = this.tabData()?.billedVsPaid || [];
     if (!rows_data.length) { this.toast.show('No billed vs paid data to export', 'error'); return; }
-    const headers = ['Service', 'Billed Amount', 'Paid Amount', 'Variance', 'Collection Rate %'];
-    const aligns: ('left' | 'right')[] = ['left', 'right', 'right', 'right', 'right'];
+    const headers = ['Period', 'Financial Year', 'Billed Amount', 'Paid Amount', 'Variance', 'Collection Rate %'];
+    const aligns: ('left' | 'right')[] = ['left', 'left', 'right', 'right', 'right', 'right'];
     const rows = rows_data.map((r: any) => {
       const billed = this.getBvpRowBilled(r);
       const paid = this.getBvpRowPaid(r);
       const variance = billed - paid;
       const rate = billed > 0 ? Math.round((paid / billed) * 1000) / 10 : 0;
-      return [r.serviceType || r.serviceTypeDesc || r.description || '',
+      return [this.getBvpRowLabel(r), r.financialYear || this.bvpFinYear() || '',
         this.formatCurrency(billed), this.formatCurrency(paid),
         this.formatCurrency(variance), `${rate}%`];
     });
