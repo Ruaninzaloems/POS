@@ -79,10 +79,90 @@ export class ViewReceiptsComponent implements OnInit {
   bankNoteSearchText = signal('');
   bankNoteSearching = signal(false);
   bankNoteResults = signal<any[] | null>(null);
+  bankNoteExpandedRow = signal<number | null>(null);
+  bankNoteSortField = signal<string | null>(null);
+  bankNoteSortDir = signal<SortDir>('desc');
+  bankNoteFilter = signal<'all' | 'allocated' | 'unallocated'>('all');
 
   eftAccountSearch = signal('');
   eftSearching = signal(false);
   eftResults = signal<any[] | null>(null);
+  eftExpandedRow = signal<number | null>(null);
+  eftSortField = signal<string | null>(null);
+  eftSortDir = signal<SortDir>('desc');
+
+  printingBankItem = signal<number | null>(null);
+
+  bankNoteSummary = computed(() => {
+    const results = this.bankNoteResults();
+    if (!results || results.length === 0) return null;
+    const total = results.length;
+    const totalBankAmount = results.reduce((s: number, r: any) => s + (Number(r.bankAmount) || 0), 0);
+    const totalPaidAmount = results.reduce((s: number, r: any) => s + (Number(r.paidAmount) || 0), 0);
+    const allocated = results.filter((r: any) => {
+      const status = (r.allocationStatus || '').toLowerCase();
+      return status.includes('account') || status.includes('miscellaneous');
+    }).length;
+    const unallocated = total - allocated;
+    return { total, allocated, unallocated, totalBankAmount, totalPaidAmount };
+  });
+
+  filteredBankNoteResults = computed(() => {
+    let results = this.bankNoteResults();
+    if (!results) return [];
+    const filter = this.bankNoteFilter();
+    if (filter === 'allocated') {
+      results = results.filter((r: any) => {
+        const status = (r.allocationStatus || '').toLowerCase();
+        return status.includes('account') || status.includes('miscellaneous');
+      });
+    } else if (filter === 'unallocated') {
+      results = results.filter((r: any) => {
+        const status = (r.allocationStatus || '').toLowerCase();
+        return !status.includes('account') && !status.includes('miscellaneous');
+      });
+    }
+    const sf = this.bankNoteSortField();
+    if (sf) {
+      const dir = this.bankNoteSortDir();
+      results = [...results].sort((a: any, b: any) => {
+        let va = a[sf] ?? '';
+        let vb = b[sf] ?? '';
+        if (sf === 'bankAmount' || sf === 'paidAmount') { va = Number(va) || 0; vb = Number(vb) || 0; return dir === 'asc' ? va - vb : vb - va; }
+        if (sf.includes('Date') || sf.includes('date')) { return dir === 'asc' ? new Date(va).getTime() - new Date(vb).getTime() : new Date(vb).getTime() - new Date(va).getTime(); }
+        return dir === 'asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+      });
+    }
+    return results;
+  });
+
+  eftSummary = computed(() => {
+    const results = this.eftResults();
+    if (!results || results.length === 0) return null;
+    const total = results.length;
+    const totalAmount = results.reduce((s: number, r: any) => s + (Number(r.amount) || 0), 0);
+    const dates = results.map((r: any) => new Date(r.bankStatementDate || r.billingAllocationDate || 0)).filter((d: Date) => !isNaN(d.getTime()));
+    const earliest = dates.length > 0 ? new Date(Math.min(...dates.map(d => d.getTime()))) : null;
+    const latest = dates.length > 0 ? new Date(Math.max(...dates.map(d => d.getTime()))) : null;
+    return { total, totalAmount, earliest, latest };
+  });
+
+  filteredEftResults = computed(() => {
+    let results = this.eftResults();
+    if (!results) return [];
+    const sf = this.eftSortField();
+    if (sf) {
+      const dir = this.eftSortDir();
+      results = [...results].sort((a: any, b: any) => {
+        let va = a[sf] ?? '';
+        let vb = b[sf] ?? '';
+        if (sf === 'amount') { va = Number(va) || 0; vb = Number(vb) || 0; return dir === 'asc' ? va - vb : vb - va; }
+        if (sf.includes('Date') || sf.includes('date')) { return dir === 'asc' ? new Date(va).getTime() - new Date(vb).getTime() : new Date(vb).getTime() - new Date(va).getTime(); }
+        return dir === 'asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+      });
+    }
+    return results;
+  });
 
   cashbookSearchText = signal('');
   cashbookFinYear = signal('');
@@ -299,10 +379,13 @@ export class ViewReceiptsComponent implements OnInit {
       return;
     }
     this.bankNoteSearching.set(true);
-    this.bankNoteResults.set([]);
+    this.bankNoteResults.set(null);
+    this.bankNoteExpandedRow.set(null);
+    this.bankNoteFilter.set('all');
+    this.bankNoteSortField.set(null);
     try {
-      const results: any = await firstValueFrom(this.api.post('/api/platinum/view-receipt/search-by-eft-description', { description: this.bankNoteSearchText() }));
-      const items = Array.isArray(results) ? results : (results?.items || []);
+      const results: any = await firstValueFrom(this.api.get('/api/platinum/billing-enquiry/search-by-bank-statement-note', { searchText: this.bankNoteSearchText() }));
+      const items = Array.isArray(results) ? results : (results?.items || results?.value || results?.data || []);
       this.bankNoteResults.set(items);
       if (items.length === 0) {
         this.toast.info(`No bank statement notes found matching "${this.bankNoteSearchText()}".`);
@@ -318,19 +401,21 @@ export class ViewReceiptsComponent implements OnInit {
 
   async handleEftSearch(): Promise<void> {
     if (!this.eftAccountSearch()) {
-      this.toast.error('Please enter an account number for the EFT search.');
+      this.toast.error('Please enter an account ID for the EFT search.');
       return;
     }
     this.eftSearching.set(true);
-    this.eftResults.set([]);
+    this.eftResults.set(null);
+    this.eftExpandedRow.set(null);
+    this.eftSortField.set(null);
     try {
-      const results: any = await firstValueFrom(this.api.post('/api/platinum/view-receipt/search-by-eft-description', { description: this.eftAccountSearch() }));
-      const items = Array.isArray(results) ? results : (results?.items || []);
+      const results: any = await firstValueFrom(this.api.get('/api/platinum/billing-enquiry/get-eft-bank-statement-notes', { accountId: this.eftAccountSearch() }));
+      const items = Array.isArray(results) ? results : (results?.items || results?.value || results?.data || []);
       this.eftResults.set(items);
       if (items.length === 0) {
-        this.toast.info(`No EFT results found for "${this.eftAccountSearch()}".`);
+        this.toast.info(`No EFT receipts found for account "${this.eftAccountSearch()}".`);
       } else {
-        this.toast.success(`Found ${items.length} EFT result${items.length !== 1 ? 's' : ''}.`);
+        this.toast.success(`Found ${items.length} EFT receipt${items.length !== 1 ? 's' : ''}.`);
       }
     } catch (e: any) {
       this.toast.error('EFT search failed: ' + (e?.message || ''));
@@ -393,34 +478,238 @@ export class ViewReceiptsComponent implements OnInit {
   }
 
   loadFromBankNote(item: any): void {
-    const description = item.description || item.note || '';
-    if (description) {
-      this.accountFilter.set(String(description));
+    const receiptNo = item.receiptNo || '';
+    const accountId = item.accountId || '';
+    if (receiptNo) {
+      this.receiptFilter.set(String(receiptNo));
+      this.accountFilter.set('');
+    } else if (accountId) {
+      this.accountFilter.set(String(accountId));
       this.receiptFilter.set('');
-      this.cashierFilter.set('0');
-      this.activeTab.set('receipt-search');
-      setTimeout(() => this.handleSearch(1), 100);
     } else {
-      this.toast.info('No description available to search.');
+      const description = item.bankStatementNote || item.description || item.note || '';
+      if (description) {
+        this.accountFilter.set(String(description));
+        this.receiptFilter.set('');
+      } else {
+        this.toast.info('No receipt or account reference available.');
+        return;
+      }
     }
+    this.cashierFilter.set('0');
+    this.activeTab.set('receipt-search');
+    setTimeout(() => this.handleSearch(1), 100);
   }
 
   loadFromEft(item: any): void {
-    const description = item.description || item.note || '';
-    const accountNo = item.accountNumber || item.accountNo || item.accountId || '';
-    if (accountNo) {
-      this.accountFilter.set(String(accountNo));
-      this.receiptFilter.set('');
-    } else if (description) {
-      this.accountFilter.set(String(description));
-      this.receiptFilter.set('');
+    const receiptNo = item.receiptNo || '';
+    if (receiptNo) {
+      this.receiptFilter.set(String(receiptNo));
+      this.accountFilter.set(this.eftAccountSearch());
     } else {
-      this.toast.info('No account or description available to search.');
+      this.toast.info('No receipt number available.');
       return;
     }
     this.cashierFilter.set('0');
     this.activeTab.set('receipt-search');
     setTimeout(() => this.handleSearch(1), 100);
+  }
+
+  toggleBankNoteExpand(index: number): void {
+    this.bankNoteExpandedRow.set(this.bankNoteExpandedRow() === index ? null : index);
+  }
+
+  toggleEftExpand(index: number): void {
+    this.eftExpandedRow.set(this.eftExpandedRow() === index ? null : index);
+  }
+
+  handleBankNoteSort(field: string): void {
+    if (this.bankNoteSortField() === field) {
+      if (this.bankNoteSortDir() === 'desc') this.bankNoteSortDir.set('asc');
+      else { this.bankNoteSortField.set(null); this.bankNoteSortDir.set('desc'); }
+    } else {
+      this.bankNoteSortField.set(field);
+      this.bankNoteSortDir.set('desc');
+    }
+  }
+
+  handleEftSort(field: string): void {
+    if (this.eftSortField() === field) {
+      if (this.eftSortDir() === 'desc') this.eftSortDir.set('asc');
+      else { this.eftSortField.set(null); this.eftSortDir.set('desc'); }
+    } else {
+      this.eftSortField.set(field);
+      this.eftSortDir.set('desc');
+    }
+  }
+
+  getAllocationStatusClass(status: string): string {
+    const s = (status || '').toLowerCase();
+    if (s.includes('account allocation') || s === 'account allocation') return 'badge-success';
+    if (s.includes('miscellaneous')) return 'badge-info';
+    if (s.includes('not allocated in billing')) return 'badge-warning';
+    if (s.includes('not allocated')) return 'badge-danger';
+    return 'badge-neutral';
+  }
+
+  formatDateOnly(dateStr: string): string {
+    if (!dateStr) return '-';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+    } catch { return dateStr; }
+  }
+
+  getDaysBetween(date1: string, date2: string): string {
+    if (!date1 || !date2) return '-';
+    try {
+      const d1 = new Date(date1);
+      const d2 = new Date(date2);
+      if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return '-';
+      const days = Math.abs(Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)));
+      return `${days} day${days !== 1 ? 's' : ''}`;
+    } catch { return '-'; }
+  }
+
+  private escHtml(str: string): string {
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  printBankAllocation(item: any, type: 'bank' | 'eft'): void {
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    if (!printWindow) {
+      this.toast.error('Pop-up blocked. Please allow pop-ups for this site.');
+      return;
+    }
+    const isBank = type === 'bank';
+    const bankNote = this.escHtml(item.bankStatementNote || item.description || item.note || '-');
+    const bankAmount = this.escHtml(this.formatCurrency(Number(item.bankAmount || item.amount) || 0));
+    const bankDate = this.escHtml(this.formatDateOnly(item.bankStatementDate || item.dateOfTransaction || ''));
+    const receiptNo = this.escHtml(item.receiptNo || '-');
+    const accountId = this.escHtml(item.accountId || this.eftAccountSearch() || '-');
+    const paidAmount = this.escHtml(this.formatCurrency(Number(item.paidAmount || item.amount) || 0));
+    const allocDate = this.escHtml(this.formatDateOnly(item.billingAllocationDate || item.dateCaptured || ''));
+    const status = this.escHtml(item.allocationStatus || (isBank ? 'Unknown' : 'EFT Allocated'));
+    const cashbookDoc = this.escHtml(item.cashbookDocumentNumber || '-');
+    const cashbookName = this.escHtml(item.cashbookName || '-');
+    const miscGroup = this.escHtml(item.miscPaymentGroupDescription || '-');
+
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Bank Statement Allocation - ${receiptNo}</title>
+      <style>
+        body { font-family: 'Inter', Arial, sans-serif; padding: 2rem; color: #1a1a2e; }
+        .print-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #0f2b46; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+        .print-title { font-size: 1.25rem; font-weight: 700; color: #0f2b46; }
+        .print-subtitle { font-size: 0.875rem; color: #666; margin-top: 0.25rem; }
+        .print-date { font-size: 0.8125rem; color: #666; text-align: right; }
+        .section { margin-bottom: 1.5rem; }
+        .section-title { font-size: 0.9375rem; font-weight: 700; color: #0f2b46; margin-bottom: 0.75rem; padding-bottom: 0.375rem; border-bottom: 1px solid #e5e7eb; }
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 2rem; }
+        .detail-item { display: flex; flex-direction: column; }
+        .detail-label { font-size: 0.75rem; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.03em; }
+        .detail-value { font-size: 0.9375rem; font-weight: 500; padding: 0.25rem 0; }
+        .detail-value.mono { font-family: ui-monospace, monospace; }
+        .status-badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.8125rem; font-weight: 600; }
+        .status-allocated { background: #dcfce7; color: #166534; }
+        .status-misc { background: #dbeafe; color: #1e40af; }
+        .status-unallocated { background: #fef3c7; color: #92400e; }
+        .status-not { background: #fee2e2; color: #991b1b; }
+        .flow-arrow { text-align: center; padding: 0.75rem; font-size: 1.5rem; color: #c9a84c; }
+        @media print { body { padding: 1rem; } }
+      </style>
+    </head><body>
+      <div class="print-header">
+        <div>
+          <div class="print-title">George Municipality - Bank Statement Allocation</div>
+          <div class="print-subtitle">EFT Payment Tracing Report</div>
+        </div>
+        <div class="print-date">Printed: ${this.formatDateOnly(new Date().toISOString())}</div>
+      </div>
+      <div class="section">
+        <div class="section-title">Bank Statement Details</div>
+        <div class="detail-grid">
+          <div class="detail-item"><span class="detail-label">Description</span><span class="detail-value mono">${bankNote}</span></div>
+          <div class="detail-item"><span class="detail-label">Bank Amount</span><span class="detail-value mono">${bankAmount}</span></div>
+          <div class="detail-item"><span class="detail-label">Bank Transaction Date</span><span class="detail-value">${bankDate}</span></div>
+          <div class="detail-item"><span class="detail-label">Bank Recon ID</span><span class="detail-value mono">${item.bankReconID || item.bankReconId || '-'}</span></div>
+        </div>
+      </div>
+      <div class="flow-arrow">&#8595;</div>
+      <div class="section">
+        <div class="section-title">Billing Allocation Details</div>
+        <div class="detail-grid">
+          <div class="detail-item"><span class="detail-label">Receipt Number</span><span class="detail-value mono">${receiptNo}</span></div>
+          <div class="detail-item"><span class="detail-label">Account ID</span><span class="detail-value mono">${accountId}</span></div>
+          <div class="detail-item"><span class="detail-label">Paid Amount</span><span class="detail-value mono">${paidAmount}</span></div>
+          <div class="detail-item"><span class="detail-label">Allocation Date</span><span class="detail-value">${allocDate}</span></div>
+          <div class="detail-item"><span class="detail-label">Allocation Status</span><span class="detail-value"><span class="status-badge ${status.toLowerCase().includes('account') ? 'status-allocated' : status.toLowerCase().includes('misc') ? 'status-misc' : status.toLowerCase().includes('not allocated in') ? 'status-unallocated' : 'status-not'}">${status}</span></span></div>
+          ${miscGroup !== '-' ? `<div class="detail-item"><span class="detail-label">Misc Payment Group</span><span class="detail-value">${miscGroup}</span></div>` : ''}
+        </div>
+      </div>
+      ${cashbookDoc !== '-' ? `<div class="section">
+        <div class="section-title">Cashbook Reference</div>
+        <div class="detail-grid">
+          <div class="detail-item"><span class="detail-label">Document Number</span><span class="detail-value mono">${cashbookDoc}</span></div>
+          <div class="detail-item"><span class="detail-label">Cashbook Name</span><span class="detail-value">${cashbookName}</span></div>
+          <div class="detail-item"><span class="detail-label">Transaction ID</span><span class="detail-value mono">${item.cashbookTransactionID || item.cashbookTransactionId || '-'}</span></div>
+        </div>
+      </div>` : ''}
+      <script>setTimeout(() => { window.print(); }, 300);</script>
+    </body></html>`);
+    printWindow.document.close();
+  }
+
+  private csvEscape(val: any): string {
+    let s = String(val ?? '').replace(/"/g, '""').replace(/[\r\n]+/g, ' ');
+    if (/^[=+\-@]/.test(s)) s = "'" + s;
+    return `"${s}"`;
+  }
+
+  exportBankResults(): void {
+    const results = this.filteredBankNoteResults();
+    if (!results || results.length === 0) return;
+    const headers = ['Bank Statement Note','Bank Amount','Bank Date','Receipt No','Account ID','Paid Amount','Allocation Date','Allocation Status','Cashbook Doc','Cashbook Name'];
+    const rows = results.map((r: any) => [
+      r.bankStatementNote || r.description || '',
+      Number(r.bankAmount) || 0,
+      this.formatDateOnly(r.bankStatementDate || ''),
+      r.receiptNo || '',
+      r.accountId || '',
+      Number(r.paidAmount) || 0,
+      this.formatDateOnly(r.billingAllocationDate || ''),
+      r.allocationStatus || '',
+      r.cashbookDocumentNumber || '',
+      r.cashbookName || ''
+    ]);
+    const csv = [headers.map(h => this.csvEscape(h)).join(','), ...rows.map(r => r.map(v => this.csvEscape(v)).join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `bank_statement_search_${this.bankNoteSearchText()}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  exportEftResults(): void {
+    const results = this.filteredEftResults();
+    if (!results || results.length === 0) return;
+    const headers = ['Receipt No','Bank Statement Note','Amount','Bank Date','Billing Allocation Date'];
+    const rows = results.map((r: any) => [
+      r.receiptNo || '',
+      r.bankStatementNote || '',
+      Number(r.amount) || 0,
+      this.formatDateOnly(r.bankStatementDate || ''),
+      this.formatDateOnly(r.billingAllocationDate || '')
+    ]);
+    const csv = [headers.map(h => this.csvEscape(h)).join(','), ...rows.map(r => r.map(v => this.csvEscape(v)).join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `eft_receipts_account_${this.eftAccountSearch()}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   handleSort(field: SortField): void {

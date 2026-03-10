@@ -102,15 +102,16 @@
     @if (activeTab() === 'bank-statement') {
       <div class="search-form">
         <div class="form-group">
-          <label class="form-label">Bank Statement Reference</label>
+          <label class="form-label">Search Bank Statement Description</label>
           <div class="input-with-button">
-            <input class="form-input" placeholder="Search bank statement notes..." [ngModel]="bankNoteSearchText()" (ngModelChange)="bankNoteSearchText.set($event)" data-testid="input-bank-note-search" />
+            <input class="form-input" placeholder="Enter bank statement description (e.g. reference, name, amount)..." [ngModel]="bankNoteSearchText()" (ngModelChange)="bankNoteSearchText.set($event)" (keydown.enter)="handleBankNoteSearch()" data-testid="input-bank-note-search" />
             <button class="btn-primary" (click)="handleBankNoteSearch()" [disabled]="bankNoteSearching()" data-testid="button-bank-note-search">
               @if (bankNoteSearching()) { <span class="spinner spinner-sm"></span> }
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
               Search
             </button>
           </div>
+          <span class="form-hint">Search across all bank statement items to find receipts and see where payments were allocated</span>
         </div>
       </div>
     }
@@ -118,15 +119,16 @@
     @if (activeTab() === 'eft-account') {
       <div class="search-form">
         <div class="form-group">
-          <label class="form-label">Account ID</label>
+          <label class="form-label">Consumer Account ID</label>
           <div class="input-with-button">
-            <input class="form-input" placeholder="Enter account ID..." [ngModel]="eftAccountSearch()" (ngModelChange)="eftAccountSearch.set($event)" data-testid="input-eft-search" />
+            <input class="form-input" placeholder="Enter consumer account ID..." [ngModel]="eftAccountSearch()" (ngModelChange)="eftAccountSearch.set($event)" (keydown.enter)="handleEftSearch()" data-testid="input-eft-search" />
             <button class="btn-primary" (click)="handleEftSearch()" [disabled]="eftSearching()" data-testid="button-eft-search">
               @if (eftSearching()) { <span class="spinner spinner-sm"></span> }
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
               Search
             </button>
           </div>
+          <span class="form-hint">View all EFT receipts linked to this account with bank statement details and allocation dates</span>
         </div>
       </div>
     }
@@ -163,61 +165,374 @@
       </div>
     }
 
-    @if (activeTab() === 'bank-statement' && bankNoteResults() && bankNoteResults()!.length > 0) {
-      <div class="sub-results">
-        <h4>Bank Statement Results ({{ bankNoteResults()!.length }})</h4>
-        <div class="table-container">
-          <table>
-            <thead><tr><th>Description</th><th>Amount</th><th>Transaction Date</th><th>Date Allocated</th><th>Status</th><th>Actions</th></tr></thead>
-            <tbody>
-              @for (item of bankNoteResults()!; track $index) {
-                <tr [attr.data-testid]="'row-banknote-' + $index">
-                  <td class="font-mono">{{ item.description || item.note || '-' }}</td>
-                  <td class="amount-cell">{{ formatCurrency(item.amount || 0) }}</td>
-                  <td>{{ formatReceiptDate(item.dateOfTransaction || '') }}</td>
-                  <td>{{ item.dateAllocated ? formatReceiptDate(item.dateAllocated) : '-' }}</td>
-                  <td>
-                    @if (item.allocated) {
-                      <span class="badge badge-success">Allocated</span>
-                    } @else {
-                      <span class="badge badge-warning">Unallocated</span>
-                    }
-                  </td>
-                  <td><button class="btn-outline btn-sm" (click)="loadFromBankNote(item)" [attr.data-testid]="'button-load-banknote-' + $index">Load Receipt</button></td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
+    @if (activeTab() === 'bank-statement' && bankNoteSearching()) {
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Searching bank statement notes...</p>
       </div>
     }
 
-    @if (activeTab() === 'eft-account' && eftResults() && eftResults()!.length > 0) {
-      <div class="sub-results">
-        <h4>EFT Results ({{ eftResults()!.length }})</h4>
-        <div class="table-container">
-          <table>
-            <thead><tr><th>Description</th><th>Amount</th><th>Transaction Date</th><th>Date Allocated</th><th>Status</th><th>Actions</th></tr></thead>
-            <tbody>
-              @for (item of eftResults()!; track $index) {
-                <tr [attr.data-testid]="'row-eft-' + $index">
-                  <td class="font-mono">{{ item.description || item.note || '-' }}</td>
-                  <td class="amount-cell">{{ formatCurrency(item.amount || 0) }}</td>
-                  <td>{{ formatReceiptDate(item.dateOfTransaction || '') }}</td>
-                  <td>{{ item.dateAllocated ? formatReceiptDate(item.dateAllocated) : '-' }}</td>
-                  <td>
-                    @if (item.allocated) {
-                      <span class="badge badge-success">Allocated</span>
-                    } @else {
-                      <span class="badge badge-warning">Unallocated</span>
-                    }
-                  </td>
-                  <td><button class="btn-outline btn-sm" (click)="loadFromEft(item)" [attr.data-testid]="'button-load-eft-' + $index">Load Receipt</button></td>
-                </tr>
-              }
-            </tbody>
-          </table>
+    @if (activeTab() === 'bank-statement' && !bankNoteSearching() && bankNoteResults() !== null) {
+      @if (bankNoteResults()!.length === 0) {
+        <div class="empty-state">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--pos-text-muted)" stroke-width="1.5"><path d="M10 21h7a2 2 0 0 0 2-2V9.414a1 1 0 0 0-.293-.707l-5.414-5.414A1 1 0 0 0 12.586 3H7a2 2 0 0 0-2 2v11"/><path d="m14 3 5 5h-5z" fill="none"/><circle cx="6" cy="18" r="3"/><path d="m3 21 1.5-1.5"/></svg>
+          <p>No bank statement items found for "{{ bankNoteSearchText() }}"</p>
         </div>
+      } @else {
+        <div class="bank-results-section">
+          @if (bankNoteSummary(); as summary) {
+            <div class="summary-cards">
+              <div class="summary-card" data-testid="card-bank-total">
+                <div class="summary-icon summary-icon-primary">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+                </div>
+                <div class="summary-content">
+                  <span class="summary-value">{{ summary.total }}</span>
+                  <span class="summary-label">Total Items Found</span>
+                </div>
+              </div>
+              <div class="summary-card" data-testid="card-bank-allocated">
+                <div class="summary-icon summary-icon-success">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg>
+                </div>
+                <div class="summary-content">
+                  <span class="summary-value">{{ summary.allocated }}</span>
+                  <span class="summary-label">Allocated</span>
+                </div>
+              </div>
+              <div class="summary-card" data-testid="card-bank-unallocated">
+                <div class="summary-icon summary-icon-danger">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                </div>
+                <div class="summary-content">
+                  <span class="summary-value">{{ summary.unallocated }}</span>
+                  <span class="summary-label">Unallocated</span>
+                </div>
+              </div>
+              <div class="summary-card" data-testid="card-bank-amount">
+                <div class="summary-icon summary-icon-accent">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                </div>
+                <div class="summary-content">
+                  <span class="summary-value">{{ formatCurrency(summary.totalBankAmount) }}</span>
+                  <span class="summary-label">Total Bank Amount</span>
+                </div>
+              </div>
+            </div>
+          }
+
+          <div class="results-toolbar">
+            <div class="toolbar-left">
+              <div class="filter-tabs">
+                <button class="filter-tab" [class.active]="bankNoteFilter() === 'all'" (click)="bankNoteFilter.set('all')" data-testid="btn-filter-all">All ({{ bankNoteResults()!.length }})</button>
+                <button class="filter-tab" [class.active]="bankNoteFilter() === 'allocated'" (click)="bankNoteFilter.set('allocated')" data-testid="btn-filter-allocated">Allocated ({{ bankNoteSummary()?.allocated || 0 }})</button>
+                <button class="filter-tab" [class.active]="bankNoteFilter() === 'unallocated'" (click)="bankNoteFilter.set('unallocated')" data-testid="btn-filter-unallocated">Unallocated ({{ bankNoteSummary()?.unallocated || 0 }})</button>
+              </div>
+            </div>
+            <div class="toolbar-right">
+              <button class="btn-outline btn-sm" (click)="exportBankResults()" data-testid="btn-export-bank">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export CSV
+              </button>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table class="bank-table">
+              <thead>
+                <tr>
+                  <th class="th-expand"></th>
+                  <th class="sortable" (click)="handleBankNoteSort('bankStatementNote')">
+                    Bank Statement Note @if (bankNoteSortField() === 'bankStatementNote') { <span>{{ bankNoteSortDir() === 'asc' ? '↑' : '↓' }}</span> }
+                  </th>
+                  <th class="sortable amount-cell" (click)="handleBankNoteSort('bankAmount')">
+                    Bank Amount @if (bankNoteSortField() === 'bankAmount') { <span>{{ bankNoteSortDir() === 'asc' ? '↑' : '↓' }}</span> }
+                  </th>
+                  <th class="sortable" (click)="handleBankNoteSort('bankStatementDate')">
+                    Bank Date @if (bankNoteSortField() === 'bankStatementDate') { <span>{{ bankNoteSortDir() === 'asc' ? '↑' : '↓' }}</span> }
+                  </th>
+                  <th>Receipt No</th>
+                  <th>Account</th>
+                  <th class="sortable amount-cell" (click)="handleBankNoteSort('paidAmount')">
+                    Paid Amount @if (bankNoteSortField() === 'paidAmount') { <span>{{ bankNoteSortDir() === 'asc' ? '↑' : '↓' }}</span> }
+                  </th>
+                  <th class="sortable" (click)="handleBankNoteSort('billingAllocationDate')">
+                    Allocation Date @if (bankNoteSortField() === 'billingAllocationDate') { <span>{{ bankNoteSortDir() === 'asc' ? '↑' : '↓' }}</span> }
+                  </th>
+                  <th class="sortable" (click)="handleBankNoteSort('allocationStatus')">
+                    Status @if (bankNoteSortField() === 'allocationStatus') { <span>{{ bankNoteSortDir() === 'asc' ? '↑' : '↓' }}</span> }
+                  </th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of filteredBankNoteResults(); track $index) {
+                  <tr class="bank-row" [class.row-expanded]="bankNoteExpandedRow() === $index" [attr.data-testid]="'row-banknote-' + $index" (click)="toggleBankNoteExpand($index)">
+                    <td class="td-expand">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" [class.chevron-open]="bankNoteExpandedRow() === $index"><polyline points="6,9 12,15 18,9"/></svg>
+                    </td>
+                    <td class="font-mono note-cell" [title]="item.bankStatementNote || ''">{{ item.bankStatementNote || '-' }}</td>
+                    <td class="amount-cell">{{ formatCurrency(item.bankAmount || 0) }}</td>
+                    <td>{{ formatDateOnly(item.bankStatementDate || '') }}</td>
+                    <td class="font-mono">{{ item.receiptNo || '-' }}</td>
+                    <td class="font-mono">{{ item.accountId || '-' }}</td>
+                    <td class="amount-cell">{{ formatCurrency(item.paidAmount || 0) }}</td>
+                    <td>{{ formatDateOnly(item.billingAllocationDate || '') }}</td>
+                    <td>
+                      <span class="badge" [ngClass]="getAllocationStatusClass(item.allocationStatus || '')">{{ item.allocationStatus || 'Unknown' }}</span>
+                    </td>
+                    <td class="actions-cell" (click)="$event.stopPropagation()">
+                      @if (item.receiptNo) {
+                        <button class="btn-outline btn-sm btn-icon" (click)="loadFromBankNote(item)" title="View Receipt" [attr.data-testid]="'btn-view-receipt-' + $index">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                      }
+                      <button class="btn-outline btn-sm btn-icon" (click)="printBankAllocation(item, 'bank')" title="Print Allocation" [attr.data-testid]="'btn-print-bank-' + $index">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                      </button>
+                    </td>
+                  </tr>
+                  @if (bankNoteExpandedRow() === $index) {
+                    <tr class="expanded-detail-row">
+                      <td [attr.colspan]="10">
+                        <div class="detail-panel">
+                          <div class="detail-flow">
+                            <div class="detail-block detail-block-bank">
+                              <div class="detail-block-title">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                                Bank Statement
+                              </div>
+                              <div class="detail-grid-2">
+                                <div class="detail-pair"><span class="detail-key">Description</span><span class="detail-val font-mono">{{ item.bankStatementNote || '-' }}</span></div>
+                                <div class="detail-pair"><span class="detail-key">Amount</span><span class="detail-val font-mono">{{ formatCurrency(item.bankAmount || 0) }}</span></div>
+                                <div class="detail-pair"><span class="detail-key">Transaction Date</span><span class="detail-val">{{ formatDateOnly(item.bankStatementDate || '') }}</span></div>
+                                <div class="detail-pair"><span class="detail-key">Bank Recon ID</span><span class="detail-val font-mono">{{ item.bankReconID || item.bankReconId || '-' }}</span></div>
+                              </div>
+                            </div>
+                            <div class="detail-arrow">
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--platinum-accent)" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12,5 19,12 12,19"/></svg>
+                            </div>
+                            <div class="detail-block detail-block-billing">
+                              <div class="detail-block-title">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+                                Billing Allocation
+                              </div>
+                              <div class="detail-grid-2">
+                                <div class="detail-pair"><span class="detail-key">Receipt No</span><span class="detail-val font-mono">{{ item.receiptNo || '-' }}</span></div>
+                                <div class="detail-pair"><span class="detail-key">Account ID</span><span class="detail-val font-mono">{{ item.accountId || '-' }}</span></div>
+                                <div class="detail-pair"><span class="detail-key">Paid Amount</span><span class="detail-val font-mono">{{ formatCurrency(item.paidAmount || 0) }}</span></div>
+                                <div class="detail-pair"><span class="detail-key">Allocation Date</span><span class="detail-val">{{ formatDateOnly(item.billingAllocationDate || '') }}</span></div>
+                                <div class="detail-pair"><span class="detail-key">Date Captured</span><span class="detail-val">{{ formatDateOnly(item.dateCaptured || '') }}</span></div>
+                                <div class="detail-pair"><span class="detail-key">Processing Time</span><span class="detail-val">{{ getDaysBetween(item.bankStatementDate, item.billingAllocationDate) }}</span></div>
+                              </div>
+                            </div>
+                          </div>
+                          @if (item.cashbookDocumentNumber || item.cashbookName || item.cashbookTransactionID) {
+                            <div class="detail-block detail-block-cashbook">
+                              <div class="detail-block-title">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                                Cashbook Details
+                              </div>
+                              <div class="detail-grid-3">
+                                <div class="detail-pair"><span class="detail-key">Document Number</span><span class="detail-val font-mono">{{ item.cashbookDocumentNumber || '-' }}</span></div>
+                                <div class="detail-pair"><span class="detail-key">Cashbook Name</span><span class="detail-val">{{ item.cashbookName || '-' }}</span></div>
+                                <div class="detail-pair"><span class="detail-key">Transaction ID</span><span class="detail-val font-mono">{{ item.cashbookTransactionID || item.cashbookTransactionId || '-' }}</span></div>
+                              </div>
+                            </div>
+                          }
+                          @if (item.miscPaymentGroupDescription) {
+                            <div class="detail-block detail-block-misc">
+                              <div class="detail-block-title">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+                                Miscellaneous Payment
+                              </div>
+                              <div class="detail-pair"><span class="detail-key">Payment Group</span><span class="detail-val">{{ item.miscPaymentGroupDescription }}</span></div>
+                            </div>
+                          }
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+    }
+
+    @if (activeTab() === 'eft-account' && eftSearching()) {
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading EFT receipts...</p>
+      </div>
+    }
+
+    @if (activeTab() === 'eft-account' && !eftSearching() && eftResults() !== null) {
+      @if (eftResults()!.length === 0) {
+        <div class="empty-state">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--pos-text-muted)" stroke-width="1.5"><path d="M10 21h7a2 2 0 0 0 2-2V9.414a1 1 0 0 0-.293-.707l-5.414-5.414A1 1 0 0 0 12.586 3H7a2 2 0 0 0-2 2v11"/><path d="m14 3 5 5h-5z" fill="none"/><circle cx="6" cy="18" r="3"/><path d="m3 21 1.5-1.5"/></svg>
+          <p>No EFT receipts found for account "{{ eftAccountSearch() }}"</p>
+        </div>
+      } @else {
+        <div class="eft-results-section">
+          @if (eftSummary(); as summary) {
+            <div class="summary-cards">
+              <div class="summary-card" data-testid="card-eft-total">
+                <div class="summary-icon summary-icon-primary">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                </div>
+                <div class="summary-content">
+                  <span class="summary-value">{{ summary.total }}</span>
+                  <span class="summary-label">EFT Receipts</span>
+                </div>
+              </div>
+              <div class="summary-card" data-testid="card-eft-amount">
+                <div class="summary-icon summary-icon-accent">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                </div>
+                <div class="summary-content">
+                  <span class="summary-value">{{ formatCurrency(summary.totalAmount) }}</span>
+                  <span class="summary-label">Total Amount</span>
+                </div>
+              </div>
+              <div class="summary-card" data-testid="card-eft-earliest">
+                <div class="summary-icon summary-icon-info">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </div>
+                <div class="summary-content">
+                  <span class="summary-value">{{ summary.earliest ? formatDateOnly(summary.earliest.toISOString()) : '-' }}</span>
+                  <span class="summary-label">Earliest Transaction</span>
+                </div>
+              </div>
+              <div class="summary-card" data-testid="card-eft-latest">
+                <div class="summary-icon summary-icon-info">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </div>
+                <div class="summary-content">
+                  <span class="summary-value">{{ summary.latest ? formatDateOnly(summary.latest.toISOString()) : '-' }}</span>
+                  <span class="summary-label">Latest Transaction</span>
+                </div>
+              </div>
+            </div>
+          }
+
+          <div class="results-toolbar">
+            <div class="toolbar-left">
+              <span class="toolbar-label">Account {{ eftAccountSearch() }} - {{ eftResults()!.length }} EFT receipt{{ eftResults()!.length !== 1 ? 's' : '' }}</span>
+            </div>
+            <div class="toolbar-right">
+              <button class="btn-outline btn-sm" (click)="exportEftResults()" data-testid="btn-export-eft">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export CSV
+              </button>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table class="eft-table">
+              <thead>
+                <tr>
+                  <th class="th-expand"></th>
+                  <th class="sortable" (click)="handleEftSort('receiptNo')">
+                    Receipt No @if (eftSortField() === 'receiptNo') { <span>{{ eftSortDir() === 'asc' ? '↑' : '↓' }}</span> }
+                  </th>
+                  <th class="sortable" (click)="handleEftSort('bankStatementNote')">
+                    Bank Statement Note @if (eftSortField() === 'bankStatementNote') { <span>{{ eftSortDir() === 'asc' ? '↑' : '↓' }}</span> }
+                  </th>
+                  <th class="sortable amount-cell" (click)="handleEftSort('amount')">
+                    Amount @if (eftSortField() === 'amount') { <span>{{ eftSortDir() === 'asc' ? '↑' : '↓' }}</span> }
+                  </th>
+                  <th class="sortable" (click)="handleEftSort('bankStatementDate')">
+                    Bank Date @if (eftSortField() === 'bankStatementDate') { <span>{{ eftSortDir() === 'asc' ? '↑' : '↓' }}</span> }
+                  </th>
+                  <th class="sortable" (click)="handleEftSort('billingAllocationDate')">
+                    Allocation Date @if (eftSortField() === 'billingAllocationDate') { <span>{{ eftSortDir() === 'asc' ? '↑' : '↓' }}</span> }
+                  </th>
+                  <th>Processing Time</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of filteredEftResults(); track $index) {
+                  <tr class="eft-row" [class.row-expanded]="eftExpandedRow() === $index" [attr.data-testid]="'row-eft-' + $index" (click)="toggleEftExpand($index)">
+                    <td class="td-expand">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" [class.chevron-open]="eftExpandedRow() === $index"><polyline points="6,9 12,15 18,9"/></svg>
+                    </td>
+                    <td class="font-mono">{{ item.receiptNo || '-' }}</td>
+                    <td class="font-mono note-cell" [title]="item.bankStatementNote || ''">{{ item.bankStatementNote || '-' }}</td>
+                    <td class="amount-cell">{{ formatCurrency(item.amount || 0) }}</td>
+                    <td>{{ formatDateOnly(item.bankStatementDate || '') }}</td>
+                    <td>{{ formatDateOnly(item.billingAllocationDate || '') }}</td>
+                    <td>
+                      <span class="processing-time">{{ getDaysBetween(item.bankStatementDate, item.billingAllocationDate) }}</span>
+                    </td>
+                    <td class="actions-cell" (click)="$event.stopPropagation()">
+                      <button class="btn-outline btn-sm btn-icon" (click)="loadFromEft(item)" title="View Receipt" [attr.data-testid]="'btn-view-eft-receipt-' + $index">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      </button>
+                      <button class="btn-outline btn-sm btn-icon" (click)="printBankAllocation(item, 'eft')" title="Print Allocation" [attr.data-testid]="'btn-print-eft-' + $index">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                      </button>
+                    </td>
+                  </tr>
+                  @if (eftExpandedRow() === $index) {
+                    <tr class="expanded-detail-row">
+                      <td [attr.colspan]="8">
+                        <div class="detail-panel">
+                          <div class="detail-flow">
+                            <div class="detail-block detail-block-bank">
+                              <div class="detail-block-title">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                                Bank Statement
+                              </div>
+                              <div class="detail-grid-2">
+                                <div class="detail-pair"><span class="detail-key">Description</span><span class="detail-val font-mono">{{ item.bankStatementNote || '-' }}</span></div>
+                                <div class="detail-pair"><span class="detail-key">Amount</span><span class="detail-val font-mono">{{ formatCurrency(item.amount || 0) }}</span></div>
+                                <div class="detail-pair"><span class="detail-key">Bank Transaction Date</span><span class="detail-val">{{ formatDateOnly(item.bankStatementDate || '') }}</span></div>
+                              </div>
+                            </div>
+                            <div class="detail-arrow">
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--platinum-accent)" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12,5 19,12 12,19"/></svg>
+                            </div>
+                            <div class="detail-block detail-block-billing">
+                              <div class="detail-block-title">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+                                Billing Allocation
+                              </div>
+                              <div class="detail-grid-2">
+                                <div class="detail-pair"><span class="detail-key">Receipt No</span><span class="detail-val font-mono">{{ item.receiptNo || '-' }}</span></div>
+                                <div class="detail-pair"><span class="detail-key">Account ID</span><span class="detail-val font-mono">{{ eftAccountSearch() }}</span></div>
+                                <div class="detail-pair"><span class="detail-key">Allocation Date</span><span class="detail-val">{{ formatDateOnly(item.billingAllocationDate || '') }}</span></div>
+                                <div class="detail-pair"><span class="detail-key">Processing Time</span><span class="detail-val">{{ getDaysBetween(item.bankStatementDate, item.billingAllocationDate) }}</span></div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+    }
+
+    @if (activeTab() === 'bank-statement' && bankNoteResults() === null && !bankNoteSearching()) {
+      <div class="empty-state empty-state-guide">
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="var(--platinum-primary)" stroke-width="1.5" opacity="0.4"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+        <p class="empty-title">Search Bank Statement Notes</p>
+        <p>Enter a bank statement description, reference number, or payment name to find matching transactions and see where they were allocated in billing.</p>
+      </div>
+    }
+
+    @if (activeTab() === 'eft-account' && eftResults() === null && !eftSearching()) {
+      <div class="empty-state empty-state-guide">
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="var(--platinum-primary)" stroke-width="1.5" opacity="0.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        <p class="empty-title">EFT Receipts by Account</p>
+        <p>Enter a consumer account ID to view all EFT receipts linked to it, with bank statement descriptions and allocation dates.</p>
       </div>
     }
 
@@ -248,21 +563,21 @@
           <thead>
             <tr>
               <th class="sortable" (click)="handleSort('receiptNo')" data-testid="th-receipt-no">
-                Receipt No @if (sortField() === 'receiptNo') { <span>{{ sortDir() === 'asc' ? '&#8593;' : '&#8595;' }}</span> }
+                Receipt No @if (sortField() === 'receiptNo') { <span>{{ sortDir() === 'asc' ? '↑' : '↓' }}</span> }
               </th>
               <th class="sortable" (click)="handleSort('accountNumber')" data-testid="th-account">
-                Account @if (sortField() === 'accountNumber') { <span>{{ sortDir() === 'asc' ? '&#8593;' : '&#8595;' }}</span> }
+                Account @if (sortField() === 'accountNumber') { <span>{{ sortDir() === 'asc' ? '↑' : '↓' }}</span> }
               </th>
               <th class="sortable" (click)="handleSort('amount')" data-testid="th-amount">
-                Amount @if (sortField() === 'amount') { <span>{{ sortDir() === 'asc' ? '&#8593;' : '&#8595;' }}</span> }
+                Amount @if (sortField() === 'amount') { <span>{{ sortDir() === 'asc' ? '↑' : '↓' }}</span> }
               </th>
               <th>Method</th>
               <th>Payment Option</th>
               <th class="sortable" (click)="handleSort('receiptDate')" data-testid="th-date">
-                Date @if (sortField() === 'receiptDate') { <span>{{ sortDir() === 'asc' ? '&#8593;' : '&#8595;' }}</span> }
+                Date @if (sortField() === 'receiptDate') { <span>{{ sortDir() === 'asc' ? '↑' : '↓' }}</span> }
               </th>
               <th class="sortable" (click)="handleSort('cashierName')" data-testid="th-cashier">
-                Cashier @if (sortField() === 'cashierName') { <span>{{ sortDir() === 'asc' ? '&#8593;' : '&#8595;' }}</span> }
+                Cashier @if (sortField() === 'cashierName') { <span>{{ sortDir() === 'asc' ? '↑' : '↓' }}</span> }
               </th>
               <th>Status</th>
               <th>Actions</th>
