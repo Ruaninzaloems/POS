@@ -327,7 +327,7 @@
                               </div>
                             </div>
                           </div>
-                          @if (item.cashbookDocumentNumber || item.cashbookName || item.cashbookTransactionID) {
+                          @if (item.cashbookDocumentNumber || item.cashbookDescription || item.CashbookDescription || item.cashbookName || item.cashbookTransactionID) {
                             <div class="detail-block detail-block-cashbook">
                               <div class="detail-block-title">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
@@ -335,7 +335,7 @@
                               </div>
                               <div class="detail-grid-3">
                                 <div class="detail-pair"><span class="detail-key">Document Number</span><span class="detail-val font-mono">{{ item.cashbookDocumentNumber || '-' }}</span></div>
-                                <div class="detail-pair"><span class="detail-key">Cashbook Name</span><span class="detail-val">{{ item.cashbookName || '-' }}</span></div>
+                                <div class="detail-pair"><span class="detail-key">Cashbook Name</span><span class="detail-val">{{ item.cashbookDescription || item.CashbookDescription || item.cashbookName || '-' }}</span></div>
                                 <div class="detail-pair"><span class="detail-key">Transaction ID</span><span class="detail-val font-mono">{{ item.cashbookTransactionID || item.cashbookTransactionId || '-' }}</span></div>
                               </div>
                             </div>

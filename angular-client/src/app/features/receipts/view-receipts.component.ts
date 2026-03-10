@@ -592,7 +592,7 @@ export class ViewReceiptsComponent implements OnInit {
     const allocDate = this.escHtml(this.formatDateOnly(item.billingAllocationDate || item.dateCaptured || ''));
     const status = this.escHtml(item.allocationStatus || (isBank ? 'Unknown' : 'EFT Allocated'));
     const cashbookDoc = this.escHtml(item.cashbookDocumentNumber || '-');
-    const cashbookName = this.escHtml(item.cashbookName || '-');
+    const cashbookName = this.escHtml(item.cashbookDescription || item.CashbookDescription || item.cashbookName || '-');
     const miscGroup = this.escHtml(item.miscPaymentGroupDescription || '-');
 
     printWindow.document.write(`<!DOCTYPE html><html><head><title>Bank Statement Allocation - ${receiptNo}</title>
@@ -679,7 +679,7 @@ export class ViewReceiptsComponent implements OnInit {
       this.formatDateOnly(r.billingAllocationDate || ''),
       r.allocationStatus || '',
       r.cashbookDocumentNumber || '',
-      r.cashbookName || ''
+      r.cashbookDescription || r.CashbookDescription || r.cashbookName || ''
     ]);
     const csv = [headers.map(h => this.csvEscape(h)).join(','), ...rows.map(r => r.map(v => this.csvEscape(v)).join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
