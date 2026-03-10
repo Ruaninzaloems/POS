@@ -2631,27 +2631,161 @@
               </div>
               <div class="detail-section">
                 <div class="section-header-bar">🛡️ Clearance Certificates</div>
-                <div class="data-table-wrapper">
+                <div class="data-table-wrapper clr-wide-table">
                   <table class="data-table" data-testid="table-clearance">
                     <thead>
                       <tr>
+                        <th class="clr-th-expand"></th>
+                        <th>Cost Schedule ID</th>
+                        <th>Account Type</th>
+                        <th>SG Number</th>
+                        <th>Address</th>
+                        <th>Buyer Account Name</th>
+                        <th>Attorney</th>
                         <th>Certificate No</th>
-                        <th>Date</th>
+                        <th>Receipt No</th>
+                        <th>Receipt Date</th>
+                        <th>Valid Until</th>
+                        <th>Sell Date</th>
                         <th>Status</th>
-                        <th>Expiry Date</th>
+                        <th class="text-center">Cost Schedule</th>
+                        <th class="text-center">Clearance Cert</th>
                       </tr>
                     </thead>
                     <tbody>
                       @for (c of tabData()?.clearances || []; track $index) {
-                        <tr [attr.data-testid]="'row-clearance-' +  $index  + ''">
-                          <td class="mono">{{ c.certificateNumber || c.certificateNo || '-' }}</td>
-                          <td>{{ formatDate(c.applicationDate || c.date || c.createdDate) }}</td>
-                          <td><span class="inline-badge" [class.active]="(c.status || '').toLowerCase() === 'issued'">{{ c.status || '-' }}</span></td>
-                          <td>{{ formatDate(c.expiryDate || c.validTo) }}</td>
+                        @let scheduleId = c.clearanceStagingID ?? c.clearance_ID ?? c.costSchedule_ID ?? c.id;
+                        @let clearanceAccountName = (c.accountName ?? '').trim();
+                        @let isForThisAccount = isSameClearanceAccount(clearanceAccountName);
+                        @let isCompleted = (c.clearanceStatus ?? c.status ?? '').toLowerCase() === 'completed';
+                        @let isExpanded = expandedClearanceRow() === $index;
+
+                        @if (!isForThisAccount) {
+                          <tr class="clr-prev-owner-banner">
+                            <td colspan="15">
+                              <div class="clr-banner clr-banner-amber">
+                                ⚠️ <strong>Previous account clearance</strong> — This clearance was processed on account <strong>{{ clearanceAccountName || 'unknown' }}</strong> (previous owner) for this property.
+                                @if (isCompleted) {
+                                  Transfer of ownership to the current account <strong>{{ getAccountNum(selectedAccount()) }}</strong> is complete.
+                                } @else {
+                                  Transfer to <strong>{{ c.buyername ?? c.buyerName ?? 'buyer' }}</strong> is in progress.
+                                }
+                              </div>
+                            </td>
+                          </tr>
+                        }
+                        @if (isForThisAccount && isCompleted) {
+                          <tr class="clr-this-acct-banner">
+                            <td colspan="15">
+                              <div class="clr-banner clr-banner-green">
+                                ✅ <strong>Clearance on this account</strong> — Transfer of ownership to <strong>{{ c.buyername ?? c.buyerName ?? 'buyer' }}</strong> is complete.
+                              </div>
+                            </td>
+                          </tr>
+                        }
+
+                        <tr class="clr-data-row" [class.clr-expanded]="isExpanded" [class.clr-prev-owner-row]="!isForThisAccount" (click)="toggleClearanceRow($index)" [attr.data-testid]="'row-clearance-' + $index">
+                          <td class="clr-td-expand">
+                            <button class="clr-expand-btn">{{ isExpanded ? '▲' : '▼' }}</button>
+                          </td>
+                          <td class="mono">{{ scheduleId ?? '-' }}</td>
+                          <td>{{ c.accounttype ?? c.accountType ?? '-' }}</td>
+                          <td class="mono" style="font-size: 0.72rem;">{{ c.sgNumber ?? '-' }}</td>
+                          <td>{{ (c.propertyAddress || c.address || '-').replace('\r\n', ', ').replace('  ', ' ').trim() }}</td>
+                          <td style="font-weight: 500;">{{ c.buyername ?? c.buyerName ?? c.accountName ?? '-' }}</td>
+                          <td>{{ c.attorneyDesc ?? c.attorney ?? '-' }}</td>
+                          <td class="mono">{{ c.certificateNo ?? c.clearance ?? '-' }}</td>
+                          <td class="mono">{{ c.receiptNo || '-' }}</td>
+                          <td>{{ c.receiptDate ? formatDate(c.receiptDate) : '-' }}</td>
+                          <td>{{ formatDate(c.toDate) }}</td>
+                          <td>{{ formatDate(c.sellDate) }}</td>
+                          <td>
+                            <span class="inline-badge" [class.active]="(c.clearanceStatus ?? c.status ?? '') === 'Completed' || (c.clearanceStatus ?? c.status ?? '') === 'Approved'">
+                              {{ c.clearanceStatus ?? c.status ?? '-' }}
+                            </span>
+                          </td>
+                          <td class="text-center" (click)="$event.stopPropagation()">
+                            @if (scheduleId) {
+                              <button class="clr-download-btn" (click)="downloadClearanceDoc(scheduleId, 'cost-schedule')" title="Download Cost Schedule" [attr.data-testid]="'btn-download-schedule-' + $index">📄</button>
+                            } @else { <span style="color: var(--pos-text-muted);">-</span> }
+                          </td>
+                          <td class="text-center" (click)="$event.stopPropagation()">
+                            @if (scheduleId) {
+                              <button class="clr-download-btn clr-download-cert" (click)="downloadClearanceDoc(scheduleId, 'clearance-certificate')" title="Download Clearance Certificate" [attr.data-testid]="'btn-download-certificate-' + $index">📜</button>
+                            } @else { <span style="color: var(--pos-text-muted);">-</span> }
+                          </td>
                         </tr>
+
+                        @if (isExpanded) {
+                          <tr class="clr-detail-row">
+                            <td colspan="15" style="padding: 0;">
+                              <div class="clr-detail-panels">
+                                <div class="clr-panel">
+                                  <div class="clr-panel-header clr-panel-header-finance">⚖️ Financial Breakdown</div>
+                                  <div class="clr-panel-body">
+                                    <div class="clr-kv-row"><span class="clr-kv-label">Section 118(1)</span><span class="clr-kv-value mono">R {{ formatCurrency(c.section1181 ?? 0) }}</span></div>
+                                    <div class="clr-kv-row"><span class="clr-kv-label">Section 118(3)</span><span class="clr-kv-value mono">R {{ formatCurrency(c.section1183 ?? 0) }}</span></div>
+                                    <div class="clr-kv-row"><span class="clr-kv-label">Provision</span><span class="clr-kv-value mono">R {{ formatCurrency(c.provision ?? 0) }}</span></div>
+                                    <div class="clr-kv-row"><span class="clr-kv-label">Interest</span><span class="clr-kv-value mono">R {{ formatCurrency(c.interest ?? 0) }}</span></div>
+                                    <div class="clr-kv-row"><span class="clr-kv-label">Advance Payment</span><span class="clr-kv-value mono" [class.clr-advance-negative]="(c.advancepayment ?? 0) < 0">R {{ formatCurrency(c.advancepayment ?? 0) }}</span></div>
+                                    <div class="clr-kv-row"><span class="clr-kv-label">Additional</span><span class="clr-kv-value mono">R {{ formatCurrency(c.additional ?? 0) }}</span></div>
+                                    <div class="clr-kv-row"><span class="clr-kv-label">Clearance Cost</span><span class="clr-kv-value mono">R {{ formatCurrency(c.clearanceCost ?? 0) }}</span></div>
+                                    <div class="clr-kv-row clr-kv-total"><span class="clr-kv-label">TOTAL</span><span class="clr-kv-value mono">R {{ formatCurrency((c.section1181 ?? 0) + (c.section1183 ?? 0) + (c.provision ?? 0) + (c.interest ?? 0) + (c.advancepayment ?? 0) + (c.additional ?? 0) + (c.clearanceCost ?? 0)) }}</span></div>
+                                  </div>
+                                </div>
+
+                                <div class="clr-panel">
+                                  <div class="clr-panel-header clr-panel-header-sale">🏠 Sale Details</div>
+                                  <div class="clr-panel-body">
+                                    <div class="clr-kv-row"><span class="clr-kv-label">Sell Price</span><span class="clr-kv-value mono">R {{ formatCurrency(c.sellPrice ?? 0) }}</span></div>
+                                    <div class="clr-kv-row"><span class="clr-kv-label">Sell Date</span><span class="clr-kv-value">{{ formatDate(c.sellDate) }}</span></div>
+                                    <div class="clr-kv-row"><span class="clr-kv-label">Valid From</span><span class="clr-kv-value">{{ formatDate(c.fromDate) }}</span></div>
+                                    <div class="clr-kv-row"><span class="clr-kv-label">Valid Until</span><span class="clr-kv-value">{{ formatDate(c.toDate) }}</span></div>
+                                    <div class="clr-kv-row"><span class="clr-kv-label">Receipt No</span><span class="clr-kv-value mono">{{ c.receiptNo || '-' }}</span></div>
+                                    <div class="clr-kv-row"><span class="clr-kv-label">Receipt Date</span><span class="clr-kv-value">{{ c.receiptDate ? formatDate(c.receiptDate) : '-' }}</span></div>
+                                  </div>
+                                </div>
+
+                                <div class="clr-panel">
+                                  <div class="clr-panel-header clr-panel-header-parties">📋 Property & Parties</div>
+                                  <div class="clr-panel-body">
+                                    <div class="clr-kv-row">
+                                      <span class="clr-kv-label">Clearance Account</span>
+                                      <span class="clr-kv-value">
+                                        {{ clearanceAccountName || '-' }}
+                                        @if (isForThisAccount) {
+                                          <span class="clr-acct-badge clr-acct-badge-this">✅ This account</span>
+                                        } @else {
+                                          <span class="clr-acct-badge clr-acct-badge-prev">⚠️ Previous owner</span>
+                                        }
+                                      </span>
+                                    </div>
+                                    @if (!isForThisAccount) {
+                                      @let prevAcctNo = getClearancePreviousAccountNo(clearanceAccountName);
+                                      <div class="clr-kv-row clr-kv-prev-owner">
+                                        <span class="clr-kv-label">Previous Account No</span>
+                                        <span class="clr-kv-value mono">{{ prevAcctNo || clearanceAccountName || 'Previous owner' }}</span>
+                                      </div>
+                                    }
+                                    <div class="clr-kv-row"><span class="clr-kv-label">Current Account</span><span class="clr-kv-value mono">{{ getAccountNum(selectedAccount()) }}</span></div>
+                                    <div class="clr-kv-row"><span class="clr-kv-label">Buyer</span><span class="clr-kv-value" style="font-weight: 500;">{{ c.buyername ?? c.buyerName ?? '-' }}</span></div>
+                                    <div class="clr-kv-row"><span class="clr-kv-label">Attorney</span><span class="clr-kv-value">{{ c.attorneyDesc ?? c.attorney ?? '-' }}</span></div>
+                                    <div class="clr-kv-row"><span class="clr-kv-label">File No</span><span class="clr-kv-value mono">{{ c.fileNo || '-' }}</span></div>
+                                    <div class="clr-kv-row"><span class="clr-kv-label">SG Number</span><span class="clr-kv-value mono" style="font-size: 0.72rem;">{{ c.sgNumber ?? '-' }}</span></div>
+                                    <div class="clr-kv-row"><span class="clr-kv-label">Clearance Type</span><span class="clr-kv-value">{{ getClearanceTypeLabel(c.clearanceTypeID) }}</span></div>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        }
                       }
                     </tbody>
                   </table>
+                </div>
+                <div class="clr-footer">
+                  <span class="clr-footer-hint">Click a row to view financial breakdown</span>
+                  <span class="clr-footer-count">{{ (tabData()?.clearances || []).length }} of {{ (tabData()?.clearances || []).length }} records</span>
                 </div>
               </div>
             } @else {
@@ -2679,22 +2813,27 @@
                     <thead>
                       <tr>
                         <th>Date</th>
-                        <th>Note</th>
+                        <th>Note Type</th>
+                        <th>Description</th>
                         <th>Created By</th>
-                        <th>Type</th>
+                        <th class="text-right">Amount</th>
+                        <th>Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       @for (n of tabData()?.notes || []; track $index) {
                         <tr [attr.data-testid]="'row-note-' +  $index  + ''">
                           <td>{{ formatDate(n.noteDate || n.date || n.createdDate) }}</td>
-                          <td>{{ n.note || n.noteDescription || n.description || '-' }}</td>
-                          <td>{{ n.createdBy || n.capturedBy || n.user || '-' }}</td>
                           <td>{{ n.noteType || n.type || '-' }}</td>
+                          <td style="max-width: 300px;" class="truncate-cell">{{ n.description || n.noteDescription || n.notes || n.note || '-' }}</td>
+                          <td>{{ n.createdBy || n.capturedBy || n.user || '-' }}</td>
+                          <td class="text-right mono">{{ n.amount != null ? 'R ' + formatCurrency(n.amount) : '-' }}</td>
+                          <td><span class="inline-badge">{{ n.status || '-' }}</span></td>
                         </tr>
                       }
                     </tbody>
                   </table>
+                  <div class="table-footer-count">{{ (tabData()?.notes || []).length }} record{{ (tabData()?.notes || []).length !== 1 ? 's' : '' }}</div>
                 </div>
               </div>
             } @else {

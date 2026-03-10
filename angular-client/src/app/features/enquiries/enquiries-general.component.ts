@@ -238,6 +238,8 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   proofData = signal<any>(null);
   proofLoading = signal(false);
   selectedOccupierIdx = signal<number | null>(null);
+  expandedClearanceRow = signal<number | null>(null);
+  clearanceLinkedAccounts = signal<any[]>([]);
 
   generatingPropertyLetter = signal<string | null>(null);
 
@@ -1671,14 +1673,23 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           break;
 
         case 'clearance':
+          this.expandedClearanceRow.set(null);
           try {
-            const clearResult = await firstValueFrom(
-              this.api.get<any>(`/api/platinum/billing-enquiry/clearance-inquiries/${accountId}`)
-            );
-            data = { clearances: this.normalizeArray(clearResult) };
+            const [clearResult, linkedResult] = await Promise.allSettled([
+              firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/clearance-inquiries/${accountId}`)),
+              firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/linked-accounts-on-property/${accountId}`)),
+            ]);
+            const clearArr = clearResult.status === 'fulfilled' ? this.normalizeArray(clearResult.value) : [];
+            const linkedArr = linkedResult.status === 'fulfilled' ? this.normalizeArray(linkedResult.value) : [];
+            this.clearanceLinkedAccounts.set(linkedArr);
+            data = { clearances: clearArr };
+            if (clearResult.status === 'rejected') {
+              data._error = clearResult.reason?.message || 'Failed to load clearance data';
+            }
           } catch (e: any) {
             console.error('[clearance] API failed:', e?.message);
             data = { clearances: [], _error: e?.message || 'Failed to load clearance data' };
+            this.clearanceLinkedAccounts.set([]);
           }
           break;
 
@@ -5073,6 +5084,49 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     ]);
     this.exportService.exportCsv(this.getExportOpts('Indigent_Subsidy', 'INDIGENT SUBSIDY REPORT'), headers, rows);
     this.toast.show('Indigent data exported', 'success');
+  }
+
+  private normalizeStr(s: string): string {
+    return (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+
+  isSameClearanceAccount(clearanceAccountName: string): boolean {
+    if (!clearanceAccountName) return true;
+    const currentName = this.normalizeStr(this.selectedAccount()?.name || '');
+    const clrName = this.normalizeStr(clearanceAccountName);
+    if (!currentName || !clrName) return true;
+    return currentName === clrName;
+  }
+
+  getClearancePreviousAccountNo(clearanceAccountName: string): string {
+    const linked = this.clearanceLinkedAccounts();
+    const clrName = this.normalizeStr(clearanceAccountName);
+    if (!clrName || clrName === '-') return '';
+    const currentNum = String(this.getAccountNum(this.selectedAccount()) || '').replace(/^0+/, '');
+    const prevAcct = linked.find((la: any) => {
+      const laName = this.normalizeStr(la.name || la.accountName || la.fullNAME || '');
+      if (!laName) return false;
+      const matchName = laName.includes(clrName) || clrName.includes(laName);
+      const laNum = String(la.accountNumber || la.account_ID || '').replace(/^0+/, '');
+      return matchName && laNum !== currentNum;
+    });
+    const prevNum = prevAcct?.accountNumber || prevAcct?.account_ID;
+    return prevNum ? String(prevNum).padStart(12, '0') : '';
+  }
+
+  toggleClearanceRow(idx: number): void {
+    this.expandedClearanceRow.set(this.expandedClearanceRow() === idx ? null : idx);
+  }
+
+  getClearanceTypeLabel(typeId: any): string {
+    if (typeId === 1) return 'Transfer';
+    if (typeId === 2) return 'Section 118';
+    return typeId ?? '-';
+  }
+
+  downloadClearanceDoc(scheduleId: any, type: 'cost-schedule' | 'clearance-certificate'): void {
+    if (!scheduleId) return;
+    window.open(`/api/platinum/clearance-document-download?costScheduleId=${scheduleId}&type=${type}`, '_blank');
   }
 
   async addOccupier(): Promise<void> {
