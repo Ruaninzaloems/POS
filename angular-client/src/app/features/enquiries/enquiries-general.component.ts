@@ -1479,9 +1479,10 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         );
         const arr = this.normalizeArray(result);
         if (arr.length > 0 && !arr[0]._error) {
-          console.log('[txn-summary-fallback] ServiceTypeBalance keys:', Object.keys(arr[0]), 'count:', arr.length);
-          this.summaryData.set(arr);
-          this.summarySource.set('aging');
+          console.log('[txn-summary-pivot] ServiceTypeBalance keys:', Object.keys(arr[0]), 'count:', arr.length);
+          const pivoted = this.pivotServiceTypeBalance(arr, finYear);
+          this.summaryData.set(pivoted);
+          this.summarySource.set('monthly');
           loaded = true;
         }
       } catch {
@@ -1495,10 +1496,65 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.summaryLoading.set(false);
   }
 
+  private pivotServiceTypeBalance(rows: any[], finYear: string): any[] {
+    const monthNames = ['July', 'August', 'September', 'October', 'November', 'December', 'January', 'February', 'March', 'April', 'May', 'June'];
+    const monthFieldMap: Record<string, string> = {
+      'July': 'july', 'August': 'august', 'September': 'september', 'October': 'october',
+      'November': 'november', 'December': 'december', 'January': 'january', 'February': 'february',
+      'March': 'march', 'April': 'april', 'May': 'may', 'June': 'june'
+    };
+
+    const serviceMap = new Map<string, any>();
+    const totals: Record<string, number> = {};
+    monthNames.forEach(m => totals[monthFieldMap[m]] = 0);
+
+    for (const row of rows) {
+      const desc = row.serviceDescription || row.serviceDesc || row.description || row.serviceTypeDesc || 'Unknown';
+      const monthNum = Number(row.month || row.periodID || 0);
+      const monthName = monthNum >= 1 && monthNum <= 12 ? monthNames[monthNum - 1] : null;
+      const amount = Number(row.totalAmount || row.amount || row.currentCharge || 0) || 0;
+
+      if (!serviceMap.has(desc)) {
+        const entry: any = { description: desc, financialYear: row.financialYear || finYear };
+        monthNames.forEach(m => entry[monthFieldMap[m]] = 0);
+        serviceMap.set(desc, entry);
+      }
+
+      if (monthName) {
+        const entry = serviceMap.get(desc);
+        entry[monthFieldMap[monthName]] += amount;
+        totals[monthFieldMap[monthName]] += amount;
+      }
+    }
+
+    const pivotedRows = Array.from(serviceMap.values());
+
+    const openingRow: any = { description: 'Opening Balance', financialYear: finYear, _isSpecialRow: true };
+    monthNames.forEach(m => openingRow[monthFieldMap[m]] = 0);
+
+    let runningBalance = 0;
+    for (const m of monthNames) {
+      openingRow[monthFieldMap[m]] = runningBalance;
+      runningBalance += totals[monthFieldMap[m]];
+    }
+
+    const totalRow: any = { description: 'Total', financialYear: finYear, _isSpecialRow: true, _isTotalRow: true };
+    monthNames.forEach(m => totalRow[monthFieldMap[m]] = totals[monthFieldMap[m]]);
+
+    const closingRow: any = { description: 'Closing Balance', financialYear: finYear, _isSpecialRow: true };
+    let closingBalance = 0;
+    for (const m of monthNames) {
+      closingBalance += totals[monthFieldMap[m]];
+      closingRow[monthFieldMap[m]] = closingBalance;
+    }
+
+    return [openingRow, ...pivotedRows, totalRow, closingRow];
+  }
+
   async onSummaryYearChange(year: string): Promise<void> {
     this.summaryFinYear.set(year);
     const acct = this.selectedAccount();
-    const accountId = acct ? (acct.account_ID || acct.accountID) : null;
+    const accountId = acct ? this.getAccountId(acct) : null;
     if (accountId) {
       await this.loadTransactionSummary(accountId, year);
     }
@@ -1546,14 +1602,14 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const data = this.summaryData();
     if (!data.length) return;
     const months = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-    const headers = ['Description', 'Financial Year', ...months, 'Total'];
+    const fullMonths = ['July', 'August', 'September', 'October', 'November', 'December', 'January', 'February', 'March', 'April', 'May', 'June'];
+    const headers = ['Description', 'Financial Year', ...fullMonths];
     const rows = data.map(row => {
       const vals = months.map(m => this.getSummaryMonthValue(row, m).toFixed(2));
       return [
         this.getSummaryDescription(row),
         this.getSummaryFinYear(row),
         ...vals,
-        this.getSummaryRowTotal(row).toFixed(2),
       ];
     });
     const csv = [headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))].join('\n');

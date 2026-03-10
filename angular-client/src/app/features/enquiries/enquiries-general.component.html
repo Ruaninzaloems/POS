@@ -2502,11 +2502,10 @@
             <div class="detail-section">
               <div class="summary-header-bar">
                 <div class="summary-title-row">
-                  <span class="summary-title">Transaction Summary per Fin Year / Billing Period</span>
+                  <span class="summary-title">Transaction Summary List per Fin-Year/Billing Period</span>
                 </div>
                 <div class="summary-controls">
                   <div class="summary-year-select">
-                    <label class="summary-label">Financial Year</label>
                     <select class="summary-dropdown" [value]="summaryFinYear()" (change)="onSummaryYearChange($any($event.target).value)" data-testid="select-summary-year">
                       @for (yr of summaryAvailableYears(); track yr) {
                         <option [value]="yr" [selected]="yr === summaryFinYear()">{{ yr }}</option>
@@ -2529,85 +2528,51 @@
                   <p class="error-message">{{ summaryError() }}</p>
                   <button class="btn-primary" (click)="onSummaryYearChange(summaryFinYear())">Retry</button>
                 </div>
-              } @else if (summaryData().length && summarySource() === 'monthly') {
+              } @else if (summaryData().length) {
                 <div class="summary-table-wrapper">
                   <table class="summary-table" data-testid="table-txn-summary">
                     <thead>
                       <tr>
                         <th class="summary-th-desc">Description</th>
-                        <th class="summary-th-fy">Fin Year</th>
-                        <th class="summary-th-month">Jul</th>
-                        <th class="summary-th-month">Aug</th>
-                        <th class="summary-th-month">Sep</th>
-                        <th class="summary-th-month">Oct</th>
-                        <th class="summary-th-month">Nov</th>
-                        <th class="summary-th-month">Dec</th>
-                        <th class="summary-th-month">Jan</th>
-                        <th class="summary-th-month">Feb</th>
-                        <th class="summary-th-month">Mar</th>
-                        <th class="summary-th-month">Apr</th>
+                        <th class="summary-th-fy">Financial Year</th>
+                        <th class="summary-th-month">July</th>
+                        <th class="summary-th-month">August</th>
+                        <th class="summary-th-month">September</th>
+                        <th class="summary-th-month">October</th>
+                        <th class="summary-th-month">November</th>
+                        <th class="summary-th-month">December</th>
+                        <th class="summary-th-month">January</th>
+                        <th class="summary-th-month">February</th>
+                        <th class="summary-th-month">March</th>
+                        <th class="summary-th-month">April</th>
                         <th class="summary-th-month">May</th>
-                        <th class="summary-th-month">Jun</th>
+                        <th class="summary-th-month">June</th>
                       </tr>
                     </thead>
                     <tbody>
                       @for (row of summaryData(); track $index) {
-                        <tr [class.summary-row-highlight]="isSummaryTotalRow(row)" [class.summary-row-total]="getSummaryDescription(row).toLowerCase() === 'total'" [class.summary-row-closing]="getSummaryDescription(row).toLowerCase() === 'closing balance'">
-                          <td class="summary-td-desc" [class.font-bold]="isSummaryTotalRow(row)">{{ getSummaryDescription(row) }}</td>
+                        <tr [class.summary-row-special]="row._isSpecialRow" [class.summary-row-total]="row._isTotalRow" [class.summary-row-closing]="getSummaryDescription(row).toLowerCase() === 'closing balance'" [class.summary-row-opening]="getSummaryDescription(row).toLowerCase() === 'opening balance'">
+                          <td class="summary-td-desc" [class.font-bold]="row._isSpecialRow">{{ getSummaryDescription(row) }}</td>
                           <td class="summary-td-fy">{{ getSummaryFinYear(row) }}</td>
-                          <td class="summary-td-amt">{{ formatCurrency(getSummaryMonthValue(row, 'Jul')) }}</td>
-                          <td class="summary-td-amt">{{ formatCurrency(getSummaryMonthValue(row, 'Aug')) }}</td>
-                          <td class="summary-td-amt">{{ formatCurrency(getSummaryMonthValue(row, 'Sep')) }}</td>
-                          <td class="summary-td-amt">{{ formatCurrency(getSummaryMonthValue(row, 'Oct')) }}</td>
-                          <td class="summary-td-amt">{{ formatCurrency(getSummaryMonthValue(row, 'Nov')) }}</td>
-                          <td class="summary-td-amt">{{ formatCurrency(getSummaryMonthValue(row, 'Dec')) }}</td>
-                          <td class="summary-td-amt">{{ formatCurrency(getSummaryMonthValue(row, 'Jan')) }}</td>
-                          <td class="summary-td-amt">{{ formatCurrency(getSummaryMonthValue(row, 'Feb')) }}</td>
-                          <td class="summary-td-amt">{{ formatCurrency(getSummaryMonthValue(row, 'Mar')) }}</td>
-                          <td class="summary-td-amt">{{ formatCurrency(getSummaryMonthValue(row, 'Apr')) }}</td>
-                          <td class="summary-td-amt">{{ formatCurrency(getSummaryMonthValue(row, 'May')) }}</td>
-                          <td class="summary-td-amt">{{ formatCurrency(getSummaryMonthValue(row, 'Jun')) }}</td>
+                          <td class="summary-td-amt" [class.summary-neg]="getSummaryMonthValue(row, 'Jul') < 0">{{ formatCurrency(getSummaryMonthValue(row, 'Jul')) }}</td>
+                          <td class="summary-td-amt" [class.summary-neg]="getSummaryMonthValue(row, 'Aug') < 0">{{ formatCurrency(getSummaryMonthValue(row, 'Aug')) }}</td>
+                          <td class="summary-td-amt" [class.summary-neg]="getSummaryMonthValue(row, 'Sep') < 0">{{ formatCurrency(getSummaryMonthValue(row, 'Sep')) }}</td>
+                          <td class="summary-td-amt" [class.summary-neg]="getSummaryMonthValue(row, 'Oct') < 0">{{ formatCurrency(getSummaryMonthValue(row, 'Oct')) }}</td>
+                          <td class="summary-td-amt" [class.summary-neg]="getSummaryMonthValue(row, 'Nov') < 0">{{ formatCurrency(getSummaryMonthValue(row, 'Nov')) }}</td>
+                          <td class="summary-td-amt" [class.summary-neg]="getSummaryMonthValue(row, 'Dec') < 0">{{ formatCurrency(getSummaryMonthValue(row, 'Dec')) }}</td>
+                          <td class="summary-td-amt" [class.summary-neg]="getSummaryMonthValue(row, 'Jan') < 0">{{ formatCurrency(getSummaryMonthValue(row, 'Jan')) }}</td>
+                          <td class="summary-td-amt" [class.summary-neg]="getSummaryMonthValue(row, 'Feb') < 0">{{ formatCurrency(getSummaryMonthValue(row, 'Feb')) }}</td>
+                          <td class="summary-td-amt" [class.summary-neg]="getSummaryMonthValue(row, 'Mar') < 0">{{ formatCurrency(getSummaryMonthValue(row, 'Mar')) }}</td>
+                          <td class="summary-td-amt" [class.summary-neg]="getSummaryMonthValue(row, 'Apr') < 0">{{ formatCurrency(getSummaryMonthValue(row, 'Apr')) }}</td>
+                          <td class="summary-td-amt" [class.summary-neg]="getSummaryMonthValue(row, 'May') < 0">{{ formatCurrency(getSummaryMonthValue(row, 'May')) }}</td>
+                          <td class="summary-td-amt" [class.summary-neg]="getSummaryMonthValue(row, 'Jun') < 0">{{ formatCurrency(getSummaryMonthValue(row, 'Jun')) }}</td>
                         </tr>
                       }
                     </tbody>
                   </table>
                 </div>
                 <div class="summary-footer">
-                  <span class="summary-row-count">{{ summaryData().length }} items</span>
-                  <span class="summary-source-tag">Source: Transaction Summary List</span>
-                </div>
-              } @else if (summaryData().length && summarySource() === 'aging') {
-                <div class="summary-table-wrapper">
-                  <table class="summary-table" data-testid="table-txn-summary-aging">
-                    <thead>
-                      <tr>
-                        <th class="summary-th-desc">Service Type</th>
-                        <th class="summary-th-month">Current</th>
-                        <th class="summary-th-month">30 Days</th>
-                        <th class="summary-th-month">60 Days</th>
-                        <th class="summary-th-month">90 Days</th>
-                        <th class="summary-th-month">120+ Days</th>
-                        <th class="summary-th-month">Total Outstanding</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (row of summaryData(); track $index) {
-                        <tr>
-                          <td class="summary-td-desc">{{ safeStr(row.serviceTypeDesc || row.serviceType || row.description || row.serviceDescription) }}</td>
-                          <td class="summary-td-amt">{{ formatCurrency(row.current || row.currentAmount || 0) }}</td>
-                          <td class="summary-td-amt">{{ formatCurrency(row.days30 || row.thirtyDays || 0) }}</td>
-                          <td class="summary-td-amt">{{ formatCurrency(row.days60 || row.sixtyDays || 0) }}</td>
-                          <td class="summary-td-amt">{{ formatCurrency(row.days90 || row.ninetyDays || 0) }}</td>
-                          <td class="summary-td-amt">{{ formatCurrency(row.days120 || row.hundredTwentyDays || row.overHundredTwenty || 0) }}</td>
-                          <td class="summary-td-amt font-bold">{{ formatCurrency(row.totalOutStanding || row.totalOutstanding || row.total || 0) }}</td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
-                <div class="summary-footer">
-                  <span class="summary-row-count">{{ summaryData().length }} items</span>
-                  <span class="summary-source-tag">Source: Service Type Balance (Aging)</span>
+                  <span class="summary-row-count">1 – {{ summaryData().length }} of {{ summaryData().length }}</span>
                 </div>
               } @else {
                 <div class="empty-state">
