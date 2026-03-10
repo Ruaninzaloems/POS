@@ -654,46 +654,177 @@
         @if (activeTab() === 'contact') {
           <div class="tab-panel" data-testid="contact-info-tab">
             @if (tabData()?.contact) {
-              <div class="detail-section">
-                <div class="section-header-bar">📞 Contact Details</div>
-                <div class="detail-grid">
-                  <div class="detail-item"><div class="detail-label">Home Phone</div><div class="detail-value">{{ safeStr(tabData()?.contact?.homePhone || tabData()?.contact?.tel_Home) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Work Phone</div><div class="detail-value">{{ safeStr(tabData()?.contact?.workPhone || tabData()?.contact?.tel_Work) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Mobile</div><div class="detail-value">{{ safeStr(tabData()?.contact?.mobileNumber || tabData()?.contact?.tel_Mobile || tabData()?.contact?.cellphone) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Email</div><div class="detail-value">{{ safeStr(tabData()?.contact?.emailAddress || tabData()?.contact?.email || tabData()?.contact?.emailId) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Fax</div><div class="detail-value">{{ safeStr(tabData()?.contact?.faxNumber || tabData()?.contact?.fax) }}</div></div>
-                </div>
-              </div>
-              @if ((tabData()?.history || []).length > 0) {
-                <div class="detail-section">
-                  <div class="section-header-bar">📋 Contact History</div>
-                  <div class="data-table-wrapper">
-                    <table class="data-table" data-testid="table-contact-history">
-                      <thead>
-                        <tr>
-                          <th>Date</th>
-                          <th>Type</th>
-                          <th>Old Value</th>
-                          <th>New Value</th>
-                          <th>Changed By</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        @for (h of tabData()?.history || []; track $index) {
-                          <tr [attr.data-testid]="'row-contact-' +  $index  + ''">
-                            <td>{{ formatDate(h.changeDate || h.date || h.modifiedDate) }}</td>
-                            <td>{{ h.changeType || h.type || h.fieldName || '-' }}</td>
-                            <td>{{ h.oldValue || h.previousValue || '-' }}</td>
-                            <td>{{ h.newValue || h.currentValue || '-' }}</td>
-                            <td>{{ h.changedBy || h.modifiedBy || h.user || '-' }}</td>
-                          </tr>
-                        }
-                      </tbody>
-                    </table>
+              <div class="contact-page-title">Consumer Contact Details</div>
+
+              <div class="acct-section-card">
+                <div class="acct-section-header">Contact Details</div>
+                <div class="acct-two-col">
+                  <div class="acct-col">
+                    <div class="acct-field">
+                      <span class="acct-field-label">Telephone (Mobile)</span>
+                      <span class="acct-field-value contact-phone-val">{{ safeStr(tabData()?.contact?.tel_Mobile || tabData()?.contact?.mobileNumber || tabData()?.contact?.cellphone || tabData()?.contact?.cellPhoneNo) }}</span>
+                    </div>
+                    <div class="acct-field">
+                      <span class="acct-field-label">Telephone (Home)</span>
+                      <span class="acct-field-value contact-phone-val">{{ safeStr(tabData()?.contact?.tel_Home || tabData()?.contact?.homePhone || tabData()?.contact?.homePhoneNo) }}</span>
+                    </div>
+                    <div class="acct-field">
+                      <span class="acct-field-label">Telephone (Work)</span>
+                      <span class="acct-field-value contact-phone-val">{{ safeStr(tabData()?.contact?.tel_Work || tabData()?.contact?.workPhone || tabData()?.contact?.workPhoneNo) }}</span>
+                    </div>
+                  </div>
+                  <div class="acct-col">
+                    <div class="acct-field">
+                      <span class="acct-field-label">Fax</span>
+                      <span class="acct-field-value contact-phone-val">{{ safeStr(tabData()?.contact?.fax || tabData()?.contact?.faxNumber || tabData()?.contact?.faxNo) }}</span>
+                    </div>
+                    <div class="acct-field">
+                      <span class="acct-field-label">Email Address</span>
+                      <span class="acct-field-value contact-email-val">{{ safeStr(tabData()?.contact?.emailAddress || tabData()?.contact?.email || tabData()?.contact?.emailId || tabData()?.contact?.eMail) }}</span>
+                    </div>
                   </div>
                 </div>
-              }
-            } @else {
+              </div>
+
+              <div class="acct-section-card">
+                <div class="acct-section-header">Additional Statement Emails</div>
+                <div class="contact-email-note">The Primary Email Address above needs to be populated with a valid Email Address. Additional emails entered below will also receive statements.</div>
+                <div class="acct-two-col">
+                  <div class="acct-col">
+                    <div class="acct-field">
+                      <span class="acct-field-label">Additional Email Address 1</span>
+                      <span class="acct-field-value contact-email-val">{{ safeStr(tabData()?.contact?.additionalEmail1 || tabData()?.contact?.additionalEmailAddress1 || tabData()?.contact?.addEmail1) }}</span>
+                    </div>
+                    <div class="acct-field">
+                      <span class="acct-field-label">Additional Email Address 3</span>
+                      <span class="acct-field-value contact-email-val">{{ safeStr(tabData()?.contact?.additionalEmail3 || tabData()?.contact?.additionalEmailAddress3 || tabData()?.contact?.addEmail3) }}</span>
+                    </div>
+                  </div>
+                  <div class="acct-col">
+                    <div class="acct-field">
+                      <span class="acct-field-label">Additional Email Address 2</span>
+                      <span class="acct-field-value contact-email-val">{{ safeStr(tabData()?.contact?.additionalEmail2 || tabData()?.contact?.additionalEmailAddress2 || tabData()?.contact?.addEmail2) }}</span>
+                    </div>
+                    <div class="acct-field">
+                      <span class="acct-field-label">Additional Email Address 4</span>
+                      <span class="acct-field-value contact-email-val">{{ safeStr(tabData()?.contact?.additionalEmail4 || tabData()?.contact?.additionalEmailAddress4 || tabData()?.contact?.addEmail4) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="acct-section-card">
+                <div class="acct-section-header">Delivery Address Details</div>
+                <div class="acct-two-col">
+                  <div class="acct-col">
+                    <div class="acct-field">
+                      <span class="acct-field-label">Type of Delivery Address</span>
+                      <span class="acct-field-value">{{ safeStr(tabData()?.contact?.deliveryAddressType || tabData()?.contact?.typeOfDeliveryAddress || tabData()?.contact?.addressType) }}</span>
+                    </div>
+                    <div class="acct-field">
+                      <span class="acct-field-label">City / Town</span>
+                      <span class="acct-field-value">{{ safeStr(tabData()?.contact?.city || tabData()?.contact?.town || tabData()?.contact?.cityTown) }}</span>
+                    </div>
+                    <div class="acct-field">
+                      <span class="acct-field-label">Suburb</span>
+                      <span class="acct-field-value">{{ safeStr(tabData()?.contact?.suburb || tabData()?.contact?.subUrb) }}</span>
+                    </div>
+                    <div class="acct-field">
+                      <span class="acct-field-label">Address Line 1</span>
+                      <span class="acct-field-value">{{ safeStr(tabData()?.contact?.addressLine1 || tabData()?.contact?.address1 || tabData()?.contact?.streetAddress1) }}</span>
+                    </div>
+                    <div class="acct-field">
+                      <span class="acct-field-label">Address Line 2</span>
+                      <span class="acct-field-value">{{ safeStr(tabData()?.contact?.addressLine2 || tabData()?.contact?.address2 || tabData()?.contact?.streetAddress2) }}</span>
+                    </div>
+                    <div class="acct-field">
+                      <span class="acct-field-label">Address Line 3</span>
+                      <span class="acct-field-value">{{ safeStr(tabData()?.contact?.addressLine3 || tabData()?.contact?.address3 || tabData()?.contact?.streetAddress3) }}</span>
+                    </div>
+                  </div>
+                  <div class="acct-col">
+                    <div class="acct-field">
+                      <span class="acct-field-label">Complex Name</span>
+                      <span class="acct-field-value">{{ safeStr(tabData()?.contact?.complexName || tabData()?.contact?.complex) }}</span>
+                    </div>
+                    <div class="acct-field">
+                      <span class="acct-field-label">Unit Number</span>
+                      <span class="acct-field-value">{{ safeStr(tabData()?.contact?.unitNumber || tabData()?.contact?.unitNo) }}</span>
+                    </div>
+                    <div class="acct-field">
+                      <span class="acct-field-label">Postal Code</span>
+                      <span class="acct-field-value mono">{{ safeStr(tabData()?.contact?.postalCode || tabData()?.contact?.postCode || tabData()?.contact?.zipCode) }}</span>
+                    </div>
+                    <div class="acct-field">
+                      <span class="acct-field-label">Care Of</span>
+                      <span class="acct-field-value">{{ safeStr(tabData()?.contact?.careOf || tabData()?.contact?.care_Of) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            }
+
+            @if ((tabData()?.history || []).length > 0) {
+              <div class="acct-section-card">
+                <div class="acct-section-header">Contact Details History</div>
+                <div class="data-table-wrapper" style="padding: 0.5rem;">
+                  <table class="data-table" data-testid="table-contact-history">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Old Value</th>
+                        <th>New Value</th>
+                        <th>Changed By</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (h of tabData()?.history || []; track $index) {
+                        <tr [attr.data-testid]="'row-contact-' + $index">
+                          <td>{{ formatDate(h.changeDate || h.date || h.modifiedDate) }}</td>
+                          <td>{{ h.changeType || h.type || h.fieldName || '-' }}</td>
+                          <td>{{ h.oldValue || h.previousValue || '-' }}</td>
+                          <td>{{ h.newValue || h.currentValue || '-' }}</td>
+                          <td>{{ h.changedBy || h.modifiedBy || h.user || '-' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            }
+
+            @if ((tabData()?.deliveryHistory || []).length > 0) {
+              <div class="acct-section-card">
+                <div class="acct-section-header">Delivery Address Details History</div>
+                <div class="data-table-wrapper" style="padding: 0.5rem;">
+                  <table class="data-table" data-testid="table-delivery-history">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Field</th>
+                        <th>Old Value</th>
+                        <th>New Value</th>
+                        <th>Changed By</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (d of tabData()?.deliveryHistory || []; track $index) {
+                        <tr [attr.data-testid]="'row-delivery-' + $index">
+                          <td>{{ formatDate(d.changeDate || d.date || d.modifiedDate) }}</td>
+                          <td>{{ d.changeType || d.type || d.fieldName || '-' }}</td>
+                          <td>{{ d.oldValue || d.previousValue || '-' }}</td>
+                          <td>{{ d.newValue || d.currentValue || '-' }}</td>
+                          <td>{{ d.changedBy || d.modifiedBy || d.user || '-' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            }
+
+            @if (!tabData()?.contact && (tabData()?.history || []).length === 0 && (tabData()?.deliveryHistory || []).length === 0) {
               <div class="empty-state">
                 <div class="empty-icon">📞</div>
                 <p class="empty-text">No contact information available</p>

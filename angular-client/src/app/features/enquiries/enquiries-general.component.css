@@ -1120,6 +1120,32 @@
   color: var(--pos-text-muted);
 }
 .acct-status-pill.acct-status-active { background: rgba(34,197,94,0.12); color: #15803d; }
+
+.contact-page-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--platinum-primary, #0f2b46);
+  padding: 0.5rem 0 0.75rem;
+  border-bottom: 2px solid var(--platinum-primary, #0f2b46);
+  margin-bottom: 0.75rem;
+}
+.contact-phone-val {
+  font-family: 'Inter', monospace;
+  letter-spacing: 0.04em;
+}
+.contact-email-val {
+  color: #2563eb;
+  word-break: break-all;
+}
+.contact-email-note {
+  padding: 0.4rem 1rem 0.5rem;
+  font-size: 0.72rem;
+  color: #b45309;
+  background: rgba(245,158,11,0.06);
+  border-bottom: 1px solid rgba(15,43,70,0.06);
+  line-height: 1.4;
+}
+
 @media (max-width: 768px) {
   .acct-two-col { grid-template-columns: 1fr; }
   .acct-col:first-child { border-right: none; border-bottom: 1px solid rgba(15,43,70,0.06); }
