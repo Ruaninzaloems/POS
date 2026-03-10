@@ -5,7 +5,8 @@
 
 .card { background: #fff; border: 1px solid #D6D6D6; border-radius: 0.75rem; overflow: hidden; }
 
-.search-section { padding: 1.5rem; position: relative; border: 1px solid #E5E7EB; border-radius: 0.75rem; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+.search-section { padding: 1.5rem; position: relative; border: 1px solid #E5E7EB; border-radius: 0.75rem; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: visible; }
+.search-section.card { overflow: visible; }
 .quick-search-row { display: flex; gap: 0.5rem; align-items: center; position: relative; flex-wrap: wrap; }
 .search-input-wrapper { position: relative; flex: 1; min-width: 200px; display: flex; align-items: center; }
 .search-icon { position: absolute; left: 0.875rem; z-index: 1; font-size: 1.1rem; }
@@ -27,7 +28,7 @@
 .btn-outline:hover { border-color: #BFBFBF; background: #F7F7F7; }
 .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
 
-.search-dropdown { position: absolute; top: 100%; left: 0; right: 0; z-index: 50; background: #fff; border: 1px solid var(--platinum-primary, #0f2b46); border-radius: 0.75rem; box-shadow: 0 12px 40px rgba(15,43,70,0.18), 0 4px 12px rgba(0,0,0,0.08); margin-top: 0.35rem; max-height: 480px; overflow: hidden; }
+.search-dropdown { position: absolute; top: 100%; left: 0; right: 0; z-index: 100; background: #fff; border: 1px solid var(--platinum-primary, #0f2b46); border-radius: 0.75rem; box-shadow: 0 12px 40px rgba(15,43,70,0.18), 0 4px 12px rgba(0,0,0,0.08); margin-top: 0.35rem; max-height: 480px; overflow: hidden; }
 .dropdown-loading { display: flex; align-items: center; gap: 0.75rem; padding: 1.25rem; color: var(--pos-text-muted); font-size: 0.875rem; }
 .search-spinner-inline { width: 1rem; height: 1rem; border: 2px solid #D6D6D6; border-top-color: var(--platinum-primary, #0f2b46); border-radius: 50%; animation: spin 0.6s linear infinite; flex-shrink: 0; }
 .search-spinner-inline.small { width: 0.75rem; height: 0.75rem; }
