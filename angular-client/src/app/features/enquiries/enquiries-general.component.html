@@ -1902,11 +1902,20 @@
 
         @if (activeTab() === 'deposits') {
           <div class="tab-panel" data-testid="deposits-tab">
-            @if ((tabData()?.deposits || []).length > 0) {
+            @if ((tabData()?.deposits || []).length > 0 || tabData()?.depositAmount) {
               <div class="export-toolbar">
                 <button class="export-btn export-csv" (click)="exportDepositsCsv()" data-testid="button-export-deposits-csv">📥 Excel/CSV</button>
                 <button class="export-btn export-pdf" (click)="exportDepositsPdf()" data-testid="button-export-deposits-pdf">🖨️ Print/PDF</button>
               </div>
+
+              <div class="deposit-hero-card" data-testid="deposit-total-hero">
+                <div class="deposit-hero-icon">🏦</div>
+                <div class="deposit-hero-content">
+                  <span class="deposit-hero-label">Total Deposit Amount</span>
+                  <span class="deposit-hero-amount mono" [class.deposit-hero-negative]="getDepositTotalAmount() < 0">R {{ formatCurrency(Math.abs(getDepositTotalAmount())) }}</span>
+                </div>
+              </div>
+
               <div class="debt-table-section">
                 <div class="debt-table-header">
                   <span class="debt-table-title">Deposit</span>
@@ -1917,29 +1926,35 @@
                     <thead>
                       <tr>
                         <th class="debt-th-desc">Service Type</th>
-                        <th class="debt-th-desc">Receipt No / Journal Transaction ID</th>
-                        <th class="debt-th-desc">Date Captured</th>
+                        <th class="debt-th-desc">Receipt No</th>
+                        <th class="debt-th-desc">Receipt Date</th>
+                        <th class="debt-th-desc">Payment Type</th>
                         <th class="debt-th-amt">Deposit Amount</th>
+                        <th class="debt-th-desc">Cashier</th>
                         <th class="debt-th-amt">Paid Amount</th>
                       </tr>
                     </thead>
                     <tbody>
                       @for (dep of tabData()?.deposits || []; track $index) {
-                        <tr [attr.data-testid]="'row-deposit-' +  $index  + ''">
+                        <tr [attr.data-testid]="'row-deposit-' + $index">
                           <td class="debt-td-desc">{{ dep.serviceDesc || dep.serviceDescription || dep.serviceType || dep.description || '-' }}</td>
-                          <td class="debt-td-desc mono">{{ dep.receiptNo || dep.journalTransactionId || dep.docNumber || dep.receiptNumber || '' }}</td>
-                          <td class="debt-td-desc">{{ formatDate(dep.dateCaptured || dep.receiptDate || dep.depositDate || dep.capturedDate) }}</td>
+                          <td class="debt-td-desc mono">{{ dep.receiptNo || dep.journalTransactionId || dep.docNumber || dep.receiptNumber || dep.reference || '' }}</td>
+                          <td class="debt-td-desc">{{ formatDate(dep.receiptDate || dep.dateCaptured || dep.depositDate || dep.capturedDate) }}</td>
+                          <td class="debt-td-desc">{{ dep.paymentType || dep.paymentMethod || dep.type || '-' }}</td>
                           <td class="debt-td-amt">{{ formatDebtAmt(dep.depositAmount ?? dep.deposit ?? dep.amount ?? 0) }}</td>
+                          <td class="debt-td-desc">{{ dep.cashierName || dep.cashier || dep.capturedBy || '-' }}</td>
                           <td class="debt-td-amt" [class.debt-negative]="getDepositPaidAmt(dep) < 0">{{ formatDebtAmt(getDepositPaidAmt(dep)) }}</td>
                         </tr>
                       }
                     </tbody>
                     <tfoot>
                       <tr class="debt-totals-row">
-                        <td class="debt-td-desc debt-total-label"></td>
+                        <td class="debt-td-desc"></td>
+                        <td class="debt-td-desc"></td>
                         <td class="debt-td-desc"></td>
                         <td class="debt-td-desc"></td>
                         <td class="debt-td-amt debt-total-val">{{ formatDebtAmt(getDepositColumnTotal('depositAmount')) }}</td>
+                        <td class="debt-td-desc"></td>
                         <td class="debt-td-amt debt-total-val" [class.debt-negative]="getDepositColumnTotal('paidAmount') < 0">{{ formatDebtAmt(getDepositColumnTotal('paidAmount')) }}</td>
                       </tr>
                     </tfoot>
@@ -2093,6 +2108,10 @@
               </div>
               <div class="detail-section">
                 <div class="section-header-bar">📅 Payment Plans - Capital Cost</div>
+                <div class="pp-down-payment-banner">
+                  <span class="pp-down-label">Initial Down Payment That Was Required:</span>
+                  <span class="pp-down-value mono">{{ getPpInitialDownPayment() }}</span>
+                </div>
                 <div class="data-table-wrapper">
                   <table class="data-table" data-testid="table-payment-plans">
                     <thead>
@@ -2100,32 +2119,155 @@
                         <th>Status</th>
                         <th>Capital Cost Type</th>
                         <th>Service Type</th>
-                        <th class="text-right">Original Amount</th>
-                        <th class="text-right">Balance</th>
-                        <th class="text-right">Instalment</th>
-                        <th>Start Date</th>
+                        <th>Contract Number</th>
+                        <th class="text-right">Capital Amount</th>
+                        <th class="text-center">Period</th>
+                        <th class="text-right">Instalment Amount</th>
+                        <th>Commencement Date</th>
+                        <th>Expected End Date</th>
+                        <th class="text-right">Remaining Capital</th>
+                        <th class="text-center">Remaining Period</th>
+                        <th class="text-right">Total Payments</th>
+                        <th class="text-center">Instalment Counter</th>
                       </tr>
                     </thead>
                     <tbody>
                       @for (p of tabData()?.plans || []; track $index) {
-                        <tr [attr.data-testid]="'row-plan-' +  $index  + ''">
-                          <td><span class="inline-badge" [class.active]="p.status === 'Active' || p.isActive">{{ p.status || (p.isActive ? 'Active' : 'Inactive') }}</span></td>
-                          <td>{{ p.capitalCostType || p.planType || p.description || '-' }}</td>
-                          <td>{{ p.serviceType || p.billingType || '-' }}</td>
-                          <td class="text-right mono">R {{ formatCurrency(p.originalAmount || p.capitalAmount || 0) }}</td>
-                          <td class="text-right mono bold">R {{ formatCurrency(p.balance || p.outstandingBalance || 0) }}</td>
-                          <td class="text-right mono">R {{ formatCurrency(p.instalment || p.monthlyInstalment || 0) }}</td>
-                          <td>{{ formatDate(p.startDate || p.commencementDate) }}</td>
+                        <tr [attr.data-testid]="'row-plan-' + $index">
+                          <td><span class="inline-badge" [class.active]="p.status === 'Active' || p.isActive">{{ p.status || p.planStatus || (p.isActive ? 'Active' : 'Inactive') }}</span></td>
+                          <td>{{ p.capitalCostType || p.planType || p.paymentPlanType || p.description || '-' }}</td>
+                          <td>{{ p.serviceType || p.additionalBillingType || p.billingType || '-' }}</td>
+                          <td class="mono">{{ p.contractNumber || p.contractNo || p.agreementNo || '-' }}</td>
+                          <td class="text-right mono">R {{ formatCurrency(p.capitalAmount ?? p.amount ?? p.totalAmount ?? 0) }}</td>
+                          <td class="text-center mono">{{ p.period ?? p.numberOfInstalments ?? p.termMonths ?? '-' }}</td>
+                          <td class="text-right mono">R {{ formatCurrency(p.instalmentAmount ?? p.instalment ?? p.monthlyAmount ?? 0) }}</td>
+                          <td>{{ formatDate(p.commencementDate ?? p.startDate ?? p.effectiveDate) }}</td>
+                          <td>{{ formatDate(p.expectedEndDate ?? p.endDate ?? p.expiryDate) }}</td>
+                          <td class="text-right mono">R {{ formatCurrency(p.remainingCapitalAmount ?? p.remainingCapital ?? p.outstandingAmount ?? 0) }}</td>
+                          <td class="text-center mono">{{ p.remainingPeriod ?? p.remainingInstalments ?? p.remainingMonths ?? '-' }}</td>
+                          <td class="text-right mono">R {{ formatCurrency(p.totalPaymentsReceived ?? p.totalPaid ?? p.paymentsReceived ?? 0) }}</td>
+                          <td class="text-center mono">{{ p.instalmentCounter ?? p.paidInstalments ?? p.instalmentsPaid ?? '-' }}</td>
                         </tr>
                       }
                     </tbody>
                   </table>
                 </div>
               </div>
-            } @else {
+            } @else if (!(tabData()?.repaymentStatus?.length) && !tabData()?.remainingCapital && !(tabData()?.extensions?.length) && !(tabData()?.paymentAmounts?.length)) {
               <div class="empty-state">
                 <div class="empty-icon">📅</div>
                 <p class="empty-text">No payment plans found</p>
+              </div>
+            }
+
+            <div class="pp-panels-grid">
+              <div class="detail-section">
+                <div class="section-header-bar">🛡️ Repayment Plan Status</div>
+                <div class="pp-status-list">
+                  @if (getRepaymentStatusItems().length > 0) {
+                    @for (item of getRepaymentStatusItems(); track $index) {
+                      <div class="pp-status-item">
+                        <div class="pp-status-left">
+                          <span class="pp-status-dot" [class.pp-dot-active]="item.isActive" [class.pp-dot-inactive]="!item.isActive"></span>
+                          <span class="pp-status-label">{{ item.label }}</span>
+                        </div>
+                        <span class="inline-badge" [class.active]="item.isActive">{{ item.value }}</span>
+                      </div>
+                    }
+                  } @else {
+                    <div class="empty-state" style="padding: 1.5rem;">
+                      <div class="empty-icon">🛡️</div>
+                      <p class="empty-text">No repayment plan status available</p>
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <div class="detail-section">
+                <div class="section-header-bar">💰 Remaining Capital</div>
+                <div class="pp-capital-content">
+                  @if (getRemainingCapitalEntries().length > 0) {
+                    @for (entry of getRemainingCapitalEntries(); track $index) {
+                      <div class="pp-capital-row">
+                        <span class="pp-capital-label">{{ entry.label }}</span>
+                        <span class="pp-capital-value mono">{{ entry.value }}</span>
+                      </div>
+                    }
+                  } @else {
+                    <div class="empty-state" style="padding: 1.5rem;">
+                      <div class="empty-icon">💰</div>
+                      <p class="empty-text">No remaining capital data available</p>
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+
+            @if ((tabData()?.extensions || []).length > 0) {
+              <div class="detail-section" style="margin-top: 1rem;">
+                <div class="section-header-bar">📋 Payment Extensions</div>
+                <div class="data-table-wrapper">
+                  <table class="data-table" data-testid="table-payment-extensions">
+                    <thead>
+                      <tr>
+                        <th>Extension Status</th>
+                        <th>Extension Description</th>
+                        <th>Commencement Date</th>
+                        <th>Termination Date</th>
+                        <th>Captured By</th>
+                        <th>Capture Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (ext of tabData()?.extensions || []; track $index) {
+                        <tr [attr.data-testid]="'row-ext-' + $index">
+                          <td><span class="inline-badge">{{ ext.extensionStatus || ext.status || ext.statusDesc || '-' }}</span></td>
+                          <td>{{ ext.extensionDescription || ext.description || ext.extensionType || ext.type || '-' }}</td>
+                          <td>{{ formatDate(ext.commencementDate || ext.startDate) }}</td>
+                          <td>{{ formatDate(ext.terminationDate || ext.endDate) }}</td>
+                          <td>{{ ext.capturedBy || ext.capturerName || ext.capturer || '-' }}</td>
+                          <td>{{ formatDate(ext.captureDate || ext.dateCaptured) }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            }
+
+            @if ((tabData()?.paymentAmounts || []).length > 0) {
+              <div class="detail-section" style="margin-top: 1rem;">
+                <div class="section-header-bar">💳 Payment History <span class="section-count">{{ (tabData()?.paymentAmounts || []).length }}</span></div>
+                <div class="data-table-wrapper">
+                  <table class="data-table" data-testid="table-payment-amounts">
+                    <thead>
+                      <tr>
+                        <th>Receipt No</th>
+                        <th>Date</th>
+                        <th>Payment Type</th>
+                        <th class="text-right">Amount</th>
+                        <th>Cashier</th>
+                        <th>Cash Book</th>
+                        <th>Card/Cheque</th>
+                        <th>Cancel Reason</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (pa of tabData()?.paymentAmounts || []; track $index) {
+                        <tr [attr.data-testid]="'row-pa-' + $index" [class.pp-cancelled-row]="pa.cancelReson || pa.cancelReason">
+                          <td class="mono">{{ pa.receiptNo || '-' }}</td>
+                          <td>{{ formatDate(pa.receiptDate) }}</td>
+                          <td><span class="inline-badge">{{ pa.paymentType || '-' }}</span></td>
+                          <td class="text-right mono bold">R {{ formatCurrency(pa.amount ?? 0) }}</td>
+                          <td>{{ pa.cashier || '-' }}</td>
+                          <td>{{ pa.cashBook || '-' }}</td>
+                          <td class="mono">{{ pa.cardChequeDetail || '-' }}</td>
+                          <td>@if (pa.cancelReson || pa.cancelReason) { <span class="pp-cancel-reason">{{ pa.cancelReson || pa.cancelReason }}</span> } @else { - }</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
               </div>
             }
           </div>
@@ -2139,13 +2281,46 @@
               </div>
               @for (item of tabData()?.incentives || []; track $index) {
                 <div class="detail-section">
-                  <div class="section-header-bar">🎁 Payment Incentive</div>
+                  <div class="section-header-bar">🎁 Payment Incentive @if (item.enable) { <span class="section-count" style="margin-left: auto;">Active</span> }</div>
                   <div class="detail-grid">
                     <div class="detail-item"><div class="detail-label">Description</div><div class="detail-value">{{ safeStr(item.description) }}</div></div>
-                    <div class="detail-item"><div class="detail-label">Type</div><div class="detail-value">{{ safeStr(item.incentiveType || item.code) }}</div></div>
-                    <div class="detail-item"><div class="detail-label">Amount</div><div class="detail-value mono">R {{ formatCurrency(item.incentiveAmount ?? item.incentive ?? 0) }}</div></div>
+                    <div class="detail-item"><div class="detail-label">Incentive Type</div><div class="detail-value">{{ safeStr(item.incentiveType || item.code) }}</div></div>
+                    <div class="detail-item"><div class="detail-label">Incentive Amount</div><div class="detail-value mono">R {{ formatCurrency(item.incentiveAmount ?? item.incentive ?? 0) }}</div></div>
                     <div class="detail-item"><div class="detail-label">Financial Year</div><div class="detail-value">{{ safeStr(item.financialYear) }}</div></div>
+                    <div class="detail-item"><div class="detail-label">Valid From</div><div class="detail-value">{{ formatDate(item.validPeriodFrom) }}</div></div>
+                    <div class="detail-item"><div class="detail-label">Valid To</div><div class="detail-value">{{ formatDate(item.validPeriodTo) }}</div></div>
+                    <div class="detail-item"><div class="detail-label">CRN</div><div class="detail-value">{{ safeStr(item.crn) }}</div></div>
                     <div class="detail-item"><div class="detail-label">Enabled</div><div class="detail-value">{{ item.enable ? 'Yes' : 'No' }}</div></div>
+                  </div>
+                </div>
+              }
+
+              @if ((tabData()?.journals || []).length > 0) {
+                <div class="detail-section" style="margin-top: 1rem;">
+                  <div class="section-header-bar">📄 Incentive Journals <span class="section-count">{{ (tabData()?.journals || []).length }}</span></div>
+                  <div class="data-table-wrapper">
+                    <table class="data-table" data-testid="table-incentive-journals">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Description</th>
+                          <th class="text-right">Journal Amount</th>
+                          <th>Reference</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (j of tabData()?.journals || []; track $index) {
+                          <tr [attr.data-testid]="'row-journal-' + $index">
+                            <td>{{ formatDate(j.journalDate || j.date || j.transactionDate) }}</td>
+                            <td>{{ j.description || j.journalDescription || '-' }}</td>
+                            <td class="text-right mono bold">R {{ formatCurrency(j.journalAmount ?? j.amount ?? j.incentiveAmount ?? 0) }}</td>
+                            <td class="mono">{{ j.reference || j.journalReference || j.docNumber || '-' }}</td>
+                            <td><span class="inline-badge">{{ j.status || j.journalStatus || '-' }}</span></td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               }
@@ -2696,38 +2871,61 @@
 
         @if (activeTab() === 'debit-orders') {
           <div class="tab-panel" data-testid="debit-orders-tab">
-            @if ((tabData()?.debitOrders || []).length > 0) {
+            @if ((tabData()?.debitOrders || []).length > 0 || (tabData()?.deductions || []).length > 0) {
               <div class="export-toolbar">
                 <button class="export-btn export-csv" (click)="exportDebitOrdersCsv()" data-testid="button-export-debitorders-csv">📥 Excel/CSV</button>
               </div>
               <div class="detail-section">
-                <div class="section-header-bar">🏦 Debit Orders</div>
+                <div class="section-header-bar">🏦 Debit Order Deduction List <span class="section-count">{{ (tabData()?.debitOrders || []).length + (tabData()?.deductions || []).length }} record{{ ((tabData()?.debitOrders || []).length + (tabData()?.deductions || []).length) !== 1 ? 's' : '' }}</span></div>
                 <div class="data-table-wrapper">
                   <table class="data-table" data-testid="table-debit-orders">
                     <thead>
                       <tr>
-                        <th>Bank</th>
-                        <th>Account Number</th>
-                        <th>Branch Code</th>
-                        <th class="text-right">Amount</th>
+                        <th class="text-center">Nr</th>
                         <th>Status</th>
-                        <th>Debit Day</th>
+                        <th>Bank Name</th>
+                        <th>Branch Code</th>
+                        <th>Account Number</th>
+                        <th class="text-center">Deduction Day</th>
+                        <th>Service Type</th>
+                        <th class="text-right">Maximum Amount</th>
+                        <th class="text-right">Total Max Amount</th>
+                        <th class="text-center">Ageing</th>
+                        <th>Commencement Date</th>
+                        <th>Deduction Date</th>
+                        <th>Date Captured</th>
+                        <th>Captured By</th>
+                        <th>Termination Date</th>
+                        <th>Termination Reason</th>
+                        <th>Terminated By</th>
                       </tr>
                     </thead>
                     <tbody>
-                      @for (d of tabData()?.debitOrders || []; track $index) {
-                        <tr [attr.data-testid]="'row-do-' +  $index  + ''">
+                      @for (d of (tabData()?.debitOrders || []).concat(tabData()?.deductions || []); track $index) {
+                        <tr [attr.data-testid]="'row-do-' + $index">
+                          <td class="text-center">{{ d.nr ?? d.number ?? $index + 1 }}</td>
+                          <td><span class="inline-badge" [class.active]="d.status === 'Active' || d.status === 'Successful'">{{ d.status || d.deductionStatus || '-' }}</span></td>
                           <td>{{ d.bankName || d.bank || '-' }}</td>
-                          <td class="mono">{{ d.bankAccountNumber || d.accountNo || '-' }}</td>
-                          <td>{{ d.branchCode || d.branch || '-' }}</td>
-                          <td class="text-right mono bold">R {{ formatCurrency(d.debitOrderAmount || d.amount || 0) }}</td>
-                          <td><span class="inline-badge" [class.active]="(d.status || '').toLowerCase() === 'active'">{{ d.status || d.debitOrderStatus || '-' }}</span></td>
-                          <td>{{ d.debitDay || d.paymentDay || '-' }}</td>
+                          <td class="mono">{{ d.branchCode || d.branchNumber || '-' }}</td>
+                          <td class="mono">{{ d.accountNumber || d.bankAccountNumber || d.bankAccount || '-' }}</td>
+                          <td class="text-center">{{ d.deductionDay ?? d.dayOfDeduction ?? '-' }}</td>
+                          <td>{{ d.serviceType || d.serviceDescription || d.accountType || '-' }}</td>
+                          <td class="text-right mono">R {{ formatCurrency(d.maximumAmount ?? d.amount ?? d.deductionAmount ?? 0) }}</td>
+                          <td class="text-right mono">R {{ formatCurrency(d.totalMaximumAmount ?? d.debitOrderAmount ?? 0) }}</td>
+                          <td class="text-center">{{ d.ageing ?? d.aging ?? '-' }}</td>
+                          <td>{{ formatDate(d.commencementDate ?? d.startDate) }}</td>
+                          <td>{{ formatDate(d.deductionDate ?? d.date) }}</td>
+                          <td>{{ formatDate(d.dateCaptured ?? d.capturedDate ?? d.createdDate) }}</td>
+                          <td>{{ d.capturedBy ?? d.createdBy ?? '-' }}</td>
+                          <td>{{ formatDate(d.terminationDate) }}</td>
+                          <td>{{ d.terminationReason ?? '-' }}</td>
+                          <td>{{ d.terminatedBy ?? '-' }}</td>
                         </tr>
                       }
                     </tbody>
                   </table>
                 </div>
+                <div class="table-footer-count">{{ (tabData()?.debitOrders || []).length + (tabData()?.deductions || []).length }} record{{ ((tabData()?.debitOrders || []).length + (tabData()?.deductions || []).length) !== 1 ? 's' : '' }}</div>
               </div>
             } @else {
               <div class="empty-state">

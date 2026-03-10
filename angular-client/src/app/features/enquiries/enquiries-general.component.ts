@@ -1588,15 +1588,19 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           break;
 
         case 'payment-plans':
-          const [plans, capital, repayment] = await Promise.allSettled([
+          const [plans, capital, repayment, ppExtensions, ppPaymentAmounts] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/payment-plans-by-account-id/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/payment-plan-remaining-capital/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/repayment-plan-status/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/payment-extension-search-results/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/payment-amount-by-account-ids/${accountId}`)),
           ]);
           data = {
             plans: plans.status === 'fulfilled' ? this.normalizeArray(plans.value) : [],
             remainingCapital: capital.status === 'fulfilled' ? capital.value : null,
             repaymentStatus: repayment.status === 'fulfilled' ? this.normalizeArray(repayment.value) : [],
+            extensions: ppExtensions.status === 'fulfilled' ? this.normalizeArray(ppExtensions.value) : [],
+            paymentAmounts: ppPaymentAmounts.status === 'fulfilled' ? this.normalizeArray(ppPaymentAmounts.value) : [],
           };
           break;
 
@@ -4159,6 +4163,40 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       hasTiers: tiers.length > 0, estimates, historicalAvg, projection, previousEstimates,
       tiers, factor, vatRate, STD_DAYS,
     };
+  }
+
+  getPpInitialDownPayment(): string {
+    const plans = this.tabData()?.plans || [];
+    if (plans.length === 0) return '0.00';
+    return this.formatCurrency(Number(plans[0]?.initialDownPayment ?? plans[0]?.downPayment ?? plans[0]?.depositAmount ?? 0) || 0);
+  }
+
+  getRemainingCapitalEntries(): { label: string; value: string }[] {
+    const rc = this.tabData()?.remainingCapital;
+    if (!rc) return [];
+    if (typeof rc !== 'object') return [{ label: 'Remaining Capital', value: 'R ' + this.formatCurrency(Number(rc) || 0) }];
+    return Object.entries(rc)
+      .filter(([k, v]) => !k.startsWith('_') && v != null && v !== 0)
+      .map(([key, val]) => ({
+        label: key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()),
+        value: typeof val === 'number' ? 'R ' + this.formatCurrency(val) : String(val),
+      }));
+  }
+
+  getRepaymentStatusItems(): { label: string; value: string; isActive: boolean }[] {
+    const items = this.tabData()?.repaymentStatus || [];
+    const labels = ['Interest Waiver', 'Rebate'];
+    return items.map((item: any, i: number) => {
+      const value = typeof item === 'string' ? item : item?.status || item?.description || JSON.stringify(item);
+      const isActive = value && value !== 'N/A' && value !== 'None' && value !== '';
+      return { label: labels[i] || `Status ${i + 1}`, value, isActive };
+    });
+  }
+
+  getDepositTotalAmount(): number {
+    const da = this.tabData()?.depositAmount;
+    if (typeof da === 'number') return da;
+    return Number(da?.totalDeposit ?? da?.amount ?? 0) || 0;
   }
 
   getDepositPaidAmt(dep: any): number {

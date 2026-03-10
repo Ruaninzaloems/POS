@@ -492,6 +492,7 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
         "deposit-amount": "DepositAmount",
         "deposits-by-account-id": "DepositsByAccountId",
         "payment-amount-by-account-ids": "PaymentAmountByAccountIds",
+        "payment-extension-search-results": "PaymentExtensionSearchResults",
         "billed-vs-paid-amounts": "BilledVsPaidAmounts",
         "risk-flags": "RiskFlags",
       };
