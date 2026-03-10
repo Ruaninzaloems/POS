@@ -1026,38 +1026,129 @@
 
         @if (activeTab() === 'statements') {
           <div class="tab-panel" data-testid="statements-tab">
-            @if ((tabData()?.statements || []).length > 0) {
-              <div class="detail-section">
-                <div class="section-header-bar">📄 Generated Statements</div>
-                <div class="data-table-wrapper">
-                  <table class="data-table" data-testid="table-statements">
-                    <thead>
-                      <tr>
-                        <th>Period</th>
-                        <th>Generated Date</th>
-                        <th>Type</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (s of tabData()?.statements || []; track $index) {
-                        <tr [attr.data-testid]="'row-statement-' +  $index  + ''">
-                          <td>{{ s.billingPeriod || s.period || s.financialYear || '-' }}</td>
-                          <td>{{ formatDate(s.generatedDate || s.dateGenerated || s.date) }}</td>
-                          <td>{{ s.statementType || s.type || '-' }}</td>
-                          <td><span class="inline-badge">{{ s.status || '-' }}</span></td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
+
+            <div class="stmt-generator" data-testid="stmt-generator">
+              <div class="stmt-gen-header">
+                <span class="stmt-gen-title">📄 Generate Account Statement</span>
+              </div>
+              <div class="stmt-gen-body">
+                <div class="stmt-type-toggle">
+                  <button class="stmt-type-btn" [class.stmt-type-active]="stmtType() === 'standard'" (click)="stmtType.set('standard')" data-testid="btn-stmt-standard">Account Statement</button>
+                  <button class="stmt-type-btn" [class.stmt-type-active]="stmtType() === 'detailed'" (click)="stmtType.set('detailed')" data-testid="btn-stmt-detailed">Detailed Account Statement</button>
                 </div>
+
+                <div class="stmt-controls-row">
+                  <div class="stmt-control-group">
+                    <label class="stmt-label">Financial Year</label>
+                    <select class="stmt-select" [ngModel]="stmtFinYear()" (ngModelChange)="stmtFinYear.set($event)" data-testid="select-stmt-finyear">
+                      @for (y of stmtAvailableYears(); track y) {
+                        <option [value]="y">{{ y }}</option>
+                      }
+                    </select>
+                  </div>
+                  <div class="stmt-control-group">
+                    <label class="stmt-label">Month (optional)</label>
+                    <select class="stmt-select" [ngModel]="stmtMonth()" (ngModelChange)="stmtMonth.set($event)" data-testid="select-stmt-month">
+                      @for (m of stmtMonths; track m) {
+                        <option [value]="m">{{ m || '-- All Months --' }}</option>
+                      }
+                    </select>
+                  </div>
+                  <div class="stmt-control-group stmt-actions-group">
+                    <label class="stmt-label">&nbsp;</label>
+                    <button class="stmt-btn stmt-btn-generate" (click)="generateStatement()" [disabled]="stmtGenerating()" data-testid="btn-stmt-generate">
+                      @if (stmtGenerating()) { <span class="stmt-spinner"></span> Generating... } @else { ⚡ Generate Live }
+                    </button>
+                  </div>
+                </div>
+
+                @if (stmtGenerated()) {
+                  <div class="stmt-result-panel" data-testid="stmt-result">
+                    <div class="stmt-result-header">
+                      <span class="stmt-result-icon">✅</span>
+                      <span class="stmt-result-text">Statement Ready — {{ stmtType() === 'detailed' ? 'Detailed' : 'Standard' }} | {{ stmtFinYear() }}{{ stmtMonth() ? ' / ' + stmtMonth() : '' }}</span>
+                    </div>
+                    <div class="stmt-delivery-actions">
+                      <button class="stmt-btn stmt-btn-download" (click)="downloadStatement(stmtGenerated()?.fileUrl || stmtGenerated()?.downloadUrl || stmtGenerated()?.url)" data-testid="btn-stmt-download">📥 Download PDF</button>
+                      <button class="stmt-btn stmt-btn-email" (click)="stmtSendMode.set(stmtSendMode() === 'email' ? null : 'email')" [class.stmt-btn-active]="stmtSendMode() === 'email'" data-testid="btn-stmt-email">📧 Email</button>
+                      <button class="stmt-btn stmt-btn-sms" (click)="stmtSendMode.set(stmtSendMode() === 'sms' ? null : 'sms')" [class.stmt-btn-active]="stmtSendMode() === 'sms'" data-testid="btn-stmt-sms">📱 SMS</button>
+                    </div>
+
+                    @if (stmtSendMode() === 'email') {
+                      <div class="stmt-send-form" data-testid="stmt-email-form">
+                        <div class="stmt-send-row">
+                          <input type="email" class="stmt-input" placeholder="recipient@email.com" [ngModel]="stmtEmail()" (ngModelChange)="stmtEmail.set($event)" data-testid="input-stmt-email" />
+                          <button class="stmt-btn stmt-btn-send" (click)="sendStatement('email')" [disabled]="stmtSending() || !stmtEmail()" data-testid="btn-stmt-send-email">
+                            @if (stmtSending()) { <span class="stmt-spinner"></span> Sending... } @else { Send Email }
+                          </button>
+                        </div>
+                        <div class="stmt-send-hint">Statement PDF will be emailed to the address above</div>
+                      </div>
+                    }
+
+                    @if (stmtSendMode() === 'sms') {
+                      <div class="stmt-send-form" data-testid="stmt-sms-form">
+                        <div class="stmt-send-row">
+                          <input type="tel" class="stmt-input" placeholder="0821234567" [ngModel]="stmtPhone()" (ngModelChange)="stmtPhone.set($event)" data-testid="input-stmt-phone" />
+                          <button class="stmt-btn stmt-btn-send" (click)="sendStatement('sms')" [disabled]="stmtSending() || !stmtPhone()" data-testid="btn-stmt-send-sms">
+                            @if (stmtSending()) { <span class="stmt-spinner"></span> Sending... } @else { Send SMS }
+                          </button>
+                        </div>
+                        <div class="stmt-send-hint">Statement link will be sent via SMS to the number above</div>
+                      </div>
+                    }
+                  </div>
+                }
               </div>
-            } @else {
-              <div class="empty-state">
-                <div class="empty-icon">📄</div>
-                <p class="empty-text">No statements found</p>
+            </div>
+
+            <div class="debt-table-section" style="margin-top: 1rem;">
+              <div class="debt-table-header stmt-hist-header">
+                <span class="debt-table-title">Statement History</span>
+                <span class="debt-table-count">{{ (tabData()?.statements || []).length }} statement{{ (tabData()?.statements || []).length !== 1 ? 's' : '' }}</span>
               </div>
-            }
+              <div class="debt-table-wrapper">
+                <table class="debt-table" data-testid="table-statements">
+                  <thead>
+                    <tr>
+                      <th class="debt-th-desc">Financial Year</th>
+                      <th class="debt-th-desc">Month</th>
+                      <th class="debt-th-desc">Type</th>
+                      <th class="debt-th-desc">Generated Date</th>
+                      <th class="debt-th-desc">Status</th>
+                      <th class="debt-th-desc">Download</th>
+                      <th class="debt-th-desc">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (s of tabData()?.statements || []; track $index) {
+                      <tr [attr.data-testid]="'row-statement-' + $index">
+                        <td class="debt-td-desc">{{ s.financialYear || s.billingPeriod || s.period || '-' }}</td>
+                        <td class="debt-td-desc">{{ s.month || s.billingMonth || '-' }}</td>
+                        <td class="debt-td-desc"><span class="stmt-type-badge" [class.stmt-detailed]="(s.statementType || s.type || '').toLowerCase().includes('detail')">{{ s.statementType || s.type || 'Standard' }}</span></td>
+                        <td class="debt-td-desc">{{ formatDate(s.generatedDate || s.dateGenerated || s.date) }}</td>
+                        <td class="debt-td-desc"><span class="ind-status-badge ind-active">{{ s.status || 'Available' }}</span></td>
+                        <td class="debt-td-desc">
+                          @if (s.fileUrl || s.downloadUrl || s.url) {
+                            <button class="stmt-dl-btn" (click)="downloadStatement(s.fileUrl || s.downloadUrl || s.url)" [attr.data-testid]="'btn-download-stmt-' + $index">📥</button>
+                          } @else {
+                            <span class="stmt-no-dl">-</span>
+                          }
+                        </td>
+                        <td class="debt-td-desc">
+                          <div class="stmt-row-actions">
+                            <button class="stmt-act-btn stmt-act-email" (click)="stmtSendMode.set('email'); stmtFinYear.set(s.financialYear || stmtFinYear()); stmtMonth.set(s.month || '')" title="Email this statement" [attr.data-testid]="'btn-email-stmt-' + $index">📧</button>
+                            <button class="stmt-act-btn stmt-act-sms" (click)="stmtSendMode.set('sms'); stmtFinYear.set(s.financialYear || stmtFinYear()); stmtMonth.set(s.month || '')" title="SMS this statement" [attr.data-testid]="'btn-sms-stmt-' + $index">📱</button>
+                          </div>
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="7" class="debt-td-desc" style="text-align:center; color: var(--pos-text-muted); padding: 1rem;">No statements generated yet. Use the generator above to create one.</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         }
 

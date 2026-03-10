@@ -143,6 +143,18 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
   indigentInsights = signal<any>(null);
 
+  stmtType = signal<'standard' | 'detailed'>('standard');
+  stmtFinYear = signal('');
+  stmtMonth = signal('');
+  stmtGenerating = signal(false);
+  stmtGenerated = signal<any>(null);
+  stmtSending = signal(false);
+  stmtSendMode = signal<'email' | 'sms' | null>(null);
+  stmtEmail = signal('');
+  stmtPhone = signal('');
+  stmtAvailableYears = signal<string[]>([]);
+  stmtMonths: string[] = ['', 'July', 'August', 'September', 'October', 'November', 'December', 'January', 'February', 'March', 'April', 'May', 'June'];
+
   advancedSuggestions = signal<{ displayItem: string; accountId: number }[]>([]);
   activeFieldKey = signal<string | null>(null);
   advancedFieldLoading = signal(false);
@@ -1122,7 +1134,11 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           const stmtResult = await firstValueFrom(
             this.api.get<any>(`/api/platinum/billing-enquiry/generated-statements/${accountId}`)
           );
-          data = { statements: this.normalizeArray(stmtResult) };
+          const stmtArr = this.normalizeArray(stmtResult);
+          data = { statements: stmtArr };
+          this.stmtGenerated.set(null);
+          this.stmtSendMode.set(null);
+          this.initStmtYears(stmtArr);
           break;
 
         case 'clearance':
@@ -1813,6 +1829,91 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const date = r.readingDate || r.billingDate || r.date || '';
     if (!date) return '-';
     return this.formatDate(date);
+  }
+
+  initStmtYears(statements: any[]) {
+    const currentYear = new Date().getFullYear();
+    const years: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      years.push(`${currentYear - i}/${currentYear - i + 1}`);
+    }
+    const fromStmts = statements
+      .map((s: any) => s.financialYear || s.billingPeriod || '')
+      .filter((y: string) => y && y.includes('/'));
+    const allYears = [...new Set([...years, ...fromStmts])].sort().reverse();
+    this.stmtAvailableYears.set(allYears);
+    if (!this.stmtFinYear() && allYears.length > 0) {
+      this.stmtFinYear.set(allYears[0]);
+    }
+  }
+
+  async generateStatement() {
+    const account = this.selectedAccount();
+    if (!account) return;
+    const accountId = account['accountId'] || account['accountID'];
+    if (!accountId) return;
+    this.stmtGenerating.set(true);
+    this.stmtGenerated.set(null);
+    try {
+      const result = await firstValueFrom(
+        this.api.post<any>('/api/platinum/billing-enquiry/generate-statement', {
+          accountId,
+          statementType: this.stmtType(),
+          financialYear: this.stmtFinYear(),
+          month: this.stmtMonth() || undefined,
+        })
+      );
+      this.stmtGenerated.set(result);
+      this.toast.show('Statement generated successfully', 'success');
+    } catch (e: any) {
+      this.toast.show(e?.error?.message || 'Failed to generate statement', 'error');
+    } finally {
+      this.stmtGenerating.set(false);
+    }
+  }
+
+  downloadStatement(fileUrl?: string) {
+    if (!fileUrl) {
+      this.toast.show('No download link available', 'error');
+      return;
+    }
+    window.open(`/api/platinum/statement-download?fileUrl=${encodeURIComponent(fileUrl)}`, '_blank');
+    this.toast.show('Statement download started', 'success');
+  }
+
+  async sendStatement(method: 'email' | 'sms') {
+    const account = this.selectedAccount();
+    if (!account) return;
+    const accountId = account['accountId'] || account['accountID'];
+    if (!accountId) return;
+    if (method === 'email' && !this.stmtEmail()) {
+      this.toast.show('Please enter an email address', 'error');
+      return;
+    }
+    if (method === 'sms' && !this.stmtPhone()) {
+      this.toast.show('Please enter a phone number', 'error');
+      return;
+    }
+    this.stmtSending.set(true);
+    try {
+      await firstValueFrom(
+        this.api.post<any>('/api/platinum/billing-enquiry/send-statement', {
+          accountId,
+          method,
+          email: this.stmtEmail(),
+          phone: this.stmtPhone(),
+          statementType: this.stmtType(),
+          financialYear: this.stmtFinYear(),
+          month: this.stmtMonth() || undefined,
+        })
+      );
+      this.toast.show(`Statement sent via ${method.toUpperCase()} successfully`, 'success');
+      this.stmtSendMode.set(null);
+    } catch (e: any) {
+      this.toast.show(e?.error?.message || `Failed to send via ${method}`, 'error');
+    } finally {
+      this.stmtSending.set(false);
+    }
   }
 
   computeIndigentInsights(records: any[]): any {
