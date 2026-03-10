@@ -2335,13 +2335,39 @@
                         <span class="cons-selected-svc">{{ consumptionSelectedMeter().serviceDesc || consumptionSelectedMeter().serviceDescription || 'Service' }}</span>
                         <span class="cons-selected-meter mono">Meter: {{ consumptionSelectedMeter().physicalMeterNo || consumptionSelectedMeter().meterNo || '-' }}</span>
                       </div>
-                      @if (consumptionSelectedMeter().meterConnectionSize) {
-                        <span class="cons-conn-badge">Connection: {{ consumptionSelectedMeter().meterConnectionSize }}</span>
-                      }
+                      <div class="cons-header-actions">
+                        @if (consumptionSelectedMeter().meterConnectionSize) {
+                          <span class="cons-conn-badge">Connection: {{ consumptionSelectedMeter().meterConnectionSize }}</span>
+                        }
+                        @if (consumptionHistory().length > 0) {
+                          <div class="cons-view-toggle">
+                            <button class="cons-view-btn" [class.cons-view-active]="consumptionViewMode() === 'chart'" (click)="consumptionViewMode.set('chart')" data-testid="btn-cons-chart-view">Chart</button>
+                            <button class="cons-view-btn" [class.cons-view-active]="consumptionViewMode() === 'table'" (click)="consumptionViewMode.set('table')" data-testid="btn-cons-table-view">Table</button>
+                          </div>
+                        }
+                      </div>
                     </div>
+
+                    @if (consumptionFinYears().length > 0) {
+                      <div class="cons-fy-filter">
+                        <span class="cons-fy-label">Financial Year:</span>
+                        <div class="cons-fy-chips">
+                          <button class="cons-fy-chip" [class.cons-fy-active]="consumptionSelectedYears().length === consumptionFinYears().length" (click)="selectAllConsumptionYears()" data-testid="btn-cons-fy-all">All Years</button>
+                          @for (fy of consumptionFinYears(); track fy) {
+                            <button class="cons-fy-chip" [class.cons-fy-active]="consumptionSelectedYears().includes(fy)" (click)="toggleConsumptionYear(fy)" [attr.data-testid]="'btn-cons-fy-' + fy">FY {{ fy }}</button>
+                          }
+                        </div>
+                        <span class="cons-fy-count">{{ consumptionHistory().length }} of {{ consumptionAllHistory().length }} readings</span>
+                      </div>
+                    }
 
                     @if (consumptionInsights()) {
                       <div class="cons-insights-row">
+                        <div class="cons-insight-card">
+                          <div class="cons-insight-label">Readings</div>
+                          <div class="cons-insight-value">{{ consumptionInsights().count }}</div>
+                          <div class="cons-insight-sub">total periods</div>
+                        </div>
                         <div class="cons-insight-card">
                           <div class="cons-insight-label">Average</div>
                           <div class="cons-insight-value">{{ consumptionInsights().avg | number:'1.1-1' }}</div>
@@ -2365,11 +2391,6 @@
                             @else { → Stable }
                           </div>
                           <div class="cons-insight-sub">recent vs prior</div>
-                        </div>
-                        <div class="cons-insight-card">
-                          <div class="cons-insight-label">Std Deviation</div>
-                          <div class="cons-insight-value">{{ consumptionInsights().stdDev | number:'1.1-1' }}</div>
-                          <div class="cons-insight-sub">variability</div>
                         </div>
                         <div class="cons-insight-card cons-anomaly-card" [class.cons-has-anomalies]="consumptionInsights().anomalies.length > 0">
                           <div class="cons-insight-label">Anomalies</div>
@@ -2409,50 +2430,77 @@
                       </div>
                     }
 
-                    @if (!consumptionHistoryLoading() && consumptionChartData().length > 0) {
+                    @if (!consumptionHistoryLoading() && consumptionChartData().length > 0 && consumptionViewMode() === 'chart') {
                       <div class="cons-chart-section">
-                        <div class="cons-chart-title">Consumption History Chart</div>
+                        <div class="cons-chart-header">
+                          <div class="cons-chart-title">Consumption Trend</div>
+                          <div class="cons-chart-legend">
+                            <span class="cons-legend-item"><span class="cons-legend-dot cons-legend-normal"></span> Normal</span>
+                            <span class="cons-legend-item"><span class="cons-legend-dot cons-legend-spike"></span> Spike</span>
+                            <span class="cons-legend-item"><span class="cons-legend-dot cons-legend-drop"></span> Drop</span>
+                            <span class="cons-legend-item"><span class="cons-legend-dashed"></span> Average</span>
+                          </div>
+                        </div>
                         <div class="cons-chart-container" data-testid="consumption-chart">
-                          <div class="cons-chart-bars">
-                            @for (r of consumptionChartData(); track $index) {
-                              <div class="cons-chart-col" [attr.data-testid]="'chart-bar-' + $index">
-                                <div class="cons-chart-val">{{ getConsumptionVal(r) | number:'1.0-0' }}</div>
-                                <div class="cons-chart-bar-wrap">
-                                  <div class="cons-chart-bar"
-                                    [style.height.%]="getChartBarHeight(r)"
-                                    [class.cons-bar-spike]="isAnomalyReading(r, $index) === 'spike'"
-                                    [class.cons-bar-drop]="isAnomalyReading(r, $index) === 'drop'"
-                                    [class.cons-bar-zero]="isAnomalyReading(r, $index) === 'zero'">
+                          <div class="cons-chart-y-axis">
+                            <span class="cons-y-label">{{ getChartMaxVal() | number:'1.0-0' }}</span>
+                            <span class="cons-y-label">{{ (getChartMaxVal() * 0.75) | number:'1.0-0' }}</span>
+                            <span class="cons-y-label">{{ (getChartMaxVal() * 0.5) | number:'1.0-0' }}</span>
+                            <span class="cons-y-label">{{ (getChartMaxVal() * 0.25) | number:'1.0-0' }}</span>
+                            <span class="cons-y-label">0</span>
+                          </div>
+                          <div class="cons-chart-area">
+                            <div class="cons-chart-grid">
+                              <div class="cons-grid-line"></div>
+                              <div class="cons-grid-line"></div>
+                              <div class="cons-grid-line"></div>
+                              <div class="cons-grid-line"></div>
+                              <div class="cons-grid-line"></div>
+                            </div>
+                            <div class="cons-chart-bars">
+                              @for (r of consumptionChartData(); track $index) {
+                                <div class="cons-chart-col" [attr.data-testid]="'chart-bar-' + $index">
+                                  <div class="cons-chart-bar-wrap">
+                                    <div class="cons-chart-bar"
+                                      [style.height.%]="getChartBarHeight(r)"
+                                      [class.cons-bar-spike]="isAnomalyReading(r, $index) === 'spike'"
+                                      [class.cons-bar-drop]="isAnomalyReading(r, $index) === 'drop'"
+                                      [class.cons-bar-zero]="isAnomalyReading(r, $index) === 'zero'">
+                                      <span class="cons-bar-tooltip">{{ getConsumptionVal(r) | number:'1.0-0' }}</span>
+                                    </div>
                                   </div>
+                                  <div class="cons-chart-label">{{ getConsumptionChartLabel(r) }}</div>
                                 </div>
-                                <div class="cons-chart-label">{{ getConsumptionChartLabel(r) }}</div>
+                              }
+                            </div>
+                            @if (consumptionInsights()) {
+                              <div class="cons-chart-avg-line" [style.bottom.%]="(consumptionInsights().avg / getChartMaxVal()) * 100">
+                                <span class="cons-avg-label">Avg: {{ consumptionInsights().avg | number:'1.1-1' }}</span>
                               </div>
                             }
                           </div>
-                          @if (consumptionInsights()) {
-                            <div class="cons-chart-avg-line" [style.bottom.%]="(consumptionInsights().avg / getChartMaxVal()) * 100">
-                              <span class="cons-avg-label">Avg: {{ consumptionInsights().avg | number:'1.1-1' }}</span>
-                            </div>
-                          }
                         </div>
                       </div>
                     }
 
-                    @if (!consumptionHistoryLoading() && consumptionHistory().length > 0) {
+                    @if (!consumptionHistoryLoading() && consumptionHistory().length > 0 && consumptionViewMode() === 'table') {
                       <div class="cons-history-section">
                         <div class="debt-table-header">
                           <span class="debt-table-title">Meter Reading History</span>
                           <span class="debt-table-count">{{ consumptionHistory().length }} reading{{ consumptionHistory().length !== 1 ? 's' : '' }}</span>
                         </div>
                         <div class="debt-table-wrapper">
-                          <table class="debt-table" data-testid="table-meter-history">
+                          <table class="debt-table cons-full-table" data-testid="table-meter-history">
                             <thead>
                               <tr>
                                 <th class="debt-th-desc">Reading Date</th>
+                                <th class="debt-th-desc">Billing Date</th>
                                 <th class="debt-th-desc">Reading Type</th>
                                 <th class="debt-th-amt">Previous Reading</th>
                                 <th class="debt-th-amt">Current Reading</th>
                                 <th class="debt-th-amt">Consumption</th>
+                                <th class="debt-th-amt">Average Daily</th>
+                                <th class="debt-th-desc">Days</th>
                                 <th class="debt-th-desc">Status</th>
                                 <th class="debt-th-desc">Flag</th>
                               </tr>
@@ -2460,12 +2508,15 @@
                             <tbody>
                               @for (r of consumptionHistory(); track $index) {
                                 <tr [class.cons-row-spike]="isAnomalyReading(r, $index) === 'spike'" [class.cons-row-drop]="isAnomalyReading(r, $index) === 'drop'" [class.cons-row-zero]="isAnomalyReading(r, $index) === 'zero'">
-                                  <td class="debt-td-desc">{{ formatDate(r.readingDate || r.billingDate || r.date) }}</td>
-                                  <td class="debt-td-desc">{{ r.readingType || r.type || '-' }}</td>
-                                  <td class="debt-td-amt mono">{{ r.previousReading || r.prevReading || '-' }}</td>
-                                  <td class="debt-td-amt mono">{{ r.currentReading || r.reading || r.meterReading || '-' }}</td>
+                                  <td class="debt-td-desc">{{ formatDate(r.readingDate || r.date) }}</td>
+                                  <td class="debt-td-desc">{{ formatDate(r.billingDate || r.transactionDate) }}</td>
+                                  <td class="debt-td-desc">{{ r.readingType || r.type || r.meterReadingType || '-' }}</td>
+                                  <td class="debt-td-amt mono">{{ r.previousReading || r.prevReading || r.previousMeterReading || '-' }}</td>
+                                  <td class="debt-td-amt mono">{{ r.currentReading || r.reading || r.meterReading || r.currentMeterReading || '-' }}</td>
                                   <td class="debt-td-amt mono bold">{{ getConsumptionVal(r) | number:'1.0-0' }}</td>
-                                  <td class="debt-td-desc">{{ r.status || r.readingStatus || '-' }}</td>
+                                  <td class="debt-td-amt mono">{{ getAvgDailyConsumption(r) }}</td>
+                                  <td class="debt-td-desc">{{ r.days || r.numberOfDays || r.readingDays || '-' }}</td>
+                                  <td class="debt-td-desc">{{ r.status || r.readingStatus || r.meterStatus || '-' }}</td>
                                   <td class="debt-td-desc">
                                     @if (isAnomalyReading(r, $index) === 'spike') {
                                       <span class="cons-flag cons-flag-spike">⚠️ Spike</span>
@@ -2474,13 +2525,33 @@
                                     } @else if (isAnomalyReading(r, $index) === 'zero') {
                                       <span class="cons-flag cons-flag-zero">🚫 Zero</span>
                                     } @else {
-                                      <span class="cons-flag cons-flag-normal">✓ Normal</span>
+                                      <span class="cons-flag cons-flag-normal">✓</span>
                                     }
                                   </td>
                                 </tr>
                               }
                             </tbody>
                           </table>
+                        </div>
+                      </div>
+                    }
+
+                    @if (!consumptionHistoryLoading() && consumptionHistory().length > 0) {
+                      <div class="cons-meter-details-section">
+                        <div class="cons-meter-details-title">Meter Details</div>
+                        <div class="acct-two-col">
+                          <div class="acct-col">
+                            <div class="acct-field"><span class="acct-field-label">Service Type</span><span class="acct-field-value">{{ consumptionSelectedMeter()?.serviceDesc || consumptionSelectedMeter()?.serviceDescription || '-' }}</span></div>
+                            <div class="acct-field"><span class="acct-field-label">Meter Number</span><span class="acct-field-value mono">{{ consumptionSelectedMeter()?.physicalMeterNo || consumptionSelectedMeter()?.meterNo || '-' }}</span></div>
+                            <div class="acct-field"><span class="acct-field-label">Connection Size</span><span class="acct-field-value">{{ consumptionSelectedMeter()?.meterConnectionSize || consumptionSelectedMeter()?.connectionSize || '-' }}</span></div>
+                            <div class="acct-field"><span class="acct-field-label">Meter Status</span><span class="acct-field-value">{{ consumptionSelectedMeter()?.serviceStatus || consumptionSelectedMeter()?.meterStatus || '-' }}</span></div>
+                          </div>
+                          <div class="acct-col">
+                            <div class="acct-field"><span class="acct-field-label">Latest Reading</span><span class="acct-field-value mono">{{ consumptionHistory()[0]?.currentReading || consumptionHistory()[0]?.reading || consumptionHistory()[0]?.meterReading || '-' }}</span></div>
+                            <div class="acct-field"><span class="acct-field-label">Latest Date</span><span class="acct-field-value">{{ formatDate(consumptionHistory()[0]?.readingDate || consumptionHistory()[0]?.billingDate || consumptionHistory()[0]?.date) }}</span></div>
+                            <div class="acct-field"><span class="acct-field-label">Latest Consumption</span><span class="acct-field-value mono bold">{{ getConsumptionVal(consumptionHistory()[0]) | number:'1.0-0' }}</span></div>
+                            <div class="acct-field"><span class="acct-field-label">Total Records</span><span class="acct-field-value">{{ consumptionAllHistory().length }}</span></div>
+                          </div>
                         </div>
                       </div>
                     }

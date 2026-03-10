@@ -128,9 +128,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
   consumptionSelectedMeter = signal<any>(null);
   consumptionHistory = signal<any[]>([]);
+  consumptionAllHistory = signal<any[]>([]);
   consumptionHistoryLoading = signal(false);
   consumptionChartData = signal<any[]>([]);
   consumptionInsights = signal<any>(null);
+  consumptionFinYears = signal<string[]>([]);
+  consumptionSelectedYears = signal<string[]>([]);
+  consumptionViewMode = signal<'chart' | 'table'>('chart');
 
   meterSelectedConv = signal<any>(null);
   meterConvHistory = signal<any[]>([]);
@@ -1976,8 +1980,11 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.consumptionSelectedMeter.set(meter);
     this.consumptionHistoryLoading.set(true);
     this.consumptionHistory.set([]);
+    this.consumptionAllHistory.set([]);
     this.consumptionChartData.set([]);
     this.consumptionInsights.set(null);
+    this.consumptionFinYears.set([]);
+    this.consumptionSelectedYears.set([]);
     const account = this.selectedAccount();
     const accountId = this.getAccountId(account);
     const meterNo = meter.physicalMeterNo || meter.meterNo || meter.meterNumber || '';
@@ -1989,13 +1996,75 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       const history = historyRes.status === 'fulfilled' ? this.normalizeArray(historyRes.value) : [];
       const barChart = barRes.status === 'fulfilled' ? this.normalizeArray(barRes.value) : [];
       const primaryData = history.length > 0 ? history : barChart;
-      this.consumptionHistory.set(primaryData);
-      this.consumptionChartData.set(primaryData);
-      this.consumptionInsights.set(this.computeConsumptionInsights(primaryData));
+      this.consumptionAllHistory.set(primaryData);
+      const years = this.extractConsumptionFinYears(primaryData);
+      this.consumptionFinYears.set(years);
+      this.consumptionSelectedYears.set([...years]);
+      this.applyConsumptionYearFilter();
     } catch {
       this.consumptionHistory.set([]);
+      this.consumptionAllHistory.set([]);
     }
     this.consumptionHistoryLoading.set(false);
+  }
+
+  extractConsumptionFinYears(readings: any[]): string[] {
+    const yearSet = new Set<string>();
+    readings.forEach((r: any) => {
+      const dateStr = r.readingDate || r.billingDate || r.date || r.transactionDate || '';
+      if (!dateStr) return;
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return;
+      const month = d.getMonth();
+      const year = d.getFullYear();
+      const fyStart = month >= 6 ? year : year - 1;
+      yearSet.add(`${fyStart}/${fyStart + 1}`);
+    });
+    return Array.from(yearSet).sort().reverse();
+  }
+
+  toggleConsumptionYear(fy: string) {
+    const current = [...this.consumptionSelectedYears()];
+    const idx = current.indexOf(fy);
+    if (idx >= 0) {
+      if (current.length > 1) {
+        current.splice(idx, 1);
+      }
+    } else {
+      current.push(fy);
+    }
+    this.consumptionSelectedYears.set(current);
+    this.applyConsumptionYearFilter();
+  }
+
+  selectAllConsumptionYears() {
+    this.consumptionSelectedYears.set([...this.consumptionFinYears()]);
+    this.applyConsumptionYearFilter();
+  }
+
+  applyConsumptionYearFilter() {
+    const all = this.consumptionAllHistory();
+    const selectedYears = this.consumptionSelectedYears();
+    if (selectedYears.length === 0 || selectedYears.length === this.consumptionFinYears().length) {
+      this.consumptionHistory.set(all);
+      this.consumptionChartData.set(all);
+      this.consumptionInsights.set(this.computeConsumptionInsights(all));
+      return;
+    }
+    const filtered = all.filter((r: any) => {
+      const dateStr = r.readingDate || r.billingDate || r.date || r.transactionDate || '';
+      if (!dateStr) return false;
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return false;
+      const month = d.getMonth();
+      const year = d.getFullYear();
+      const fyStart = month >= 6 ? year : year - 1;
+      const fy = `${fyStart}/${fyStart + 1}`;
+      return selectedYears.includes(fy);
+    });
+    this.consumptionHistory.set(filtered);
+    this.consumptionChartData.set(filtered);
+    this.consumptionInsights.set(this.computeConsumptionInsights(filtered));
   }
 
   computeConsumptionInsights(readings: any[]): any {
@@ -2042,6 +2111,16 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
   getConsumptionVal(r: any): number {
     return Number(r.consumption || r.units || r.totalConsumption || 0);
+  }
+
+  getAvgDailyConsumption(r: any): string {
+    if (r.averageDailyConsumption) return String(r.averageDailyConsumption);
+    if (r.avgDaily) return String(r.avgDaily);
+    if (r.dailyAverage) return String(r.dailyAverage);
+    const days = Number(r.days || r.numberOfDays || r.readingDays || 0);
+    const cons = this.getConsumptionVal(r);
+    if (days > 0 && cons > 0) return (cons / days).toFixed(1);
+    return '-';
   }
 
   getChartMaxVal(): number {
