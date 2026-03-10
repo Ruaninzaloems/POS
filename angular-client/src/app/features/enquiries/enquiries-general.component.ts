@@ -1136,11 +1136,26 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           break;
 
         case 'txn-summary':
-          const finYearForSummary = this.userFinYear();
-          const txnSummaryResult = await firstValueFrom(
-            this.api.get<any>(`/api/platinum/billing-enquiry/service-type-balance/${accountId}`, finYearForSummary ? { financialYear: finYearForSummary } : undefined)
-          );
-          data = { summary: this.normalizeArray(txnSummaryResult) };
+          try {
+            const finYearForSummary = this.userFinYear();
+            let txnSummaryResult: any;
+            try {
+              txnSummaryResult = await firstValueFrom(
+                this.api.get<any>(`/api/platinum/billing-enquiry/service-type-balance/${accountId}`, finYearForSummary ? { financialYear: finYearForSummary } : undefined)
+              );
+            } catch {
+              txnSummaryResult = await firstValueFrom(
+                this.api.get<any>(`/api/platinum/billing-enquiry/service-type-balance/${accountId}`)
+              );
+            }
+            const summaryArr = this.normalizeArray(txnSummaryResult);
+            if (summaryArr.length > 0) {
+              console.log('[txn-summary] sample keys:', Object.keys(summaryArr[0]), 'sample:', JSON.stringify(summaryArr[0]).substring(0, 500));
+            }
+            data = { summary: summaryArr };
+          } catch {
+            data = { summary: [] };
+          }
           break;
 
         case 'billed-vs-paid':

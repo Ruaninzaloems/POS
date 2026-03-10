@@ -411,7 +411,9 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
         const data = await platinumGet(session, `/api/BillingEnquiry/${supervisorRoutes[mappedEndpoint]}`, queryParams);
         if (mappedEndpoint === 'total-balance-debt' || mappedEndpoint === 'service-type-balance') {
           const sample = Array.isArray(data) ? data[0] : data;
+          console.log(`[billing-enquiry] ${mappedEndpoint} queryParams:`, JSON.stringify(queryParams));
           console.log(`[billing-enquiry] ${mappedEndpoint} response keys:`, sample ? Object.keys(sample) : 'empty/null', `count=${Array.isArray(data) ? data.length : 'single'}`);
+          if (sample) console.log(`[billing-enquiry] ${mappedEndpoint} sample:`, JSON.stringify(sample).substring(0, 500));
         }
         return handlePlatinumResult(res, data);
       }
