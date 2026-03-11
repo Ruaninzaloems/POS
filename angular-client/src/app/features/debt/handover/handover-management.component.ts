@@ -68,10 +68,10 @@ export class HandoverManagementComponent implements OnInit {
     this.loadingRef.set(true);
     try {
       const [attResult, bcResult, townResult, ageResult] = await Promise.allSettled([
-        firstValueFrom(this.api.get<Attorney[]>('/api/attorneys')),
-        firstValueFrom(this.api.get<any[]>('/api/billing-cycles')),
-        firstValueFrom(this.api.get<any[]>('/api/towns')),
-        firstValueFrom(this.api.get<any[]>('/api/ageing-ranges')),
+        firstValueFrom(this.api.get<Attorney[]>('/api/platinum/billing-debt/attorney-list')),
+        firstValueFrom(this.api.get<any[]>('/api/platinum/billing-debt/billing-cycles')),
+        firstValueFrom(this.api.get<any[]>('/api/platinum/billing-debt/towns')),
+        firstValueFrom(this.api.get<any[]>('/api/platinum/billing-debt/ageing-ranges')),
       ]);
       if (attResult.status === 'fulfilled') this.attorneys.set(attResult.value);
       if (bcResult.status === 'fulfilled') this.billingCycles.set(bcResult.value);
@@ -87,7 +87,7 @@ export class HandoverManagementComponent implements OnInit {
   async loadHandovers(): Promise<void> {
     this.loadingHandovers.set(true);
     try {
-      const data = await firstValueFrom(this.api.get<HandoverRecord[]>('/api/handovers'));
+      const data = await firstValueFrom(this.api.get<HandoverRecord[]>('/api/platinum/billing-debt/handover-list'));
       this.handovers.set(Array.isArray(data) ? data : []);
     } catch (e: any) {
       this.toast.error(e?.message || 'Failed to load handovers');
@@ -154,7 +154,7 @@ export class HandoverManagementComponent implements OnInit {
       if (opt === 'rotation') {
         params.rotationAllocations = this.rotationAllocations().map(a => ({ attorneyId: a.attorneyId, percentage: a.percentage }));
       }
-      const result = await firstValueFrom(this.api.post<any>('/api/handovers/submit', params));
+      const result = await firstValueFrom(this.api.post<any>('/api/platinum/billing-debt/handover-submit', params));
       this.toast.success(result.message || 'Handover submitted successfully.');
       this.loadHandovers();
       this.handleClear();

@@ -68,8 +68,8 @@ export class HandoverReportComponent implements OnInit {
     this.loadingRef.set(true);
     try {
       const [attResult, bcResult] = await Promise.allSettled([
-        firstValueFrom(this.api.get<Attorney[]>('/api/attorneys')),
-        firstValueFrom(this.api.get<any[]>('/api/billing-cycles')),
+        firstValueFrom(this.api.get<Attorney[]>('/api/platinum/billing-debt/attorney-list')),
+        firstValueFrom(this.api.get<any[]>('/api/platinum/billing-debt/billing-cycles')),
       ]);
       if (attResult.status === 'fulfilled') this.attorneys.set(Array.isArray(attResult.value) ? attResult.value : []);
       if (bcResult.status === 'fulfilled') this.billingCycles.set(Array.isArray(bcResult.value) ? bcResult.value : []);
@@ -92,7 +92,7 @@ export class HandoverReportComponent implements OnInit {
       if (this.billingCycle() !== '__all__') params.billingCycle = this.billingCycle();
       if (this.selectedAttorneyId() !== '__all__') params.attorneyId = parseInt(this.selectedAttorneyId(), 10);
       if (this.accountNo().trim()) params.accountNo = this.accountNo().trim();
-      const data = await firstValueFrom(this.api.get<any>('/api/handovers/report', params));
+      const data = await firstValueFrom(this.api.get<any>('/api/platinum/billing-debt/handover-report', params));
       const arr = Array.isArray(data) ? data : (data?.value && Array.isArray(data.value) ? data.value : data?.items && Array.isArray(data.items) ? data.items : []);
       this.results.set(arr);
       if (arr.length === 0) this.toast.info('No handover records found for the selected criteria.');

@@ -32,7 +32,7 @@ export class Section129AuthorizationComponent implements OnInit {
   async loadRuns(): Promise<void> {
     this.loading.set(true);
     try {
-      const allRuns: Section129Run[] = await firstValueFrom(this.api.get('/api/section129/runs'));
+      const allRuns: Section129Run[] = await firstValueFrom(this.api.get('/api/platinum/billing-debt/section129-runs'));
       const pending = (allRuns || []).filter((r) => {
         const s = (r.status || '').toLowerCase().replace(/[–—]/g, '-');
         return s.includes('notice issued') && s.includes('trial') && !s.includes('review') && !s.includes('final');
@@ -97,7 +97,7 @@ export class Section129AuthorizationComponent implements OnInit {
 
     for (const row of actionableRows) {
       try {
-        await firstValueFrom(this.api.post('/api/section129/authorize', {
+        await firstValueFrom(this.api.post('/api/platinum/billing-debt/section129-authorize', {
           runId: row.run.runId,
           notes: row.notes,
           review: row.review,

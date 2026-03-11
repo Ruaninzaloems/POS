@@ -49,7 +49,7 @@ export class QualificationRulesComponent implements OnInit {
   async loadRules(): Promise<void> {
     this.loading.set(true);
     try {
-      const data = await firstValueFrom(this.api.get<any[]>('/api/qualification-rules'));
+      const data = await firstValueFrom(this.api.get<any[]>('/api/debt-scoring/qualification-rules'));
       this.rules.set(Array.isArray(data) ? data : []);
     } catch (err: any) { this.toast.error(err?.message || 'Failed to load rules'); }
     finally { this.loading.set(false); }
@@ -109,10 +109,10 @@ export class QualificationRulesComponent implements OnInit {
         isActive: existingRule ? existingRule.isActive : true,
       };
       if (this.editingId()) {
-        await firstValueFrom(this.api.put<any>(`/api/qualification-rules/${this.editingId()}`, payload));
+        await firstValueFrom(this.api.put<any>(`/api/debt-scoring/qualification-rules/${this.editingId()}`, payload));
         this.toast.success('Rule Updated');
       } else {
-        await firstValueFrom(this.api.post<any>('/api/qualification-rules', payload));
+        await firstValueFrom(this.api.post<any>('/api/debt-scoring/qualification-rules', payload));
         this.toast.success('Rule Created');
       }
       this.showEditor.set(false);
@@ -124,7 +124,7 @@ export class QualificationRulesComponent implements OnInit {
   async handleDelete(id: number): Promise<void> {
     if (!confirm('Delete this qualification rule?')) return;
     try {
-      await firstValueFrom(this.api.delete<any>(`/api/qualification-rules/${id}`));
+      await firstValueFrom(this.api.delete<any>(`/api/debt-scoring/qualification-rules/${id}`));
       this.toast.success('Rule Deleted');
       this.loadRules();
     } catch (err: any) { this.toast.error(err?.message || 'Delete failed'); }
@@ -132,7 +132,7 @@ export class QualificationRulesComponent implements OnInit {
 
   async handleToggle(rule: any): Promise<void> {
     try {
-      await firstValueFrom(this.api.put<any>(`/api/qualification-rules/${rule.id}`, { isActive: !rule.isActive }));
+      await firstValueFrom(this.api.put<any>(`/api/debt-scoring/qualification-rules/${rule.id}`, { isActive: !rule.isActive }));
       this.loadRules();
     } catch (err: any) { this.toast.error(err?.message || 'Toggle failed'); }
   }
@@ -153,7 +153,7 @@ export class QualificationRulesComponent implements OnInit {
         if (parts[6]) acc['electricityArrears'] = parseFloat(parts[6]) || 0;
         return acc;
       });
-      const result = await firstValueFrom(this.api.post<any>(`/api/qualification-rules/${ruleId}/run`, { accounts }));
+      const result = await firstValueFrom(this.api.post<any>(`/api/debt-scoring/qualification-rules/${ruleId}/run`, { accounts }));
       this.runResults.set(result);
       this.toast.success(`${result.matchedCount} of ${result.totalEvaluated} accounts matched`);
     } catch (err: any) { this.toast.error(err?.message || 'Run failed'); }

@@ -88,8 +88,8 @@ export class HandoverTerminationComponent implements OnInit {
     this.loading.set(true);
     try {
       const [handoverData, attorneyData] = await Promise.all([
-        firstValueFrom(this.api.get<HandoverRecord[]>('/api/handovers')),
-        firstValueFrom(this.api.get<Attorney[]>('/api/attorneys')),
+        firstValueFrom(this.api.get<HandoverRecord[]>('/api/platinum/billing-debt/handover-list')),
+        firstValueFrom(this.api.get<Attorney[]>('/api/platinum/billing-debt/attorney-list')),
       ]);
       this.handovers.set(Array.isArray(handoverData) ? handoverData : []);
       this.attorneys.set(Array.isArray(attorneyData) ? attorneyData : []);
@@ -140,7 +140,7 @@ export class HandoverTerminationComponent implements OnInit {
     }
     this.submitting.set(true);
     try {
-      const result = await firstValueFrom(this.api.post<any>('/api/handovers/terminate', {
+      const result = await firstValueFrom(this.api.post<any>('/api/platinum/billing-debt/handover-terminate', {
         handoverIds: Array.from(this.selectedIds()),
         reason: this.terminationReason(),
         notes: this.terminationNotes(),

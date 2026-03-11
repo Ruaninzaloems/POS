@@ -96,14 +96,14 @@ export class Section129NoticesComponent implements OnInit {
 
   async loadData(): Promise<void> {
     const results = await Promise.allSettled([
-      firstValueFrom(this.api.get('/api/section129/config')),
-      firstValueFrom(this.api.get('/api/section129/runs')),
-      firstValueFrom(this.api.get('/api/billing-cycles')),
-      firstValueFrom(this.api.get('/api/towns')),
-      firstValueFrom(this.api.get('/api/property-categories')),
-      firstValueFrom(this.api.get('/api/account-types')),
-      firstValueFrom(this.api.get('/api/person-types')),
-      firstValueFrom(this.api.get('/api/ageing-ranges')),
+      firstValueFrom(this.api.get('/api/platinum/billing-debt/section129-config')),
+      firstValueFrom(this.api.get('/api/platinum/billing-debt/section129-runs')),
+      firstValueFrom(this.api.get('/api/platinum/billing-debt/billing-cycles')),
+      firstValueFrom(this.api.get('/api/platinum/billing-debt/towns')),
+      firstValueFrom(this.api.get('/api/platinum/billing-debt/property-categories')),
+      firstValueFrom(this.api.get('/api/platinum/billing-debt/account-types')),
+      firstValueFrom(this.api.get('/api/platinum/billing-debt/person-types')),
+      firstValueFrom(this.api.get('/api/platinum/billing-debt/ageing-ranges')),
     ]);
 
     if (results[0].status === 'fulfilled') this.config.set(results[0].value);
@@ -171,7 +171,7 @@ export class Section129NoticesComponent implements OnInit {
         mustEmailBePrinted: this.distributionType === 'email' ? this.mustEmailBePrinted : undefined,
         handoverOption: this.handoverOption,
       };
-      await firstValueFrom(this.api.post('/api/section129/trial-run', params));
+      await firstValueFrom(this.api.post('/api/platinum/billing-debt/section129-trial-run', params));
       this.toast.show(`Section 129 ${this.runType} run has been submitted successfully.`, 'success');
       await this.loadData();
     } catch (err: any) {
@@ -207,7 +207,7 @@ export class Section129NoticesComponent implements OnInit {
     this.filesLoading = true;
     this.runFiles = [];
     try {
-      const files = await firstValueFrom(this.api.get(`/api/section129/runs/${runId}/files`));
+      const files = await firstValueFrom(this.api.get('/api/platinum/billing-debt/section129-run-files', { runId: String(runId) }));
       this.runFiles = files || [];
     } catch (err: any) {
       this.toast.show(err?.error?.message || 'Failed to load run files.', 'error');
@@ -225,7 +225,7 @@ export class Section129NoticesComponent implements OnInit {
   async handleDownloadFile(fileId: number): Promise<void> {
     this.downloadingFileId = fileId;
     try {
-      await firstValueFrom(this.api.get(`/api/section129/files/${fileId}/download`));
+      await firstValueFrom(this.api.get('/api/platinum/billing-debt/section129-download-file', { fileId: String(fileId) }));
       this.toast.show('File download has started.', 'success');
     } catch (err: any) {
       this.toast.show(err?.error?.message || 'Failed to download file.', 'error');
@@ -237,7 +237,7 @@ export class Section129NoticesComponent implements OnInit {
   async handleFinalRun(runId: number): Promise<void> {
     this.finalRunningId = runId;
     try {
-      await firstValueFrom(this.api.post('/api/section129/final-run', { runId }));
+      await firstValueFrom(this.api.post('/api/platinum/billing-debt/section129-final-run', { runId }));
       this.toast.show(`Section 129 final run for run #${runId} has been submitted successfully.`, 'success');
       await this.loadData();
     } catch (err: any) {
@@ -259,7 +259,7 @@ export class Section129NoticesComponent implements OnInit {
     if (!this.deleteConfirmRunId) return;
     this.isDeleting = true;
     try {
-      await firstValueFrom(this.api.delete(`/api/section129/runs/${this.deleteConfirmRunId}`));
+      await firstValueFrom(this.api.post('/api/platinum/billing-debt/section129-delete-run', { runId: this.deleteConfirmRunId }));
       this.toast.show(`Section 129 run #${this.deleteConfirmRunId} has been removed.`, 'success');
       this.deleteConfirmRunId = null;
       await this.loadData();

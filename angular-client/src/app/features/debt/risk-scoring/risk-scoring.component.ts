@@ -91,7 +91,7 @@ export class RiskScoringComponent implements OnInit {
     if (!this.accountNo().trim()) { this.toast.error('Account number required'); return; }
     this.scoring.set(true);
     try {
-      const result = await firstValueFrom(this.api.post<any>('/api/debt-scores/score', {
+      const result = await firstValueFrom(this.api.post<any>('/api/debt-scoring/score-account', {
         accountNo: this.accountNo().trim(),
         paymentHistory: parseFloat(this.paymentHistory()) || 50,
         arrearAge: parseInt(this.arrearDays()) || 0,
@@ -125,7 +125,7 @@ export class RiskScoringComponent implements OnInit {
     this.scoring.set(true);
     try {
       const accounts = lines.map(accountNo => ({ accountNo, paymentHistory: 50, arrearAge: 90, lastPaymentDays: 60, totalArrears: 5000, debtSize: 5000, indigentStatus: false, previousLegalActions: 0, locationRisk: 50, serviceTypes: ['water', 'electricity'] }));
-      await firstValueFrom(this.api.post<any>('/api/debt-scores/bulk', { accounts }));
+      await firstValueFrom(this.api.post<any>('/api/debt-scoring/score-bulk', { accounts }));
       this.toast.success(`${lines.length} accounts scored`);
       this.bulkInput.set('');
       this.loadDashboard();
@@ -138,7 +138,7 @@ export class RiskScoringComponent implements OnInit {
     try {
       const params: any = { limit: String(this.dashPageSize), offset: String((this.dashPage() - 1) * this.dashPageSize) };
       if (this.dashFilter() !== '__all__') params.riskCategory = this.dashFilter();
-      const data = await firstValueFrom(this.api.get<any>('/api/debt-scores', params));
+      const data = await firstValueFrom(this.api.get<any>('/api/debt-scoring/scores', params));
       this.dashScores.set(data?.scores || []);
       this.dashTotal.set(data?.total || 0);
     } catch (err: any) { this.toast.error(err?.message || 'Failed to load scores'); }
@@ -148,7 +148,7 @@ export class RiskScoringComponent implements OnInit {
   async loadWeights(): Promise<void> {
     this.weightsLoading.set(true);
     try {
-      const w = await firstValueFrom(this.api.get<any>('/api/debt-scores/weights'));
+      const w = await firstValueFrom(this.api.get<any>('/api/debt-scoring/weights'));
       this.weights.set(w || {});
       const edit: Record<string, number> = {};
       for (const [k, v] of Object.entries(w || {})) edit[k] = (v as any).weight;
@@ -160,7 +160,7 @@ export class RiskScoringComponent implements OnInit {
   async handleSaveWeights(): Promise<void> {
     this.weightsSaving.set(true);
     try {
-      await firstValueFrom(this.api.put<any>('/api/debt-scores/weights', this.editWeights()));
+      await firstValueFrom(this.api.put<any>('/api/debt-scoring/weights', this.editWeights()));
       await this.loadWeights();
       this.toast.success('Weights saved');
     } catch (err: any) { this.toast.error(err?.message || 'Failed to save weights'); }

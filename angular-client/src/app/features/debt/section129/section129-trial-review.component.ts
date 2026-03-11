@@ -43,8 +43,8 @@ export class Section129TrialReviewComponent implements OnInit {
     this.loading.set(true);
     try {
       const [accountsData, runsData] = await Promise.all([
-        firstValueFrom(this.api.get(`/api/section129/runs/${this.runId}/accounts`)),
-        firstValueFrom(this.api.get('/api/section129/runs')),
+        firstValueFrom(this.api.get('/api/platinum/billing-debt/section129-run-accounts', { runId: String(this.runId) })),
+        firstValueFrom(this.api.get('/api/platinum/billing-debt/section129-runs')),
       ]);
       this.accounts.set(accountsData || []);
       const run = (runsData || []).find((r: Section129Run) => r.runId === this.runId) || null;
@@ -131,7 +131,7 @@ export class Section129TrialReviewComponent implements OnInit {
     }
     this.submitting.set(true);
     try {
-      const result: any = await firstValueFrom(this.api.post('/api/section129/trial-review', {
+      const result: any = await firstValueFrom(this.api.post('/api/platinum/billing-debt/section129-trial-review-submit', {
         runId: this.runId,
         selectedAccountIds: Array.from(this.selectedIds),
         finalReviewComplete: this.finalReviewComplete,

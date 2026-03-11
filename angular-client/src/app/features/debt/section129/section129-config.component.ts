@@ -72,10 +72,10 @@ export class Section129ConfigComponent implements OnInit {
   async loadDropdowns(): Promise<void> {
     try {
       const results = await Promise.allSettled([
-        firstValueFrom(this.api.get('/api/section129/templates')),
-        firstValueFrom(this.api.get('/api/section129/sms-templates')),
-        firstValueFrom(this.api.get('/api/additional-billing-types')),
-        firstValueFrom(this.api.get('/api/attorneys')),
+        firstValueFrom(this.api.get('/api/platinum/billing-debt/section129-templates')),
+        firstValueFrom(this.api.get('/api/platinum/billing-debt/section129-sms-templates')),
+        firstValueFrom(this.api.get('/api/platinum/billing-debt/additional-billing-types')),
+        firstValueFrom(this.api.get('/api/platinum/billing-debt/attorney-list')),
       ]);
       if (results[0].status === 'fulfilled') this.templates = Array.isArray(results[0].value) ? results[0].value : [];
       if (results[1].status === 'fulfilled') this.smsTemplates = Array.isArray(results[1].value) ? results[1].value : [];
@@ -94,7 +94,7 @@ export class Section129ConfigComponent implements OnInit {
     this.loading.set(true);
     this.searched = true;
     try {
-      const data = await firstValueFrom(this.api.get('/api/section129/config-list', { finYear: this.finYear }));
+      const data = await firstValueFrom(this.api.get('/api/platinum/billing-debt/section129-config-list', { finYear: this.finYear }));
       this.configEntries = Array.isArray(data) ? data : [];
     } catch (e: any) {
       this.toast.show(e?.error?.message || e?.message || 'Failed to load config entries', 'error');
@@ -253,7 +253,7 @@ export class Section129ConfigComponent implements OnInit {
     }
     this.saving.set(true);
     try {
-      await firstValueFrom(this.api.post('/api/section129/config', {
+      await firstValueFrom(this.api.post('/api/platinum/billing-debt/section129-config-save', {
         id: this.selectedEntry?.id,
         enabled: this.enabled,
         finYear: this.selectedFinYear,

@@ -53,8 +53,8 @@ export class Section129ReportComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    firstValueFrom(this.api.get('/api/billing-cycles')).then(d => this.billingCycles = d || []).catch(() => {});
-    firstValueFrom(this.api.get('/api/ageing-ranges')).then(d => this.ageingRanges = d || []).catch(() => {});
+    firstValueFrom(this.api.get('/api/platinum/billing-debt/billing-cycles')).then(d => this.billingCycles = d || []).catch(() => {});
+    firstValueFrom(this.api.get('/api/platinum/billing-debt/ageing-ranges')).then(d => this.ageingRanges = d || []).catch(() => {});
   }
 
   get resultColumns(): string[] {
@@ -78,7 +78,7 @@ export class Section129ReportComponent implements OnInit {
     this.accountNo = query;
     if (query.length >= 3) {
       try {
-        const accounts = await firstValueFrom(this.api.get('/api/accounts', { accountNo: query }));
+        const accounts = await firstValueFrom(this.api.post('/api/platinum/billing-payment/search-accounts', { searchText: query }));
         this.accountSuggestions = (Array.isArray(accounts) ? accounts : []).slice(0, 10).map((a: any) => ({
           accountNo: a.accountNo || a.accountID?.toString() || '',
           name: a.name || a.accountName || '',
@@ -121,7 +121,7 @@ export class Section129ReportComponent implements OnInit {
       if (this.ageing) params.ageing = this.ageing;
       params.amountGreaterThan = String(amt);
 
-      const data = await firstValueFrom(this.api.get('/api/section129/report', params));
+      const data = await firstValueFrom(this.api.get('/api/platinum/billing-debt/section129-report', params));
       this.results = Array.isArray(data) ? data : [];
     } catch (err: any) {
       this.toast.show(err?.error?.message || err?.message || 'Failed to fetch Section 129 report.', 'error');
