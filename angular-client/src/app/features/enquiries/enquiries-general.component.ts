@@ -3400,9 +3400,19 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       console.log('[consumption] Total readings across all FYs:', allReadings.length);
 
       if (allReadings.length === 0) {
-        console.log('[consumption] No FY readings, trying barchart with params:', JSON.stringify(baseParams));
-        const barRes = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history-barchart`, baseParams)).catch((err) => { console.log('[consumption] barchart ERROR:', err?.message || err); return []; });
-        const barChart = this.normalizeArray(barRes);
+        const barParams = { ...baseParams, financialYear: currentFy };
+        console.log('[consumption] No FY readings, trying barchart with params:', JSON.stringify(barParams));
+        const barRes = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history-barchart`, barParams)).catch((err) => { console.log('[consumption] barchart ERROR:', err?.message || err); return []; });
+        const barChart = this.normalizeArray(barRes).map((item: any) => {
+          const pm = item.processingMonth || '';
+          const monthName = pm.includes('-') ? pm.split('-')[0] : pm;
+          return {
+            ...item,
+            billingmonth: item.billingmonth || item.billingMonth || monthName || '',
+            billingMonth: item.billingMonth || item.billingmonth || monthName || '',
+            financialYear: item.financialYear || item.finYear || currentFy,
+          };
+        });
         console.log('[consumption] barchart returned:', barChart.length, 'readings');
         if (barChart.length > 0) allReadings.push(...barChart);
       }
