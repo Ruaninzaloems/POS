@@ -5,4 +5,4 @@ generated = []
 id = "VGFWLKqmOSluRaz3jGdYp"
 uri = "file://debt-legal-phases/PHASE_0_1_DEBT_LEGAL_MASTER.xlsx"
 type = "table"
-title = "Phase 0 & 1 — Debt & Legal Master (SQL + APIs + Mapping + Checklist)"
+title = "Phase 0-1 Master (7 Sheets: SQL Tables + API Contracts + Mapping + Checklist + Overview + EMS Tables + SQL Script)"
