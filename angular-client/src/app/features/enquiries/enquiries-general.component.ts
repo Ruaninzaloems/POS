@@ -1950,28 +1950,32 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             this.bvpFinYear.set(this.userFinYear() || this.getCurrentFinYear());
           }
           const bvpYear = this.bvpFinYear();
-          const [billedVsPaid, billedBalance2, bvpReceipts] = await Promise.allSettled([
+          const [billedVsPaid, billedBalance2, bvpCloseBalance, bvpReceipts] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/billed-vs-paid-amounts`, { accountId: String(accountId), financialYear: bvpYear })),
             this.fetchAccountBalance(accountId),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/close-balance-detail/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/payment-amount-by-account-ids/${accountId}`)),
           ]);
           const bvpArr = billedVsPaid.status === 'fulfilled' ? this.normalizeArray(billedVsPaid.value) : [];
           const balArr = billedBalance2.status === 'fulfilled' ? this.normalizeArray(billedBalance2.value) : [];
+          const closeBalArr = bvpCloseBalance.status === 'fulfilled' ? this.normalizeArray(bvpCloseBalance.value) : [];
           const bvpReceiptArr = bvpReceipts.status === 'fulfilled' ? this.normalizeArray(bvpReceipts.value) : [];
           if (bvpArr.length > 0) {
             console.log('[billed-vs-paid] sample keys:', Object.keys(bvpArr[0]), 'sample:', JSON.stringify(bvpArr[0]).substring(0, 500));
           } else {
             console.log('[billed-vs-paid] billedVsPaid empty. status:', billedVsPaid.status, billedVsPaid.status === 'rejected' ? (billedVsPaid as any).reason?.message : '');
           }
+          if (closeBalArr.length > 0) {
+            console.log('[billed-vs-paid] closeBalanceDetail keys:', Object.keys(closeBalArr[0]), 'sample:', JSON.stringify(closeBalArr[0]).substring(0, 500));
+          }
           if (balArr.length > 0) {
             console.log('[billed-vs-paid] balance sample keys:', Object.keys(balArr[0]));
-          } else {
-            console.log('[billed-vs-paid] balance empty. status:', billedBalance2.status, billedBalance2.status === 'rejected' ? (billedBalance2 as any).reason?.message : '');
           }
           const enrichedBvp = this.enrichBvpWithReceipts(bvpArr, bvpReceiptArr);
           data = {
             billedVsPaid: enrichedBvp,
             balance: balArr,
+            closeBalance: closeBalArr,
             receipts: bvpReceiptArr,
           };
           break;
@@ -2445,16 +2449,18 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.tabLoading.set(true);
     this.tabError.set(null);
     try {
-      const [billedVsPaid, billedBalance2, bvpReceipts] = await Promise.allSettled([
+      const [billedVsPaid, billedBalance2, closeBalResult, bvpReceipts] = await Promise.allSettled([
         firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/billed-vs-paid-amounts`, { accountId: String(accountId), financialYear: year })),
         this.fetchAccountBalance(accountId),
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/close-balance-detail/${accountId}`)),
         firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/payment-amount-by-account-ids/${accountId}`)),
       ]);
       const bvpArr = billedVsPaid.status === 'fulfilled' ? this.normalizeArray(billedVsPaid.value) : [];
       const balArr = billedBalance2.status === 'fulfilled' ? this.normalizeArray(billedBalance2.value) : [];
+      const closeBalArr = closeBalResult.status === 'fulfilled' ? this.normalizeArray(closeBalResult.value) : [];
       const receiptArr = bvpReceipts.status === 'fulfilled' ? this.normalizeArray(bvpReceipts.value) : [];
       const enrichedBvp = this.enrichBvpWithReceipts(bvpArr, receiptArr);
-      this.tabData.set({ billedVsPaid: enrichedBvp, balance: balArr, receipts: receiptArr });
+      this.tabData.set({ billedVsPaid: enrichedBvp, balance: balArr, closeBalance: closeBalArr, receipts: receiptArr });
     } catch (e: any) {
       this.tabError.set(e.message || 'Failed to load billed vs paid data');
     } finally {
@@ -3145,13 +3151,17 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   }
 
   getBvpActualOutstanding(): number {
+    const closeBal = this.tabData()?.closeBalance || [];
+    if (closeBal.length) {
+      return closeBal.reduce((s: number, r: any) => s + Number(r.closingBalance ?? r.closeBalance ?? r.totalOutStanding ?? r.totalOutstanding ?? r.balance ?? 0), 0);
+    }
     const bal = this.tabData()?.balance || [];
     return bal.reduce((s: number, r: any) => s + Number(r.totalOutStanding || r.totalOutstanding || 0), 0);
   }
 
   getBvpVariance(): number {
     const actualOutstanding = this.getBvpActualOutstanding();
-    if (this.tabData()?.balance?.length) {
+    if (this.tabData()?.closeBalance?.length || this.tabData()?.balance?.length) {
       return actualOutstanding;
     }
     return this.getBvpTotalBilled() - this.getBvpTotalPaid();
@@ -3161,7 +3171,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const billed = this.getBvpTotalBilled();
     if (billed === 0) return 0;
     const actualOutstanding = this.getBvpActualOutstanding();
-    if (this.tabData()?.balance?.length) {
+    if (this.tabData()?.closeBalance?.length || this.tabData()?.balance?.length) {
       const rate = ((billed - actualOutstanding) / billed) * 100;
       return Math.min(Math.round(rate * 10) / 10, 100);
     }
