@@ -3063,7 +3063,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   Math = Math;
 
   getBvpRowBilled(row: any): number {
-    return Number(row.billedAmount || row.billed || row.debit || 0) || 0;
+    return Number(row.totalBillAmount || row.amount || row.billedAmount || row.billed || row.debit || 0) || 0;
   }
 
   getBvpRowPaid(row: any): number {
