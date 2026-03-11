@@ -11,6 +11,10 @@ localPort = 3000
 externalPort = 3000
 
 [[ports]]
+localPort = 4200
+externalPort = 4200
+
+[[ports]]
 localPort = 5000
 externalPort = 80
 
@@ -48,7 +52,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "concurrently \"NODE_ENV=development PORT=3000 tsx server/index.ts\" \"cd angular-client && npx ng serve --host 0.0.0.0 --port 5000 --proxy-config proxy.conf.json\" --names server,angular --prefix-colors blue,green"
+args = "PORT=5000 tsx server/index.ts"
 waitForPort = 5000
 
 [agent]

@@ -142,12 +142,9 @@ app.use((req, res, next) => {
     return res.status(status).json({ message });
   });
 
-  if (process.env.NODE_ENV === "production") {
-    serveStatic(app);
-  }
+  serveStatic(app);
 
-  const defaultPort = process.env.NODE_ENV === 'production' ? '5000' : '3000';
-  const port = parseInt(process.env.PORT || defaultPort, 10);
+  const port = parseInt(process.env.PORT || '5000', 10);
   httpServer.listen(port, "0.0.0.0", () => {
     log(`serving on port ${port}`);
   });
