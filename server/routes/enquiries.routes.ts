@@ -391,8 +391,8 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
     "supplementary-valuations": "SupplementaryValuations",
     "valuation-by-unit": "ValuationByUnit",
     "get-eft-bank-statement-notes": "GetEftBankStatementNotes",
-    "meter-reading-history": "MeterReadingHistory",
-    "meter-reading-history-barchart": "MeterReadingHistoryBarchart",
+    "meter-reading-history": "meter-reading-history",
+    "meter-reading-history-barchart": "meter-reading-history-barchart",
     "metered-services-on-account": "MeteredServicesOnAccount",
     "unit-linked-meters": "UnitLinkedMeters",
     "prepaid-meter-services-for-account": "PrepaidMeterServicesForAccount",
@@ -406,12 +406,21 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
     try {
       const session = requireAuth(req, res); if (!session) return;
       const queryParams: Record<string, string> = { ...req.query as Record<string, string> };
+
+      if (endpoint.includes('meter-reading') && !queryParams.userId && session.userData?.user_ID) {
+        queryParams.userId = String(session.userData.user_ID);
+      }
+
       console.log(`[billing-enquiry] valuation endpoint="${endpoint}" mapped="${platinumPath}" queryParams:`, JSON.stringify(queryParams));
       const data = await platinumGet(session, `/api/BillingEnquiry/${platinumPath}`, queryParams);
       const sample = Array.isArray(data) ? data[0] : data;
       console.log(`[billing-enquiry] ${endpoint} response keys:`, sample ? Object.keys(sample) : 'empty/null', `isArray=${Array.isArray(data)} count=${Array.isArray(data) ? data.length : 'single'}`);
-      if (endpoint.includes('meter-reading') && (!data || (Array.isArray(data) && data.length === 0))) {
-        console.log(`[billing-enquiry] EMPTY meter-reading response for params:`, JSON.stringify(queryParams), 'raw:', JSON.stringify(data));
+      if (endpoint.includes('meter-reading')) {
+        if (data && data._error) {
+          console.log(`[billing-enquiry] METER-READING ERROR for params:`, JSON.stringify(queryParams), 'error:', JSON.stringify(data));
+        } else if (!data || (Array.isArray(data) && data.length === 0)) {
+          console.log(`[billing-enquiry] EMPTY meter-reading response for params:`, JSON.stringify(queryParams), 'raw:', JSON.stringify(data));
+        }
       }
       return handlePlatinumResult(res, data);
     } catch (e: any) {
