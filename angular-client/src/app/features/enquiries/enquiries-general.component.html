@@ -200,15 +200,15 @@
               <div class="acct-section-header">Additional Account Details</div>
               <div class="acct-two-col">
                 <div class="acct-col">
-                  <div class="acct-field"><span class="acct-field-label">Interest Waiver Status</span><span class="acct-field-value">{{ safeStr(getAccountBasic()['interestWaiverStatus'] || getAccountAir()['interestWaiverStatus'] || getAccountBasic()['interestWaiverDesc']) }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Indigent Subsidy Status</span><span class="acct-field-value">{{ safeStr(getAccountBasic()['indigentSubsidyStatus'] || getAccountAir()['indigentSubsidyStatus'] || getAccountBasic()['attpStatus']) }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Consumer RPP Status</span><span class="acct-field-value">{{ safeStr(getAccountBasic()['consumerRppStatus'] || getAccountAir()['consumerRppStatus'] || getAccountBasic()['consumerRPPStatus']) }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Departmental Account</span><span class="acct-field-value">{{ safeStr(getAccountBasic()['departmentalAccount'] || getAccountAir()['departmentalAccount'] || getAccountBasic()['departmentalAccountDesc']) }}</span></div>
+                  <div class="acct-field"><span class="acct-field-label">Interest Waiver Status</span><span class="acct-field-value">{{ getAccountStatusField('interestWaiver') }}</span></div>
+                  <div class="acct-field"><span class="acct-field-label">Indigent Subsidy Status</span><span class="acct-field-value">{{ getAccountStatusField('indigentSubsidy') }}</span></div>
+                  <div class="acct-field"><span class="acct-field-label">Consumer RPP Status</span><span class="acct-field-value">{{ getAccountStatusField('consumerRpp') }}</span></div>
+                  <div class="acct-field"><span class="acct-field-label">Departmental Account</span><span class="acct-field-value">{{ getAccountStatusField('departmental') }}</span></div>
                 </div>
                 <div class="acct-col">
-                  <div class="acct-field"><span class="acct-field-label">Rebate Status</span><span class="acct-field-value">{{ safeStr(getAccountBasic()['rebateStatus'] || getAccountAir()['rebateStatus'] || getAccountBasic()['rebateStatusDesc']) }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Handover Status</span><span class="acct-field-value">{{ safeStr(getAccountBasic()['handoverStatus'] || getAccountAir()['handoverStatus'] || getAccountBasic()['handoverStatusDesc']) }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Loan RPP Status</span><span class="acct-field-value">{{ safeStr(getAccountBasic()['loanRppStatus'] || getAccountAir()['loanRppStatus'] || getAccountBasic()['loanRPPStatus']) }}</span></div>
+                  <div class="acct-field"><span class="acct-field-label">Rebate Status</span><span class="acct-field-value">{{ getAccountStatusField('rebate') }}</span></div>
+                  <div class="acct-field"><span class="acct-field-label">Handover Status</span><span class="acct-field-value">{{ getAccountStatusField('handover') }}</span></div>
+                  <div class="acct-field"><span class="acct-field-label">Loan RPP Status</span><span class="acct-field-value">{{ getAccountStatusField('loanRpp') }}</span></div>
                 </div>
               </div>
             </div>

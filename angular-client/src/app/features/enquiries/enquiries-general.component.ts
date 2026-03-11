@@ -1148,7 +1148,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       let data: any = null;
       switch (tab) {
         case 'account':
-          const [basic, accountInfo, acctPropDetails, acctContactInfo, acctConsUnit, acctRates, acctDepositAmt, acctMgmt, acctSectTitle] = await Promise.allSettled([
+          const [basic, accountInfo, acctPropDetails, acctContactInfo, acctConsUnit, acctRates, acctDepositAmt, acctMgmt, acctSectTitle, acctConsDetails] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/basic-account-details/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-info-result/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
@@ -1158,6 +1158,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/deposit-amount`, { accountId: String(accountId) })),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-account-management/account-information`, { accountId: String(accountId) })),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/sectional-title-scheme`, { accountId: String(accountId) })),
+            firstValueFrom(this.api.get<any>(`/api/platinum/receipt-prepaid/cons-account-details`, { accountId: String(accountId) })),
           ]);
           const basicVal = basic.status === 'fulfilled' ? (Array.isArray(basic.value) ? basic.value[0] : basic.value) : null;
           const airVal = accountInfo.status === 'fulfilled' ? (Array.isArray(accountInfo.value) ? accountInfo.value[0] : accountInfo.value) : null;
@@ -1263,6 +1264,29 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             const stName = acctSectTitleVal.schemeName || acctSectTitleVal.description || acctSectTitleVal.sectionalTitleSchemeName || acctSectTitleVal.name;
             if (stName && !acctPropFinal['sectionalTitleScheme']) {
               acctPropFinal['sectionalTitleScheme'] = stName;
+            }
+          }
+          const acctConsDetailsVal = acctConsDetails.status === 'fulfilled' ? (Array.isArray(acctConsDetails.value) ? acctConsDetails.value[0] : acctConsDetails.value) : null;
+          if (acctConsDetailsVal && !acctConsDetailsVal._error) {
+            console.log('[account] consAccountDetails keys:', Object.keys(acctConsDetailsVal));
+            console.log('[account] consAccountDetails sample:', JSON.stringify(acctConsDetailsVal).substring(0, 1000));
+            const statusFields = [
+              'interestWaiverStatus', 'interestWaiverDesc', 'interestWaiver',
+              'indigentSubsidyStatus', 'indigentSubsidy', 'indigentStatus', 'attpStatus',
+              'consumerRppStatus', 'consumerRPPStatus', 'consumerRpp',
+              'loanRppStatus', 'loanRPPStatus', 'loanRpp',
+              'rebateStatus', 'rebateStatusDesc', 'rebate',
+              'handoverStatus', 'handoverStatusDesc', 'handover',
+              'departmentalAccount', 'departmentalAccountDesc', 'isDepartmental',
+              'incentiveSchemeCode', 'incentiveSchemeDesc',
+              'creditStatus', 'creditStatusDesc',
+              'notificationStatus', 'notificationStatusDesc',
+              'solvencyStatus', 'solvencyDesc',
+            ];
+            for (const k of statusFields) {
+              if (acctConsDetailsVal[k] != null && acctConsDetailsVal[k] !== '' && !mergedBasic[k]) {
+                mergedBasic[k] = acctConsDetailsVal[k];
+              }
             }
           }
           if (airVal && !acctPropFinal['town'] && airVal.town) {
@@ -2310,6 +2334,26 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
   getAccountAir(): any {
     return this.tabData()?.accountInfo || {};
+  }
+
+  getAccountStatusField(field: string): string {
+    const b = this.getAccountBasic();
+    const a = this.getAccountAir();
+    const fieldVariants: Record<string, string[]> = {
+      'interestWaiver': ['interestWaiverStatus', 'interestWaiverDesc', 'interestWaiver', 'InterestWaiverStatus', 'InterestWaiverDesc', 'interestWaiverStatusDesc'],
+      'indigentSubsidy': ['indigentSubsidyStatus', 'indigentSubsidy', 'indigentStatus', 'attpStatus', 'IndigentSubsidyStatus', 'IndigentStatus', 'indigentSubsidyStatusDesc'],
+      'consumerRpp': ['consumerRppStatus', 'consumerRPPStatus', 'consumerRpp', 'ConsumerRPPStatus', 'ConsumerRppStatus', 'consumerRppStatusDesc'],
+      'loanRpp': ['loanRppStatus', 'loanRPPStatus', 'loanRpp', 'LoanRPPStatus', 'LoanRppStatus', 'loanRppStatusDesc'],
+      'rebate': ['rebateStatus', 'rebateStatusDesc', 'rebate', 'RebateStatus', 'RebateStatusDesc'],
+      'handover': ['handoverStatus', 'handoverStatusDesc', 'handover', 'HandoverStatus', 'HandoverStatusDesc'],
+      'departmental': ['departmentalAccount', 'departmentalAccountDesc', 'isDepartmental', 'DepartmentalAccount', 'DepartmentalAccountDesc'],
+    };
+    const variants = fieldVariants[field] || [field];
+    for (const v of variants) {
+      if (b[v] != null && b[v] !== '') return String(b[v]);
+      if (a[v] != null && a[v] !== '') return String(a[v]);
+    }
+    return '-';
   }
 
   getNameData(): any {
