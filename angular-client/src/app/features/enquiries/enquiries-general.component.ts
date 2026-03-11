@@ -1224,30 +1224,64 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             acctPropFinal['_fallback'] = true;
           }
           if (acctConsUnitVal && !acctConsUnitVal._error) {
-            console.log('[account] consUnit data:', JSON.stringify(acctConsUnitVal));
-            const cuKeys = ['propertyStatus', 'statusDesc', 'marketValue', 'propertyMarketValue', 'valuationCategory', 'valuationCat',
-              'partitionDescription', 'partitionDesc', 'partitionMarketValue', 'partMarketValue',
-              'billingCycle', 'billingCycleDesc', 'billingCycleID', 'cycleDescription',
-              'allotmentArea', 'allotment', 'town', 'farmName', 'farm',
-              'magisterialDistrict', 'magDistrict', 'ward',
-              'registrationStatus', 'regStatus',
-              'oldPropertyCode', 'oldPropCode', 'oldAccountCode',
-              'sectionalTitleScheme', 'sectionalTitle',
-              'propertyCategory', 'category', 'propertyType', 'typeOfUse', 'typeofUse',
-              'accountableOwnerName', 'ownerName', 'name', 'owner',
-              'rollNumber'];
-            for (const k of cuKeys) {
-              if (acctConsUnitVal[k] != null && acctConsUnitVal[k] !== '' && !acctPropFinal[k]) acctPropFinal[k] = acctConsUnitVal[k];
+            console.log('[account] consUnit ALL keys:', Object.keys(acctConsUnitVal));
+            console.log('[account] consUnit data:', JSON.stringify(acctConsUnitVal).substring(0, 1500));
+            const cuFieldMap: Record<string, string[]> = {
+              'propertyStatus': ['propertyStatus', 'PropertyStatus', 'statusDesc', 'StatusDesc'],
+              'marketValue': ['marketValue', 'MarketValue', 'propertyMarketValue', 'PropertyMarketValue'],
+              'valuationCategory': ['valuationCategory', 'ValuationCategory', 'valuationCat', 'ValuationCat'],
+              'partitionDescription': ['partitionDescription', 'PartitionDescription', 'partitionDesc', 'PartitionDesc'],
+              'partitionMarketValue': ['partitionMarketValue', 'PartitionMarketValue', 'partMarketValue', 'PartMarketValue'],
+              'billingCycleID': ['billingCycleID', 'BillingCycleID', 'billingCycleId', 'BillingCycleId'],
+              'cycleDescription': ['cycleDescription', 'CycleDescription', 'billingCycleDesc', 'BillingCycleDesc', 'billingCycle', 'BillingCycle'],
+              'allotmentArea': ['allotmentArea', 'AllotmentArea', 'allotment', 'Allotment'],
+              'town': ['town', 'Town'],
+              'farmName': ['farmName', 'FarmName', 'farm', 'Farm'],
+              'magisterialDistrict': ['magisterialDistrict', 'MagisterialDistrict', 'magDistrict', 'MagDistrict'],
+              'ward': ['ward', 'Ward'],
+              'registrationStatus': ['registrationStatus', 'RegistrationStatus', 'regStatus', 'RegStatus'],
+              'oldPropertyCode': ['oldPropertyCode', 'OldPropertyCode', 'oldPropCode', 'OldPropCode', 'oldAccountCode', 'OldAccountCode'],
+              'sectionalTitleScheme': ['sectionalTitleScheme', 'SectionalTitleScheme', 'sectionalTitle', 'SectionalTitle'],
+              'propertyCategory': ['propertyCategory', 'PropertyCategory', 'category', 'Category'],
+              'propertyType': ['propertyType', 'PropertyType', 'typeOfUse', 'TypeOfUse', 'typeofUse'],
+              'accountableOwnerName': ['accountableOwnerName', 'AccountableOwnerName', 'ownerName', 'OwnerName'],
+              'rollNumber': ['rollNumber', 'RollNumber'],
+              'longitude': ['longitude', 'Longitude', 'gpsLong', 'GpsLong'],
+              'latitude': ['latitude', 'Latitude', 'gpsLat', 'GpsLat'],
+            };
+            for (const [target, sources] of Object.entries(cuFieldMap)) {
+              if (acctPropFinal[target] != null && acctPropFinal[target] !== '') continue;
+              for (const src of sources) {
+                if (acctConsUnitVal[src] != null && acctConsUnitVal[src] !== '') {
+                  acctPropFinal[target] = acctConsUnitVal[src];
+                  break;
+                }
+              }
             }
           }
           if (acctRatesVal && !acctRatesVal._error) {
-            console.log('[account] rates data:', JSON.stringify(acctRatesVal));
-            const rtKeys = ['marketValue', 'propertyMarketValue', 'valuationCategory', 'valuationCat',
-              'propertyStatus', 'statusDesc', 'partitionMarketValue', 'partMarketValue',
-              'partitionDescription', 'partitionDesc', 'propertyCategory', 'category',
-              'billingCycle', 'billingCycleDesc', 'accountableOwnerName', 'ownerName'];
-            for (const k of rtKeys) {
-              if (acctRatesVal[k] != null && acctRatesVal[k] !== '' && !acctPropFinal[k]) acctPropFinal[k] = acctRatesVal[k];
+            console.log('[account] rates ALL keys:', Object.keys(acctRatesVal));
+            console.log('[account] rates data:', JSON.stringify(acctRatesVal).substring(0, 1000));
+            const rtFieldMap: Record<string, string[]> = {
+              'marketValue': ['marketValue', 'MarketValue', 'propertyMarketValue', 'PropertyMarketValue'],
+              'valuationCategory': ['valuationCategory', 'ValuationCategory', 'valuationCat', 'ValuationCat'],
+              'propertyStatus': ['propertyStatus', 'PropertyStatus', 'statusDesc', 'StatusDesc'],
+              'partitionMarketValue': ['partitionMarketValue', 'PartitionMarketValue', 'partMarketValue', 'PartMarketValue'],
+              'partitionDescription': ['partitionDescription', 'PartitionDescription', 'partitionDesc', 'PartitionDesc'],
+              'propertyCategory': ['propertyCategory', 'PropertyCategory', 'category', 'Category'],
+              'cycleDescription': ['billingCycle', 'BillingCycle', 'billingCycleDesc', 'BillingCycleDesc', 'cycleDescription', 'CycleDescription'],
+              'accountableOwnerName': ['accountableOwnerName', 'AccountableOwnerName', 'ownerName', 'OwnerName'],
+              'magisterialDistrict': ['magisterialDistrict', 'MagisterialDistrict', 'magDistrict', 'MagDistrict'],
+              'registrationStatus': ['registrationStatus', 'RegistrationStatus', 'regStatus', 'RegStatus'],
+            };
+            for (const [target, sources] of Object.entries(rtFieldMap)) {
+              if (acctPropFinal[target] != null && acctPropFinal[target] !== '') continue;
+              for (const src of sources) {
+                if (acctRatesVal[src] != null && acctRatesVal[src] !== '') {
+                  acctPropFinal[target] = acctRatesVal[src];
+                  break;
+                }
+              }
             }
           }
           if (acctMgmtVal && !acctMgmtVal._error) {
