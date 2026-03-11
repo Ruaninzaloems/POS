@@ -1935,9 +1935,17 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           ]);
           const allMeters = meteredSvc.status === 'fulfilled' ? this.normalizeArray(meteredSvc.value) : [];
           const prepaidList = prepaidMeters.status === 'fulfilled' ? this.normalizeArray(prepaidMeters.value) : [];
-          const convMeters = allMeters.filter((m: any) => !this.isPrepaidMeter(m));
-          const ppMeters = allMeters.filter((m: any) => this.isPrepaidMeter(m));
-          const finalPrepaid = ppMeters.length > 0 ? ppMeters : prepaidList;
+          console.log('[meters] allMeters:', allMeters.length, 'prepaidList:', prepaidList.length);
+          if (prepaidList.length > 0) console.log('[meters] prepaidList[0] keys:', Object.keys(prepaidList[0]), 'data:', JSON.stringify(prepaidList[0]).substring(0, 400));
+          const prepaidMeterNos = new Set(prepaidList.map((p: any) => (p.prepaidMeterNo || p.meterNumber || p.physicalMeterNumber || p.meterNo || '').toLowerCase()).filter(Boolean));
+          const convMeters = allMeters.filter((m: any) => {
+            const desc = (m.serviceDesc || m.serviceDescription || '').toLowerCase();
+            const mNo = (m.physicalMeterNo || m.meterNo || '').toLowerCase();
+            if (desc.includes('prepaid') || desc.includes('pre-paid') || desc.includes('pre paid')) return false;
+            if (mNo && prepaidMeterNos.has(mNo)) return false;
+            return true;
+          });
+          const finalPrepaid = prepaidList;
           data = {
             meters: allMeters,
             conventionalMeters: convMeters,
@@ -3884,6 +3892,11 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     return desc.includes('prepaid') || desc.includes('pre-paid') || desc.includes('pre paid');
   }
 
+  getPrepaidMeterNo(m: any): string {
+    if (!m) return '';
+    return m.prepaidMeterNo || m.meterNumber || m.physicalMeterNo || m.meterNo || m.meter_ID || '';
+  }
+
   async selectConvMeter(meter: any) {
     this.meterSelectedConv.set(meter);
     this.meterConvLoading.set(true);
@@ -3935,17 +3948,25 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.meterPrepaidLoading.set(true);
     this.meterPrepaidSales.set([]);
     this.meterPrepaidStats.set(null);
+    console.log('[prepaid] selectPrepaidMeter keys:', Object.keys(meter));
+    console.log('[prepaid] selectPrepaidMeter data:', JSON.stringify(meter).substring(0, 500));
     const meterId = meter.meterId || meter.meter_id || meter.id || meter.prepaidMeterId || meter.meterID || meter.meter_ID || meter.serviceId || meter.service_ID || meter.meterNo || meter.prepaidMeterNo || '';
+    console.log('[prepaid] resolved meterId:', meterId, 'type:', typeof meterId);
     if (!meterId) {
+      console.log('[prepaid] No meterId found, skipping recharge fetch');
       this.meterPrepaidLoading.set(false);
       return;
     }
     try {
+      console.log('[prepaid] fetching prepaid-recharge-details-for-meter with meterId:', meterId);
       const res = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/prepaid-recharge-details-for-meter`, { meterId: String(meterId) }));
+      console.log('[prepaid] recharge response:', Array.isArray(res) ? `array[${res.length}]` : typeof res, res ? JSON.stringify(res).substring(0, 300) : 'null');
       const sales = this.normalizeArray(res);
+      console.log('[prepaid] normalized sales count:', sales.length);
       this.meterPrepaidSales.set(sales);
       this.meterPrepaidStats.set(this.computePrepaidStats(sales));
-    } catch {
+    } catch (err: any) {
+      console.error('[prepaid] recharge fetch error:', err?.message || err);
       this.meterPrepaidSales.set([]);
     }
     this.meterPrepaidLoading.set(false);

@@ -4093,11 +4093,11 @@
                     <div class="cons-layout" style="margin-top: 0.75rem;">
                       <div class="cons-meter-sidebar">
                         @for (m of tabData()?.prepaidMeters || []; track $index) {
-                          <div class="cons-meter-card" [class.cons-meter-active]="meterSelectedPrepaid()?.physicalMeterNo === m.physicalMeterNo || (meterSelectedPrepaid()?.meter_ID && meterSelectedPrepaid()?.meter_ID === m.meter_ID)" (click)="selectPrepaidMeter(m)" [attr.data-testid]="'prepaid-meter-' + $index">
+                          <div class="cons-meter-card" [class.cons-meter-active]="getPrepaidMeterNo(meterSelectedPrepaid()) === getPrepaidMeterNo(m)" (click)="selectPrepaidMeter(m)" [attr.data-testid]="'prepaid-meter-' + $index">
                             <div class="cons-meter-icon">⚡</div>
                             <div class="cons-meter-info">
-                              <div class="cons-meter-name">{{ m.serviceDesc || m.serviceDescription || 'Prepaid' }}</div>
-                              <div class="cons-meter-no mono">{{ m.physicalMeterNo || m.meterNo || m.meter_ID || '-' }}</div>
+                              <div class="cons-meter-name">{{ m.prepaidServiceDesc || m.serviceType || m.serviceDescription || m.serviceDesc || 'Prepaid' }}</div>
+                              <div class="cons-meter-no mono">{{ m.prepaidMeterNo || m.meterNumber || m.physicalMeterNo || m.meterNo || m.meter_ID || '-' }}</div>
                               <div class="cons-meter-status">
                                 <span class="svc-status-badge" [class.svc-active]="(m.serviceStatus || m.meterStatus || '').toLowerCase() === 'active'">{{ m.serviceStatus || m.meterStatus || '-' }}</span>
                               </div>
@@ -4110,8 +4110,8 @@
                         @if (meterSelectedPrepaid()) {
                           <div class="cons-selected-header pp-header">
                             <div class="cons-selected-title">
-                              <span class="cons-selected-svc">{{ meterSelectedPrepaid().serviceDesc || meterSelectedPrepaid().serviceDescription || 'Prepaid Meter' }}</span>
-                              <span class="cons-selected-meter mono">Meter: {{ meterSelectedPrepaid().physicalMeterNo || meterSelectedPrepaid().meterNo || meterSelectedPrepaid().meter_ID || '-' }}</span>
+                              <span class="cons-selected-svc">{{ meterSelectedPrepaid().prepaidServiceDesc || meterSelectedPrepaid().serviceType || meterSelectedPrepaid().serviceDescription || meterSelectedPrepaid().serviceDesc || 'Prepaid Meter' }}</span>
+                              <span class="cons-selected-meter mono">Meter: {{ meterSelectedPrepaid().prepaidMeterNo || meterSelectedPrepaid().meterNumber || meterSelectedPrepaid().physicalMeterNo || meterSelectedPrepaid().meterNo || meterSelectedPrepaid().meter_ID || '-' }}</span>
                             </div>
                           </div>
 
