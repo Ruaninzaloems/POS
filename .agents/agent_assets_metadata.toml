@@ -24,3 +24,9 @@ id = "85R7fWJ8Np6dlgaLpWDb_"
 uri = "file://debt-legal-phases/PHASE_6_7_DOCS_SIGS_ENGINE_ANALYTICS_DETAIL_PACK.md"
 type = "text"
 title = "Phase 6-7 Detail Pack — Documents, Signatures, Process Engine & Analytics"
+
+[[outputs]]
+id = "QteEYhyYBYk-4jUH5uEdT"
+uri = "file://debt-legal-phases/PHASE_8_9_SECTION129_HANDOVER_RISK_MONITORING_DETAIL_PACK.md"
+type = "text"
+title = "Phase 8-9 Detail Pack — Section 129, Handover, Risk Scoring & Process Monitoring"
