@@ -4414,79 +4414,82 @@
 
                     @if (!consumptionHistoryLoading() && consumptionHistory().length > 0 && consumptionViewMode() === 'table') {
                       <div class="cons-history-section">
-                        <div class="debt-table-header">
-                          <span class="debt-table-title">Meter Reading History</span>
-                          <span class="debt-table-count">{{ getConsumptionHistorySorted().length }} reading{{ getConsumptionHistorySorted().length !== 1 ? 's' : '' }}
+                        <div class="cons-grid-header">
+                          <span class="cons-grid-title">Meter Reading History</span>
+                          <div class="cons-grid-badges">
+                            <span class="cons-grid-count">{{ getConsumptionHistorySorted().length }} reading{{ getConsumptionHistorySorted().length !== 1 ? 's' : '' }}</span>
                             @if (getOpenMonthsCount().open > 0) {
-                              <span class="cons-open-months-badge">{{ getOpenMonthsCount().open }} awaiting billing</span>
+                              <span class="cons-open-badge">{{ getOpenMonthsCount().open }} awaiting billing</span>
                             }
-                          </span>
+                          </div>
                         </div>
-                        <div class="debt-table-wrapper cons-extended-table-wrap">
-                          <table class="debt-table cons-full-table cons-extended-table" data-testid="table-meter-history">
+                        <div class="cons-smart-table-wrap">
+                          <table class="cons-smart-table" data-testid="table-meter-history">
                             <thead>
                               <tr>
-                                <th class="debt-th-desc cons-sticky-col">Billing Month</th>
-                                <th class="debt-th-desc">Fin Year</th>
-                                <th class="debt-th-desc">Combination Meter</th>
-                                <th class="debt-th-desc">Factor</th>
-                                <th class="debt-th-desc">Meter No</th>
-                                <th class="debt-th-desc">Physical Meter</th>
-                                <th class="debt-th-desc">Meter Book</th>
-                                <th class="debt-th-desc">Route</th>
-                                <th class="debt-th-desc">Old Reading Date</th>
-                                <th class="debt-th-amt">Old Reading</th>
-                                <th class="debt-th-desc">New Reading Date</th>
-                                <th class="debt-th-amt">New Reading</th>
-                                <th class="debt-th-desc">Days</th>
-                                <th class="debt-th-amt">Consumption</th>
-                                <th class="debt-th-desc">Flag</th>
-                                <th class="debt-th-desc">Reading Status</th>
-                                <th class="debt-th-desc">Test Reading Date</th>
-                                <th class="debt-th-amt">Test Reading</th>
-                                <th class="debt-th-desc">Decline Reason</th>
-                                <th class="debt-th-desc">Meter Error Code</th>
-                                <th class="debt-th-desc">Import Status</th>
-                                <th class="debt-th-desc">Meter Change</th>
-                                <th class="debt-th-desc">Meter Status</th>
-                                <th class="debt-th-desc">Service Status</th>
-                                <th class="debt-th-desc">Disconnection Status</th>
-                                <th class="debt-th-amt">Disconnection Reading</th>
-                                <th class="debt-th-desc">Disconnection Date</th>
-                                <th class="debt-th-desc">Contractor Remarks</th>
+                                <th class="cons-th-sticky cons-th-sortable" (click)="sortConsumptionBy('billingMonth')" data-testid="th-sort-month">
+                                  <span>Month</span><span class="cons-sort-icon">{{ getConsSortIcon('billingMonth') }}</span>
+                                </th>
+                                <th class="cons-th-sortable" (click)="sortConsumptionBy('finYear')" data-testid="th-sort-fy">
+                                  <span>Fin Year</span><span class="cons-sort-icon">{{ getConsSortIcon('finYear') }}</span>
+                                </th>
+                                <th class="cons-th-sortable" (click)="sortConsumptionBy('oldReadingDate')" data-testid="th-sort-old-date">
+                                  <span>Old Date</span><span class="cons-sort-icon">{{ getConsSortIcon('oldReadingDate') }}</span>
+                                </th>
+                                <th class="cons-th-sortable cons-th-numeric" (click)="sortConsumptionBy('oldReading')" data-testid="th-sort-old-read">
+                                  <span>Old Reading</span><span class="cons-sort-icon">{{ getConsSortIcon('oldReading') }}</span>
+                                </th>
+                                <th class="cons-th-sortable" (click)="sortConsumptionBy('newReadingDate')" data-testid="th-sort-new-date">
+                                  <span>New Date</span><span class="cons-sort-icon">{{ getConsSortIcon('newReadingDate') }}</span>
+                                </th>
+                                <th class="cons-th-sortable cons-th-numeric" (click)="sortConsumptionBy('newReading')" data-testid="th-sort-new-read">
+                                  <span>New Reading</span><span class="cons-sort-icon">{{ getConsSortIcon('newReading') }}</span>
+                                </th>
+                                <th class="cons-th-sortable cons-th-numeric" (click)="sortConsumptionBy('days')" data-testid="th-sort-days">
+                                  <span>Days</span><span class="cons-sort-icon">{{ getConsSortIcon('days') }}</span>
+                                </th>
+                                <th class="cons-th-sortable cons-th-numeric cons-th-consumption" (click)="sortConsumptionBy('consumption')" data-testid="th-sort-consumption">
+                                  <span>Consumption</span><span class="cons-sort-icon">{{ getConsSortIcon('consumption') }}</span>
+                                </th>
+                                <th class="cons-th-sortable cons-th-numeric" (click)="sortConsumptionBy('dailyAvg')" data-testid="th-sort-daily">
+                                  <span>Daily Avg</span><span class="cons-sort-icon">{{ getConsSortIcon('dailyAvg') }}</span>
+                                </th>
+                                <th class="cons-th-sortable" (click)="sortConsumptionBy('readingStatus')" data-testid="th-sort-status">
+                                  <span>Status</span><span class="cons-sort-icon">{{ getConsSortIcon('readingStatus') }}</span>
+                                </th>
                               </tr>
                             </thead>
                             <tbody>
                               @for (r of getConsumptionHistorySorted(); track $index) {
-                                <tr [class]="getConsRowClass(r)">
-                                  <td class="debt-td-desc cons-sticky-col">{{ r.billingmonth || r.billingMonth || '-' }}</td>
-                                  <td class="debt-td-desc">{{ r.financialYear || r.finYear || '-' }}</td>
-                                  <td class="debt-td-desc mono">{{ r.combinationMeterNo || r.combMeterNo || '-' }}</td>
-                                  <td class="debt-td-desc mono">{{ r.factor || r.factorQuantity || r.tarifffactor || '-' }}</td>
-                                  <td class="debt-td-desc mono">{{ r.meterNo || '-' }}</td>
-                                  <td class="debt-td-desc mono">{{ r.physicalMeterNo || '-' }}</td>
-                                  <td class="debt-td-desc">{{ r.meterBook || '-' }}</td>
-                                  <td class="debt-td-desc">{{ r.route || '-' }}</td>
-                                  <td class="debt-td-desc">{{ formatDate(r.reading1Date || r.readingDate) }}</td>
-                                  <td class="debt-td-amt mono">{{ r.reading1 || r.previousReading || r.prevReading || '-' }}</td>
-                                  <td class="debt-td-desc">{{ formatDate(r.reading2Date || r.date) }}</td>
-                                  <td class="debt-td-amt mono">{{ r.reading2 || r.currentReading || r.reading || '-' }}</td>
-                                  <td class="debt-td-desc">{{ r.readingdays || r.readingDays || r.days || r.numberOfDays || '-' }}</td>
-                                  <td class="debt-td-amt mono bold">{{ getConsumptionVal(r) | number:'1.0-0' }}</td>
-                                  <td class="debt-td-desc">{{ r.flag || '-' }}</td>
-                                  <td class="debt-td-desc">{{ r.readingStatus || r.status || r.meterStatus || '-' }}</td>
-                                  <td class="debt-td-desc">{{ formatDate(r.testReadingDate) }}</td>
-                                  <td class="debt-td-amt mono">{{ r.testReading || '-' }}</td>
-                                  <td class="debt-td-desc">{{ r.declineReason || r.refusalReason || '-' }}</td>
-                                  <td class="debt-td-desc">{{ r.meterErrorCode || r.errorCode || '-' }}</td>
-                                  <td class="debt-td-desc">{{ r.importStatus || '-' }}</td>
-                                  <td class="debt-td-desc">{{ r.meterChange || '-' }}</td>
-                                  <td class="debt-td-desc">{{ r.meterStatus || '-' }}</td>
-                                  <td class="debt-td-desc">{{ r.serviceStatus || '-' }}</td>
-                                  <td class="debt-td-desc">{{ r.disconnectionStatus || '-' }}</td>
-                                  <td class="debt-td-amt mono">{{ r.disconnectionReading || '-' }}</td>
-                                  <td class="debt-td-desc">{{ formatDate(r.disconnectionDate) }}</td>
-                                  <td class="debt-td-desc">{{ r.contractorRemarks || r.remarks || '-' }}</td>
+                                <tr [class.cons-row-open]="isOpenPeriodRow(r)" [class.cons-row-estimate]="getConsRowClass(r) === 'cons-row-estimate'" [class.cons-row-reversed]="getConsRowClass(r) === 'cons-row-reversed'" [class.cons-row-anomaly]="isAnomalyReading(r, $index) === 'spike'" [attr.data-testid]="'reading-row-' + $index">
+                                  <td class="cons-td-sticky">
+                                    <div class="cons-month-cell">
+                                      @if (isOpenPeriodRow(r)) {
+                                        <span class="cons-open-dot"></span>
+                                      }
+                                      <span class="cons-month-name">{{ r.billingmonth || r.billingMonth || 'Open Period' }}</span>
+                                    </div>
+                                  </td>
+                                  <td class="cons-td-fy">{{ r.financialYear || r.finYear || '-' }}</td>
+                                  <td>{{ formatDate(r.reading1Date || r.readingDate) }}</td>
+                                  <td class="mono cons-td-numeric">{{ r.reading1 || r.previousReading || r.prevReading || '-' }}</td>
+                                  <td>{{ formatDate(r.reading2Date || r.date) }}</td>
+                                  <td class="mono cons-td-numeric">{{ r.reading2 || r.currentReading || r.reading || '-' }}</td>
+                                  <td class="mono cons-td-numeric">{{ r.readingdays || r.readingDays || r.days || r.numberOfDays || '-' }}</td>
+                                  <td class="mono cons-td-numeric cons-td-consumption">
+                                    <div class="cons-bar-cell">
+                                      <span class="cons-bar-inline" [style.width.%]="getConsChartBarPct(r)"></span>
+                                      <span class="cons-bar-value">{{ getConsumptionVal(r) | number:'1.0-0' }}</span>
+                                    </div>
+                                  </td>
+                                  <td class="mono cons-td-numeric">{{ getAvgDailyConsumption(r) }}</td>
+                                  <td>
+                                    <span class="cons-status-badge" [class.cons-status-actual]="(r.readingStatus || r.levyStatus || '').toLowerCase() === 'actual'"
+                                      [class.cons-status-estimate]="(r.readingStatus || r.levyStatus || '').toLowerCase().includes('estimat') || (r.readingStatus || r.levyStatus || '').toLowerCase().includes('levy')"
+                                      [class.cons-status-awaiting]="isOpenPeriodRow(r)">
+                                      {{ isOpenPeriodRow(r) ? 'Awaiting Billing' : (r.readingStatus || r.levyStatus || r.status || '-') }}
+                                    </span>
+                                  </td>
                                 </tr>
                               }
                             </tbody>

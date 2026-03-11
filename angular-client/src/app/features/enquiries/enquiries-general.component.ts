@@ -144,6 +144,8 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   consumptionFinYears = signal<string[]>([]);
   consumptionSelectedYears = signal<string[]>([]);
   consumptionViewMode = signal<'chart' | 'table'>('chart');
+  consumptionSortCol = signal<string>('');
+  consumptionSortDir = signal<'asc' | 'desc'>('desc');
 
   svcBalanceData = signal<any[]>([]);
   svcBalanceLoading = signal(false);
@@ -3306,6 +3308,60 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     return insights;
   }
 
+  private parseDateToTs(dateStr: string): number {
+    if (!dateStr) return 0;
+    const parts = dateStr.split('/');
+    if (parts.length === 3) {
+      const [d, m, y] = parts.map(Number);
+      if (d && m && y) return new Date(y, m - 1, d).getTime();
+    }
+    const ts = new Date(dateStr).getTime();
+    return isNaN(ts) ? 0 : ts;
+  }
+
+  private getMeterReadingParams(meter: any, accountId: number): Record<string, string> {
+    const meterID = String(meter.meterNo || meter.meterNumber || meter.physicalMeterNo || meter.physicalMeterNumber || meter.meterId || meter.meterID || meter.meter_ID || '').replace(/^0+/, '');
+    return {
+      accountID: String(accountId),
+      meterID,
+      billingPeriodIDFrom: '1',
+      billingPeriodIDTo: '12',
+    };
+  }
+
+  private cleanMeterReadings(merged: any[]): any[] {
+    let hasOpenPeriod = false;
+    const seen = new Set<string>();
+    return merged.map((item: any) => {
+      const bm = (item.billingmonth || item.billingMonth || '').toLowerCase().trim();
+      if (bm.includes('open period') || bm.includes('current')) {
+        const rs = (item.readingStatus || item.levyStatus || '').toLowerCase();
+        if (rs === 'billed' || rs === 'imported' || rs === 'import') {
+          const rd = item.reading2Date || item.reading1Date || '';
+          if (rd) {
+            const parts = rd.split('/');
+            if (parts.length === 3) {
+              const mi = parseInt(parts[1]) - 1;
+              const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+              if (mi >= 0 && mi < 12) {
+                return { ...item, billingmonth: months[mi], billingMonth: months[mi] };
+              }
+            }
+          }
+          return item;
+        }
+        if (hasOpenPeriod) return null;
+        hasOpenPeriod = true;
+        return { ...item, _isOpenPeriod: true };
+      }
+      const fy = (item.financialYear || item.finYear || '').trim();
+      const dedupKey = `${bm}|${fy}`;
+      if (dedupKey !== '|' && seen.has(dedupKey)) return null;
+      if (dedupKey !== '|') seen.add(dedupKey);
+      return item;
+    }).filter((item: any) => item !== null);
+  }
+
   async selectConsumptionMeter(meter: any) {
     this.consumptionSelectedMeter.set(meter);
     this.consumptionHistoryLoading.set(true);
@@ -3315,44 +3371,38 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.consumptionInsights.set(null);
     this.consumptionFinYears.set([]);
     this.consumptionSelectedYears.set([]);
+    this.consumptionSortCol.set('');
+    this.consumptionSortDir.set('desc');
     const account = this.selectedAccount();
     const accountId = this.getAccountId(account);
-    const meterNo = String(meter.meterNo || meter.meterNumber || meter.physicalMeterNo || meter.physicalMeterNumber || '').replace(/^0+/, '');
-    console.log('[consumption] selectConsumptionMeter meterNo:', meterNo, 'accountId:', accountId);
+    const baseParams = this.getMeterReadingParams(meter, accountId);
+    console.log('[consumption] selectConsumptionMeter params:', JSON.stringify(baseParams));
     try {
-      const [historyRes, barRes] = await Promise.allSettled([
-        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history`, { accountId: String(accountId), meterNo })),
-        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history-barchart`, { accountId: String(accountId), meterNo })),
-      ]);
-      const history = historyRes.status === 'fulfilled' ? this.normalizeArray(historyRes.value) : [];
-      const barChart = barRes.status === 'fulfilled' ? this.normalizeArray(barRes.value) : [];
-      const merged = history.length > 0 ? history : barChart;
-      const cleaned = merged.map((item: any) => {
-        const bm = (item.billingmonth || item.billingMonth || '').toLowerCase().trim();
-        if (bm.includes('open period') || bm.includes('current')) {
-          const rs = (item.readingStatus || '').toLowerCase();
-          if (rs === 'billed' || rs === 'imported' || rs === 'import') {
-            const rd = item.reading2Date || item.reading1Date || '';
-            if (rd) {
-              const parts = rd.split('/');
-              if (parts.length === 3) {
-                const mi = parseInt(parts[1]) - 1;
-                const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-                if (mi >= 0 && mi < 12) {
-                  return { ...item, billingmonth: months[mi], billingMonth: months[mi] };
-                }
-              }
-            }
-            return item;
-          }
-          return null;
-        }
-        return item;
-      }).filter((item: any) => item !== null);
+      const currentFy = this.userFinYear() || this.getCurrentFinYear();
+      const [startYear] = currentFy.split('/').map(Number);
+      const fyList: string[] = [];
+      for (let i = 0; i < 5; i++) fyList.push(`${startYear - i}/${startYear - i + 1}`);
+
+      const requests = fyList.map(fy =>
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history`, { ...baseParams, finYear: fy }))
+          .then(res => this.normalizeArray(res))
+          .catch(() => [] as any[])
+      );
+      const results = await Promise.all(requests);
+      const allReadings = results.flat();
+
+      if (allReadings.length === 0) {
+        const barRes = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history-barchart`, baseParams)).catch(() => []);
+        const barChart = this.normalizeArray(barRes);
+        if (barChart.length > 0) allReadings.push(...barChart);
+      }
+
+      const cleaned = this.cleanMeterReadings(allReadings);
       this.consumptionAllHistory.set(cleaned);
       const years = this.extractConsumptionFinYears(cleaned);
       this.consumptionFinYears.set(years);
-      this.consumptionSelectedYears.set([...years]);
+      const defaultYear = years.find(y => y === currentFy) || (years.length > 0 ? years[0] : '');
+      this.consumptionSelectedYears.set(defaultYear ? [defaultYear] : [...years]);
       this.applyConsumptionYearFilter();
     } catch {
       this.consumptionHistory.set([]);
@@ -3523,6 +3573,29 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     return this.formatDate(date);
   }
 
+  sortConsumptionBy(col: string) {
+    if (this.consumptionSortCol() === col) {
+      this.consumptionSortDir.set(this.consumptionSortDir() === 'asc' ? 'desc' : 'asc');
+    } else {
+      this.consumptionSortCol.set(col);
+      this.consumptionSortDir.set(col === 'consumption' || col === 'reading2' ? 'desc' : 'asc');
+    }
+  }
+
+  getConsSortIcon(col: string): string {
+    if (this.consumptionSortCol() !== col) return '↕';
+    return this.consumptionSortDir() === 'asc' ? '↑' : '↓';
+  }
+
+  isOpenPeriodRow(r: any): boolean {
+    const bm = (r.billingmonth || r.billingMonth || '').toLowerCase().trim();
+    const rs = (r.readingStatus || '').toLowerCase();
+    const flag = (r.flag || '').toLowerCase();
+    return r._isOpenPeriod || bm.includes('open period') || bm === 'current open period' ||
+      rs.includes('awaiting') || rs.includes('unbilled') || rs.includes('pending') ||
+      flag.includes('awaiting') || flag.includes('unbilled');
+  }
+
   getConsumptionHistorySorted(): any[] {
     const data = this.consumptionHistory();
     if (!data.length) return [];
@@ -3537,15 +3610,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       return true;
     });
     const monthOrder = ['july','august','september','october','november','december','january','february','march','april','may','june'];
-    const isAwaitingBilling = (r: any) => {
-      const bm = (r.billingmonth || r.billingMonth || '').toLowerCase().trim();
-      const rs = (r.readingStatus || '').toLowerCase();
-      const flag = (r.flag || '').toLowerCase();
-      if (bm === 'current open period' || bm.includes('open period')) return true;
-      if (rs.includes('awaiting') || rs.includes('unbilled') || rs.includes('pending')) return true;
-      if (flag.includes('awaiting') || flag.includes('unbilled')) return true;
-      return false;
-    };
     const getSortKey = (r: any): number => {
       const fy = (r.financialYear || r.finYear || '').trim();
       const fyYear = fy ? parseInt(fy.split('/')[0]) || 0 : 0;
@@ -3553,10 +3617,46 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       const mi = monthOrder.indexOf(bm);
       return fyYear * 100 + (mi >= 0 ? mi : 50);
     };
+
+    const sortCol = this.consumptionSortCol();
+    const sortDir = this.consumptionSortDir();
+
+    const getColValue = (r: any, col: string): any => {
+      switch (col) {
+        case 'billingMonth': return (r.billingmonth || r.billingMonth || '').toLowerCase();
+        case 'finYear': return r.financialYear || r.finYear || '';
+        case 'oldReadingDate': return this.parseDateToTs(r.reading1Date || r.readingDate || '');
+        case 'oldReading': return Number(r.reading1 || r.previousReading || r.prevReading || 0);
+        case 'newReadingDate': return this.parseDateToTs(r.reading2Date || r.date || '');
+        case 'newReading': return Number(r.reading2 || r.currentReading || r.reading || 0);
+        case 'days': return Number(r.readingdays || r.readingDays || r.days || r.numberOfDays || 0);
+        case 'consumption': return this.getConsumptionVal(r);
+        case 'readingStatus': return (r.readingStatus || r.status || '').toLowerCase();
+        case 'dailyAvg': {
+          const days = Number(r.readingdays || r.readingDays || r.days || 0);
+          const cons = this.getConsumptionVal(r);
+          return days > 0 ? cons / days : 0;
+        }
+        default: return getSortKey(r);
+      }
+    };
+
     return [...deduped].sort((a, b) => {
-      const aAwait = isAwaitingBilling(a) ? 0 : 1;
-      const bAwait = isAwaitingBilling(b) ? 0 : 1;
-      if (aAwait !== bAwait) return aAwait - bAwait;
+      const aOpen = this.isOpenPeriodRow(a) ? 0 : 1;
+      const bOpen = this.isOpenPeriodRow(b) ? 0 : 1;
+      if (aOpen !== bOpen) return aOpen - bOpen;
+
+      if (sortCol) {
+        const aVal = getColValue(a, sortCol);
+        const bVal = getColValue(b, sortCol);
+        let cmp = 0;
+        if (typeof aVal === 'number' && typeof bVal === 'number') {
+          cmp = aVal - bVal;
+        } else {
+          cmp = String(aVal).localeCompare(String(bVal));
+        }
+        return sortDir === 'asc' ? cmp : -cmp;
+      }
       return getSortKey(b) - getSortKey(a);
     });
   }
@@ -3904,37 +4004,28 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.meterConvInsights.set(null);
     const account = this.selectedAccount();
     const accountId = this.getAccountId(account);
-    const meterNo = String(meter.meterNo || meter.meterNumber || meter.physicalMeterNo || meter.physicalMeterNumber || '').replace(/^0+/, '');
+    const baseParams = this.getMeterReadingParams(meter, accountId);
     try {
-      const [historyRes, barRes] = await Promise.allSettled([
-        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history`, { accountId: String(accountId), meterNo })),
-        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history-barchart`, { accountId: String(accountId), meterNo })),
-      ]);
-      const history = historyRes.status === 'fulfilled' ? this.normalizeArray(historyRes.value) : [];
-      const barChart = barRes.status === 'fulfilled' ? this.normalizeArray(barRes.value) : [];
-      const merged = history.length > 0 ? history : barChart;
-      const cleaned = merged.map((item: any) => {
-        const bm = (item.billingmonth || item.billingMonth || '').toLowerCase().trim();
-        if (bm.includes('open period') || bm.includes('current')) {
-          const rs = (item.readingStatus || '').toLowerCase();
-          if (rs === 'billed' || rs === 'imported' || rs === 'import') {
-            const rd = item.reading2Date || item.reading1Date || '';
-            if (rd) {
-              const parts = rd.split('/');
-              if (parts.length === 3) {
-                const mi = parseInt(parts[1]) - 1;
-                const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-                if (mi >= 0 && mi < 12) {
-                  return { ...item, billingmonth: months[mi], billingMonth: months[mi] };
-                }
-              }
-            }
-            return item;
-          }
-          return null;
-        }
-        return item;
-      }).filter((item: any) => item !== null);
+      const currentFy = this.userFinYear() || this.getCurrentFinYear();
+      const [startYear] = currentFy.split('/').map(Number);
+      const fyList: string[] = [];
+      for (let i = 0; i < 3; i++) fyList.push(`${startYear - i}/${startYear - i + 1}`);
+
+      const requests = fyList.map(fy =>
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history`, { ...baseParams, finYear: fy }))
+          .then(res => this.normalizeArray(res))
+          .catch(() => [] as any[])
+      );
+      const results = await Promise.all(requests);
+      const allReadings = results.flat();
+
+      if (allReadings.length === 0) {
+        const barRes = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history-barchart`, baseParams)).catch(() => []);
+        const barChart = this.normalizeArray(barRes);
+        if (barChart.length > 0) allReadings.push(...barChart);
+      }
+
+      const cleaned = this.cleanMeterReadings(allReadings);
       this.meterConvHistory.set(cleaned);
       this.meterConvInsights.set(this.computeConsumptionInsights(cleaned));
     } catch {
@@ -5739,9 +5830,10 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           });
           if (matchedMeter) {
             try {
-              const meterNo = String(matchedMeter.physicalMeterNo || matchedMeter.physicalMeterNumber || matchedMeter.meterNo || matchedMeter.meterNumber || matchedMeter.meterID || '').replace(/^0+/, '');
-              if (meterNo) {
-                const readings: any = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history`, { accountId: String(accountId), meterNo }));
+              const meterID = String(matchedMeter.physicalMeterNo || matchedMeter.physicalMeterNumber || matchedMeter.meterNo || matchedMeter.meterNumber || matchedMeter.meterID || '').replace(/^0+/, '');
+              if (meterID) {
+                const currentFy = this.userFinYear() || this.getCurrentFinYear();
+                const readings: any = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history`, { accountID: String(accountId), meterID, billingPeriodIDFrom: '1', billingPeriodIDTo: '12', finYear: currentFy }));
                 const readingsArr = this.normalizeArray(readings);
                 if (readingsArr.length >= 2) {
                   const sorted = readingsArr.sort((a: any, b: any) => new Date(b.readingDate || b.date || 0).getTime() - new Date(a.readingDate || a.date || 0).getTime());
@@ -5750,7 +5842,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
                   const consumption = Math.abs(parseFloat(latest.consumption || latest.units || 0) || parseFloat(prev.consumption || prev.units || 0) || 0);
                   const rate = amount > 0 ? amount : parseFloat(svc.tariffRate || svc.rate || '1');
                   const estimated = consumption * (rate > 0 ? rate : 1);
-                  items.push({ service: desc, type: 'metered', amount: estimated, consumption, rate, meter: meterNo });
+                  items.push({ service: desc, type: 'metered', amount: estimated, consumption, rate, meter: meterID });
                 } else {
                   warns.push(`${desc}: insufficient meter readings for estimate`);
                   if (amount > 0) items.push({ service: desc, type: 'estimated', amount });
