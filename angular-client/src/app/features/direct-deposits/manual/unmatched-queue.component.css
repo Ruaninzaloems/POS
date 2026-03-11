@@ -186,6 +186,49 @@
 .loading-more-badge { display: inline-flex; align-items: center; gap: 6px; margin-left: 12px; padding: 2px 10px; background: rgba(201,168,76,0.12); color: var(--platinum-accent-dark, #9e842e); border-radius: 12px; font-size: 0.78rem; font-weight: 500; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+.row-expanded { background: rgba(201,168,76,0.06); }
+.row-expanded.row-selected { background: rgba(201,168,76,0.1); }
+.btn-auto-active { background: rgba(201,168,76,0.22); border-color: var(--platinum-accent); }
+
+.suggestion-row { background: #FAFBFC; }
+.suggestion-row td { padding: 0 !important; }
+.suggestion-row:hover { background: #FAFBFC; }
+
+.inline-suggestions-panel { border-top: 2px solid var(--platinum-accent); margin: 0; padding: 0.75rem 1rem; }
+.inline-suggestions-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.625rem; }
+.inline-suggestions-title { display: flex; align-items: center; gap: 0.375rem; font-size: 0.75rem; font-weight: 700; color: var(--platinum-primary); text-transform: uppercase; letter-spacing: 0.04em; }
+.btn-collapse { background: none; border: none; padding: 0.25rem; cursor: pointer; color: #9CA3AF; border-radius: 0.25rem; display: flex; align-items: center; }
+.btn-collapse:hover { color: var(--platinum-primary); background: #F3F4F6; }
+
+.inline-loading { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 0.5rem; color: #6B7280; font-size: 0.8125rem; }
+.inline-loading-text { display: flex; flex-direction: column; gap: 0.125rem; }
+
+.inline-empty { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; background: #F9FAFB; border-radius: 0.375rem; font-size: 0.8125rem; color: #6B7280; border: 1px dashed #E5E7EB; }
+.inline-empty strong { color: var(--platinum-primary); }
+
+.inline-matches-grid { display: flex; flex-direction: column; gap: 0.375rem; }
+.inline-match-card { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 0.625rem 0.75rem; border: 1px solid #E5E7EB; border-radius: 0.375rem; background: white; cursor: pointer; transition: all 0.15s; }
+.inline-match-card:hover { border-color: var(--platinum-primary); box-shadow: 0 2px 8px rgba(15,43,70,0.08); transform: translateY(-1px); }
+.inline-match-high { border-left: 3px solid #16A34A; }
+.inline-match-medium { border-left: 3px solid #D97706; }
+
+.inline-match-left { flex: 1; min-width: 0; }
+.inline-match-top-row { display: flex; align-items: center; gap: 0.375rem; flex-wrap: wrap; margin-bottom: 0.125rem; }
+.inline-match-acc { font-size: 0.8125rem; font-weight: 700; color: var(--platinum-primary); font-family: 'SF Mono', 'Menlo', monospace; }
+.inline-match-name { font-size: 0.8125rem; font-weight: 500; color: #1F2937; }
+.inline-match-detail { font-size: 0.6875rem; color: #6B7280; }
+.inline-match-address { font-size: 0.6875rem; color: #9CA3AF; margin-top: 0.125rem; }
+.inline-match-tags { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.25rem; }
+
+.inline-match-right { display: flex; flex-direction: column; align-items: flex-end; gap: 0.375rem; flex-shrink: 0; }
+.inline-match-balance { font-size: 0.8125rem; font-weight: 700; color: var(--platinum-primary); font-family: 'SF Mono', 'Menlo', monospace; white-space: nowrap; }
+.inline-match-balance-label { font-size: 0.5625rem; text-transform: uppercase; color: #9CA3AF; font-weight: 600; letter-spacing: 0.04em; }
+.btn-select-match { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.3rem 0.625rem; border-radius: 0.3125rem; font-size: 0.6875rem; font-weight: 600; cursor: pointer; border: none; background: var(--platinum-primary); color: white; transition: all 0.15s; white-space: nowrap; }
+.btn-select-match:hover { background: #1a3f5f; }
+
+.inline-suggestions-footer { padding-top: 0.5rem; margin-top: 0.375rem; border-top: 1px solid #F3F4F6; }
+.inline-footer-hint { font-size: 0.6875rem; color: #9CA3AF; }
+
 @media (max-width: 768px) {
   .stats-row { grid-template-columns: 1fr; }
   .toolbar { flex-direction: column; align-items: stretch; }

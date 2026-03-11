@@ -149,7 +149,7 @@
           </thead>
           <tbody>
             @for (item of paginatedItems(); track item.posItem_ID) {
-              <tr class="data-row" [class.row-allocated]="item.billingAllocated" [class.row-selected]="isItemSelected(item.posItem_ID)" (click)="selectItem(item)" [attr.data-testid]="'row-item-' + item.posItem_ID">
+              <tr class="data-row" [class.row-allocated]="item.billingAllocated" [class.row-selected]="isItemSelected(item.posItem_ID)" [class.row-expanded]="isInlineExpanded(item.posItem_ID)" (click)="selectItem(item)" [attr.data-testid]="'row-item-' + item.posItem_ID">
                 <td class="col-checkbox" (click)="toggleItemSelection(item.posItem_ID, $event)">
                   <input type="checkbox" [checked]="isItemSelected(item.posItem_ID)" [attr.data-testid]="'checkbox-item-' + item.posItem_ID" />
                 </td>
@@ -179,13 +179,17 @@
                   @if (!item.billingAllocated) {
                     <div class="action-group">
                       @if (hasAccountClue(item)) {
-                        <button class="btn-auto" (click)="autoAllocateItem(item)" [disabled]="autoAllocating() && autoAllocatingId() === item.posItem_ID" title="Quick allocate using detected account" [attr.data-testid]="'button-auto-' + item.posItem_ID">
-                          @if (autoAllocating() && autoAllocatingId() === item.posItem_ID) {
+                        <button class="btn-auto" [class.btn-auto-active]="isInlineExpanded(item.posItem_ID)" (click)="autoAllocateItem(item)" [disabled]="isInlineLoading(item.posItem_ID)" title="Find matching accounts from description" [attr.data-testid]="'button-auto-' + item.posItem_ID">
+                          @if (isInlineLoading(item.posItem_ID)) {
                             <div class="spinner-xs"></div>
+                            Searching...
+                          } @else if (isInlineExpanded(item.posItem_ID)) {
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+                            Hide
                           } @else {
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                            Quick
                           }
-                          Quick
                         </button>
                       }
                       <button class="btn-allocate" (click)="navigateToAllocate(item)" [attr.data-testid]="'button-allocate-' + item.posItem_ID">
@@ -198,6 +202,84 @@
                   }
                 </td>
               </tr>
+              @if (isInlineExpanded(item.posItem_ID)) {
+                <tr class="suggestion-row">
+                  <td [attr.colspan]="8">
+                    <div class="inline-suggestions-panel">
+                      <div class="inline-suggestions-header">
+                        <div class="inline-suggestions-title">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                          <span>Suggested Matches</span>
+                          @if (getInlineSuggestions(item.posItem_ID).length > 0) {
+                            <span class="match-count-badge">{{ getInlineSuggestions(item.posItem_ID).length }}</span>
+                          }
+                        </div>
+                        <button class="btn-collapse" (click)="collapseInline(item.posItem_ID); $event.stopPropagation()" title="Close suggestions">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                      </div>
+
+                      @if (isInlineLoading(item.posItem_ID)) {
+                        <div class="inline-loading">
+                          <div class="spinner-sm"></div>
+                          <div class="inline-loading-text">
+                            <span>Searching for account matches...</span>
+                            @if (getInlineProgress(item.posItem_ID)) {
+                              <span class="match-progress-text">{{ getInlineProgress(item.posItem_ID) }}</span>
+                            }
+                          </div>
+                        </div>
+                      } @else if (getInlineSuggestions(item.posItem_ID).length === 0) {
+                        <div class="inline-empty">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+                          <span>No matches found from the description. Use the <strong>Allocate</strong> button to search manually.</span>
+                        </div>
+                      } @else {
+                        <div class="inline-matches-grid">
+                          @for (match of getInlineSuggestions(item.posItem_ID); track match.accountId) {
+                            <div class="inline-match-card" [class.inline-match-high]="match.confidence >= 80" [class.inline-match-medium]="match.confidence >= 50 && match.confidence < 80" (click)="navigateToAllocateWithAccount(item, match); $event.stopPropagation()" [attr.data-testid]="'inline-match-' + match.accountId">
+                              <div class="inline-match-left">
+                                <div class="inline-match-top-row">
+                                  <span class="match-type-icon" [title]="match.matchType">{{ getMatchTypeIcon(match.matchType) }}</span>
+                                  <span class="inline-match-acc">{{ match.accountNo }}</span>
+                                  <span class="confidence-badge" [ngClass]="getConfidenceBadgeClass(match.confidence)">{{ match.confidence }}%</span>
+                                  @if (match.matchSources && match.matchSources.length > 1) {
+                                    <span class="multi-source-badge" [title]="'Confirmed by: ' + match.matchSources.join(', ')">{{ match.matchSources.length }} sources</span>
+                                  }
+                                </div>
+                                <div class="inline-match-name">{{ match.name }}</div>
+                                <div class="inline-match-detail">{{ match.matchDetail }}</div>
+                                @if (match.address) {
+                                  <div class="inline-match-address">{{ match.address }}{{ match.town ? ', ' + match.town : '' }}</div>
+                                }
+                                @if (match.erfNumber || match.sgNumber) {
+                                  <div class="inline-match-tags">
+                                    @if (match.erfNumber) { <span class="match-tag">ERF {{ match.erfNumber }}</span> }
+                                    @if (match.sgNumber) { <span class="match-tag">SG: {{ match.sgNumber }}</span> }
+                                  </div>
+                                }
+                              </div>
+                              <div class="inline-match-right">
+                                @if (match.outstandingAmount) {
+                                  <div class="inline-match-balance">{{ formatCurrency(match.outstandingAmount) }}</div>
+                                  <div class="inline-match-balance-label">Outstanding</div>
+                                }
+                                <button class="btn-select-match" (click)="navigateToAllocateWithAccount(item, match); $event.stopPropagation()">
+                                  Select & Allocate
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                                </button>
+                              </div>
+                            </div>
+                          }
+                        </div>
+                        <div class="inline-suggestions-footer">
+                          <span class="inline-footer-hint">Select a match above to allocate, or use Allocate for manual search</span>
+                        </div>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
             }
           </tbody>
         </table>

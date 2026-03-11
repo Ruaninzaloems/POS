@@ -508,6 +508,11 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
   detailOpen = signal(false);
   parsedClues = signal<ParsedClues | null>(null);
 
+  inlineSuggestions = signal<Map<number, SuggestedMatch[]>>(new Map());
+  inlineLoading = signal<Set<number>>(new Set());
+  inlineExpanded = signal<Set<number>>(new Set());
+  inlineProgress = signal<Map<number, string>>(new Map());
+
   pageSizeOptions = [10, 25, 50, 100];
 
   filteredItems = computed(() => {
@@ -601,7 +606,16 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
     this.loadData();
   }
 
-  ngOnDestroy(): void {}
+  ngOnDestroy(): void {
+    this.clearInlineState();
+  }
+
+  private clearInlineState(): void {
+    this.inlineSuggestions.set(new Map());
+    this.inlineLoading.set(new Set());
+    this.inlineExpanded.set(new Set());
+    this.inlineProgress.set(new Map());
+  }
 
   loadingMore = signal(false);
   loadProgress = signal('');
@@ -610,6 +624,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
     this.loading.set(true);
     this.error.set('');
     this.loadProgress.set('');
+    this.clearInlineState();
     try {
       const pageSize = 200;
       const result: any = await firstValueFrom(
@@ -1222,130 +1237,176 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
   }
 
   async autoAllocateItem(item: BankReconPosItem): Promise<void> {
-    this.autoAllocatingId.set(item.posItem_ID);
-    this.autoAllocating.set(true);
+    const id = item.posItem_ID;
+    const expanded = new Set(this.inlineExpanded());
+
+    if (expanded.has(id) && this.inlineSuggestions().has(id)) {
+      expanded.delete(id);
+      this.inlineExpanded.set(expanded);
+      return;
+    }
+
+    expanded.add(id);
+    this.inlineExpanded.set(expanded);
+
+    if (this.inlineSuggestions().has(id)) return;
+
+    const loadingSet = new Set(this.inlineLoading());
+    loadingSet.add(id);
+    this.inlineLoading.set(loadingSet);
+
+    const progressMap = new Map(this.inlineProgress());
+    progressMap.set(id, 'Parsing description...');
+    this.inlineProgress.set(progressMap);
+
     try {
       const clues = parseDescriptionForClues(item.note || '', item.reference || '');
 
       if (clues.accountNumbers.length === 0 && clues.erfNumbers.length === 0 && clues.meterNumbers.length === 0 && clues.oldAccountCodes.length === 0 && clues.nameSearchTerms.length === 0) {
-        this.toast.error('No account clues found in description. Use manual allocation.');
+        const sugMap = new Map(this.inlineSuggestions());
+        sugMap.set(id, []);
+        this.inlineSuggestions.set(sugMap);
         return;
       }
 
-      const safeFirst = async (obs: any): Promise<any[]> => {
-        try {
-          const raw: any = await firstValueFrom(obs);
-          if (Array.isArray(raw)) return raw;
-          if (raw?.value && Array.isArray(raw.value)) return raw.value;
-          if (raw?.results && Array.isArray(raw.results)) return raw.results;
-          if (raw?.data && Array.isArray(raw.data)) return raw.data;
-          return [];
-        } catch { return []; }
-      };
+      progressMap.set(id, 'Searching Platinum...');
+      this.inlineProgress.set(new Map(progressMap));
 
-      type Candidate = { item: any; confidence: number; source: string };
-      const candidateMap = new Map<number, Candidate>();
-      const addCandidate = (r: any, confidence: number, source: string) => {
-        const id = r.account_ID || r.accountID || r.id;
-        if (!id) return;
-        const existing = candidateMap.get(id);
-        if (!existing || confidence > existing.confidence) {
-          candidateMap.set(id, { item: r, confidence, source });
-        }
-      };
-
+      const suggestions: SuggestedMatch[] = [];
       const searchPromises: Promise<void>[] = [];
 
-      for (const accNo of clues.accountNumbers.slice(0, 3)) {
+      for (const accNum of clues.accountNumbers.slice(0, 3)) {
         searchPromises.push(
-          safeFirst(this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: accNo }))
-            .then(items => {
-              for (const r of items.slice(0, 3)) {
-                const resultAccNo = r.accountNumber || r.accountNo || '';
-                const exact = resultAccNo.replace(/^0+/, '') === accNo.replace(/^0+/, '');
-                addCandidate(r, exact ? 95 : 70, `Account: ${accNo}`);
-              }
-            })
+          this.safeCall(() => firstValueFrom(
+            this.api.get('/api/platinum/direct-deposit-allocation/get-account-autocomplete', { searchText: accNum })
+          )).then((rawData: any) => {
+            const items = this.unwrap(rawData);
+            for (const r of items.slice(0, 3)) {
+              const accountNo = r.accountNumber || r.accountNo || String(r.account_ID || '');
+              const exactMatch = accountNo === accNum || accountNo.endsWith(accNum) || accNum.endsWith(accountNo);
+              this.addResult(suggestions, r, 'account_number', `Account ${exactMatch ? 'match' : 'ref'}: "${accNum}"`, exactMatch ? 90 : 65,
+                [`Found "${accNum}" in description`, exactMatch ? 'Exact account number match' : `Partial match (${accountNo})`]);
+            }
+          })
+        );
+        searchPromises.push(
+          this.safeCall(() => firstValueFrom(
+            this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: accNum })
+          )).then((rawData: any) => {
+            const items = this.unwrap(rawData);
+            for (const r of items.slice(0, 3)) {
+              const accountNo = r.accountNumber || r.accountNo || String(r.account_ID || '');
+              const nameMatch = accountNo.includes(accNum);
+              this.addResult(suggestions, r, 'account_number', `Account "${accNum}"`, nameMatch ? 88 : 60,
+                [`Extracted "${accNum}" from description`, nameMatch ? `Account ${accountNo} matches` : `Loose match`]);
+            }
+          })
         );
       }
 
-      for (const erf of clues.erfNumbers.slice(0, 3)) {
+      for (const oldCode of clues.oldAccountCodes.slice(0, 3)) {
         searchPromises.push(
-          safeFirst(this.api.post('/api/platinum/billing-payment/search-accounts', { erfNumber: erf.erf }))
-            .then(items => {
-              for (const r of items.slice(0, 5)) {
-                const normalizeArea = (s: string) => s.toLowerCase().replace(/[\s-]+/g, '');
-                let areaMatch = false;
-                if (erf.area) {
-                  const normArea = normalizeArea(erf.area);
-                  areaMatch = [r.allotmentArea, r.town, r.name, r.address, r.locationAddress, r.deliveryAddress, r.accountDesc]
-                    .filter(Boolean).map((f: string) => normalizeArea(f)).some(f => f.includes(normArea));
-                }
-                addCandidate(r, areaMatch ? 93 : (erf.portion ? 85 : 78), `ERF ${erf.erf}${erf.area ? ' ' + erf.area : ''}`);
-              }
-            })
+          this.safeCall(() => firstValueFrom(
+            this.api.get('/api/platinum/direct-deposit-allocation/get-old-account-autocomplete', { searchText: oldCode })
+          )).then((rawData: any) => {
+            const items = this.unwrap(rawData);
+            for (const r of items.slice(0, 3)) {
+              this.addResult(suggestions, r, 'old_account', `Old account code: "${oldCode}"`, 78,
+                [`Found "${oldCode}" matching old account code`, `Legacy reference mapped to current account`]);
+            }
+          })
         );
-
-        const erfPadded = erf.erf.padStart(8, '0');
-        searchPromises.push(
-          safeFirst(this.api.get('/api/platinum/direct-deposit-allocation/get-account-autocomplete', { searchText: erfPadded }))
-            .then(items => {
-              for (const r of items.slice(0, 5)) {
-                const normalizeArea = (s: string) => s.toLowerCase().replace(/[\s-]+/g, '');
-                let areaMatch = false;
-                if (erf.area) {
-                  const normArea = normalizeArea(erf.area);
-                  areaMatch = [r.allotmentArea, r.town, r.name, r.address, r.locationAddress]
-                    .filter(Boolean).map((f: string) => normalizeArea(f)).some(f => f.includes(normArea));
-                }
-                addCandidate(r, areaMatch ? 92 : 87, `ERF ${erf.erf} (autocomplete)`);
-              }
-            })
-        );
-
-        searchPromises.push(
-          safeFirst(this.api.get('/api/platinum/direct-deposit-allocation/get-old-account-autocomplete', { searchText: erfPadded }))
-            .then(items => {
-              for (const r of items.slice(0, 5)) {
-                addCandidate(r, 90, `ERF ${erf.erf} (SG code)`);
-              }
-            })
-        );
-
-        if (erf.erf !== erfPadded) {
-          searchPromises.push(
-            safeFirst(this.api.get('/api/platinum/direct-deposit-allocation/get-account-autocomplete', { searchText: erf.erf }))
-              .then(items => {
-                for (const r of items.slice(0, 3)) addCandidate(r, 85, `ERF ${erf.erf} (raw)`);
-              })
-          );
-        }
       }
 
       for (const mtr of clues.meterNumbers.slice(0, 3)) {
         searchPromises.push(
-          safeFirst(this.api.post('/api/platinum/billing-payment/search-accounts', { physicalMeterNumber: mtr }))
-            .then(items => {
-              for (const r of items.slice(0, 3)) addCandidate(r, 90, `Meter: ${mtr}`);
-            })
-        );
-        searchPromises.push(
-          safeFirst(this.api.get('/api/platinum/direct-deposit-allocation/get-account-autocomplete', { searchText: mtr }))
-            .then(items => {
-              for (const r of items.slice(0, 3)) {
-                const meterStr = String(r.meterNumber || r.physicalMeterNumber || '');
-                addCandidate(r, meterStr.includes(mtr) ? 92 : 75, `Meter: ${mtr}`);
-              }
-            })
+          this.safeCall(() => firstValueFrom(
+            this.api.get('/api/platinum/direct-deposit-allocation/get-account-autocomplete', { searchText: mtr })
+          )).then((rawData: any) => {
+            const items = this.unwrap(rawData);
+            for (const r of items.slice(0, 3)) {
+              const meterStr = String(r.meterNumber || r.physicalMeterNumber || '');
+              this.addResult(suggestions, r, 'meter_number', `Meter: "${mtr}"`, meterStr.includes(mtr) ? 92 : 75,
+                [`Extracted "${mtr}" as meter number`, meterStr.includes(mtr) ? 'Exact meter match' : 'Partial match']);
+            }
+          })
         );
       }
 
-      for (const oldCode of clues.oldAccountCodes.slice(0, 2)) {
+      const normalizeArea = (s: string) => s.toLowerCase().replace(/[\s-]+/g, '');
+      const checkAreaMatch = (r: any, area: string): boolean => {
+        if (!area) return false;
+        const normArea = normalizeArea(area);
+        return [r.allotmentArea, r.town, r.name, r.address, r.locationAddress, r.deliveryAddress, r.accountDesc]
+          .filter(Boolean).map((f: string) => normalizeArea(f)).some(f => f.includes(normArea));
+      };
+
+      for (const erf of clues.erfNumbers.slice(0, 2)) {
+        const erfLabel = erf.portion ? `ERF ${erf.erf}/${erf.portion}` : `ERF ${erf.erf}`;
         searchPromises.push(
-          safeFirst(this.api.get('/api/platinum/direct-deposit-allocation/get-old-account-autocomplete', { searchText: oldCode }))
-            .then(items => {
-              for (const r of items.slice(0, 3)) addCandidate(r, 78, `Old code: ${oldCode}`);
-            })
+          this.safeCall(() => firstValueFrom(
+            this.api.post('/api/platinum/billing-payment/search-accounts', { erfNumber: erf.erf })
+          )).then((rawData: any) => {
+            const items = this.unwrap(rawData);
+            for (const r of items.slice(0, 10)) {
+              const hasAreaMatch = checkAreaMatch(r, erf.area);
+              this.addResult(suggestions, r, 'erf_number', `${erfLabel}${erf.area ? ' ' + erf.area : ''}${hasAreaMatch ? ' ✓' : ''}`,
+                hasAreaMatch ? 93 : (erf.portion ? 85 : 75),
+                [`Parsed "${erfLabel}" from description`, hasAreaMatch ? `Area confirmed` : `Verify area`]);
+            }
+          })
+        );
+        const erfPadded = erf.erf.padStart(8, '0');
+        searchPromises.push(
+          this.safeCall(() => firstValueFrom(
+            this.api.get('/api/platinum/direct-deposit-allocation/get-old-account-autocomplete', { searchText: erfPadded })
+          )).then((rawData: any) => {
+            const items = this.unwrap(rawData);
+            for (const r of items.slice(0, 10)) {
+              if (r.displayItem && !r.sgNumber) r.sgNumber = r.displayItem;
+              if (r.displayItem) {
+                const sgParts = parseSgNumber(r.displayItem);
+                if (sgParts.erf) r.erfNumber = sgParts.erf;
+              }
+              const hasAreaMatch = checkAreaMatch(r, erf.area);
+              this.addResult(suggestions, r, 'erf_number', `${erfLabel} — SG code${hasAreaMatch ? ' ✓' : ''}`,
+                hasAreaMatch ? 95 : 90,
+                [`SG code match for "${erfLabel}"`, r.displayItem ? `SG: ${r.displayItem}` : 'ERF matched']);
+            }
+          })
+        );
+        searchPromises.push(
+          this.safeCall(() => firstValueFrom(
+            this.api.get('/api/platinum/direct-deposit-allocation/get-account-autocomplete', { searchText: erfPadded })
+          )).then((rawData: any) => {
+            const items = this.unwrap(rawData);
+            for (const r of items.slice(0, 10)) {
+              if (r.displayItem && !r.sgNumber) r.sgNumber = r.displayItem;
+              const hasAreaMatch = checkAreaMatch(r, erf.area);
+              this.addResult(suggestions, r, 'erf_number', `${erfLabel} — autocomplete${hasAreaMatch ? ' ✓' : ''}`,
+                hasAreaMatch ? 92 : 87,
+                [`Padded ERF search`, hasAreaMatch ? 'Area confirmed' : 'Verify area']);
+            }
+          })
+        );
+      }
+
+      for (const nameTerm of clues.nameSearchTerms.slice(0, 2)) {
+        searchPromises.push(
+          this.safeCall(() => firstValueFrom(
+            this.api.post('/api/platinum/billing-payment/search-accounts', { name: nameTerm })
+          )).then((rawData: any) => {
+            const items = this.unwrap(rawData);
+            for (const r of items.slice(0, 5)) {
+              const itemName = [r.initials, r.lastName].filter(Boolean).join(' ') || r.name || '';
+              const surnameExact = (r.lastName || '').toUpperCase() === nameTerm.toUpperCase();
+              const confidence = surnameExact ? 65 : 45;
+              if (itemName.toUpperCase().includes(nameTerm.toUpperCase())) {
+                this.addResult(suggestions, r, 'name', `Name: "${nameTerm}" → ${itemName}`, confidence,
+                  [`Name "${nameTerm}" found in description`, surnameExact ? 'Surname exact match' : 'Partial name match']);
+              }
+            }
+          })
         );
       }
 
@@ -1353,53 +1414,68 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
       if (/^\d{3,7}$/.test(refTrimmed) && !clues.accountNumbers.some(a => a === refTrimmed || a.endsWith(refTrimmed))) {
         const paddedRef = refTrimmed.padStart(12, '0');
         searchPromises.push(
-          safeFirst(this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: paddedRef }))
-            .then(items => {
-              for (const r of items.slice(0, 2)) {
-                const accNo = r.accountNumber || r.accountNo || '';
-                if (accNo.endsWith(refTrimmed) || accNo === paddedRef) {
-                  addCandidate(r, 92, `Reference: ${refTrimmed}`);
-                }
+          this.safeCall(() => firstValueFrom(
+            this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: paddedRef })
+          )).then((rawData: any) => {
+            const items = this.unwrap(rawData);
+            for (const r of items.slice(0, 3)) {
+              const accountNo = r.accountNumber || r.accountNo || '';
+              if (accountNo.endsWith(refTrimmed) || accountNo === paddedRef) {
+                this.addResult(suggestions, { ...r, account_ID: r.account_ID || r.accountID }, 'account_number',
+                  `Reference "${refTrimmed}" → ${accountNo}`, 92,
+                  [`Reference "${refTrimmed}" padded to account number`, 'Direct match']);
               }
-            })
+            }
+          })
         );
       }
 
-      for (const nameTerm of clues.nameSearchTerms.slice(0, 2)) {
-        searchPromises.push(
-          safeFirst(this.api.post('/api/platinum/billing-payment/search-accounts', { name: nameTerm }))
-            .then(items => {
-              for (const r of items.slice(0, 3)) {
-                const fullName = [r.initials, r.lastName].filter(Boolean).join(' ') || r.name || '';
-                const nameUpper = nameTerm.toUpperCase();
-                const exact = (r.lastName || '').toUpperCase() === nameUpper || fullName.toUpperCase().includes(nameUpper);
-                addCandidate(r, exact ? 65 : 45, `Name: ${nameTerm}`);
-              }
-            })
-        );
-      }
-
+      progressMap.set(id, `Running ${searchPromises.length} searches...`);
+      this.inlineProgress.set(new Map(progressMap));
       await Promise.allSettled(searchPromises);
 
-      const candidates = Array.from(candidateMap.values());
-      if (candidates.length === 0) {
-        this.toast.error('No matching account found. Use manual allocation.');
-        return;
-      }
+      suggestions.sort((a, b) => b.confidence - a.confidence);
+      const sugMap = new Map(this.inlineSuggestions());
+      sugMap.set(id, suggestions);
+      this.inlineSuggestions.set(sugMap);
 
-      candidates.sort((a, b) => b.confidence - a.confidence);
-      const best = candidates[0];
-      const accId = best.item.account_ID || best.item.accountID || best.item.id;
-      const accNo = best.item.accountNumber || best.item.accountNo || String(accId);
-      const name = [best.item.initials, best.item.lastName].filter(Boolean).join(' ') || best.item.name || best.item.accountDesc || '';
-      this.toast.success(`Found: ${accNo} ${name} (${best.source}, ${best.confidence}%). Redirecting...`);
-      this.router.navigate(['/direct-deposits/manual/allocate', item.posItem_ID]);
+      if (suggestions.length === 0) {
+        this.toast.show('No matches found. Use the Allocate button to search manually.', 'info');
+      } else {
+        this.toast.show(`Found ${suggestions.length} potential match${suggestions.length > 1 ? 'es' : ''}. Select one below to allocate.`, 'success');
+      }
     } catch (e: any) {
-      this.toast.error(e?.message || 'Auto-allocate failed');
+      this.toast.error(e?.message || 'Quick search failed');
     } finally {
-      this.autoAllocating.set(false);
-      this.autoAllocatingId.set(null);
+      const loadDone = new Set(this.inlineLoading());
+      loadDone.delete(id);
+      this.inlineLoading.set(loadDone);
+      const progDone = new Map(this.inlineProgress());
+      progDone.delete(id);
+      this.inlineProgress.set(progDone);
     }
+  }
+
+  isInlineExpanded(id: number): boolean {
+    return this.inlineExpanded().has(id);
+  }
+
+  isInlineLoading(id: number): boolean {
+    return this.inlineLoading().has(id);
+  }
+
+  getInlineSuggestions(id: number): SuggestedMatch[] {
+    return this.inlineSuggestions().get(id) || [];
+  }
+
+  getInlineProgress(id: number): string {
+    return this.inlineProgress().get(id) || '';
+  }
+
+  collapseInline(id: number): void {
+    const expanded = new Set(this.inlineExpanded());
+    expanded.delete(id);
+    this.inlineExpanded.set(expanded);
   }
 
   hasAccountClue(item: BankReconPosItem): boolean {
