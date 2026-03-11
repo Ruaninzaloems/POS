@@ -379,92 +379,90 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
           }
         };
 
-        primaryTasks.push((async () => {
-          const primaryBody: Record<string, any> = {};
-          if (detected.field === 'accountNo' && isNumeric) {
-            primaryBody['accountNo'] = query;
-          } else if (detected.field === 'name') {
-            primaryBody['name'] = query;
-          } else if (detected.field === 'mobileNumber') {
-            primaryBody['mobileNumber'] = query;
-          } else if (detected.field === 'idNo') {
-            primaryBody['idNo'] = query;
-          } else if (detected.field === 'emailAddress') {
-            primaryBody['emailAddress'] = query;
-          } else if (detected.field === 'sgNumber') {
-            primaryBody['sgNumber'] = query;
-          } else {
-            primaryBody[isNumeric ? 'accountNo' : 'name'] = query;
-          }
+        const primaryBody: Record<string, any> = {};
+        if (detected.field === 'accountNo' && isNumeric) {
+          primaryBody['accountNo'] = query;
+        } else if (detected.field === 'name') {
+          primaryBody['name'] = query;
+        } else if (detected.field === 'mobileNumber') {
+          primaryBody['mobileNumber'] = query;
+        } else if (detected.field === 'idNo') {
+          primaryBody['idNo'] = query;
+        } else if (detected.field === 'emailAddress') {
+          primaryBody['emailAddress'] = query;
+        } else if (detected.field === 'sgNumber') {
+          primaryBody['sgNumber'] = query;
+        } else {
+          primaryBody[isNumeric ? 'accountNo' : 'name'] = query;
+        }
 
-          try {
-            const results: any = await firstValueFrom(
-              this.api.post('/api/platinum/billing-payment/search-accounts', primaryBody)
-            );
+        const allAccountSearches: Promise<void>[] = [];
+
+        allAccountSearches.push(
+          firstValueFrom(
+            this.api.post('/api/platinum/billing-payment/search-accounts', primaryBody)
+          ).then((results: any) => {
             if (isAborted()) return;
             const items = Array.isArray(results) ? results : results?.value || [];
             for (const item of items.slice(0, 15)) {
               addAccountHit(item, detected.field !== 'accountNo' && detected.field !== 'name' ? `Found via ${detected.label}` : undefined);
             }
             pushResults();
-          } catch (err) {
+          }).catch((err: any) => {
             if (isAborted()) return;
             console.error('[AllocateTransaction] Primary search failed:', err);
-          }
+          })
+        );
 
-          if (isAborted()) return;
-          const secondarySearches: Promise<void>[] = [];
+        allAccountSearches.push(
+          firstValueFrom(
+            this.api.post('/api/platinum/billing-payment/search-accounts', { oldAccountCode: query })
+          ).then((items: any) => {
+            if (isAborted()) return;
+            const arr = Array.isArray(items) ? items : items?.value || [];
+            for (const item of arr.slice(0, 5)) addAccountHit(item, 'Found via old account code');
+            pushResults();
+          }).catch((err: any) => { console.warn('[AllocateTransaction] Old account code search failed:', err?.message); })
+        );
 
-          secondarySearches.push(
+        if (isNumeric) {
+          allAccountSearches.push(
             firstValueFrom(
-              this.api.post('/api/platinum/billing-payment/search-accounts', { oldAccountCode: query })
+              this.api.post('/api/platinum/billing-payment/search-accounts', { erfNumber: query })
             ).then((items: any) => {
               if (isAborted()) return;
               const arr = Array.isArray(items) ? items : items?.value || [];
-              for (const item of arr.slice(0, 5)) addAccountHit(item, 'Found via old account code');
+              for (const item of arr.slice(0, 5)) addAccountHit(item, 'Found via ERF number');
               pushResults();
-            }).catch((err: any) => { console.warn('[AllocateTransaction] Old account code search failed:', err?.message); })
+            }).catch((err: any) => { console.warn('[AllocateTransaction] ERF number search failed:', err?.message); })
           );
 
-          if (isNumeric) {
-            secondarySearches.push(
-              firstValueFrom(
-                this.api.post('/api/platinum/billing-payment/search-accounts', { erfNumber: query })
-              ).then((items: any) => {
-                if (isAborted()) return;
-                const arr = Array.isArray(items) ? items : items?.value || [];
-                for (const item of arr.slice(0, 5)) addAccountHit(item, 'Found via ERF number');
-                pushResults();
-              }).catch((err: any) => { console.warn('[AllocateTransaction] ERF number search failed:', err?.message); })
-            );
+          allAccountSearches.push(
+            firstValueFrom(
+              this.api.post('/api/platinum/billing-payment/search-accounts', { physicalMeterNumber: query })
+            ).then((items: any) => {
+              if (isAborted()) return;
+              const arr = Array.isArray(items) ? items : items?.value || [];
+              for (const item of arr.slice(0, 5)) addAccountHit(item, 'Found via meter number');
+              pushResults();
+            }).catch((err: any) => { console.warn('[AllocateTransaction] Meter number search failed:', err?.message); })
+          );
+        }
 
-            secondarySearches.push(
-              firstValueFrom(
-                this.api.post('/api/platinum/billing-payment/search-accounts', { physicalMeterNumber: query })
-              ).then((items: any) => {
-                if (isAborted()) return;
-                const arr = Array.isArray(items) ? items : items?.value || [];
-                for (const item of arr.slice(0, 5)) addAccountHit(item, 'Found via meter number');
-                pushResults();
-              }).catch((err: any) => { console.warn('[AllocateTransaction] Meter number search failed:', err?.message); })
-            );
-          }
+        if (!isNumeric && detected.field === 'name') {
+          allAccountSearches.push(
+            firstValueFrom(
+              this.api.post('/api/platinum/billing-payment/search-accounts', { locationAddress: query })
+            ).then((items: any) => {
+              if (isAborted()) return;
+              const arr = Array.isArray(items) ? items : items?.value || [];
+              for (const item of arr.slice(0, 3)) addAccountHit(item, 'Found via location/address');
+              pushResults();
+            }).catch((err: any) => { console.warn('[AllocateTransaction] Location/address search failed:', err?.message); })
+          );
+        }
 
-          if (!isNumeric && detected.field === 'name') {
-            secondarySearches.push(
-              firstValueFrom(
-                this.api.post('/api/platinum/billing-payment/search-accounts', { locationAddress: query })
-              ).then((items: any) => {
-                if (isAborted()) return;
-                const arr = Array.isArray(items) ? items : items?.value || [];
-                for (const item of arr.slice(0, 3)) addAccountHit(item, 'Found via location/address');
-                pushResults();
-              }).catch((err: any) => { console.warn('[AllocateTransaction] Location/address search failed:', err?.message); })
-            );
-          }
-
-          await Promise.all(secondarySearches);
-        })());
+        primaryTasks.push(Promise.all(allAccountSearches).then(() => {}));
       }
 
       if (scope === 'ALL' || scope === 'DIRECT') {
@@ -614,13 +612,15 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
         }
       }
 
+      if (secondaryFactories.length > 0) {
+        for (const factory of secondaryFactories) {
+          primaryTasks.push(factory());
+        }
+      }
+
       await Promise.all(primaryTasks);
       if (isAborted()) return;
       pushResults();
-
-      if (secondaryFactories.length > 0 && !isAborted()) {
-        Promise.all(secondaryFactories.map(f => f())).then(() => { if (!isAborted()) pushResults(); }).catch((err: any) => { console.warn('[AllocateTransaction] Secondary search batch failed:', err?.message); });
-      }
     } catch (err) {
       console.error('DD search error:', err);
       if (!isAborted()) this.searchResults.set([]);
