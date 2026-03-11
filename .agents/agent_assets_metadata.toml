@@ -12,3 +12,9 @@ id = "trixc-hFHadDzdMlCQYLT"
 uri = "file://debt-legal-phases/PHASE_2_3_HANDOVER_RISK_SCORING.xlsx"
 type = "table"
 title = "Phase 2-3: Handover & Risk Scoring Master Excel"
+
+[[outputs]]
+id = "Mbu2Gs_0JAO5dPJCTjMpO"
+uri = "file://debt-legal-phases/PHASE_4_5_COMMS_BATCH_LEGAL_DETAIL_PACK.md"
+type = "text"
+title = "Phase 4-5 Detail Pack — Communication, Batch, Legal"

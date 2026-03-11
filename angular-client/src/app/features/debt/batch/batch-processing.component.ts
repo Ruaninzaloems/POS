@@ -52,8 +52,8 @@ export class BatchProcessingComponent implements OnInit {
     this.loading.set(true);
     try {
       const [jobsData, schedulesData] = await Promise.all([
-        firstValueFrom(this.api.get<any>('/api/batch-jobs')),
-        firstValueFrom(this.api.get<any>('/api/batch-schedules')),
+        firstValueFrom(this.api.get<any>('/api/batch-processing/jobs')),
+        firstValueFrom(this.api.get<any>('/api/batch-processing/schedules')),
       ]);
       this.jobs.set(Array.isArray(jobsData) ? jobsData : jobsData?.jobs || []);
       this.schedules.set(Array.isArray(schedulesData) ? schedulesData : schedulesData?.schedules || []);
@@ -67,7 +67,7 @@ export class BatchProcessingComponent implements OnInit {
   async handleTrigger(jobType: string): Promise<void> {
     this.triggeringType.set(jobType);
     try {
-      await firstValueFrom(this.api.post<any>('/api/batch-jobs/trigger', { jobType }));
+      await firstValueFrom(this.api.post<any>('/api/batch-processing/trigger', { jobType }));
       this.toast.success(`${BATCH_JOB_TYPE_LABELS[jobType]?.label || jobType} has been queued.`);
       await this.loadData();
     } catch (e: any) {
@@ -80,7 +80,7 @@ export class BatchProcessingComponent implements OnInit {
   async handleCancel(jobId: string): Promise<void> {
     this.cancellingId.set(jobId);
     try {
-      await firstValueFrom(this.api.post<any>(`/api/batch-jobs/${jobId}/cancel`));
+      await firstValueFrom(this.api.post<any>('/api/batch-processing/cancel', { jobId }));
       this.toast.success('Batch job has been cancelled.');
       await this.loadData();
     } catch (e: any) {

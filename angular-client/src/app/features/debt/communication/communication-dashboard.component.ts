@@ -97,7 +97,7 @@ export class CommunicationDashboardComponent implements OnInit {
   async loadStats(): Promise<void> {
     this.statsLoading.set(true);
     try {
-      const data = await firstValueFrom(this.api.get<CommunicationStats>('/api/communication-stats'));
+      const data = await firstValueFrom(this.api.get<CommunicationStats>('/api/communications/stats'));
       this.stats.set(data);
     } catch (err: any) {
       this.toast.error(err?.message || 'Failed to load stats');
@@ -116,7 +116,7 @@ export class CommunicationDashboardComponent implements OnInit {
       if (this.logChannel() !== '__all__') params['channel'] = this.logChannel();
       if (this.logStatus() !== '__all__') params['status'] = this.logStatus();
       if (this.logAccount().trim()) params['accountNo'] = this.logAccount().trim();
-      const data = await firstValueFrom(this.api.get<any>('/api/communication-log', params));
+      const data = await firstValueFrom(this.api.get<any>('/api/communications/log', params));
       this.logs.set(data.logs || []);
       this.logTotal.set(data.total || 0);
     } catch (err: any) {
@@ -134,7 +134,7 @@ export class CommunicationDashboardComponent implements OnInit {
         offset: String((this.schedPage() - 1) * this.schedPageSize)
       };
       if (this.schedStatus() !== '__all__') params['status'] = this.schedStatus();
-      const data = await firstValueFrom(this.api.get<any>('/api/scheduled-communications', params));
+      const data = await firstValueFrom(this.api.get<any>('/api/communications/scheduled', params));
       this.scheduled.set(data.scheduled || []);
       this.schedTotal.set(data.total || 0);
     } catch (err: any) {
@@ -147,7 +147,7 @@ export class CommunicationDashboardComponent implements OnInit {
   async handleProcess(): Promise<void> {
     this.processing.set(true);
     try {
-      const result = await firstValueFrom(this.api.post<any>('/api/scheduled-communications/process'));
+      const result = await firstValueFrom(this.api.post<any>('/api/communications/process-scheduled'));
       this.toast.success(`${result.processed} processed: ${result.succeeded} succeeded, ${result.failed} failed`);
       this.loadScheduled();
       this.loadStats();
@@ -162,8 +162,9 @@ export class CommunicationDashboardComponent implements OnInit {
     this.sendAccount.set(query);
     if (query.length >= 3) {
       try {
-        const results = await firstValueFrom(this.api.get<any[]>('/api/accounts', { search: query }));
-        this.accountSuggestions.set(Array.isArray(results) ? results.slice(0, 8) : []);
+        const results = await firstValueFrom(this.api.post<any>('/api/platinum/billing-payment/search-accounts', { searchText: query }));
+        const raw = Array.isArray(results) ? results : results?.data || [];
+        this.accountSuggestions.set(raw.slice(0, 8).map((a: any) => ({ accountNo: a.accountNo || a.AccountNo || '', name: a.name || a.Name || a.accountName || '' })));
         this.showSuggestions.set(true);
       } catch {
         this.accountSuggestions.set([]);

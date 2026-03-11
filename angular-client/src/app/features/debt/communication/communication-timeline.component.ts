@@ -50,7 +50,7 @@ export class CommunicationTimelineComponent implements OnInit {
   async loadTimelines(): Promise<void> {
     this.loading.set(true);
     try {
-      const data = await firstValueFrom(this.api.get<any[]>('/api/communication-timelines'));
+      const data = await firstValueFrom(this.api.get<any[]>('/api/communications/timelines'));
       this.timelines.set(Array.isArray(data) ? data : []);
     } catch (err: any) {
       this.toast.error(err?.message || 'Failed to load timelines');
@@ -59,7 +59,7 @@ export class CommunicationTimelineComponent implements OnInit {
 
   async loadTimelineDetail(id: number): Promise<void> {
     try {
-      const data = await firstValueFrom(this.api.get<any>(`/api/communication-timelines/${id}`));
+      const data = await firstValueFrom(this.api.get<any>(`/api/communications/timelines/${id}`));
       this.selectedTimeline.set(data.timeline);
       this.steps.set((data.steps || []).map((s: any) => ({
         dayOffset: s.dayOffset ?? s.day_offset ?? 0,
@@ -78,7 +78,7 @@ export class CommunicationTimelineComponent implements OnInit {
     if (!this.newName().trim()) return;
     this.creating.set(true);
     try {
-      const tl = await firstValueFrom(this.api.post<any>('/api/communication-timelines', {
+      const tl = await firstValueFrom(this.api.post<any>('/api/communications/timelines', {
         name: this.newName().trim(),
         description: this.newDesc().trim() || null,
         isActive: true,
@@ -97,7 +97,7 @@ export class CommunicationTimelineComponent implements OnInit {
   async handleDelete(id: number): Promise<void> {
     if (!confirm('Delete this timeline and all its steps?')) return;
     try {
-      await firstValueFrom(this.api.delete<any>(`/api/communication-timelines/${id}`));
+      await firstValueFrom(this.api.delete<any>(`/api/communications/timelines/${id}`));
       this.toast.success('Timeline Deleted');
       if (this.selectedTimeline()?.id === id) {
         this.selectedTimeline.set(null);
@@ -135,7 +135,7 @@ export class CommunicationTimelineComponent implements OnInit {
     if (!tl) return;
     this.saving.set(true);
     try {
-      await firstValueFrom(this.api.post<any>(`/api/communication-timelines/${tl.id}/steps`, {
+      await firstValueFrom(this.api.put<any>(`/api/communications/timelines/${tl.id}/steps`, {
         steps: this.steps().map(s => ({
           timelineId: tl.id,
           dayOffset: s.dayOffset,
@@ -158,7 +158,8 @@ export class CommunicationTimelineComponent implements OnInit {
     if (!this.enrollAccount().trim() || !tl) return;
     this.enrolling.set(true);
     try {
-      const result = await firstValueFrom(this.api.post<any>(`/api/communication-timelines/${tl.id}/enroll`, {
+      const result = await firstValueFrom(this.api.post<any>('/api/communications/enroll', {
+        timelineId: tl.id,
         accountNo: this.enrollAccount().trim(),
       }));
       this.toast.success(`Account enrolled. ${result.scheduledCount || 0} communications scheduled.`);

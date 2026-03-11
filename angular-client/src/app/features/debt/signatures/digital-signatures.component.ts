@@ -72,7 +72,7 @@ export class DigitalSignaturesComponent implements OnInit {
   async loadRequests(): Promise<void> {
     this.loading.set(true);
     try {
-      const data = await firstValueFrom(this.api.get<any>('/api/signature-requests'));
+      const data = await firstValueFrom(this.api.get<any>('/api/digital-signatures'));
       this.requests.set(Array.isArray(data) ? data : data?.requests || []);
     } catch (e: any) {
       this.toast.error(e?.message || 'Failed to load requests');
@@ -84,7 +84,7 @@ export class DigitalSignaturesComponent implements OnInit {
   async loadAudit(): Promise<void> {
     this.loadingAudit.set(true);
     try {
-      const data = await firstValueFrom(this.api.get<any>('/api/signature-audit-log'));
+      const data = await firstValueFrom(this.api.get<any>('/api/digital-signatures/audit-log'));
       this.auditLog.set(Array.isArray(data) ? data : data?.entries || []);
     } catch (e: any) {
       this.toast.error(e?.message || 'Failed to load audit log');
@@ -115,7 +115,7 @@ export class DigitalSignaturesComponent implements OnInit {
     this.showDetailDialog.set(true);
     this.loadingDetail.set(true);
     try {
-      const data = await firstValueFrom(this.api.get<SignatureRequest>(`/api/signature-requests/${req.id}`));
+      const data = await firstValueFrom(this.api.get<SignatureRequest>(`/api/digital-signatures/${req.id}`));
       this.detailRequest.set(data);
     } catch {
     } finally {
@@ -130,7 +130,7 @@ export class DigitalSignaturesComponent implements OnInit {
     }
     this.saving.set(true);
     try {
-      await firstValueFrom(this.api.post<any>('/api/signature-requests', {
+      await firstValueFrom(this.api.post<any>('/api/digital-signatures', {
         accountNo: this.formAccountNo(),
         documentType: this.formDocType(),
         signerName: this.formSignerName(),

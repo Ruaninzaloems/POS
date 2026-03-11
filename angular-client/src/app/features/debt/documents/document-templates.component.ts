@@ -175,7 +175,7 @@ export class DocumentTemplatesComponent implements OnInit {
     }
     this.saving.set(true);
     try {
-      await firstValueFrom(this.api.post<any>(`/api/document-templates/${vt.id}/versions`, {
+      await firstValueFrom(this.api.post<any>(`/api/document-templates/${vt.id}/upload`, {
         version: this.uploadVersion(),
         changeNotes: this.uploadNotes(),
         fileName: this.uploadFileName() || undefined

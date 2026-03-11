@@ -67,7 +67,7 @@ export class EvidenceBundleComponent implements OnInit {
     }
     this.generating.set(true);
     try {
-      await firstValueFrom(this.api.post('/api/legal/evidence-bundles/generate', { accountNo: this.accountNo().trim() }));
+      await firstValueFrom(this.api.post('/api/legal/evidence-bundle', { accountNo: this.accountNo().trim() }));
       this.toast.show(`Evidence bundle generated for account ${this.accountNo()}.`, 'success');
       this.accountNo.set('');
       await this.loadBundles();
@@ -87,7 +87,7 @@ export class EvidenceBundleComponent implements OnInit {
     this.expandedId.set(bundle.id);
     this.loadingDetail.set(true);
     try {
-      const detail = await firstValueFrom(this.api.get<EvidenceBundle>(`/api/legal/evidence-bundles/${bundle.id}`));
+      const detail = await firstValueFrom(this.api.get<EvidenceBundle>(`/api/legal/evidence-bundle/${bundle.id}`));
       this.expandedBundle.set(detail);
     } catch {
       this.expandedBundle.set(bundle);

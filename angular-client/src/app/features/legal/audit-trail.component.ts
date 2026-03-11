@@ -60,7 +60,7 @@ export class AuditTrailComponent {
       if (this.dateTo()) params['dateTo'] = this.dateTo();
       if (this.userFilter().trim()) params['userId'] = this.userFilter().trim();
 
-      const data = await firstValueFrom(this.api.get<any>('/api/legal/compliance-logs', params));
+      const data = await firstValueFrom(this.api.get<any>('/api/legal/compliance-log', params));
       this.results.set(Array.isArray(data) ? data : []);
     } catch (e: any) {
       this.toast.show(e?.error?.message || 'Failed to fetch compliance logs.', 'error');

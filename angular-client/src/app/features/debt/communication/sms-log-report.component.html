@@ -1,26 +1,105 @@
 <div class="page-container">
   <div class="page-header">
     <h1 class="page-title" data-testid="text-page-title">SMS Log Report</h1>
-    <p class="page-subtitle">SMS delivery log reports</p>
+    <p class="page-subtitle">Search and view SMS delivery logs from Platinum</p>
+  </div>
+
+  <div class="filters-card card">
+    <div class="filters-row">
+      <div class="filter-group">
+        <label class="filter-label">Account Number</label>
+        <input type="text" class="filter-input" placeholder="Enter account number..."
+               [value]="accountNo()" (input)="accountNo.set($any($event.target).value)"
+               data-testid="input-account-no" />
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Date From</label>
+        <input type="date" class="filter-input"
+               [value]="dateFrom()" (input)="dateFrom.set($any($event.target).value)"
+               data-testid="input-date-from" />
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Date To</label>
+        <input type="date" class="filter-input"
+               [value]="dateTo()" (input)="dateTo.set($any($event.target).value)"
+               data-testid="input-date-to" />
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Status</label>
+        <select class="filter-input" [value]="statusFilter()" (change)="statusFilter.set($any($event.target).value); onStatusChange()" data-testid="select-status">
+          <option value="__all__">All Statuses</option>
+          <option value="DELIVERED">Delivered</option>
+          <option value="SENT">Sent</option>
+          <option value="PENDING">Pending</option>
+          <option value="FAILED">Failed</option>
+        </select>
+      </div>
+    </div>
+    <div class="filters-actions">
+      <button class="btn-primary" (click)="handleSearch()" [disabled]="loading()" data-testid="button-search">
+        @if (loading()) { <span class="btn-spinner"></span> } Search
+      </button>
+      <button class="btn-secondary" (click)="handleClear()" data-testid="button-clear">Clear</button>
+    </div>
   </div>
 
   @if (loading()) {
     <div class="loading-state">
       <div class="spinner"></div>
-      <p>Loading...</p>
+      <p>Searching SMS logs...</p>
     </div>
   } @else if (error()) {
     <div class="error-state card">
       <p class="error-message" data-testid="text-error">{{ error() }}</p>
-      <button class="btn-primary" (click)="loadData()" data-testid="button-retry">Retry</button>
+      <button class="btn-primary" (click)="handleSearch()" data-testid="button-retry">Retry</button>
     </div>
-  } @else {
-    <div class="content-area">
-      <div class="card" style="padding:1.5rem">
-        <p style="color:var(--pos-text-muted)">
-          SMS Log Report page — connected to Platinum API
-        </p>
+  } @else if (searched() && filteredLogs().length === 0) {
+    <div class="empty-state card">
+      <p data-testid="text-empty">No SMS log records found for the selected criteria.</p>
+    </div>
+  } @else if (searched()) {
+    <div class="results-card card">
+      <div class="results-header">
+        <h3 class="results-title">SMS Log Results</h3>
+        <span class="results-count">{{ filteredLogs().length }} record(s)</span>
       </div>
+
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date/Time</th>
+              <th>Account</th>
+              <th>Recipient</th>
+              <th>Message</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (log of paginatedLogs(); track $index) {
+              <tr [attr.data-testid]="'row-sms-log-' + $index">
+                <td class="cell-nowrap">{{ formatDate(log.sentAt || log.dateSent || log.timestamp) }}</td>
+                <td>{{ log.accountNo || log.account || '—' }}</td>
+                <td>{{ log.recipient || log.mobileNumber || log.cellNumber || '—' }}</td>
+                <td class="cell-message">{{ log.messageBody || log.message || log.smsText || '—' }}</td>
+                <td>
+                  <span class="status-badge" [class]="getStatusClass(log.status || log.deliveryStatus || '')">
+                    {{ log.status || log.deliveryStatus || 'Unknown' }}
+                  </span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (totalGridPages() > 1) {
+        <div class="pagination">
+          <button class="btn-page" (click)="prevPage()" [disabled]="gridPage() === 1" data-testid="button-prev-page">Previous</button>
+          <span class="page-info">Page {{ gridPage() }} of {{ totalGridPages() }}</span>
+          <button class="btn-page" (click)="nextPage()" [disabled]="gridPage() === totalGridPages()" data-testid="button-next-page">Next</button>
+        </div>
+      }
     </div>
   }
 </div>

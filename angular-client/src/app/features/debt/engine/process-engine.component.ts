@@ -58,7 +58,7 @@ export class ProcessEngineComponent implements OnInit {
   async loadWorkflows(): Promise<void> {
     this.loading.set(true);
     try {
-      const data = await firstValueFrom(this.api.get<any>('/api/process-workflows'));
+      const data = await firstValueFrom(this.api.get<any>('/api/process-engine/workflows'));
       this.workflows.set(Array.isArray(data) ? data : data?.workflows || []);
     } catch (e: any) {
       this.toast.error(e?.message || 'Failed to load workflows');
@@ -70,7 +70,7 @@ export class ProcessEngineComponent implements OnInit {
   async loadStages(wfId: string | number): Promise<void> {
     this.loadingStages.set(true);
     try {
-      const data = await firstValueFrom(this.api.get<any>(`/api/process-workflows/${wfId}/stages`));
+      const data = await firstValueFrom(this.api.get<any>(`/api/process-engine/workflows/${wfId}/stages`));
       const stageList: WorkflowStage[] = Array.isArray(data) ? data : data?.stages || [];
       stageList.sort((a, b) => a.stageNumber - b.stageNumber);
       this.stages.set(stageList);
@@ -119,10 +119,10 @@ export class ProcessEngineComponent implements OnInit {
     try {
       const payload = { name: this.wfName(), description: this.wfDescription(), isActive: this.wfActive() };
       if (this.editingWorkflow()) {
-        await firstValueFrom(this.api.put<any>(`/api/process-workflows/${this.editingWorkflow()!.id}`, payload));
+        await firstValueFrom(this.api.put<any>(`/api/process-engine/workflows/${this.editingWorkflow()!.id}`, payload));
         this.toast.success(`${this.wfName()} has been updated.`);
       } else {
-        await firstValueFrom(this.api.post<any>('/api/process-workflows', payload));
+        await firstValueFrom(this.api.post<any>('/api/process-engine/workflows', payload));
         this.toast.success(`${this.wfName()} has been created.`);
       }
       this.showWorkflowDialog.set(false);
@@ -138,7 +138,7 @@ export class ProcessEngineComponent implements OnInit {
     event?.stopPropagation();
     if (!confirm(`Delete workflow "${wf.name}"? This will remove all stages, rules, and actions.`)) return;
     try {
-      await firstValueFrom(this.api.delete<any>(`/api/process-workflows/${wf.id}`));
+      await firstValueFrom(this.api.delete<any>(`/api/process-engine/workflows/${wf.id}`));
       this.toast.success(`${wf.name} has been deleted.`);
       if (this.selectedWorkflow()?.id === wf.id) { this.viewMode.set('list'); this.selectedWorkflow.set(null); }
       await this.loadWorkflows();
@@ -194,10 +194,10 @@ export class ProcessEngineComponent implements OnInit {
         timer: this.stTimer(),
       };
       if (this.editingStage()) {
-        await firstValueFrom(this.api.put<any>(`/api/process-workflows/${wf.id}/stages/${this.editingStage()!.id}`, payload));
+        await firstValueFrom(this.api.put<any>(`/api/process-engine/workflows/${wf.id}/stages/${this.editingStage()!.id}`, payload));
         this.toast.success(`${this.stName()} has been updated.`);
       } else {
-        await firstValueFrom(this.api.post<any>(`/api/process-workflows/${wf.id}/stages`, payload));
+        await firstValueFrom(this.api.post<any>(`/api/process-engine/workflows/${wf.id}/stages`, payload));
         this.toast.success(`${this.stName()} has been added.`);
       }
       this.showStageDialog.set(false);
@@ -214,7 +214,7 @@ export class ProcessEngineComponent implements OnInit {
     if (!wf) return;
     if (!confirm(`Delete stage "${stage.name}"?`)) return;
     try {
-      await firstValueFrom(this.api.delete<any>(`/api/process-workflows/${wf.id}/stages/${stage.id}`));
+      await firstValueFrom(this.api.delete<any>(`/api/process-engine/workflows/${wf.id}/stages/${stage.id}`));
       this.toast.success(`${stage.name} has been deleted.`);
       await this.loadStages(wf.id);
     } catch (e: any) {
@@ -236,7 +236,7 @@ export class ProcessEngineComponent implements OnInit {
     [currentStages[idx], currentStages[swapIdx]] = [currentStages[swapIdx], currentStages[idx]];
     this.stages.set(currentStages);
     try {
-      await firstValueFrom(this.api.post<any>(`/api/process-workflows/${wf.id}/stages/reorder`, currentStages.map(s => ({ id: s.id, stageNumber: s.stageNumber }))));
+      await firstValueFrom(this.api.post<any>(`/api/process-engine/workflows/${wf.id}/stages/reorder`, currentStages.map(s => ({ id: s.id, stageNumber: s.stageNumber }))));
     } catch (e: any) {
       this.toast.error(e?.message || 'Failed to reorder');
       await this.loadStages(wf.id);
