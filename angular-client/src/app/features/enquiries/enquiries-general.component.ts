@@ -3083,13 +3083,27 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     return 0;
   }
 
+  getBvpActualOutstanding(): number {
+    const bal = this.tabData()?.balance || [];
+    return bal.reduce((s: number, r: any) => s + Number(r.totalOutStanding || r.totalOutstanding || 0), 0);
+  }
+
   getBvpVariance(): number {
+    const actualOutstanding = this.getBvpActualOutstanding();
+    if (this.tabData()?.balance?.length) {
+      return actualOutstanding;
+    }
     return this.getBvpTotalBilled() - this.getBvpTotalPaid();
   }
 
   getBvpCollectionRate(): number {
     const billed = this.getBvpTotalBilled();
     if (billed === 0) return 0;
+    const actualOutstanding = this.getBvpActualOutstanding();
+    if (this.tabData()?.balance?.length) {
+      const rate = ((billed - actualOutstanding) / billed) * 100;
+      return Math.min(Math.round(rate * 10) / 10, 100);
+    }
     const rate = (this.getBvpTotalPaid() / billed) * 100;
     return Math.round(rate * 10) / 10;
   }
@@ -3111,37 +3125,25 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   getBvpInsights(): { icon: string; text: string; type: 'warning' | 'good' | 'info' }[] {
     const insights: { icon: string; text: string; type: 'warning' | 'good' | 'info' }[] = [];
     const rate = this.getBvpCollectionRate();
-    const variance = this.getBvpVariance();
+    const actualOutstanding = this.getBvpActualOutstanding();
     const billed = this.getBvpTotalBilled();
     const bal = this.tabData()?.balance || [];
 
-    if (rate >= 100) {
+    if (actualOutstanding <= 0 && billed > 0) {
+      insights.push({ icon: '✅', text: 'No outstanding balance — account is fully paid up.', type: 'good' });
+    } else if (rate >= 100) {
       insights.push({ icon: '🏆', text: 'Excellent! Payments fully cover or exceed billed amounts.', type: 'good' });
     } else if (rate >= 80) {
-      insights.push({ icon: '👍', text: `Good collection rate at ${rate}%. Shortfall of R ${this.formatCurrency(variance)}.`, type: 'good' });
+      insights.push({ icon: '👍', text: `Good collection rate at ${rate}%. Outstanding R ${this.formatCurrency(actualOutstanding)}.`, type: 'good' });
     } else if (rate >= 50) {
-      insights.push({ icon: '⚠️', text: `Collection rate is ${rate}% — R ${this.formatCurrency(variance)} remains unpaid.`, type: 'warning' });
+      insights.push({ icon: '⚠️', text: `Collection rate is ${rate}% — R ${this.formatCurrency(actualOutstanding)} outstanding.`, type: 'warning' });
     } else if (billed > 0) {
-      insights.push({ icon: '🚨', text: `Critical: Only ${rate}% collected. Outstanding variance of R ${this.formatCurrency(variance)}.`, type: 'warning' });
+      insights.push({ icon: '🚨', text: `Critical: Only ${rate}% collected. R ${this.formatCurrency(actualOutstanding)} outstanding.`, type: 'warning' });
     }
 
     const overdue30 = bal.reduce((s: number, r: any) => s + Number(r.days30 || 0) + Number(r.days60 || 0) + Number(r.days90 || 0) + Number(r.days120 || 0) + Number(r.days150 || 0) + Number(r.untill360 || 0), 0);
     if (overdue30 > 0) {
       insights.push({ icon: '📅', text: `R ${this.formatCurrency(overdue30)} in arrears (30+ days overdue) across all services.`, type: 'warning' });
-    }
-
-    const totalOutstanding = this.getBvpAgingTotal('total');
-    if (totalOutstanding === 0 && billed > 0) {
-      insights.push({ icon: '✅', text: 'No outstanding balance — account is fully paid up.', type: 'good' });
-    }
-
-    const services = this.tabData()?.billedVsPaid || [];
-    const worstService = services.reduce((worst: any, r: any) => {
-      const v = this.getBvpRowBilled(r) - this.getBvpRowPaid(r);
-      return v > (worst?.variance || 0) ? { name: r.serviceType || r.serviceTypeDesc || r.description, variance: v } : worst;
-    }, null);
-    if (worstService && worstService.variance > 0 && services.length > 1) {
-      insights.push({ icon: '📌', text: `Largest shortfall: ${worstService.name} with R ${this.formatCurrency(worstService.variance)} unpaid.`, type: 'info' });
     }
 
     return insights;

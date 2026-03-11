@@ -5048,21 +5048,21 @@
                   <div class="bvp-hero-card bvp-hero-billed">
                     <div class="bvp-hero-icon">📤</div>
                     <div class="bvp-hero-content">
-                      <span class="bvp-hero-label">Total Billed</span>
+                      <span class="bvp-hero-label">Total Levies</span>
                       <span class="bvp-hero-amount">R {{ formatCurrency(getBvpTotalBilled()) }}</span>
                     </div>
                   </div>
                   <div class="bvp-hero-card bvp-hero-paid">
                     <div class="bvp-hero-icon">📥</div>
                     <div class="bvp-hero-content">
-                      <span class="bvp-hero-label">Total Paid</span>
+                      <span class="bvp-hero-label">Total Receipts</span>
                       <span class="bvp-hero-amount">R {{ formatCurrency(getBvpTotalPaid()) }}</span>
                     </div>
                   </div>
                   <div class="bvp-hero-card" [class.bvp-hero-surplus]="getBvpVariance() <= 0" [class.bvp-hero-deficit]="getBvpVariance() > 0">
                     <div class="bvp-hero-icon">{{ getBvpVariance() > 0 ? '⚠️' : '✅' }}</div>
                     <div class="bvp-hero-content">
-                      <span class="bvp-hero-label">{{ getBvpVariance() > 0 ? 'Outstanding Variance' : 'Surplus / Credit' }}</span>
+                      <span class="bvp-hero-label">{{ getBvpVariance() > 0 ? 'Outstanding Balance' : 'Paid Up' }}</span>
                       <span class="bvp-hero-amount">R {{ formatCurrency(Math.abs(getBvpVariance())) }}</span>
                     </div>
                   </div>
@@ -5091,7 +5091,7 @@
 
                 @if (tabData()?.billedVsPaid?.length) {
                   <div class="bvp-section">
-                    <div class="bvp-section-title">Service Comparison</div>
+                    <div class="bvp-section-title">Levies Billed vs Payments Received per Period</div>
                     <div class="bvp-bars-grid">
                       @for (row of tabData()?.billedVsPaid; track $index) {
                         <div class="bvp-bar-card" [attr.data-testid]="'bvp-service-' + $index">
@@ -5101,24 +5101,19 @@
                           </div>
                           <div class="bvp-bar-amounts">
                             <div class="bvp-bar-row">
-                              <span class="bvp-bar-label">Billed</span>
+                              <span class="bvp-bar-label">Levies</span>
                               <div class="bvp-bar-track">
                                 <div class="bvp-bar-segment bvp-bar-billed" [style.width.%]="getBvpBarWidth(row, 'billed')"></div>
                               </div>
                               <span class="bvp-bar-val">R {{ formatCurrency(getBvpRowBilled(row)) }}</span>
                             </div>
                             <div class="bvp-bar-row">
-                              <span class="bvp-bar-label">Paid</span>
+                              <span class="bvp-bar-label">Receipts</span>
                               <div class="bvp-bar-track">
                                 <div class="bvp-bar-segment bvp-bar-paid" [style.width.%]="getBvpBarWidth(row, 'paid')"></div>
                               </div>
                               <span class="bvp-bar-val">R {{ formatCurrency(getBvpRowPaid(row)) }}</span>
                             </div>
-                          </div>
-                          <div class="bvp-bar-footer">
-                            <span class="bvp-bar-variance" [class.bvp-var-deficit]="getBvpRowBilled(row) - getBvpRowPaid(row) > 0" [class.bvp-var-surplus]="getBvpRowBilled(row) - getBvpRowPaid(row) <= 0">
-                              {{ getBvpRowBilled(row) - getBvpRowPaid(row) > 0 ? 'Shortfall' : 'Covered' }}: R {{ formatCurrency(Math.abs(getBvpRowBilled(row) - getBvpRowPaid(row))) }}
-                            </span>
                           </div>
                         </div>
                       }
