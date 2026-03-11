@@ -143,17 +143,14 @@ export class CashierSetupComponent implements OnInit {
           this.existingCashierId.set(existingId);
         }
 
-        if (data.isActive === true && data.officeId) {
-          const pendingFromApi = data.hasPendingDayEnd === true;
-          if (pendingFromApi) {
-            this.dayEndPending.set(true);
-            this.resumingSession.set(false);
-            this.step2Status.set('success');
-          } else {
-            this.resumingSession.set(true);
-            this.step2Status.set('success');
-            this.step3Status.set('pending');
-          }
+        if (data.hasPendingDayEnd === true) {
+          this.dayEndPending.set(true);
+          this.resumingSession.set(false);
+          this.step2Status.set('success');
+        } else if (data.isActive === true && data.officeId) {
+          this.resumingSession.set(true);
+          this.step2Status.set('success');
+          this.step3Status.set('pending');
         }
 
         const currentOfficeId = data.officeId || data.details?.officeId;
