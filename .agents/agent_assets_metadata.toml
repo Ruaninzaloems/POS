@@ -6,3 +6,9 @@ id = "VGFWLKqmOSluRaz3jGdYp"
 uri = "file://debt-legal-phases/PHASE_0_1_DEBT_LEGAL_MASTER.xlsx"
 type = "table"
 title = "Phase 0-1 Master (7 Sheets: SQL Tables + API Contracts + Mapping + Checklist + Overview + EMS Tables + SQL Script)"
+
+[[outputs]]
+id = "trixc-hFHadDzdMlCQYLT"
+uri = "file://debt-legal-phases/PHASE_2_3_HANDOVER_RISK_SCORING.xlsx"
+type = "table"
+title = "Phase 2-3: Handover & Risk Scoring Master Excel"
