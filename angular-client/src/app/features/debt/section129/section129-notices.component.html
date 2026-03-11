@@ -71,11 +71,11 @@
             </div>
             <div class="config-value">
               <div class="config-value-label">Interest Rate</div>
-              <div class="config-value-text" data-testid="text-config-interest-rate">{{ config()!.interestRate }}%</div>
+              <div class="config-value-text" data-testid="text-config-interest-rate">{{ config()!.interestRate ?? 0 }}%</div>
             </div>
             <div class="config-value">
               <div class="config-value-label">Minimum Amount</div>
-              <div class="config-value-text" data-testid="text-config-min-amount">R {{ config()!.minimumAmount.toFixed(2) }}</div>
+              <div class="config-value-text" data-testid="text-config-min-amount">R {{ (config()!.minimumAmount ?? 0).toFixed(2) }}</div>
             </div>
           </div>
         } @else {

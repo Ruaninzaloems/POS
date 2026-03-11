@@ -294,16 +294,25 @@ export interface QualificationRunResult {
 }
 
 export interface Section129Config {
+  configId?: number;
+  finYear?: string;
   demandLetterTemplate: string;
+  demandLetterTemplateId?: number;
   smsTemplate: string;
+  smsTemplateId?: number;
   adminFees: number;
   lapseDays: number;
-  noticeType: string;
-  interestRate: number;
-  minimumAmount: number;
-  includeIndigents: boolean;
-  includePensioners: boolean;
-  excludeDepositBalances: boolean;
+  noticesPerFile?: number;
+  activateRotation?: boolean;
+  enabled?: boolean;
+  noticeType?: string;
+  interestRate?: number;
+  minimumAmount?: number;
+  includeIndigents?: boolean;
+  includePensioners?: boolean;
+  excludeDepositBalances?: boolean;
+  costItems?: CostItem[];
+  attorneyRotation?: AttorneyRotationItem[];
 }
 
 export interface Section129ConfigEntry {
@@ -324,6 +333,7 @@ export interface Section129ConfigEntry {
 export interface Section129Run {
   runId: number;
   status: string;
+  statusId: number;
   distributionType: string;
   actionedBy: string;
   dateCreated: string;
@@ -337,6 +347,7 @@ export interface Section129Run {
 }
 
 export interface Section129RunAccount {
+  detailId: number;
   accountId: number;
   accountNo: string;
   address: string;
@@ -346,6 +357,9 @@ export interface Section129RunAccount {
   outstandingDays: number;
   qualifyingAmount: number;
   noticeFees: number;
+  totalBalance: number;
+  currentBalance: number;
+  balanceDue: number;
   selected: boolean;
 }
 
@@ -377,7 +391,8 @@ export interface Attorney {
   firmName: string;
   contactNumber: string;
   email: string;
-  allocationPercentage: number;
+  commission: number;
+  allocationPercentage?: number;
   isActive: boolean;
 }
 

@@ -81,6 +81,16 @@ export function registerDebtRoutes(app: Express, httpServer: Server): void {
     }
   });
 
+  app.get("/api/platinum/billing-debt/section129-run-status", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/BillingDebt/section129-run-status", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   app.post("/api/platinum/billing-debt/section129-delete-run", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
