@@ -113,7 +113,7 @@
       </div>
 
       <div class="allocation-panel">
-        <div class="search-section card">
+        <div class="search-section">
           <div class="panel-header">
             <h3>Search</h3>
           </div>
@@ -329,11 +329,11 @@
             }
 
             @if (selectedAccount()) {
-              <div class="selected-account card" data-testid="selected-account">
+              <div class="selected-account" data-testid="selected-account">
                 <div class="selected-header">
                   <div class="selected-info">
                     <span class="badge" [ngClass]="getResultTypeClass(selectedAccount()!.type)">{{ selectedAccount()!.type }}</span>
-                    <span class="font-mono font-semibold">{{ selectedAccount()!.accountNo }}</span>
+                    <span class="font-mono font-semibold" style="color:#1E293B">{{ selectedAccount()!.accountNo }}</span>
                     <span class="selected-name">{{ selectedAccount()!.name }}</span>
                   </div>
                   <button class="btn-close-sm" (click)="selectedAccount.set(null)" data-testid="button-clear-account">✕</button>
@@ -364,7 +364,7 @@
         </div>
 
         @if (lines().length > 0) {
-          <div class="lines-section card">
+          <div class="lines-section">
             <div class="panel-header">
               <h3>Allocation Lines ({{ lines().length }})</h3>
             </div>
@@ -376,7 +376,7 @@
                     <th>Name</th>
                     <th>Type</th>
                     <th class="text-right">Amount</th>
-                    <th class="text-center" style="width:60px">Remove</th>
+                    <th class="text-center" style="width:52px"></th>
                   </tr>
                 </thead>
                 <tbody>
