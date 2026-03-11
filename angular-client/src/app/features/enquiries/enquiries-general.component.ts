@@ -1950,12 +1950,14 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             this.bvpFinYear.set(this.userFinYear() || this.getCurrentFinYear());
           }
           const bvpYear = this.bvpFinYear();
-          const [billedVsPaid, billedBalance2] = await Promise.allSettled([
+          const [billedVsPaid, billedBalance2, bvpReceipts] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/billed-vs-paid-amounts`, { accountId: String(accountId), financialYear: bvpYear })),
             this.fetchAccountBalance(accountId),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/payment-amount-by-account-ids/${accountId}`)),
           ]);
           const bvpArr = billedVsPaid.status === 'fulfilled' ? this.normalizeArray(billedVsPaid.value) : [];
           const balArr = billedBalance2.status === 'fulfilled' ? this.normalizeArray(billedBalance2.value) : [];
+          const bvpReceiptArr = bvpReceipts.status === 'fulfilled' ? this.normalizeArray(bvpReceipts.value) : [];
           if (bvpArr.length > 0) {
             console.log('[billed-vs-paid] sample keys:', Object.keys(bvpArr[0]), 'sample:', JSON.stringify(bvpArr[0]).substring(0, 500));
           } else {
@@ -1966,9 +1968,11 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           } else {
             console.log('[billed-vs-paid] balance empty. status:', billedBalance2.status, billedBalance2.status === 'rejected' ? (billedBalance2 as any).reason?.message : '');
           }
+          const enrichedBvp = this.enrichBvpWithReceipts(bvpArr, bvpReceiptArr);
           data = {
-            billedVsPaid: bvpArr,
+            billedVsPaid: enrichedBvp,
             balance: balArr,
+            receipts: bvpReceiptArr,
           };
           break;
 
@@ -2441,18 +2445,75 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.tabLoading.set(true);
     this.tabError.set(null);
     try {
-      const [billedVsPaid, billedBalance2] = await Promise.allSettled([
+      const [billedVsPaid, billedBalance2, bvpReceipts] = await Promise.allSettled([
         firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/billed-vs-paid-amounts`, { accountId: String(accountId), financialYear: year })),
         this.fetchAccountBalance(accountId),
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/payment-amount-by-account-ids/${accountId}`)),
       ]);
       const bvpArr = billedVsPaid.status === 'fulfilled' ? this.normalizeArray(billedVsPaid.value) : [];
       const balArr = billedBalance2.status === 'fulfilled' ? this.normalizeArray(billedBalance2.value) : [];
-      this.tabData.set({ billedVsPaid: bvpArr, balance: balArr });
+      const receiptArr = bvpReceipts.status === 'fulfilled' ? this.normalizeArray(bvpReceipts.value) : [];
+      const enrichedBvp = this.enrichBvpWithReceipts(bvpArr, receiptArr);
+      this.tabData.set({ billedVsPaid: enrichedBvp, balance: balArr, receipts: receiptArr });
     } catch (e: any) {
       this.tabError.set(e.message || 'Failed to load billed vs paid data');
     } finally {
       this.tabLoading.set(false);
     }
+  }
+
+  enrichBvpWithReceipts(bvpArr: any[], receipts: any[]): any[] {
+    if (!receipts.length || !bvpArr.length) return bvpArr;
+    const monthMap: Record<string, number> = {
+      'january': 1, 'february': 2, 'march': 3, 'april': 4, 'may': 5, 'june': 6,
+      'july': 7, 'august': 8, 'september': 9, 'october': 10, 'november': 11, 'december': 12,
+    };
+    const sortedReceipts = [...receipts].sort((a: any, b: any) => {
+      const da = new Date(a.receiptDate || a.date || '').getTime();
+      const db = new Date(b.receiptDate || b.date || '').getTime();
+      return db - da;
+    });
+    return bvpArr.map((row: any) => {
+      const paid = Number(row.paidAmount || 0);
+      if (paid === 0) return row;
+      const month = (row.processingMonth || row.month || '').toLowerCase();
+      const monthNum = monthMap[month] || 0;
+      if (!monthNum) return row;
+      const fy = row.financialYear || '';
+      const fyParts = fy.split('/');
+      let periodYear = 0;
+      if (fyParts.length === 2) {
+        periodYear = monthNum >= 7 ? parseInt(fyParts[0]) : parseInt(fyParts[1]);
+      }
+      const matchedReceipts = sortedReceipts.filter((r: any) => {
+        const amt = Math.abs(Number(r.amount || 0));
+        if (Math.abs(amt - paid) > 0.02) return false;
+        if (periodYear > 0) {
+          const rd = new Date(r.receiptDate || r.date || '');
+          const rm = rd.getMonth() + 1;
+          const ry = rd.getFullYear();
+          if (ry === periodYear && rm === monthNum) return true;
+          if (ry === periodYear && rm === monthNum - 1) return true;
+          if (monthNum === 1 && ry === periodYear - 1 && rm === 12) return true;
+          return false;
+        }
+        return true;
+      });
+      const match = matchedReceipts.length > 0 ? matchedReceipts[0] : null;
+      if (match) {
+        return {
+          ...row,
+          _receiptNo: match.receiptNo || '',
+          _receiptDate: match.receiptDate || match.date || '',
+          _paymentType: match.paymentType || '',
+          _cashier: match.cashier || '',
+          _cashBook: match.cashBook || '',
+          _bankDescription: this.getEftBankDescription(match),
+          _isEft: this.isEftReceipt(match),
+        };
+      }
+      return row;
+    });
   }
 
   async loadTransactionSummary(accountId: number, finYear: string): Promise<void> {

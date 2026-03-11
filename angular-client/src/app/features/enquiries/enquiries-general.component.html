@@ -5115,6 +5115,15 @@
                               <span class="bvp-bar-val">R {{ formatCurrency(getBvpRowPaid(row)) }}</span>
                             </div>
                           </div>
+                          @if (row._receiptNo) {
+                            <div class="bvp-receipt-detail">
+                              <span class="bvp-receipt-no mono">{{ row._receiptNo }}</span>
+                              <span class="bvp-receipt-type">{{ row._paymentType }}</span>
+                              @if (row._isEft && row._bankDescription) {
+                                <span class="bvp-receipt-bank">{{ row._bankDescription }}</span>
+                              }
+                            </div>
+                          }
                         </div>
                       }
                     </div>
