@@ -30,3 +30,9 @@ id = "QteEYhyYBYk-4jUH5uEdT"
 uri = "file://debt-legal-phases/PHASE_8_9_SECTION129_HANDOVER_RISK_MONITORING_DETAIL_PACK.md"
 type = "text"
 title = "Phase 8-9 Detail Pack — Section 129, Handover, Risk Scoring & Process Monitoring"
+
+[[outputs]]
+id = "VIOgFaW8rV5QqL5KcJdpg"
+uri = "file://debt-legal-phases/PHASE_4_9_COMMS_LEGAL_DOCS_ENGINE_ANALYTICS.xlsx"
+type = "table"
+title = "Phase 4-9: Debt & Legal — Complete API Design Pack"
