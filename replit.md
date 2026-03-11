@@ -54,6 +54,8 @@ Full details in **`PROJECT_IMPLEMENTATION_RULES.md`** and **`POST_CHANGE_CHECKLI
 - Express serves API only in dev mode (no Vite)
 - In production: Express serves Angular build output + API on port 5000
 - Workflow: `concurrently` runs both servers
+- **Health Check**: GET `/api/health` (Express, always instant) — use to verify backend is up
+- **IMPORTANT Build Timing**: Angular build takes ~22 seconds after every workflow restart. The dev server on port 5000 is unreachable during this window. NEVER use `mark_completed_and_get_feedback` immediately — it restarts the workflow and checks port 5000 too early, causing an infinite restart loop. Instead: (1) restart workflow, (2) wait 30+ seconds, (3) verify with `curl http://localhost:5000/` returning 200, (4) ONLY THEN call `mark_completed_and_get_feedback`. If the tool fails, do NOT retry immediately — wait 30 seconds first.
 
 ### Angular Project Structure
 ```

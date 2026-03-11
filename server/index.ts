@@ -20,6 +20,10 @@ process.on('SIGINT', () => { console.log('[PROCESS] Received SIGINT'); process.e
 const app = express();
 const httpServer = createServer(app);
 
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok', timestamp: Date.now() });
+});
+
 declare module "http" {
   interface IncomingMessage {
     rawBody: unknown;
