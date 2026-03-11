@@ -5,7 +5,7 @@ import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { ApiService } from '../../../core/services/api.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { AuthService } from '../../../core/services/auth.service';
-import { firstValueFrom, Subscription } from 'rxjs';
+import { firstValueFrom, Subscription, timeout, catchError, of } from 'rxjs';
 
 interface BankReconPosItem {
   posItem_ID: number;
@@ -173,6 +173,11 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
   private searchTimer: any = null;
   private searchVersion = 0;
   private abortController: AbortController | null = null;
+  private readonly SEARCH_TIMEOUT = 15000;
+
+  private searchWithTimeout<T>(obs: import('rxjs').Observable<T>): Promise<T> {
+    return firstValueFrom(obs.pipe(timeout(this.SEARCH_TIMEOUT), catchError(() => of([] as any))));
+  }
 
   scopeOptions: { value: SearchScope; label: string; icon: string }[] = [
     { value: 'ALL', label: 'All', icon: 'search' },
@@ -314,6 +319,7 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
     }
 
     if (query.length < 2) {
+      this.cancelSearch();
       this.searchResults.set([]);
       this.dropdownOpen.set(false);
       return;
@@ -334,11 +340,13 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (this.abortController) this.abortController.abort();
+    this.cancelSearch();
     const abortCtrl = new AbortController();
     this.abortController = abortCtrl;
     const searchVersion = ++this.searchVersion;
     this.searching.set(true);
+    this.searchResults.set([]);
+    this.dropdownOpen.set(false);
 
     const isAborted = () => abortCtrl.signal.aborted || searchVersion !== this.searchVersion;
     const scope = this.searchScope();
@@ -356,8 +364,7 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
     };
 
     try {
-      const primaryTasks: Promise<void>[] = [];
-      const secondaryFactories: (() => Promise<void>)[] = [];
+      const allTasks: Promise<void>[] = [];
 
       if (scope === 'ALL' || scope === 'ACCOUNT' || scope === 'PREPAID') {
         const allocType = scope === 'PREPAID' ? 'PREPAID' : 'ACCOUNT';
@@ -396,27 +403,23 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
           primaryBody[isNumeric ? 'accountNo' : 'name'] = query;
         }
 
-        const allAccountSearches: Promise<void>[] = [];
-
-        allAccountSearches.push(
-          firstValueFrom(
+        allTasks.push(
+          this.searchWithTimeout(
             this.api.post('/api/platinum/billing-payment/search-accounts', primaryBody)
           ).then((results: any) => {
             if (isAborted()) return;
             const items = Array.isArray(results) ? results : results?.value || [];
-            if (items.length === 0) console.warn('[AllocateTransaction] Primary search returned 0 results for', JSON.stringify(primaryBody));
             for (const item of items.slice(0, 15)) {
               addAccountHit(item, detected.field !== 'accountNo' && detected.field !== 'name' ? `Found via ${detected.label}` : undefined);
             }
             pushResults();
           }).catch((err: any) => {
-            if (isAborted()) return;
             console.warn('[AllocateTransaction] Primary search FAILED:', err?.message || err);
           })
         );
 
-        allAccountSearches.push(
-          firstValueFrom(
+        allTasks.push(
+          this.searchWithTimeout(
             this.api.post('/api/platinum/billing-payment/search-accounts', { oldAccountCode: query })
           ).then((items: any) => {
             if (isAborted()) return;
@@ -427,8 +430,8 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
         );
 
         if (isNumeric) {
-          allAccountSearches.push(
-            firstValueFrom(
+          allTasks.push(
+            this.searchWithTimeout(
               this.api.post('/api/platinum/billing-payment/search-accounts', { erfNumber: query })
             ).then((items: any) => {
               if (isAborted()) return;
@@ -438,8 +441,8 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
             }).catch((err: any) => { console.warn('[AllocateTransaction] ERF number search failed:', err?.message); })
           );
 
-          allAccountSearches.push(
-            firstValueFrom(
+          allTasks.push(
+            this.searchWithTimeout(
               this.api.post('/api/platinum/billing-payment/search-accounts', { physicalMeterNumber: query })
             ).then((items: any) => {
               if (isAborted()) return;
@@ -451,8 +454,8 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
         }
 
         if (!isNumeric && detected.field === 'name') {
-          allAccountSearches.push(
-            firstValueFrom(
+          allTasks.push(
+            this.searchWithTimeout(
               this.api.post('/api/platinum/billing-payment/search-accounts', { locationAddress: query })
             ).then((items: any) => {
               if (isAborted()) return;
@@ -462,8 +465,6 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
             }).catch((err: any) => { console.warn('[AllocateTransaction] Location/address search failed:', err?.message); })
           );
         }
-
-        primaryTasks.push(Promise.all(allAccountSearches).then(() => {}));
       }
 
       if (scope === 'ALL' || scope === 'DIRECT') {
@@ -485,148 +486,126 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
         }
       }
 
-      const makeClearanceTask = () => async () => {
-        try {
-          if (isAborted()) return;
-          if (isNumeric) {
-            try {
-              const clearanceIds: any = await firstValueFrom(
-                this.api.get('/api/platinum/billing-payment-clearance/get-clearanceids', { clearanceId: query })
-              );
-              if (isAborted()) return;
-              if (Array.isArray(clearanceIds)) {
-                for (const formattedId of clearanceIds) {
-                  secondaryResults.push({
-                    accountId: 0,
-                    accountNo: formattedId,
-                    name: `Clearance ${formattedId}`,
-                    type: 'CLEARANCE',
-                    rawData: { clearanceFormattedId: formattedId },
-                  });
-                }
-                pushResults();
-                return;
-              }
-            } catch (e: any) {
-              console.warn('[AllocateTransaction] Clearance ID lookup failed:', e?.message);
-            }
-          }
-          const clearanceResults: any = await firstValueFrom(
-            this.api.get('/api/platinum/direct-deposit-allocation/get-clearance-autocomplete', { searchTerm: query })
-          );
-          if (isAborted()) return;
-          const arr = Array.isArray(clearanceResults) ? clearanceResults : [];
-          for (const item of arr) {
-            secondaryResults.push({
-              accountId: item.account_ID || item.accountId || item.id || 0,
-              accountNo: item.accountNumber || item.certificateNo || item.displayItem || String(item.id || ''),
-              name: item.name || item.displayItem || item.description || 'Clearance',
-              type: 'CLEARANCE',
-              rawData: item,
-            });
-          }
-          pushResults();
-        } catch (err) {
-          console.error('[AllocateTransaction] Failed to search clearance:', err);
-        }
-      };
-
-      const makeGroupTask = () => async () => {
-        try {
-          if (isAborted()) return;
-          const groupResults: any = await firstValueFrom(
-            this.api.get('/api/platinum/direct-deposit-allocation/get-group-payment-details', { searchTerm: query })
-          );
-          if (isAborted()) return;
-          const groupArr = Array.isArray(groupResults) ? groupResults : (groupResults?.value || []);
-          for (const g of groupArr.slice(0, 5)) {
-            const gId = g.groupId || g.id || g.group_ID || 0;
-            if (!seen.has(gId + 100000)) {
-              seen.add(gId + 100000);
-              secondaryResults.push({
-                accountId: g.accountId || g.account_ID || 0,
-                accountNo: g.accountNumber || g.accountNo || `GRP-${gId}`,
-                name: g.name || g.description || g.groupName || 'Payment Group',
-                type: 'GROUP',
-                description: `Payment Grouping: ${g.name || g.description || g.groupName || ''}`,
-                rawData: g,
-              });
-            }
-          }
-          pushResults();
-        } catch (err) {
-          console.error('[AllocateTransaction] Failed to search group payment:', err);
-        }
-      };
-
-      const makeInstitutionTask = () => async () => {
-        try {
-          if (isAborted()) return;
-          const institutionResults: any = await firstValueFrom(
-            this.api.get('/api/platinum/const-institutions/search', { name: query })
-          );
-          if (isAborted()) return;
-          const arr = Array.isArray(institutionResults) ? institutionResults : [];
-          for (const inst of arr.slice(0, 10)) {
-            const instId = inst.institutionID || inst.institution_ID || inst.id || 0;
-            if (instId && !seen.has(instId + 200000)) {
-              seen.add(instId + 200000);
-              secondaryResults.push({
-                accountId: instId,
-                accountNo: `INST-${instId}`,
-                name: inst.institutionDesc || inst.description || inst.name || 'Institution',
-                type: 'INSTITUTION',
-                description: `Institution: ${inst.institutionDesc || inst.description || inst.name || ''}`,
-                rawData: inst,
-              });
-            }
-          }
-          pushResults();
-        } catch (err) {
-          console.error('[AllocateTransaction] Failed to search institutions:', err);
-        }
-      };
-
       if (scope === 'ALL' || scope === 'CLEARANCE') {
         if (isNumeric || scope === 'CLEARANCE') {
-          if (scope === 'CLEARANCE') {
-            primaryTasks.push(makeClearanceTask()());
-          } else {
-            secondaryFactories.push(makeClearanceTask());
-          }
+          allTasks.push((async () => {
+            try {
+              if (isAborted()) return;
+              if (isNumeric) {
+                try {
+                  const clearanceIds: any = await this.searchWithTimeout(
+                    this.api.get('/api/platinum/billing-payment-clearance/get-clearanceids', { clearanceId: query })
+                  );
+                  if (isAborted()) return;
+                  if (Array.isArray(clearanceIds) && clearanceIds.length > 0) {
+                    for (const formattedId of clearanceIds) {
+                      secondaryResults.push({
+                        accountId: 0,
+                        accountNo: formattedId,
+                        name: `Clearance ${formattedId}`,
+                        type: 'CLEARANCE',
+                        rawData: { clearanceFormattedId: formattedId },
+                      });
+                    }
+                    pushResults();
+                    return;
+                  }
+                } catch (e: any) {
+                  console.warn('[AllocateTransaction] Clearance ID lookup failed:', e?.message);
+                }
+              }
+              const clearanceResults: any = await this.searchWithTimeout(
+                this.api.get('/api/platinum/direct-deposit-allocation/get-clearance-autocomplete', { searchTerm: query })
+              );
+              if (isAborted()) return;
+              const arr = Array.isArray(clearanceResults) ? clearanceResults : [];
+              for (const item of arr) {
+                secondaryResults.push({
+                  accountId: item.account_ID || item.accountId || item.id || 0,
+                  accountNo: item.accountNumber || item.certificateNo || item.displayItem || String(item.id || ''),
+                  name: item.name || item.displayItem || item.description || 'Clearance',
+                  type: 'CLEARANCE',
+                  rawData: item,
+                });
+              }
+              pushResults();
+            } catch (err) {
+              console.error('[AllocateTransaction] Failed to search clearance:', err);
+            }
+          })());
         }
       }
 
       if (scope === 'GROUP' || (scope === 'ALL' && !isNumeric)) {
-        if (scope === 'GROUP') {
-          primaryTasks.push(makeGroupTask()());
-        } else {
-          secondaryFactories.push(makeGroupTask());
-        }
+        allTasks.push((async () => {
+          try {
+            if (isAborted()) return;
+            const groupResults: any = await this.searchWithTimeout(
+              this.api.get('/api/platinum/direct-deposit-allocation/get-group-payment-details', { searchTerm: query })
+            );
+            if (isAborted()) return;
+            const groupArr = Array.isArray(groupResults) ? groupResults : (groupResults?.value || []);
+            for (const g of groupArr.slice(0, 5)) {
+              const gId = g.groupId || g.id || g.group_ID || 0;
+              if (!seen.has(gId + 100000)) {
+                seen.add(gId + 100000);
+                secondaryResults.push({
+                  accountId: g.accountId || g.account_ID || 0,
+                  accountNo: g.accountNumber || g.accountNo || `GRP-${gId}`,
+                  name: g.name || g.description || g.groupName || 'Payment Group',
+                  type: 'GROUP',
+                  description: `Payment Grouping: ${g.name || g.description || g.groupName || ''}`,
+                  rawData: g,
+                });
+              }
+            }
+            pushResults();
+          } catch (err) {
+            console.error('[AllocateTransaction] Failed to search group payment:', err);
+          }
+        })());
       }
 
       if (scope === 'INSTITUTION' || (scope === 'ALL' && !isNumeric)) {
-        if (scope === 'INSTITUTION') {
-          primaryTasks.push(makeInstitutionTask()());
-        } else {
-          secondaryFactories.push(makeInstitutionTask());
-        }
+        allTasks.push((async () => {
+          try {
+            if (isAborted()) return;
+            const institutionResults: any = await this.searchWithTimeout(
+              this.api.get('/api/platinum/const-institutions/search', { name: query })
+            );
+            if (isAborted()) return;
+            const arr = Array.isArray(institutionResults) ? institutionResults : [];
+            for (const inst of arr.slice(0, 10)) {
+              const instId = inst.institutionID || inst.institution_ID || inst.id || 0;
+              if (instId && !seen.has(instId + 200000)) {
+                seen.add(instId + 200000);
+                secondaryResults.push({
+                  accountId: instId,
+                  accountNo: `INST-${instId}`,
+                  name: inst.institutionDesc || inst.description || inst.name || 'Institution',
+                  type: 'INSTITUTION',
+                  description: `Institution: ${inst.institutionDesc || inst.description || inst.name || ''}`,
+                  rawData: inst,
+                });
+              }
+            }
+            pushResults();
+          } catch (err) {
+            console.error('[AllocateTransaction] Failed to search institutions:', err);
+          }
+        })());
       }
 
-      if (secondaryFactories.length > 0) {
-        for (const factory of secondaryFactories) {
-          primaryTasks.push(factory());
-        }
-      }
-
-      await Promise.all(primaryTasks);
-      if (isAborted()) return;
-      pushResults();
+      await Promise.allSettled(allTasks);
+      if (!isAborted()) pushResults();
     } catch (err) {
       console.error('DD search error:', err);
       if (!isAborted()) this.searchResults.set([]);
     } finally {
-      if (!isAborted()) this.searching.set(false);
+      if (searchVersion === this.searchVersion) {
+        this.searching.set(false);
+        this.abortController = null;
+      }
     }
   }
 
