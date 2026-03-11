@@ -320,6 +320,7 @@ export class CashierDayEndComponent implements OnInit {
       } catch {}
 
       this.toast.success('Day-end reconciliation submitted successfully.');
+      setTimeout(() => this.router.navigate(['/']), 1500);
     } catch (e: any) {
       this.toast.error(e?.message || 'Failed to save reconciliation data.');
     } finally {
