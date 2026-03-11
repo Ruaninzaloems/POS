@@ -143,6 +143,7 @@ interface PosState {
       officeId: string;
       officeDesc?: string;
       floatAmount: number;
+      cashierName?: string;
   };
   platinumCashierId: number | null;
   officeLimits: Record<string, number>;
@@ -275,7 +276,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
   // Session State
   const [activeSession, setActiveSession] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
-  const [sessionDetails, setSessionDetails] = useState<{startTime: number; officeId: string; officeDesc?: string; floatAmount: number} | undefined>(undefined);
+  const [sessionDetails, setSessionDetails] = useState<{startTime: number; officeId: string; officeDesc?: string; floatAmount: number; cashierName?: string} | undefined>(undefined);
   const [platinumCashierId, setPlatinumCashierId] = useState<number | null>(null);
   const [cashierRegistered, setCashierRegistered] = useState<boolean | null>(null);
   const [apiSessionActive, setApiSessionActive] = useState<boolean | null>(null);

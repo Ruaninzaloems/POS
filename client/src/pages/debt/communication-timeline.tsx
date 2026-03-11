@@ -72,7 +72,7 @@ export default function CommunicationTimeline() {
 
   const [timelines, setTimelines] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedTimeline, setSelectedTimeline] = useState<CommunicationTimeline | null>(null);
+  const [selectedTimeline, setSelectedTimeline] = useState<CommunicationTimelineType | null>(null);
   const [steps, setSteps] = useState<Step[]>([]);
 
   const [showCreate, setShowCreate] = useState(false);
@@ -126,7 +126,7 @@ export default function CommunicationTimeline() {
       setNewName('');
       setNewDesc('');
       loadTimelines();
-      loadTimelineDetail(tl.id);
+      loadTimelineDetail(Number(tl.id));
     } catch (err: any) {
       toast({ title: 'Create Failed', description: err.message, variant: 'destructive' });
     } finally { setCreating(false); }
@@ -160,8 +160,8 @@ export default function CommunicationTimeline() {
     if (!selectedTimeline) return;
     setSaving(true);
     try {
-      await setTimelineSteps(selectedTimeline.id, steps.map(s => ({
-        timelineId: selectedTimeline.id,
+      await setTimelineSteps(Number(selectedTimeline.id), steps.map(s => ({
+        timelineId: Number(selectedTimeline.id),
         dayOffset: s.dayOffset,
         channel: s.channel,
         templateName: s.templateName || null,
@@ -170,7 +170,7 @@ export default function CommunicationTimeline() {
         isAutomated: s.isAutomated,
       })));
       toast({ title: 'Timeline Steps Saved' });
-      loadTimelineDetail(selectedTimeline.id);
+      loadTimelineDetail(Number(selectedTimeline.id));
     } catch (err: any) {
       toast({ title: 'Save Failed', description: err.message, variant: 'destructive' });
     } finally { setSaving(false); }
@@ -191,7 +191,7 @@ export default function CommunicationTimeline() {
     if (!enrollAccount.trim() || !selectedTimeline) return;
     setEnrolling(true);
     try {
-      const result = await enrollInTimeline(enrollAccount.trim(), selectedTimeline.id);
+      const result = await enrollInTimeline(enrollAccount.trim(), Number(selectedTimeline.id));
       toast({ title: 'Account Enrolled', description: `${result.scheduledCount} communications scheduled` });
       setEnrollAccount('');
     } catch (err: any) {
@@ -259,7 +259,7 @@ export default function CommunicationTimeline() {
                 ) : (
                   <div className="space-y-2">
                     {timelines.map((tl: any) => (
-                      <div key={tl.id} className={`p-3 rounded-md border cursor-pointer transition-colors ${selectedTimeline?.id === tl.id ? 'bg-blue-50 border-blue-300' : 'bg-[#F7F7F7] border-[#D6D6D6] hover:bg-[var(--pos-accent-hover-row)]'}`} onClick={() => loadTimelineDetail(tl.id)} data-testid={`timeline-card-${tl.id}`}>
+                      <div key={tl.id} className={`p-3 rounded-md border cursor-pointer transition-colors ${selectedTimeline?.id === tl.id ? 'bg-blue-50 border-blue-300' : 'bg-[#F7F7F7] border-[#D6D6D6] hover:bg-[var(--pos-accent-hover-row)]'}`} onClick={() => loadTimelineDetail(Number(tl.id))} data-testid={`timeline-card-${tl.id}`}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <Clock className="w-4 h-4 text-blue-600" />

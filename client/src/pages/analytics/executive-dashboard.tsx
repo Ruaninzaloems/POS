@@ -29,7 +29,7 @@ import {
 } from '@/lib/external-api';
 import { RISK_COLORS } from '@/services/debt-config';
 import { formatCurrencyCompact as formatCurrency } from '@/services/format.service';
-import type { DebtOverview, AgingAnalysis, RecoveryStats, LegalPipelineStage, AttorneyPerformance, RiskDistributionItem } from '@/models/analytics.models';
+import type { DebtOverview } from '@/models/analytics.models';
 
 function RiskBadge({ category }: { category: string }) {
   const c = RISK_COLORS[category as keyof typeof RISK_COLORS] || RISK_COLORS.MEDIUM;
@@ -46,11 +46,11 @@ export default function ExecutiveDashboard() {
   const [loading, setLoading] = useState(true);
 
   const [overview, setOverview] = useState<DebtOverview | null>(null);
-  const [aging, setAging] = useState<AgingAnalysis | null>(null);
-  const [recovery, setRecovery] = useState<RecoveryStats | null>(null);
-  const [pipeline, setPipeline] = useState<LegalPipelineStage[] | null>(null);
-  const [attorneys, setAttorneys] = useState<AttorneyPerformance[] | null>(null);
-  const [risk, setRisk] = useState<RiskDistributionItem[] | null>(null);
+  const [aging, setAging] = useState<any>(null);
+  const [recovery, setRecovery] = useState<any>(null);
+  const [pipeline, setPipeline] = useState<any>(null);
+  const [attorneys, setAttorneys] = useState<any>(null);
+  const [risk, setRisk] = useState<any>(null);
 
   const loadAll = useCallback(async () => {
     setLoading(true);

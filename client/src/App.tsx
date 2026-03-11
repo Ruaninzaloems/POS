@@ -95,7 +95,7 @@ function Router() {
       
       {/* Direct Deposits Manual Module */}
       <Route path="/direct-deposits/manual" component={UnmatchedQueue} />
-      <Route path="/direct-deposits/manual/allocate/:id" component={AllocateTransaction} />
+      <Route path="/direct-deposits/manual/allocate/:id">{() => <AllocateTransaction />}</Route>
       <Route path="/direct-deposits/manual/history" component={AllocationHistory} />
       
       <Route path="/direct-deposits/auto">

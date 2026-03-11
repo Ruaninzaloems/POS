@@ -1,4 +1,5 @@
 import { resolveApiUrl, getAuthHeaders } from "./pos-config-context";
+import type { Section129Config, Section129ConfigEntry, Section129Run, Section129RunAccount, Section129RunFile, HandoverRecord, Attorney, HandoverTermination } from '@/models/debt.models';
 
 const LOG_ENABLED = true;
 function apiLog(tag: string, ...args: unknown[]): void {
@@ -2811,7 +2812,7 @@ export async function retryBulkAllocationJob(jobId: number, userId: number): Pro
 
 // === DEBT MANAGEMENT — Section 129 & Handover ===
 
-export type { Section129Config, Section129ConfigEntry, Section129Run, Section129RunAccount, Section129RunFile, HandoverRecord, Attorney, HandoverTermination } from '@/models/debt.models';
+export type { Section129Config, Section129ConfigEntry, Section129Run, Section129RunAccount, Section129RunFile, HandoverRecord, Attorney, HandoverTermination };
 
 export async function fetchSection129Config(): Promise<Section129Config> {
     const res = await apiFetch('/api/platinum/billing-debt/section129-config');

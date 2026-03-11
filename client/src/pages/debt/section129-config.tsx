@@ -48,12 +48,12 @@ export default function Section129Config() {
 
   const [enabled, setEnabled] = useState(true);
   const [selectedFinYear, setSelectedFinYear] = useState(currentFY);
-  const [section129Template, setSection129Template] = useState(SECTION129_DEFAULTS.section129Template);
-  const [smsTemplate, setSmsTemplate] = useState(SECTION129_DEFAULTS.smsTemplate);
-  const [lapseDays, setLapseDays] = useState(SECTION129_DEFAULTS.lapseDays);
-  const [noticesPerFile, setNoticesPerFile] = useState(SECTION129_DEFAULTS.noticesPerFile);
+  const [section129Template, setSection129Template] = useState<string>(SECTION129_DEFAULTS.section129Template);
+  const [smsTemplate, setSmsTemplate] = useState<string>(SECTION129_DEFAULTS.smsTemplate);
+  const [lapseDays, setLapseDays] = useState<number>(SECTION129_DEFAULTS.lapseDays);
+  const [noticesPerFile, setNoticesPerFile] = useState<number>(SECTION129_DEFAULTS.noticesPerFile);
   const [costItems, setCostItems] = useState<CostItem[]>([]);
-  const [activateRotation, setActivateRotation] = useState(SECTION129_DEFAULTS.activateRotation);
+  const [activateRotation, setActivateRotation] = useState<boolean>(SECTION129_DEFAULTS.activateRotation);
   const [attorneyRotation, setAttorneyRotation] = useState<AttorneyRotationItem[]>([]);
 
   const [addBillTypeId, setAddBillTypeId] = useState('');

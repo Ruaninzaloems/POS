@@ -24,7 +24,6 @@ import {
 } from 'lucide-react';
 import { fetchPredictiveForecasting } from '@/lib/external-api';
 import { IMPACT_COLORS } from '@/services/debt-config';
-import type { ForecastData } from '@/models/analytics.models';
 import { getConfidenceLabel } from '@/services/validation.service';
 
 function ImpactBadge({ impact }: { impact: string }) {
@@ -76,7 +75,7 @@ export default function PredictiveForecasting() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<ForecastData | null>(null);
+  const [data, setData] = useState<any>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);

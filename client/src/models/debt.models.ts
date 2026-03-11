@@ -32,6 +32,7 @@ export interface SignatureRequest {
   signerPhone?: string;
   amount?: number;
   description?: string;
+  notes?: string;
   status: string;
   sentAt?: string;
   viewedAt?: string;
@@ -134,7 +135,9 @@ export interface ProcessMonitoringOverview {
   failedRuns: number;
   pendingApprovals: number;
   handoverQueued: number;
+  handoverQueue?: number;
   terminationQueued: number;
+  terminationQueue?: number;
   completedToday: number;
 }
 
@@ -203,8 +206,12 @@ export interface QualificationRule {
 
 export interface RiskScore {
   accountNo: string;
+  account_no?: string;
   overallScore: number;
+  overall_score?: number;
   category: string;
+  riskCategory?: string;
+  risk_category?: string;
   factors: Record<string, number>;
   scoredAt?: string;
 }
@@ -287,8 +294,13 @@ export type CommTabMode = 'dashboard' | 'log' | 'scheduled' | 'send';
 export interface QualificationRunResult {
   ruleId: number | string;
   ruleName: string;
+  rule?: { name: string; id?: number | string };
   matchedAccounts: number;
+  matchedCount?: number;
+  unmatchedCount?: number;
   totalAccounts: number;
+  totalEvaluated?: number;
+  matched?: { accountNo: string; name?: string; totalArrears?: number; arrearDays?: number; propertyValue?: number; lastPayment?: string }[];
   matchedAccountsList?: { accountNo: string; name?: string; totalArrears?: number }[];
   executedAt?: string;
 }

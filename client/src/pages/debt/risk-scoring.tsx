@@ -308,7 +308,7 @@ export default function RiskScoring() {
                     <CardContent className="p-4 space-y-4">
                       <h3 className="text-sm font-semibold text-foreground">Risk Score Result</h3>
                       <div className="flex items-center justify-center">
-                        <ScoreGauge score={parseFloat(scoreResult.overallScore || scoreResult.overall_score || 0)} category={scoreResult.riskCategory || scoreResult.risk_category || 'LOW'} />
+                        <ScoreGauge score={parseFloat(String(scoreResult.overallScore || scoreResult.overall_score || 0))} category={scoreResult.riskCategory || scoreResult.risk_category || 'LOW'} />
                       </div>
                       <div className="text-center text-sm text-muted-foreground">Account: <span className="text-foreground font-medium">{scoreResult.accountNo || scoreResult.account_no}</span></div>
 
