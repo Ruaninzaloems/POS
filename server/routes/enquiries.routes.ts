@@ -391,10 +391,12 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
     "supplementary-valuations": "SupplementaryValuations",
     "valuation-by-unit": "ValuationByUnit",
     "get-eft-bank-statement-notes": "GetEftBankStatementNotes",
-    "meter-reading-history": "meter-reading-history",
-    "meter-reading-history-barchart": "meter-reading-history-barchart",
+    "meter-reading-history": "MeterReadingHistory",
+    "meter-reading-history-barchart": "MeterReadingHistoryBarchart",
     "metered-services-on-account": "MeteredServicesOnAccount",
     "unit-linked-meters": "UnitLinkedMeters",
+    "prepaid-meter-services-for-account": "PrepaidMeterServicesForAccount",
+    "prepaid-recharge-details-for-meter": "PrepaidRechargeDetailsForMeter",
   };
 
   app.get("/api/platinum/billing-enquiry/:endpoint", async (req, res, next) => {

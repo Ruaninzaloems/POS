@@ -3785,11 +3785,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.meterPrepaidLoading.set(true);
     this.meterPrepaidSales.set([]);
     this.meterPrepaidStats.set(null);
-    const account = this.selectedAccount();
-    const accountId = this.getAccountId(account);
-    const meterNo = meter.physicalMeterNo || meter.meterNo || meter.meterNumber || meter.meter_ID || '';
+    const meterId = meter.meterId || meter.meter_id || meter.id || meter.prepaidMeterId || meter.meterID || meter.meter_ID || meter.serviceId || meter.service_ID || meter.meterNo || meter.prepaidMeterNo || '';
+    if (!meterId) {
+      this.meterPrepaidLoading.set(false);
+      return;
+    }
     try {
-      const res = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/prepaid-recharge-details-for-meter`, { accountId: String(accountId), meterNo }));
+      const res = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/prepaid-recharge-details-for-meter`, { meterId: String(meterId) }));
       const sales = this.normalizeArray(res);
       this.meterPrepaidSales.set(sales);
       this.meterPrepaidStats.set(this.computePrepaidStats(sales));
