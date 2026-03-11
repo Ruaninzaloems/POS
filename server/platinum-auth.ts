@@ -553,7 +553,7 @@ export async function platinumGet(session: UserSession, path: string, params?: R
 
   let url = `${sessionApiUrl}${path}`;
   if (params) {
-    const qs = new URLSearchParams(params).toString();
+    const qs = new URLSearchParams(params).toString().replace(/%2F/gi, '/');
     if (qs) url += `?${qs}`;
   }
 
@@ -635,7 +635,7 @@ export async function platinumPost(session: UserSession, path: string, body: any
   const sessionApiUrl = getApiUrlForSession(session);
   let url = `${sessionApiUrl}${path}`;
   if (params) {
-    const qs = new URLSearchParams(params).toString();
+    const qs = new URLSearchParams(params).toString().replace(/%2F/gi, '/');
     if (qs) url += `?${qs}`;
   }
 
@@ -695,7 +695,7 @@ export async function platinumPut(session: UserSession, path: string, body: any,
   const sessionApiUrl = getApiUrlForSession(session);
   let url = `${sessionApiUrl}${path}`;
   if (params) {
-    const qs = new URLSearchParams(params).toString();
+    const qs = new URLSearchParams(params).toString().replace(/%2F/gi, '/');
     if (qs) url += `?${qs}`;
   }
   const res = await fetch(url, {
@@ -730,7 +730,7 @@ export async function platinumDelete(session: UserSession, path: string, params?
   const sessionApiUrl = getApiUrlForSession(session);
   let url = `${sessionApiUrl}${path}`;
   if (params) {
-    const qs = new URLSearchParams(params).toString();
+    const qs = new URLSearchParams(params).toString().replace(/%2F/gi, '/');
     if (qs) url += `?${qs}`;
   }
 
