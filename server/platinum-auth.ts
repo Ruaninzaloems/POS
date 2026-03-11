@@ -273,41 +273,59 @@ async function fetchTokenForUser(username: string, password: string, dbName: str
     console.log(`[PlatinumAuth] Token resolved to ${tokenUserName} (ID:${apiUserId}), looking up actual user "${username}"...`);
     try {
       const searchName = encodeURIComponent(username);
+      const nameParts = username.trim().split(/\s+/);
+      const firstName = nameParts[0]?.toLowerCase() || '';
+      const lastName = nameParts.slice(1).join(' ').toLowerCase();
       let matchedUser: any = null;
+
+      const matchUser = (u: any): boolean => {
+        if (u.userName?.toLowerCase() === username.toLowerCase()) return true;
+        if (u.email?.toLowerCase() === username.toLowerCase()) return true;
+        const uFirst = (u.firstName || '').toLowerCase();
+        const uLast = (u.lastName || '').toLowerCase();
+        if (firstName && lastName && uFirst === firstName && uLast === lastName) return true;
+        const fullName = `${uFirst} ${uLast}`.trim();
+        if (fullName === username.toLowerCase()) return true;
+        return false;
+      };
 
       const searchEndpoints = [
         `${baseUrl}/api/User/search?name=${searchName}`,
-        `${baseUrl}/api/User?$filter=contains(userName,'${username.split(' ')[0]}')`,
+        `${baseUrl}/api/User?$filter=contains(userName,'${nameParts[0]}')`,
         `${baseUrl}/api/User/by-name?userName=${searchName}`,
+        `${baseUrl}/api/User?$filter=contains(firstName,'${nameParts[0]}')`,
       ];
 
       for (const searchUrl of searchEndpoints) {
         try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 8000);
           const searchRes = await fetch(searchUrl, {
             headers: { Authorization: `Bearer ${data.token}`, Accept: "application/json" },
+            signal: controller.signal,
           });
+          clearTimeout(timeout);
           if (searchRes.ok) {
             const searchData = await searchRes.json();
             const users = Array.isArray(searchData) ? searchData : searchData?.value || searchData?.data || [];
             if (Array.isArray(users) && users.length > 0 && users.length < 500) {
-              matchedUser = users.find((u: any) =>
-                u.userName?.toLowerCase() === username.toLowerCase() ||
-                u.email?.toLowerCase() === username.toLowerCase()
-              );
+              matchedUser = users.find(matchUser);
               if (matchedUser) break;
             }
           }
-        } catch (err) { console.error('[PlatinumAuth] User search endpoint failed:', err); }
+        } catch (err: any) {
+          if (err.name !== 'AbortError') console.error('[PlatinumAuth] User search endpoint failed:', err);
+        }
       }
 
       if (!matchedUser) {
         console.log(`[PlatinumAuth] Search endpoints failed, trying streamed /api/User lookup...`);
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 15000);
+        const streamController = new AbortController();
+        const streamTimeout = setTimeout(() => streamController.abort(), 12000);
         try {
           const userListRes = await fetch(`${baseUrl}/api/User`, {
             headers: { Authorization: `Bearer ${data.token}`, Accept: "application/json" },
-            signal: controller.signal,
+            signal: streamController.signal,
           });
           if (userListRes.ok && userListRes.body) {
             const reader = userListRes.body.getReader();
@@ -323,18 +341,15 @@ async function fetchTokenForUser(username: string, password: string, dbName: str
               totalBytes += value.length;
               accumulated += decoder.decode(value, { stream: true });
 
-              if (accumulated.toLowerCase().includes(lowerUsername)) {
+              if (accumulated.toLowerCase().includes(firstName) || (lastName && accumulated.toLowerCase().includes(lastName))) {
                 try {
                   const users: any[] = JSON.parse(accumulated.endsWith(']') ? accumulated : accumulated + ']');
-                  matchedUser = users.find((u: any) =>
-                    u.userName?.toLowerCase() === lowerUsername ||
-                    u.email?.toLowerCase() === lowerUsername
-                  );
+                  matchedUser = users.find(matchUser);
                   if (matchedUser) {
                     reader.cancel();
                     break;
                   }
-                } catch (err) { console.error('[PlatinumAuth] Failed to parse streamed user JSON chunk:', err); }
+                } catch {}
               }
 
               if (totalBytes > maxBytes) {
@@ -347,25 +362,8 @@ async function fetchTokenForUser(username: string, password: string, dbName: str
             if (!matchedUser && accumulated.length > 0) {
               try {
                 const users: any[] = JSON.parse(accumulated);
-                matchedUser = users.find((u: any) =>
-                  u.userName?.toLowerCase() === lowerUsername ||
-                  u.email?.toLowerCase() === lowerUsername
-                );
-              } catch {
-                const nameIdx = accumulated.toLowerCase().indexOf(lowerUsername);
-                if (nameIdx !== -1) {
-                  const objStart = accumulated.lastIndexOf('{', nameIdx);
-                  const objEnd = accumulated.indexOf('}', nameIdx);
-                  if (objStart !== -1 && objEnd !== -1) {
-                    try {
-                      matchedUser = JSON.parse(accumulated.substring(objStart, objEnd + 1));
-                      if (matchedUser.userName?.toLowerCase() !== lowerUsername && matchedUser.email?.toLowerCase() !== lowerUsername) {
-                        matchedUser = null;
-                      }
-                    } catch (err) { console.error('[PlatinumAuth] Failed to parse user object from stream:', err); }
-                  }
-                }
-              }
+                matchedUser = users.find(matchUser);
+              } catch {}
             }
           }
         } catch (streamErr: any) {
@@ -373,7 +371,7 @@ async function fetchTokenForUser(username: string, password: string, dbName: str
             console.log(`[PlatinumAuth] Streamed user lookup failed: ${streamErr.message}`);
           }
         } finally {
-          clearTimeout(timeout);
+          clearTimeout(streamTimeout);
         }
       }
 
