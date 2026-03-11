@@ -399,6 +399,9 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
     "prepaid-recharge-details-for-meter": "PrepaidRechargeDetailsForMeter",
   };
 
+  const meterReadingEndpoints = new Set(["meter-reading-history", "meter-reading-history-barchart"]);
+  const meterParamFallbacks = ["meterNo", "meterId", "MeterNo", "MeterId", "meterNumber", "MeterNumber"];
+
   app.get("/api/platinum/billing-enquiry/:endpoint", async (req, res, next) => {
     const { endpoint } = req.params;
     const platinumPath = valuationQueryParamEndpoints[endpoint];
@@ -407,6 +410,30 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
       const session = requireAuth(req, res); if (!session) return;
       const queryParams: Record<string, string> = { ...req.query as Record<string, string> };
       console.log(`[billing-enquiry] valuation endpoint="${endpoint}" mapped="${platinumPath}" queryParams:`, JSON.stringify(queryParams));
+
+      if (meterReadingEndpoints.has(endpoint) && queryParams.meterNo) {
+        const meterVal = queryParams.meterNo;
+        for (const paramName of meterParamFallbacks) {
+          const tryParams = { ...queryParams };
+          delete tryParams.meterNo;
+          tryParams[paramName] = meterVal;
+          console.log(`[billing-enquiry] ${endpoint} trying param "${paramName}"=${meterVal}`);
+          try {
+            const data = await platinumGet(session, `/api/BillingEnquiry/${platinumPath}`, tryParams);
+            if (data && !data._error) {
+              const sample = Array.isArray(data) ? data[0] : data;
+              console.log(`[billing-enquiry] ${endpoint} SUCCESS with param "${paramName}" keys:`, sample ? Object.keys(sample) : 'empty/null', `isArray=${Array.isArray(data)} count=${Array.isArray(data) ? data.length : 'single'}`);
+              return handlePlatinumResult(res, data);
+            }
+            console.log(`[billing-enquiry] ${endpoint} param "${paramName}" returned _error, trying next...`);
+          } catch (err: any) {
+            console.log(`[billing-enquiry] ${endpoint} param "${paramName}" threw: ${err.message}, trying next...`);
+          }
+        }
+        console.error(`[billing-enquiry/${endpoint}] All meter param variants failed for meter=${meterVal}`);
+        return res.status(502).json({ message: "Meter reading API failed with all parameter variants", detail: `Tried: ${meterParamFallbacks.join(', ')}` });
+      }
+
       const data = await platinumGet(session, `/api/BillingEnquiry/${platinumPath}`, queryParams);
       const sample = Array.isArray(data) ? data[0] : data;
       console.log(`[billing-enquiry] ${endpoint} response keys:`, sample ? Object.keys(sample) : 'empty/null', `isArray=${Array.isArray(data)} count=${Array.isArray(data) ? data.length : 'single'}`);
