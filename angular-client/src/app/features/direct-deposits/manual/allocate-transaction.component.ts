@@ -211,8 +211,8 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
   searchPlaceholder = computed(() => {
     const scope = this.searchScope();
     switch (scope) {
-      case 'ALL': return 'Search account, name, ERF, meter, ID, email, old code...';
-      case 'ACCOUNT': return 'Account, name, ERF, meter, ID, SG, email...';
+      case 'ALL': return 'Search account number, name/surname, old account code, ID...';
+      case 'ACCOUNT': return 'Account number, name/surname, old account code, ID...';
       case 'PREPAID': return 'Search account for prepaid recharge...';
       case 'INSTITUTION': return 'Search institution name...';
       case 'GROUP': return 'Search payment grouping...';
@@ -299,12 +299,32 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
     if (/^0\d{9}$/.test(trimmed)) return { field: 'mobileNumber', label: 'Mobile Number' };
     if (/^\d{13}$/.test(trimmed)) return { field: 'idNo', label: 'ID Number' };
     if (/^[A-Z]\d{3}\/\d{4}\/\d+\/\d+$/i.test(trimmed)) return { field: 'sgNumber', label: 'SG Number' };
-    if (/^\d{6,15}$/.test(trimmed)) return { field: 'accountNo', label: 'Account / ERF / Meter' };
-    if (/^\d{1,5}$/.test(trimmed)) return { field: 'accountNo', label: 'Account / ERF / Meter' };
+    if (/^\d{1,15}$/.test(trimmed)) return { field: 'accountNo', label: 'Account Number' };
     if (/@/.test(trimmed) || /\.(com|co\.za|org|net|gov|ac\.za)$/i.test(trimmed) || /^(gmail|yahoo|outlook|hotmail|webmail|mail)/i.test(trimmed)) {
       return { field: 'emailAddress', label: 'Email Address' };
     }
-    return { field: 'name', label: 'Name / Address' };
+    return { field: 'name', label: 'Name / Surname' };
+  }
+
+  private getAutocompleteType(field: string): string {
+    const map: Record<string, string> = {
+      accountNo: 'accountNumber',
+      name: 'nameCompany',
+      idNo: 'idRegistrationNumber',
+      emailAddress: 'email',
+      oldAccountCode: 'oldAccountCode',
+      sgNumber: 'erfNumber',
+      mobileNumber: 'mobileNumber',
+    };
+    return map[field] || 'accountNumber';
+  }
+
+  private normalizeArray(data: any): any[] {
+    if (Array.isArray(data)) return data;
+    if (data?.value && Array.isArray(data.value)) return data.value;
+    if (data?.results && Array.isArray(data.results)) return data.results;
+    if (data?.data && Array.isArray(data.data)) return data.data;
+    return [];
   }
 
   onSearchInput(query: string): void {
@@ -362,14 +382,16 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
       if (combined.length > 0) this.dropdownOpen.set(true);
     };
 
-    const addAccountHit = (item: any, source?: string, allocType = 'ACCOUNT') => {
+    const allocType = scope === 'PREPAID' ? 'PREPAID' : 'ACCOUNT';
+
+    const addAccountHit = (item: any, source?: string) => {
       const accId = item.account_ID || item.accountID || item.id;
       if (accId && !seen.has(accId)) {
         seen.add(accId);
         results.push({
           accountId: accId,
-          accountNo: item.accountNumber || item.accountNo || String(accId),
-          name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.surname_Company || item.name || item.accountDesc || item.typeOfUseDesc || '',
+          accountNo: item.accountNumber || item.accountNo || String(accId).padStart(12, '0'),
+          name: item.surname_Company || [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || item.accountDesc || item.typeOfUseDesc || '',
           oldAccountCode: item.oldAccountCode || '',
           outstandingAmount: item.outStandingAmt || item.outStandingAmount || item.outstandingAmount || 0,
           type: 'ACCOUNT',
@@ -379,107 +401,91 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
       }
     };
 
+    const addAutocompleteHit = (s: any) => {
+      if (!s.accountId || s.accountId <= 0 || seen.has(s.accountId)) return;
+      seen.add(s.accountId);
+      const display = s.displayItem || '';
+      const parts = display.split(' - ');
+      const acctNum = parts[0]?.trim() || String(s.accountId).padStart(12, '0');
+      const rest = parts.slice(1).join(' - ').trim();
+      const nameParts = rest.split(',');
+      const name = nameParts[0]?.trim() || '';
+      const address = nameParts.slice(1).join(',').trim() || '';
+      results.push({
+        accountId: s.accountId,
+        accountNo: acctNum,
+        name: name,
+        oldAccountCode: '',
+        outstandingAmount: 0,
+        type: 'ACCOUNT',
+        description: address || undefined,
+        rawData: { account_ID: s.accountId, accountNumber: acctNum, name, locationAddress: address, _allocationType: allocType, _fromAutocomplete: true },
+      });
+    };
+
     try {
-      const allocType = scope === 'PREPAID' ? 'PREPAID' : 'ACCOUNT';
-
       if (scope === 'ALL' || scope === 'ACCOUNT' || scope === 'PREPAID') {
-        const primaryBody: Record<string, any> = {};
-        if (detected.field === 'accountNo' && isNumeric) {
-          primaryBody['accountNo'] = query;
-        } else if (detected.field === 'name') {
-          primaryBody['name'] = query;
-        } else if (detected.field === 'mobileNumber') {
-          primaryBody['mobileNumber'] = query;
-        } else if (detected.field === 'idNo') {
-          primaryBody['idNo'] = query;
-        } else if (detected.field === 'emailAddress') {
-          primaryBody['emailAddress'] = query;
-        } else if (detected.field === 'sgNumber') {
-          primaryBody['sgNumber'] = query;
-        } else {
-          primaryBody[isNumeric ? 'accountNo' : 'name'] = query;
-        }
+        const acType = this.getAutocompleteType(detected.field);
+        const primaryTasks: Promise<void>[] = [];
 
-        const primarySearches: Promise<void>[] = [];
-
-        primarySearches.push(
+        primaryTasks.push(
           this.searchWithTimeout(
-            this.api.post('/api/platinum/billing-payment/search-accounts', primaryBody)
-          ).then((r: any) => {
+            this.api.get('/api/platinum/billing-enquiry/autocomplete', { search: query.trim(), type: acType })
+          ).then((data: any) => {
             if (isAborted()) return;
-            const items = Array.isArray(r) ? r : r?.value || [];
-            for (const item of items.slice(0, 15)) {
-              addAccountHit(item, detected.field !== 'accountNo' && detected.field !== 'name' ? `Found via ${detected.label}` : undefined, allocType);
-            }
+            const arr = this.normalizeArray(data);
+            for (const s of arr.slice(0, 15)) addAutocompleteHit(s);
             pushResults();
           }).catch(() => {})
         );
 
-        if (isNumeric && query.length < 12) {
-          const padded = query.padStart(12, '0');
-          primarySearches.push(
+        const searchBody: Record<string, any> = {};
+        if (detected.field === 'accountNo' && isNumeric) {
+          searchBody['accountNo'] = query;
+        } else if (detected.field === 'name') {
+          searchBody['name'] = query;
+        } else if (detected.field === 'mobileNumber') {
+          searchBody['mobileNumber'] = query;
+        } else if (detected.field === 'idNo') {
+          searchBody['idNo'] = query;
+        } else if (detected.field === 'emailAddress') {
+          searchBody['emailAddress'] = query;
+        } else if (detected.field === 'sgNumber') {
+          searchBody['sgNumber'] = query;
+        } else {
+          searchBody[isNumeric ? 'accountNo' : 'name'] = query;
+        }
+
+        primaryTasks.push(
+          this.searchWithTimeout(
+            this.api.post('/api/platinum/billing-payment/search-accounts', searchBody)
+          ).then((r: any) => {
+            if (isAborted()) return;
+            const items = this.normalizeArray(r);
+            for (const item of items.slice(0, 10)) addAccountHit(item);
+            pushResults();
+          }).catch(() => {})
+        );
+
+        if (isNumeric && query.length >= 4) {
+          primaryTasks.push(
             this.searchWithTimeout(
-              this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: padded })
+              this.api.post('/api/platinum/billing-payment/search-accounts', { oldAccountCode: query })
             ).then((r: any) => {
               if (isAborted()) return;
-              const items = Array.isArray(r) ? r : r?.value || [];
-              for (const item of items.slice(0, 10)) addAccountHit(item, undefined, allocType);
+              const arr = this.normalizeArray(r);
+              for (const item of arr.slice(0, 5)) addAccountHit(item, 'Found via old account code');
               pushResults();
             }).catch(() => {})
           );
         }
 
-        primarySearches.push(
-          this.searchWithTimeout(
-            this.api.post('/api/platinum/billing-payment/search-accounts', { oldAccountCode: query })
-          ).then((r: any) => {
-            if (isAborted()) return;
-            const arr = Array.isArray(r) ? r : r?.value || [];
-            for (const item of arr.slice(0, 5)) addAccountHit(item, 'Found via old account code', allocType);
-            pushResults();
-          }).catch(() => {})
-        );
-
-        await Promise.allSettled(primarySearches);
+        await Promise.allSettled(primaryTasks);
         if (isAborted()) return;
         pushResults();
 
-        if (results.length === 0 && isNumeric) {
-          const secondarySearches: Promise<void>[] = [];
-          secondarySearches.push(
-            this.searchWithTimeout(
-              this.api.post('/api/platinum/billing-payment/search-accounts', { erfNumber: query })
-            ).then((r: any) => {
-              if (isAborted()) return;
-              const arr = Array.isArray(r) ? r : r?.value || [];
-              for (const item of arr.slice(0, 5)) addAccountHit(item, 'Found via ERF number', allocType);
-              pushResults();
-            }).catch(() => {})
-          );
-          secondarySearches.push(
-            this.searchWithTimeout(
-              this.api.post('/api/platinum/billing-payment/search-accounts', { physicalMeterNumber: query })
-            ).then((r: any) => {
-              if (isAborted()) return;
-              const arr = Array.isArray(r) ? r : r?.value || [];
-              for (const item of arr.slice(0, 5)) addAccountHit(item, 'Found via meter number', allocType);
-              pushResults();
-            }).catch(() => {})
-          );
-          await Promise.allSettled(secondarySearches);
-          if (isAborted()) return;
-          pushResults();
-        }
-
-        if (!isNumeric && detected.field === 'name') {
-          this.searchWithTimeout(
-            this.api.post('/api/platinum/billing-payment/search-accounts', { locationAddress: query })
-          ).then((r: any) => {
-            if (isAborted()) return;
-            const arr = Array.isArray(r) ? r : r?.value || [];
-            for (const item of arr.slice(0, 3)) addAccountHit(item, 'Found via location/address', allocType);
-            pushResults();
-          }).catch(() => {});
+        if (results.length > 0) {
+          this.enrichAutocompleteResults(results, searchVersion);
         }
       }
 
@@ -557,7 +563,7 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
               this.api.get('/api/platinum/direct-deposit-allocation/get-group-payment-details', { searchTerm: query })
             );
             if (isAborted()) return;
-            const groupArr = Array.isArray(groupResults) ? groupResults : (groupResults?.value || []);
+            const groupArr = this.normalizeArray(groupResults);
             for (const g of groupArr.slice(0, 5)) {
               const gId = g.groupId || g.id || g.group_ID || 0;
               if (!seen.has(gId + 100000)) {
@@ -585,7 +591,7 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
               this.api.get('/api/platinum/const-institutions/search', { name: query })
             );
             if (isAborted()) return;
-            const arr = Array.isArray(institutionResults) ? institutionResults : [];
+            const arr = this.normalizeArray(institutionResults);
             for (const inst of arr.slice(0, 10)) {
               const instId = inst.institutionID || inst.institution_ID || inst.id || 0;
               if (instId && !seen.has(instId + 200000)) {
@@ -617,6 +623,35 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
         this.searching.set(false);
         this.abortController = null;
       }
+    }
+  }
+
+  private async enrichAutocompleteResults(results: SearchResult[], token: number): Promise<void> {
+    const autocompleteItems = results.filter(r => r.rawData?._fromAutocomplete);
+    if (autocompleteItems.length === 0) return;
+
+    for (const item of autocompleteItems.slice(0, 5)) {
+      if (token !== this.searchVersion) return;
+      try {
+        const detail = await this.searchWithTimeout(
+          this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: item.accountNo })
+        );
+        if (token !== this.searchVersion) return;
+        const arr = this.normalizeArray(detail);
+        if (arr.length > 0) {
+          const full = arr[0];
+          const name = [full.initials, full.lastName].filter(Boolean).join(' ') || full.surname_Company || full.name || '';
+          if (name) item.name = name;
+          if (full.outStandingAmt != null) item.outstandingAmount = full.outStandingAmt;
+          else if (full.outStandingAmount != null) item.outstandingAmount = full.outStandingAmount;
+          if (full.oldAccountCode) item.oldAccountCode = full.oldAccountCode;
+          item.rawData = { ...item.rawData, ...full, _allocationType: item.rawData?._allocationType || 'ACCOUNT' };
+        }
+      } catch {}
+    }
+
+    if (token === this.searchVersion) {
+      this.searchResults.set([...results].slice(0, 15));
     }
   }
 
