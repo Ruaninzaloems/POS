@@ -3309,19 +3309,12 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.consumptionSelectedYears.set([]);
     const account = this.selectedAccount();
     const accountId = this.getAccountId(account);
-    const physicalNo = meter.physicalMeterNo || meter.physicalMeterNumber || '';
-    const internalNo = meter.meterNo || meter.meterNumber || '';
-    const meterId = meter.meterID || meter.meterId || meter.meter_id || '';
-    const meterNo = String(physicalNo || internalNo || meterId || '').replace(/^0+/, '');
-    const meterParams: Record<string, string> = { accountId: String(accountId), meterNo };
-    if (physicalNo) meterParams['physicalMeterNo'] = String(physicalNo);
-    if (internalNo) meterParams['internalMeterNo'] = String(internalNo).replace(/^0+/, '');
-    if (meterId) meterParams['meterId'] = String(meterId);
-    console.log('[consumption] selectConsumptionMeter params:', JSON.stringify(meterParams));
+    const meterNo = String(meter.meterNo || meter.meterNumber || meter.physicalMeterNo || meter.physicalMeterNumber || '').replace(/^0+/, '');
+    console.log('[consumption] selectConsumptionMeter meterNo:', meterNo, 'accountId:', accountId);
     try {
       const [historyRes, barRes] = await Promise.allSettled([
-        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history`, meterParams)),
-        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history-barchart`, meterParams)),
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history`, { accountId: String(accountId), meterNo })),
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history-barchart`, { accountId: String(accountId), meterNo })),
       ]);
       const history = historyRes.status === 'fulfilled' ? this.normalizeArray(historyRes.value) : [];
       const barChart = barRes.status === 'fulfilled' ? this.normalizeArray(barRes.value) : [];
@@ -3898,18 +3891,11 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.meterConvInsights.set(null);
     const account = this.selectedAccount();
     const accountId = this.getAccountId(account);
-    const physicalNo = meter.physicalMeterNo || meter.physicalMeterNumber || '';
-    const internalNo = meter.meterNo || meter.meterNumber || '';
-    const meterId = meter.meterID || meter.meterId || meter.meter_id || '';
-    const meterNo = String(physicalNo || internalNo || meterId || '').replace(/^0+/, '');
-    const meterParams: Record<string, string> = { accountId: String(accountId), meterNo };
-    if (physicalNo) meterParams['physicalMeterNo'] = String(physicalNo);
-    if (internalNo) meterParams['internalMeterNo'] = String(internalNo).replace(/^0+/, '');
-    if (meterId) meterParams['meterId'] = String(meterId);
+    const meterNo = String(meter.meterNo || meter.meterNumber || meter.physicalMeterNo || meter.physicalMeterNumber || '').replace(/^0+/, '');
     try {
       const [historyRes, barRes] = await Promise.allSettled([
-        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history`, meterParams)),
-        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history-barchart`, meterParams)),
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history`, { accountId: String(accountId), meterNo })),
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history-barchart`, { accountId: String(accountId), meterNo })),
       ]);
       const history = historyRes.status === 'fulfilled' ? this.normalizeArray(historyRes.value) : [];
       const barChart = barRes.status === 'fulfilled' ? this.normalizeArray(barRes.value) : [];

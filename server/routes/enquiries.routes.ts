@@ -399,8 +399,6 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
     "prepaid-recharge-details-for-meter": "PrepaidRechargeDetailsForMeter",
   };
 
-  const meterReadingEndpoints = new Set(["meter-reading-history", "meter-reading-history-barchart"]);
-
   app.get("/api/platinum/billing-enquiry/:endpoint", async (req, res, next) => {
     const { endpoint } = req.params;
     const platinumPath = valuationQueryParamEndpoints[endpoint];
@@ -409,39 +407,6 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
       const session = requireAuth(req, res); if (!session) return;
       const queryParams: Record<string, string> = { ...req.query as Record<string, string> };
       console.log(`[billing-enquiry] valuation endpoint="${endpoint}" mapped="${platinumPath}" queryParams:`, JSON.stringify(queryParams));
-
-      if (meterReadingEndpoints.has(endpoint) && queryParams.meterNo) {
-        const meterValues = new Set<string>();
-        meterValues.add(queryParams.meterNo);
-        if (queryParams.physicalMeterNo) meterValues.add(queryParams.physicalMeterNo);
-        if (queryParams.internalMeterNo) meterValues.add(queryParams.internalMeterNo);
-        if (queryParams.meterId) meterValues.add(queryParams.meterId);
-        const accountId = queryParams.accountId;
-        const paramNames = ["meterNo", "meterId", "MeterNo", "MeterId"];
-        const attempts: Array<{paramName: string, value: string}> = [];
-        for (const value of meterValues) {
-          for (const paramName of paramNames) {
-            attempts.push({ paramName, value });
-          }
-        }
-        console.log(`[billing-enquiry] ${endpoint} will try ${attempts.length} combinations for meter values: [${[...meterValues].join(', ')}]`);
-        for (const { paramName, value } of attempts) {
-          const tryParams: Record<string, string> = { accountId };
-          tryParams[paramName] = value;
-          console.log(`[billing-enquiry] ${endpoint} trying ${paramName}=${value}`);
-          try {
-            const data = await platinumGet(session, `/api/BillingEnquiry/${platinumPath}`, tryParams);
-            if (data && !data._error) {
-              const sample = Array.isArray(data) ? data[0] : data;
-              console.log(`[billing-enquiry] ${endpoint} SUCCESS with ${paramName}=${value} keys:`, sample ? Object.keys(sample) : 'empty/null', `count=${Array.isArray(data) ? data.length : 'single'}`);
-              return handlePlatinumResult(res, data);
-            }
-          } catch {}
-        }
-        console.error(`[billing-enquiry/${endpoint}] All ${attempts.length} meter param combinations failed`);
-        return res.status(502).json({ message: "Meter reading API unavailable", detail: `Tried ${attempts.length} param/value combinations` });
-      }
-
       const data = await platinumGet(session, `/api/BillingEnquiry/${platinumPath}`, queryParams);
       const sample = Array.isArray(data) ? data[0] : data;
       console.log(`[billing-enquiry] ${endpoint} response keys:`, sample ? Object.keys(sample) : 'empty/null', `isArray=${Array.isArray(data)} count=${Array.isArray(data) ? data.length : 'single'}`);
