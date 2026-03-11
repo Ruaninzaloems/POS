@@ -1227,35 +1227,172 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
     try {
       const clues = parseDescriptionForClues(item.note || '', item.reference || '');
 
-      if (clues.accountNumbers.length === 0 && clues.erfNumbers.length === 0 && clues.meterNumbers.length === 0) {
-        this.toast.error('No account number found in description. Use manual allocation.');
+      if (clues.accountNumbers.length === 0 && clues.erfNumbers.length === 0 && clues.meterNumbers.length === 0 && clues.oldAccountCodes.length === 0 && clues.nameSearchTerms.length === 0) {
+        this.toast.error('No account clues found in description. Use manual allocation.');
         return;
       }
 
-      let bestMatch: any = null;
-      for (const accNo of clues.accountNumbers.slice(0, 3)) {
+      const safeFirst = async (obs: any): Promise<any[]> => {
         try {
-          const results: any = await firstValueFrom(
-            this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: accNo })
+          const raw: any = await firstValueFrom(obs);
+          if (Array.isArray(raw)) return raw;
+          if (raw?.value && Array.isArray(raw.value)) return raw.value;
+          if (raw?.results && Array.isArray(raw.results)) return raw.results;
+          if (raw?.data && Array.isArray(raw.data)) return raw.data;
+          return [];
+        } catch { return []; }
+      };
+
+      type Candidate = { item: any; confidence: number; source: string };
+      const candidateMap = new Map<number, Candidate>();
+      const addCandidate = (r: any, confidence: number, source: string) => {
+        const id = r.account_ID || r.accountID || r.id;
+        if (!id) return;
+        const existing = candidateMap.get(id);
+        if (!existing || confidence > existing.confidence) {
+          candidateMap.set(id, { item: r, confidence, source });
+        }
+      };
+
+      const searchPromises: Promise<void>[] = [];
+
+      for (const accNo of clues.accountNumbers.slice(0, 3)) {
+        searchPromises.push(
+          safeFirst(this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: accNo }))
+            .then(items => {
+              for (const r of items.slice(0, 3)) {
+                const resultAccNo = r.accountNumber || r.accountNo || '';
+                const exact = resultAccNo.replace(/^0+/, '') === accNo.replace(/^0+/, '');
+                addCandidate(r, exact ? 95 : 70, `Account: ${accNo}`);
+              }
+            })
+        );
+      }
+
+      for (const erf of clues.erfNumbers.slice(0, 3)) {
+        searchPromises.push(
+          safeFirst(this.api.post('/api/platinum/billing-payment/search-accounts', { erfNumber: erf.erf }))
+            .then(items => {
+              for (const r of items.slice(0, 5)) {
+                const normalizeArea = (s: string) => s.toLowerCase().replace(/[\s-]+/g, '');
+                let areaMatch = false;
+                if (erf.area) {
+                  const normArea = normalizeArea(erf.area);
+                  areaMatch = [r.allotmentArea, r.town, r.name, r.address, r.locationAddress, r.deliveryAddress, r.accountDesc]
+                    .filter(Boolean).map((f: string) => normalizeArea(f)).some(f => f.includes(normArea));
+                }
+                addCandidate(r, areaMatch ? 93 : (erf.portion ? 85 : 78), `ERF ${erf.erf}${erf.area ? ' ' + erf.area : ''}`);
+              }
+            })
+        );
+
+        const erfPadded = erf.erf.padStart(8, '0');
+        searchPromises.push(
+          safeFirst(this.api.get('/api/platinum/direct-deposit-allocation/get-account-autocomplete', { searchText: erfPadded }))
+            .then(items => {
+              for (const r of items.slice(0, 5)) {
+                const normalizeArea = (s: string) => s.toLowerCase().replace(/[\s-]+/g, '');
+                let areaMatch = false;
+                if (erf.area) {
+                  const normArea = normalizeArea(erf.area);
+                  areaMatch = [r.allotmentArea, r.town, r.name, r.address, r.locationAddress]
+                    .filter(Boolean).map((f: string) => normalizeArea(f)).some(f => f.includes(normArea));
+                }
+                addCandidate(r, areaMatch ? 92 : 87, `ERF ${erf.erf} (autocomplete)`);
+              }
+            })
+        );
+
+        searchPromises.push(
+          safeFirst(this.api.get('/api/platinum/direct-deposit-allocation/get-old-account-autocomplete', { searchText: erfPadded }))
+            .then(items => {
+              for (const r of items.slice(0, 5)) {
+                addCandidate(r, 90, `ERF ${erf.erf} (SG code)`);
+              }
+            })
+        );
+
+        if (erf.erf !== erfPadded) {
+          searchPromises.push(
+            safeFirst(this.api.get('/api/platinum/direct-deposit-allocation/get-account-autocomplete', { searchText: erf.erf }))
+              .then(items => {
+                for (const r of items.slice(0, 3)) addCandidate(r, 85, `ERF ${erf.erf} (raw)`);
+              })
           );
-          const items = Array.isArray(results) ? results : results?.value || [];
-          if (items.length > 0) {
-            bestMatch = items[0];
-            break;
-          }
-        } catch (e: any) {
-          console.warn(`[AutoAllocate] Account search failed for ${accNo}:`, e?.message);
         }
       }
 
-      if (!bestMatch) {
+      for (const mtr of clues.meterNumbers.slice(0, 3)) {
+        searchPromises.push(
+          safeFirst(this.api.post('/api/platinum/billing-payment/search-accounts', { physicalMeterNumber: mtr }))
+            .then(items => {
+              for (const r of items.slice(0, 3)) addCandidate(r, 90, `Meter: ${mtr}`);
+            })
+        );
+        searchPromises.push(
+          safeFirst(this.api.get('/api/platinum/direct-deposit-allocation/get-account-autocomplete', { searchText: mtr }))
+            .then(items => {
+              for (const r of items.slice(0, 3)) {
+                const meterStr = String(r.meterNumber || r.physicalMeterNumber || '');
+                addCandidate(r, meterStr.includes(mtr) ? 92 : 75, `Meter: ${mtr}`);
+              }
+            })
+        );
+      }
+
+      for (const oldCode of clues.oldAccountCodes.slice(0, 2)) {
+        searchPromises.push(
+          safeFirst(this.api.get('/api/platinum/direct-deposit-allocation/get-old-account-autocomplete', { searchText: oldCode }))
+            .then(items => {
+              for (const r of items.slice(0, 3)) addCandidate(r, 78, `Old code: ${oldCode}`);
+            })
+        );
+      }
+
+      const refTrimmed = (item.reference || '').trim();
+      if (/^\d{3,7}$/.test(refTrimmed) && !clues.accountNumbers.some(a => a === refTrimmed || a.endsWith(refTrimmed))) {
+        const paddedRef = refTrimmed.padStart(12, '0');
+        searchPromises.push(
+          safeFirst(this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: paddedRef }))
+            .then(items => {
+              for (const r of items.slice(0, 2)) {
+                const accNo = r.accountNumber || r.accountNo || '';
+                if (accNo.endsWith(refTrimmed) || accNo === paddedRef) {
+                  addCandidate(r, 92, `Reference: ${refTrimmed}`);
+                }
+              }
+            })
+        );
+      }
+
+      for (const nameTerm of clues.nameSearchTerms.slice(0, 2)) {
+        searchPromises.push(
+          safeFirst(this.api.post('/api/platinum/billing-payment/search-accounts', { name: nameTerm }))
+            .then(items => {
+              for (const r of items.slice(0, 3)) {
+                const fullName = [r.initials, r.lastName].filter(Boolean).join(' ') || r.name || '';
+                const nameUpper = nameTerm.toUpperCase();
+                const exact = (r.lastName || '').toUpperCase() === nameUpper || fullName.toUpperCase().includes(nameUpper);
+                addCandidate(r, exact ? 65 : 45, `Name: ${nameTerm}`);
+              }
+            })
+        );
+      }
+
+      await Promise.allSettled(searchPromises);
+
+      const candidates = Array.from(candidateMap.values());
+      if (candidates.length === 0) {
         this.toast.error('No matching account found. Use manual allocation.');
         return;
       }
 
-      const accId = bestMatch.account_ID || bestMatch.accountID || bestMatch.id;
-      const accNo = bestMatch.accountNumber || bestMatch.accountNo || String(accId);
-      this.toast.success(`Found account ${accNo}. Redirecting to allocation...`);
+      candidates.sort((a, b) => b.confidence - a.confidence);
+      const best = candidates[0];
+      const accId = best.item.account_ID || best.item.accountID || best.item.id;
+      const accNo = best.item.accountNumber || best.item.accountNo || String(accId);
+      const name = [best.item.initials, best.item.lastName].filter(Boolean).join(' ') || best.item.name || best.item.accountDesc || '';
+      this.toast.success(`Found: ${accNo} ${name} (${best.source}, ${best.confidence}%). Redirecting...`);
       this.router.navigate(['/direct-deposits/manual/allocate', item.posItem_ID]);
     } catch (e: any) {
       this.toast.error(e?.message || 'Auto-allocate failed');
@@ -1267,7 +1404,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
 
   hasAccountClue(item: BankReconPosItem): boolean {
     const clues = parseDescriptionForClues(item.note || '', item.reference || '');
-    return clues.accountNumbers.length > 0 || clues.erfNumbers.length > 0 || clues.meterNumbers.length > 0;
+    return clues.accountNumbers.length > 0 || clues.erfNumbers.length > 0 || clues.meterNumbers.length > 0 || clues.oldAccountCodes.length > 0 || clues.nameSearchTerms.length > 0;
   }
 
   getClueTypeBadge(item: BankReconPosItem): string {

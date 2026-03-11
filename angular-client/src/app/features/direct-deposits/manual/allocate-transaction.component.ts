@@ -404,7 +404,7 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
           ).then((results: any) => {
             if (isAborted()) return;
             const items = Array.isArray(results) ? results : results?.value || [];
-            console.warn('[AllocateTransaction] Primary search returned', items.length, 'results for', JSON.stringify(primaryBody));
+            if (items.length === 0) console.warn('[AllocateTransaction] Primary search returned 0 results for', JSON.stringify(primaryBody));
             for (const item of items.slice(0, 15)) {
               addAccountHit(item, detected.field !== 'accountNo' && detected.field !== 'name' ? `Found via ${detected.label}` : undefined);
             }
