@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "VGFWLKqmOSluRaz3jGdYp"
+uri = "file://debt-legal-phases/PHASE_0_1_DEBT_LEGAL_MASTER.xlsx"
+type = "table"
+title = "Phase 0 & 1 - Debt & Legal Master (SQL + APIs + Mapping + Checklist)"

@@ -122,7 +122,21 @@ The Debt & Legal solution employs a hybrid architecture where Replit handles the
 ## Phase Deliverable Standard
 Every development phase (Phase 1, 2, 3, ...) produces exactly 5 output files. See skill `.agents/skills/phase-deliverables/SKILL.md` for the template and naming conventions.
 
+### Debt & Legal Tracking Folder
+All phase deliverables centralized in `debt-legal-phases/`:
+- `PHASE_0_1_DEBT_LEGAL_MASTER.xlsx` — SQL tables, API contracts, frontend mapping, checklist (6 sheets)
+- `PHASE0_MASTER_MATRIX_V2.md` — 24-page feature matrix
+- `PHASE1_V2_SECTION129_DETAIL_PACK.md` — 20 API contracts
+- `PHASE1_V2_DB_CHANGE_SCRIPT.sql` — 4 new tables, 4 ALTER, 6 indexes
+- `PHASE1_V2_BLOCKERS_ACTION_LIST.md` — Blockers tracker
+- `PHASE1_V2_SIGNOFF_CHECKLIST.md` — Signoff checklist
+
 ### Phase Status
-- **Phase 0** (Foundation/Analysis) — COMPLETED → `PHASE0_MASTER_MATRIX.md`
-- **Phase 1** (Section 129 Notices) — DESIGN COMPLETE, PENDING API TEAM BUILD
-- **Phase 2** (Section 129 Configuration) — NOT STARTED (blocked by Phase 1 signoff)
+- **Phase 0** (Foundation/Lookups) — DESIGN COMPLETE → Excel Sheet 1-2
+- **Phase 1** (Section 129 Notices) — DESIGN COMPLETE, PENDING API TEAM BUILD → Excel Sheet 2-4
+- **Phase 2** (Handover Management) — NEXT UP (doing with Phase 3)
+- **Phase 3** (Risk Scoring & Qualification) — NEXT UP
+- **Phase 4** (Communication & Batch) — NOT STARTED
+- **Phase 5** (Legal Compliance) — NOT STARTED
+- **Phase 6** (Documents & Signatures) — NOT STARTED
+- **Phase 7** (Process Engine & Analytics) — NOT STARTED
