@@ -198,7 +198,19 @@ export function registerAuthRoutes(app: Express, httpServer: Server): void {
             const numUserId = parseInt(String(userId), 10);
             if (numFallback && numFallback !== 0 && !isNaN(numFallback) && !(fallbackCashierId as any)?._error) {
               if (numFallback === numUserId) {
-                console.log(`[active-cashier] Fallback returned userId ${numFallback} (same as user_Id) — this is NOT a valid POS_Cashier.id, skipping details lookup`);
+                console.log(`[active-cashier] Fallback returned userId ${numFallback} (same as user_Id) — still trying details lookup in case it's also a valid cashier ID`);
+                try {
+                  const details = await platinumGet(session, `/api/ReceiptPrepaid/cashier-detailsById`, { cashierId: String(numFallback) });
+                  if (details && !details._error && details.id) {
+                    cashier = details;
+                    cashOffice = details.const_CashOffice || null;
+                    console.log(`[active-cashier] userId=cashierId fallback SUCCESS — id: ${details.id}, isActive: ${details.isActive}, officeId: ${details.officeId}`);
+                  } else {
+                    console.log(`[active-cashier] userId=cashierId fallback returned no valid cashier: ${JSON.stringify(details)?.substring(0, 200)}`);
+                  }
+                } catch (sameIdErr: any) {
+                  console.warn(`[active-cashier] userId=cashierId details lookup failed:`, sameIdErr.message);
+                }
               } else {
                 console.log(`[active-cashier] Fallback found active cashierId: ${numFallback} (different from userId ${numUserId}) — fetching details`);
                 const details = await platinumGet(session, `/api/ReceiptPrepaid/cashier-detailsById`, { cashierId: String(numFallback) });
