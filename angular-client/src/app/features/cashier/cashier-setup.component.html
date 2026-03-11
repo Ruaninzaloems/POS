@@ -367,6 +367,14 @@
           <div class="form-divider"></div>
 
           <div class="form-actions">
+            @if (dayEndPending()) {
+              <div class="day-end-block-msg" data-testid="day-end-block-message">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>
+                </svg>
+                <span>Your previous day-end reconciliation is pending supervisor approval. You cannot start a new session until it has been approved.</span>
+              </div>
+            }
             <button
               type="submit"
               class="btn-primary btn-submit"
@@ -375,6 +383,8 @@
             >
               @if (submitting()) {
                 <div class="spinner spinner-sm"></div> Starting Session...
+              } @else if (dayEndPending()) {
+                Session Blocked — Awaiting Approval
               } @else {
                 Start Session
               }

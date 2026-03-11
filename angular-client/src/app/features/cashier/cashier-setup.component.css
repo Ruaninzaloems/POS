@@ -332,3 +332,19 @@
   width: 100%;
   color: #475569;
 }
+.day-end-block-msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  background: #FFF7ED;
+  border: 1px solid #FDBA74;
+  border-radius: 0.625rem;
+  padding: 0.875rem 1rem;
+  color: #9A3412;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.day-end-block-msg svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
