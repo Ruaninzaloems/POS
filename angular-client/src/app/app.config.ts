@@ -5,7 +5,18 @@ import { routes } from './app.routes';
 import { errorInterceptor } from './core/interceptors/error.interceptor';
 
 class GlobalErrorHandler implements ErrorHandler {
+  private chunkReloadAttempted = false;
+
   handleError(error: any): void {
+    const message = error?.message || error?.toString() || '';
+    if (message.includes('Failed to fetch dynamically imported module') || message.includes('ChunkLoadError') || message.includes('Loading chunk')) {
+      if (!this.chunkReloadAttempted) {
+        this.chunkReloadAttempted = true;
+        console.warn('[App] Stale chunk detected, reloading page...');
+        window.location.reload();
+        return;
+      }
+    }
     console.error('[App Error]', error);
   }
 }
