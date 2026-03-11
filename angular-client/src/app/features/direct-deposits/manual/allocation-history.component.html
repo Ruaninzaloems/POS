@@ -221,7 +221,21 @@
                           <span class="badge badge-success">OK</span>
                         }
                       </td>
-                      <td class="font-mono">{{ acc.receiptNumber || acc.receiptNo || '-' }}</td>
+                      <td class="font-mono">
+                        @if (acc.receiptNumber || acc.receiptNo) {
+                          <span>{{ acc.receiptNumber || acc.receiptNo }}</span>
+                          <button class="btn-print-receipt" title="Print receipt" (click)="printReceipt(acc)" data-testid="btn-print-receipt">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                          </button>
+                        } @else if (acc.receiptIdOnly || acc.receiptId || acc.receipt_ID) {
+                          <span>{{ acc.receiptIdOnly || acc.receiptId || acc.receipt_ID }}</span>
+                          <button class="btn-print-receipt" title="Print receipt" (click)="printReceipt(acc)" data-testid="btn-print-receipt-id">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                          </button>
+                        } @else {
+                          -
+                        }
+                      </td>
                       <td class="truncate-cell text-danger">{{ acc.errorMessage || '' }}</td>
                     </tr>
                   }

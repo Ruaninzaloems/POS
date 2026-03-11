@@ -1353,6 +1353,11 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
     try {
       const session = requireAuth(req, res); if (!session) return;
       const data = await platinumGet(session, `/api/BulkProgress/job-account-details/${req.params.jobId}`);
+      const items = Array.isArray(data) ? data : data?.items || data?.data || [];
+      if (items.length > 0) {
+        console.log(`[job-account-details] Sample record keys: ${Object.keys(items[0]).join(', ')}`);
+        console.log(`[job-account-details] Sample record: ${JSON.stringify(items[0]).substring(0, 600)}`);
+      }
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });

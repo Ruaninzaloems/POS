@@ -56,6 +56,25 @@
 .polling-indicator { display: inline-flex; align-items: center; gap: 0.25rem; }
 .polling-text { font-size: 0.6875rem; color: var(--platinum-primary); font-weight: 500; }
 
+.btn-print-receipt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid #CBD5E1;
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin-left: 6px;
+  cursor: pointer;
+  color: var(--platinum-primary, #0f2b46);
+  vertical-align: middle;
+  transition: background 0.15s, border-color 0.15s;
+}
+.btn-print-receipt:hover {
+  background: #F1F5F9;
+  border-color: var(--platinum-primary, #0f2b46);
+}
+
 @media (max-width: 768px) {
   .filters-grid { grid-template-columns: 1fr 1fr; }
   .detail-grid-2col { grid-template-columns: 1fr; }

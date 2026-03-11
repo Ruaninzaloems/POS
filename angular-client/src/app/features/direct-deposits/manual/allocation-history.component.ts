@@ -301,6 +301,12 @@ export class AllocationHistoryComponent implements OnInit {
             const rcpt = receiptMap.get(accNo);
             if (rcpt) merged.receiptNumber = rcpt;
           }
+          if (!merged.receiptNumber && !merged.receiptNo) {
+            merged.receiptNumber = merged.receipt_No || merged.receipt_Number || '';
+          }
+          if (!merged.receiptNumber && !merged.receiptNo && merged.receiptId) {
+            merged.receiptIdOnly = merged.receiptId;
+          }
           const errMsg = errorMap.get(accNo);
           if (errMsg && !merged.errorMessage) {
             merged.errorMessage = errMsg;
@@ -367,6 +373,37 @@ export class AllocationHistoryComponent implements OnInit {
     this.detailOpen.set(false);
     this.selectedTx.set(null);
     this.jobAccountDetails.set(null);
+  }
+
+  async printReceipt(acc: any): Promise<void> {
+    const receiptId = acc.receiptId || acc.receipt_ID || acc.serialNo || acc.id;
+    const receiptNo = acc.receiptNumber || acc.receiptNo || acc.receipt_No || '';
+    if (!receiptId && !receiptNo) {
+      this.toast.error('No receipt identifier available.');
+      return;
+    }
+    try {
+      this.toast.info('Fetching receipt for printing...');
+      const endpoint = '/api/platinum/billing-payment/print-receipt';
+      const res: any = await firstValueFrom(this.api.post(endpoint, {
+        ids: receiptId ? [Number(receiptId)] : [],
+        receiptNos: receiptNo ? [receiptNo] : [],
+        isReprint: true
+      }));
+      if (res?.base64 || res?.fileContents) {
+        const b64 = res.base64 || res.fileContents;
+        const byteChars = atob(b64);
+        const byteArr = new Uint8Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+        const blob = new Blob([byteArr], { type: 'application/pdf' });
+        window.open(URL.createObjectURL(blob), '_blank');
+        this.toast.success(`Receipt ${receiptNo || receiptId} sent to printer.`);
+      } else {
+        this.toast.info('Print request submitted.');
+      }
+    } catch (e: any) {
+      this.toast.error('Failed to print receipt: ' + (e?.message || 'Unknown error'));
+    }
   }
 
   isErrorStatus(status: string): boolean {
