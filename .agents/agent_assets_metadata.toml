@@ -18,3 +18,9 @@ id = "Mbu2Gs_0JAO5dPJCTjMpO"
 uri = "file://debt-legal-phases/PHASE_4_5_COMMS_BATCH_LEGAL_DETAIL_PACK.md"
 type = "text"
 title = "Phase 4-5 Detail Pack — Communication, Batch, Legal"
+
+[[outputs]]
+id = "85R7fWJ8Np6dlgaLpWDb_"
+uri = "file://debt-legal-phases/PHASE_6_7_DOCS_SIGS_ENGINE_ANALYTICS_DETAIL_PACK.md"
+type = "text"
+title = "Phase 6-7 Detail Pack — Documents, Signatures, Process Engine & Analytics"

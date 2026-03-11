@@ -192,10 +192,9 @@ export class DocumentTemplatesComponent implements OnInit {
 
   async handleDownload(templateId: string, versionId?: string): Promise<void> {
     try {
-      const url = versionId
-        ? `/api/document-templates/${templateId}/versions/${versionId}/download`
-        : `/api/document-templates/${templateId}/download`;
-      await firstValueFrom(this.api.get<any>(url));
+      const params: Record<string, string> = {};
+      if (versionId) params['versionId'] = versionId;
+      await firstValueFrom(this.api.get<any>(`/api/document-templates/${templateId}/download`, params));
       this.toast.success('File download initiated.');
     } catch (e: any) {
       this.toast.error(e?.message || 'Download failed');
