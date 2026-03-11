@@ -3320,7 +3320,8 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   }
 
   private getMeterReadingParams(meter: any, accountId: number): Record<string, string> {
-    const meterID = String(meter.meterNo || meter.meterNumber || meter.physicalMeterNo || meter.physicalMeterNumber || meter.meterId || meter.meterID || meter.meter_ID || '').replace(/^0+/, '');
+    const meterID = String(meter.meterID ?? meter.meter_ID ?? meter.meterId ?? meter.meterNo ?? meter.meterNumber ?? '');
+    console.log('[getMeterReadingParams] meterID resolved:', meterID, 'from fields: meterID=', meter.meterID, 'meter_ID=', meter.meter_ID, 'meterId=', meter.meterId, 'meterNo=', meter.meterNo, 'physicalMeterNo=', meter.physicalMeterNo);
     return {
       accountID: String(accountId),
       meterID,
@@ -3375,6 +3376,8 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.consumptionSortDir.set('desc');
     const account = this.selectedAccount();
     const accountId = this.getAccountId(account);
+    console.log('[consumption] METER OBJECT KEYS:', Object.keys(meter));
+    console.log('[consumption] METER OBJECT DATA:', JSON.stringify(meter));
     const baseParams = this.getMeterReadingParams(meter, accountId);
     console.log('[consumption] selectConsumptionMeter params:', JSON.stringify(baseParams));
     try {
@@ -3385,15 +3388,22 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
       const requests = fyList.map(fy =>
         firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history`, { ...baseParams, finYear: fy }))
-          .then(res => this.normalizeArray(res))
-          .catch(() => [] as any[])
+          .then(res => {
+            const arr = this.normalizeArray(res);
+            console.log(`[consumption] FY=${fy} returned ${arr.length} readings, raw type:`, typeof res, Array.isArray(res) ? 'array' : (res ? Object.keys(res) : 'null'));
+            return arr;
+          })
+          .catch((err) => { console.log(`[consumption] FY=${fy} ERROR:`, err?.message || err); return [] as any[]; })
       );
       const results = await Promise.all(requests);
       const allReadings = results.flat();
+      console.log('[consumption] Total readings across all FYs:', allReadings.length);
 
       if (allReadings.length === 0) {
-        const barRes = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history-barchart`, baseParams)).catch(() => []);
+        console.log('[consumption] No FY readings, trying barchart with params:', JSON.stringify(baseParams));
+        const barRes = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history-barchart`, baseParams)).catch((err) => { console.log('[consumption] barchart ERROR:', err?.message || err); return []; });
         const barChart = this.normalizeArray(barRes);
+        console.log('[consumption] barchart returned:', barChart.length, 'readings');
         if (barChart.length > 0) allReadings.push(...barChart);
       }
 

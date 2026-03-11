@@ -410,6 +410,9 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
       const data = await platinumGet(session, `/api/BillingEnquiry/${platinumPath}`, queryParams);
       const sample = Array.isArray(data) ? data[0] : data;
       console.log(`[billing-enquiry] ${endpoint} response keys:`, sample ? Object.keys(sample) : 'empty/null', `isArray=${Array.isArray(data)} count=${Array.isArray(data) ? data.length : 'single'}`);
+      if (endpoint.includes('meter-reading') && (!data || (Array.isArray(data) && data.length === 0))) {
+        console.log(`[billing-enquiry] EMPTY meter-reading response for params:`, JSON.stringify(queryParams), 'raw:', JSON.stringify(data));
+      }
       return handlePlatinumResult(res, data);
     } catch (e: any) {
       console.error(`[billing-enquiry/${endpoint}] Error:`, e.message);
