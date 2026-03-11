@@ -173,7 +173,7 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
   private searchTimer: any = null;
   private searchVersion = 0;
   private abortController: AbortController | null = null;
-  private readonly SEARCH_TIMEOUT = 15000;
+  private readonly SEARCH_TIMEOUT = 8000;
 
   private searchWithTimeout<T>(obs: import('rxjs').Observable<T>): Promise<T> {
     return firstValueFrom(obs.pipe(timeout(this.SEARCH_TIMEOUT), catchError(() => of([] as any))));
@@ -353,39 +353,36 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
     const isNumeric = /^\d+$/.test(query);
     const detected = this.detectSearchType(query);
     const seen = new Set<number>();
-    const primaryResults: SearchResult[] = [];
-    const secondaryResults: SearchResult[] = [];
+    const results: SearchResult[] = [];
 
     const pushResults = () => {
       if (isAborted()) return;
-      const combined = [...primaryResults, ...secondaryResults].slice(0, 15);
+      const combined = [...results].slice(0, 15);
       this.searchResults.set(combined);
       if (combined.length > 0) this.dropdownOpen.set(true);
     };
 
+    const addAccountHit = (item: any, source?: string, allocType = 'ACCOUNT') => {
+      const accId = item.account_ID || item.accountID || item.id;
+      if (accId && !seen.has(accId)) {
+        seen.add(accId);
+        results.push({
+          accountId: accId,
+          accountNo: item.accountNumber || item.accountNo || String(accId),
+          name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.surname_Company || item.name || item.accountDesc || item.typeOfUseDesc || '',
+          oldAccountCode: item.oldAccountCode || '',
+          outstandingAmount: item.outStandingAmt || item.outStandingAmount || item.outstandingAmount || 0,
+          type: 'ACCOUNT',
+          description: source || undefined,
+          rawData: { ...item, _allocationType: allocType },
+        });
+      }
+    };
+
     try {
-      const allTasks: Promise<void>[] = [];
+      const allocType = scope === 'PREPAID' ? 'PREPAID' : 'ACCOUNT';
 
       if (scope === 'ALL' || scope === 'ACCOUNT' || scope === 'PREPAID') {
-        const allocType = scope === 'PREPAID' ? 'PREPAID' : 'ACCOUNT';
-
-        const addAccountHit = (item: any, source?: string) => {
-          const accId = item.account_ID || item.accountID || item.id;
-          if (accId && !seen.has(accId)) {
-            seen.add(accId);
-            primaryResults.push({
-              accountId: accId,
-              accountNo: item.accountNumber || item.accountNo || String(accId),
-              name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.surname_Company || item.name || item.accountDesc || item.typeOfUseDesc || '',
-              oldAccountCode: item.oldAccountCode || '',
-              outstandingAmount: item.outStandingAmt || item.outStandingAmount || item.outstandingAmount || 0,
-              type: 'ACCOUNT',
-              description: source || undefined,
-              rawData: { ...item, _allocationType: allocType },
-            });
-          }
-        };
-
         const primaryBody: Record<string, any> = {};
         if (detected.field === 'accountNo' && isNumeric) {
           primaryBody['accountNo'] = query;
@@ -403,67 +400,86 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
           primaryBody[isNumeric ? 'accountNo' : 'name'] = query;
         }
 
-        allTasks.push(
+        const primarySearches: Promise<void>[] = [];
+
+        primarySearches.push(
           this.searchWithTimeout(
             this.api.post('/api/platinum/billing-payment/search-accounts', primaryBody)
-          ).then((results: any) => {
+          ).then((r: any) => {
             if (isAborted()) return;
-            const items = Array.isArray(results) ? results : results?.value || [];
+            const items = Array.isArray(r) ? r : r?.value || [];
             for (const item of items.slice(0, 15)) {
-              addAccountHit(item, detected.field !== 'accountNo' && detected.field !== 'name' ? `Found via ${detected.label}` : undefined);
+              addAccountHit(item, detected.field !== 'accountNo' && detected.field !== 'name' ? `Found via ${detected.label}` : undefined, allocType);
             }
             pushResults();
-          }).catch((err: any) => {
-            console.warn('[AllocateTransaction] Primary search FAILED:', err?.message || err);
-          })
+          }).catch(() => {})
         );
 
-        allTasks.push(
-          this.searchWithTimeout(
-            this.api.post('/api/platinum/billing-payment/search-accounts', { oldAccountCode: query })
-          ).then((items: any) => {
-            if (isAborted()) return;
-            const arr = Array.isArray(items) ? items : items?.value || [];
-            for (const item of arr.slice(0, 5)) addAccountHit(item, 'Found via old account code');
-            pushResults();
-          }).catch((err: any) => { console.warn('[AllocateTransaction] Old account code search failed:', err?.message); })
-        );
-
-        if (isNumeric) {
-          allTasks.push(
+        if (isNumeric && query.length < 12) {
+          const padded = query.padStart(12, '0');
+          primarySearches.push(
             this.searchWithTimeout(
-              this.api.post('/api/platinum/billing-payment/search-accounts', { erfNumber: query })
-            ).then((items: any) => {
+              this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: padded })
+            ).then((r: any) => {
               if (isAborted()) return;
-              const arr = Array.isArray(items) ? items : items?.value || [];
-              for (const item of arr.slice(0, 5)) addAccountHit(item, 'Found via ERF number');
+              const items = Array.isArray(r) ? r : r?.value || [];
+              for (const item of items.slice(0, 10)) addAccountHit(item, undefined, allocType);
               pushResults();
-            }).catch((err: any) => { console.warn('[AllocateTransaction] ERF number search failed:', err?.message); })
-          );
-
-          allTasks.push(
-            this.searchWithTimeout(
-              this.api.post('/api/platinum/billing-payment/search-accounts', { physicalMeterNumber: query })
-            ).then((items: any) => {
-              if (isAborted()) return;
-              const arr = Array.isArray(items) ? items : items?.value || [];
-              for (const item of arr.slice(0, 5)) addAccountHit(item, 'Found via meter number');
-              pushResults();
-            }).catch((err: any) => { console.warn('[AllocateTransaction] Meter number search failed:', err?.message); })
+            }).catch(() => {})
           );
         }
 
-        if (!isNumeric && detected.field === 'name') {
-          allTasks.push(
+        primarySearches.push(
+          this.searchWithTimeout(
+            this.api.post('/api/platinum/billing-payment/search-accounts', { oldAccountCode: query })
+          ).then((r: any) => {
+            if (isAborted()) return;
+            const arr = Array.isArray(r) ? r : r?.value || [];
+            for (const item of arr.slice(0, 5)) addAccountHit(item, 'Found via old account code', allocType);
+            pushResults();
+          }).catch(() => {})
+        );
+
+        await Promise.allSettled(primarySearches);
+        if (isAborted()) return;
+        pushResults();
+
+        if (results.length === 0 && isNumeric) {
+          const secondarySearches: Promise<void>[] = [];
+          secondarySearches.push(
             this.searchWithTimeout(
-              this.api.post('/api/platinum/billing-payment/search-accounts', { locationAddress: query })
-            ).then((items: any) => {
+              this.api.post('/api/platinum/billing-payment/search-accounts', { erfNumber: query })
+            ).then((r: any) => {
               if (isAborted()) return;
-              const arr = Array.isArray(items) ? items : items?.value || [];
-              for (const item of arr.slice(0, 3)) addAccountHit(item, 'Found via location/address');
+              const arr = Array.isArray(r) ? r : r?.value || [];
+              for (const item of arr.slice(0, 5)) addAccountHit(item, 'Found via ERF number', allocType);
               pushResults();
-            }).catch((err: any) => { console.warn('[AllocateTransaction] Location/address search failed:', err?.message); })
+            }).catch(() => {})
           );
+          secondarySearches.push(
+            this.searchWithTimeout(
+              this.api.post('/api/platinum/billing-payment/search-accounts', { physicalMeterNumber: query })
+            ).then((r: any) => {
+              if (isAborted()) return;
+              const arr = Array.isArray(r) ? r : r?.value || [];
+              for (const item of arr.slice(0, 5)) addAccountHit(item, 'Found via meter number', allocType);
+              pushResults();
+            }).catch(() => {})
+          );
+          await Promise.allSettled(secondarySearches);
+          if (isAborted()) return;
+          pushResults();
+        }
+
+        if (!isNumeric && detected.field === 'name') {
+          this.searchWithTimeout(
+            this.api.post('/api/platinum/billing-payment/search-accounts', { locationAddress: query })
+          ).then((r: any) => {
+            if (isAborted()) return;
+            const arr = Array.isArray(r) ? r : r?.value || [];
+            for (const item of arr.slice(0, 3)) addAccountHit(item, 'Found via location/address', allocType);
+            pushResults();
+          }).catch(() => {});
         }
       }
 
@@ -474,7 +490,7 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
             g.name && g.name.toLowerCase().includes(q)
           ).slice(0, 5);
           for (const g of matchedGroups) {
-            primaryResults.push({
+            results.push({
               accountId: 0,
               accountNo: `MISC-${g.id}`,
               name: g.name,
@@ -483,44 +499,43 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
               rawData: g,
             });
           }
+          pushResults();
         }
       }
 
+      const extraTasks: Promise<void>[] = [];
+
       if (scope === 'ALL' || scope === 'CLEARANCE') {
         if (isNumeric || scope === 'CLEARANCE') {
-          allTasks.push((async () => {
+          extraTasks.push((async () => {
             try {
               if (isAborted()) return;
               if (isNumeric) {
-                try {
-                  const clearanceIds: any = await this.searchWithTimeout(
-                    this.api.get('/api/platinum/billing-payment-clearance/get-clearanceids', { clearanceId: query })
-                  );
-                  if (isAborted()) return;
-                  if (Array.isArray(clearanceIds) && clearanceIds.length > 0) {
-                    for (const formattedId of clearanceIds) {
-                      secondaryResults.push({
-                        accountId: 0,
-                        accountNo: formattedId,
-                        name: `Clearance ${formattedId}`,
-                        type: 'CLEARANCE',
-                        rawData: { clearanceFormattedId: formattedId },
-                      });
-                    }
-                    pushResults();
-                    return;
+                const clearanceIds: any = await this.searchWithTimeout(
+                  this.api.get('/api/platinum/billing-payment-clearance/get-clearanceids', { clearanceId: query })
+                ).catch(() => []);
+                if (isAborted()) return;
+                if (Array.isArray(clearanceIds) && clearanceIds.length > 0) {
+                  for (const formattedId of clearanceIds) {
+                    results.push({
+                      accountId: 0,
+                      accountNo: formattedId,
+                      name: `Clearance ${formattedId}`,
+                      type: 'CLEARANCE',
+                      rawData: { clearanceFormattedId: formattedId },
+                    });
                   }
-                } catch (e: any) {
-                  console.warn('[AllocateTransaction] Clearance ID lookup failed:', e?.message);
+                  pushResults();
+                  return;
                 }
               }
               const clearanceResults: any = await this.searchWithTimeout(
                 this.api.get('/api/platinum/direct-deposit-allocation/get-clearance-autocomplete', { searchTerm: query })
-              );
+              ).catch(() => []);
               if (isAborted()) return;
               const arr = Array.isArray(clearanceResults) ? clearanceResults : [];
               for (const item of arr) {
-                secondaryResults.push({
+                results.push({
                   accountId: item.account_ID || item.accountId || item.id || 0,
                   accountNo: item.accountNumber || item.certificateNo || item.displayItem || String(item.id || ''),
                   name: item.name || item.displayItem || item.description || 'Clearance',
@@ -529,15 +544,13 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
                 });
               }
               pushResults();
-            } catch (err) {
-              console.error('[AllocateTransaction] Failed to search clearance:', err);
-            }
+            } catch {}
           })());
         }
       }
 
       if (scope === 'GROUP' || (scope === 'ALL' && !isNumeric)) {
-        allTasks.push((async () => {
+        extraTasks.push((async () => {
           try {
             if (isAborted()) return;
             const groupResults: any = await this.searchWithTimeout(
@@ -549,7 +562,7 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
               const gId = g.groupId || g.id || g.group_ID || 0;
               if (!seen.has(gId + 100000)) {
                 seen.add(gId + 100000);
-                secondaryResults.push({
+                results.push({
                   accountId: g.accountId || g.account_ID || 0,
                   accountNo: g.accountNumber || g.accountNo || `GRP-${gId}`,
                   name: g.name || g.description || g.groupName || 'Payment Group',
@@ -560,14 +573,12 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
               }
             }
             pushResults();
-          } catch (err) {
-            console.error('[AllocateTransaction] Failed to search group payment:', err);
-          }
+          } catch {}
         })());
       }
 
       if (scope === 'INSTITUTION' || (scope === 'ALL' && !isNumeric)) {
-        allTasks.push((async () => {
+        extraTasks.push((async () => {
           try {
             if (isAborted()) return;
             const institutionResults: any = await this.searchWithTimeout(
@@ -579,7 +590,7 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
               const instId = inst.institutionID || inst.institution_ID || inst.id || 0;
               if (instId && !seen.has(instId + 200000)) {
                 seen.add(instId + 200000);
-                secondaryResults.push({
+                results.push({
                   accountId: instId,
                   accountNo: `INST-${instId}`,
                   name: inst.institutionDesc || inst.description || inst.name || 'Institution',
@@ -590,14 +601,14 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
               }
             }
             pushResults();
-          } catch (err) {
-            console.error('[AllocateTransaction] Failed to search institutions:', err);
-          }
+          } catch {}
         })());
       }
 
-      await Promise.allSettled(allTasks);
-      if (!isAborted()) pushResults();
+      if (extraTasks.length > 0) {
+        await Promise.allSettled(extraTasks);
+        if (!isAborted()) pushResults();
+      }
     } catch (err) {
       console.error('DD search error:', err);
       if (!isAborted()) this.searchResults.set([]);
