@@ -468,6 +468,32 @@
   color: #1e293b;
 }
 .amount-value.owing { color: #dc2626; }
+.amount-value.credit-balance { color: #16a34a; }
+.credit-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  color: #16a34a;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.full-btn-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+  font-size: 11px;
+  color: #94a3b8;
+}
+.pay-input:disabled {
+  opacity: 0.5;
+  background: #f8fafc;
+  cursor: not-allowed;
+}
 
 .pay-input-group {
   display: flex;

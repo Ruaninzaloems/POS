@@ -62,14 +62,14 @@ export class PosBasketService {
   payFullAmount(id: string): void {
     this.items.update((items) =>
       items.map((item) =>
-        item.id === id ? { ...item, amountToPay: item.amountDue } : item
+        item.id === id ? { ...item, amountToPay: Math.max(0, item.amountDue) } : item
       )
     );
   }
 
   payAllFull(): void {
     this.items.update((items) =>
-      items.map((item) => ({ ...item, amountToPay: item.amountDue }))
+      items.map((item) => ({ ...item, amountToPay: Math.max(0, item.amountDue) }))
     );
   }
 

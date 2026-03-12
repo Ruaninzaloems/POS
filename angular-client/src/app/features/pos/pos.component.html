@@ -524,7 +524,10 @@
                   <div class="cart-item-amounts">
                     <div class="amount-col">
                       <span class="amount-label">Due</span>
-                      <span class="amount-value owing" [attr.data-testid]="'text-due-' + item.id">R {{ formatCurrency(item.amountDue) }}</span>
+                      <span class="amount-value" [class.owing]="item.amountDue > 0" [class.credit-balance]="item.amountDue < 0" [attr.data-testid]="'text-due-' + item.id">R {{ formatCurrency(item.amountDue) }}</span>
+                      @if (item.amountDue < 0) {
+                        <span class="credit-badge">Credit</span>
+                      }
                     </div>
                     <div class="amount-col pay-col">
                       <span class="amount-label">Pay</span>
@@ -538,8 +541,13 @@
                           [value]="item.amountToPay"
                           (input)="basket.updateAmount(item.id, $any($event.target).valueAsNumber || 0)"
                           [attr.data-testid]="'input-amount-' + item.id"
+                          [disabled]="item.amountDue <= 0 && item.type === 'account'"
                         />
-                        <button class="full-btn" (click)="basket.payFullAmount(item.id)" title="Pay full amount" [attr.data-testid]="'button-full-' + item.id">FULL</button>
+                        @if (item.amountDue > 0) {
+                          <button class="full-btn" (click)="basket.payFullAmount(item.id)" title="Pay full amount" [attr.data-testid]="'button-full-' + item.id">FULL</button>
+                        } @else {
+                          <span class="full-btn full-btn-disabled" title="Nothing outstanding — account is in credit">R 0.00</span>
+                        }
                       </div>
                     </div>
                   </div>
