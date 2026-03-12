@@ -486,6 +486,15 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     return String(v).trim() || '-';
   }
 
+  formatYesNo(v: any): string {
+    if (v === null || v === undefined || v === '') return '-';
+    if (typeof v === 'boolean') return v ? 'Yes' : 'No';
+    const s = String(v).trim().toLowerCase();
+    if (s === 'true' || s === 'yes' || s === 'y' || s === '1') return 'Yes';
+    if (s === 'false' || s === 'no' || s === 'n' || s === '0') return 'No';
+    return String(v).trim() || '-';
+  }
+
   getObjectKeys(obj: any): string[] {
     if (!obj || typeof obj !== 'object') return [];
     return Object.keys(obj).sort();
@@ -1888,8 +1897,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
         case 'name':
           try {
-            const [nameInfoResult, relatedAcctsResult] = await Promise.allSettled([
+            const [nameInfoResult, consAcctResult, relatedAcctsResult] = await Promise.allSettled([
               firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/name-info/${accountId}`)),
+              firstValueFrom(this.api.get<any>(`/api/platinum/cons-accounts/${accountId}`)),
               firstValueFrom(this.api.get<any>(`/api/platinum/accounts-by-name-id`, { accountId: String(accountId) })),
             ]);
             let nameVal: any = null;
@@ -1898,8 +1908,85 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
               nameVal = Array.isArray(nr) ? nr[0] : nr;
               if (nameVal && nameVal._error) nameVal = null;
             }
-            if (!nameVal) {
-              console.log('[name] name-info failed, building from basic-account-details + account-info');
+            let consNameVal: any = null;
+            if (consAcctResult.status === 'fulfilled') {
+              const ca = consAcctResult.value;
+              if (ca && !ca._error && ca.nameId) {
+                console.log('[name] cons-accounts returned nameId:', ca.nameId);
+                try {
+                  const cnResult = await firstValueFrom(this.api.get<any>(`/api/platinum/cons-names/${ca.nameId}`));
+                  if (cnResult && !cnResult._error) {
+                    consNameVal = cnResult;
+                    console.log('[name] cons-names keys:', Object.keys(cnResult));
+                  }
+                } catch (cnErr: any) {
+                  console.log('[name] cons-names fetch failed:', cnErr?.message);
+                }
+              }
+            }
+            const merged: Record<string, any> = {};
+            if (consNameVal) Object.assign(merged, consNameVal);
+            if (nameVal) Object.assign(merged, nameVal);
+            if (consNameVal) {
+              const consFieldMap: Record<string, string> = {
+                'idNumber': 'idNo_RegistrationNo',
+                'idNo': 'idNo_RegistrationNo',
+                'id_RegistrationNo': 'idNo_RegistrationNo',
+                'surname': 'surname_Company',
+                'surnameCompany': 'surname_Company',
+                'firstName': 'firstNames',
+                'name': 'firstNames',
+                'passportNumber': 'passportNo',
+                'passport': 'passportNo',
+                'country': 'nameCountry',
+                'countryName': 'nameCountry',
+                'countryDesc': 'nameCountry',
+                'gender': 'genderDesc',
+                'genderDescription': 'genderDesc',
+                'ethnicity': 'ethnicDesc',
+                'ethnicityDesc': 'ethnicDesc',
+                'language': 'languageCorrespond',
+                'languageDescription': 'languageCorrespond',
+                'correspondLanguage': 'languageCorrespond',
+                'titleDesc': 'title',
+                'titleDescription': 'title',
+                'dateOfBirth': 'dateOfBirth',
+                'dob': 'dateOfBirth',
+                'nickName': 'nickName',
+                'nickname': 'nickName',
+                'maidenName': 'maidenName',
+                'maiden': 'maidenName',
+                'isFarmer': 'isFarmer',
+                'farmer': 'isFarmer',
+                'isSoleProprietor': 'isSoleProp',
+                'soleProprietor': 'isSoleProp',
+                'employmentStatus': 'employementStatusDesc',
+                'employmentStatusDesc': 'employementStatusDesc',
+                'employerName': 'employer',
+                'contactPersonName': 'contactPerson',
+                'contactTelephone': 'tel_ContactPerson',
+                'occupationDesc': 'occupation',
+                'maritalStatus': 'kinMarriedStatus',
+                'maritalStatusDesc': 'kinMarriedStatus',
+                'marriedStatus': 'kinMarriedStatus',
+                'nextOfKinSurname': 'kinLastName',
+                'nextOfKinName': 'kinFirstName',
+                'nextOfKinRelationship': 'kinRelationShip',
+                'nextOfKinTown': 'kinTown',
+                'nextOfKinSuburb': 'kinSuburb',
+                'nextOfKinStreetName': 'kinStreetName',
+                'nextOfKinStreetNo': 'kinStreetNumber',
+                'nextOfKinTelephone': 'kinTelephone',
+                'nextOfKinMobile': 'kinMobile',
+              };
+              for (const [src, dest] of Object.entries(consFieldMap)) {
+                if (consNameVal[src] != null && consNameVal[src] !== '' && !merged[dest]) {
+                  merged[dest] = consNameVal[src];
+                }
+              }
+            }
+            if (!merged['firstNames'] && !merged['surname_Company'] && !merged['idNo_RegistrationNo']) {
+              console.log('[name] No person data from APIs, building fallback from basic data');
               const [nameBasic, nameAcctInfo] = await Promise.allSettled([
                 firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/basic-account-details/${accountId}`)),
                 firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-info-result/${accountId}`)),
@@ -1907,12 +1994,10 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
               const nb = nameBasic.status === 'fulfilled' ? (Array.isArray(nameBasic.value) ? nameBasic.value[0] : nameBasic.value) : null;
               const na = nameAcctInfo.status === 'fulfilled' ? (Array.isArray(nameAcctInfo.value) ? nameAcctInfo.value[0] : nameAcctInfo.value) : null;
               const acct = this.selectedAccount();
-              const fallback: Record<string, any> = {};
-              fallback['firstNames'] = nb?.['fullNAME'] || na?.['name'] || acct?.['name'] || acct?.['surname_Company'] || '';
-              fallback['initials'] = nb?.['initials'] || '';
-              fallback['idNo_RegistrationNo'] = acct?.['idRegistrationNumber'] || '';
-              fallback['_fallback'] = true;
-              nameVal = fallback;
+              if (!merged['firstNames']) merged['firstNames'] = nb?.['fullNAME'] || na?.['name'] || acct?.['name'] || acct?.['surname_Company'] || '';
+              if (!merged['initials']) merged['initials'] = nb?.['initials'] || '';
+              if (!merged['idNo_RegistrationNo']) merged['idNo_RegistrationNo'] = acct?.['idRegistrationNumber'] || '';
+              merged['_fallback'] = true;
             }
             let relatedAccts: any[] = [];
             if (relatedAcctsResult.status === 'fulfilled') {
@@ -1921,7 +2006,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
                 relatedAccts = r.accounts;
               }
             }
-            data = { name: nameVal, relatedAccounts: relatedAccts };
+            data = { name: merged, relatedAccounts: relatedAccts };
           } catch (nameErr: any) {
             console.log('[name] Error loading name tab:', nameErr?.message);
             data = { name: null, relatedAccounts: [] };
@@ -2924,19 +3009,22 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
   getNameFullName(): string {
     const n = this.getNameData();
-    const full = [n['firstNames'] || n['initials'], n['surname_Company'] || n['companyName'] || n['name']].filter(Boolean).join(' ').trim();
-    return full || '-';
+    const first = n['firstNames'] || n['firstName'] || n['initials'] || '';
+    const last = n['surname_Company'] || n['surname'] || n['surnameCompany'] || n['lastName'] || n['companyName'] || '';
+    const full = [first, last].filter(Boolean).join(' ').trim();
+    return full || n['name'] || n['fullName'] || n['fullNAME'] || '-';
   }
 
   getNameDob(): string {
     const n = this.getNameData();
-    if (!n['dateOfBirth']) return '-';
-    return this.formatDate(n['dateOfBirth']);
+    const dob = n['dateOfBirth'] || n['dob'] || n['birthDate'];
+    if (!dob) return '-';
+    return this.formatDate(dob);
   }
 
   getNameKinFullName(): string {
     const n = this.getNameData();
-    const full = [n['kinFirstName'], n['kinLastName']].filter(Boolean).join(' ').trim();
+    const full = [n['kinFirstName'] || n['nextOfKinName'], n['kinLastName'] || n['nextOfKinSurname']].filter(Boolean).join(' ').trim();
     return full || '-';
   }
 

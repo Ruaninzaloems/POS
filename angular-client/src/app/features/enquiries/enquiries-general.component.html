@@ -1653,20 +1653,20 @@
                   <div class="acct-col">
                     <div class="acct-field"><span class="acct-field-label">ID Number</span><span class="acct-field-value mono" data-testid="field-name-id-number">{{ safeStr(getNameData()['idNo_RegistrationNo'] || getNameData()['idRegistrationNumber'] || getNameData()['idNumber']) }}</span></div>
                     <div class="acct-field"><span class="acct-field-label">Passport Number</span><span class="acct-field-value">{{ safeStr(getNameData()['passportNo'] || getNameData()['passportNumber']) }}</span></div>
-                    <div class="acct-field"><span class="acct-field-label">Country Name</span><span class="acct-field-value">{{ safeStr(getNameData()['nameCountry']) }}</span></div>
-                    <div class="acct-field"><span class="acct-field-label">Title</span><span class="acct-field-value">{{ safeStr(getNameData()['title']) }}</span></div>
-                    <div class="acct-field"><span class="acct-field-label">Last Name</span><span class="acct-field-value">{{ safeStr(getNameData()['surname_Company']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Country Name</span><span class="acct-field-value">{{ safeStr(getNameData()['nameCountry'] || getNameData()['country'] || getNameData()['countryName'] || getNameData()['countryDesc']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Title</span><span class="acct-field-value">{{ safeStr(getNameData()['title'] || getNameData()['titleDesc'] || getNameData()['titleDescription']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Last Name</span><span class="acct-field-value">{{ safeStr(getNameData()['surname_Company'] || getNameData()['surname'] || getNameData()['surnameCompany'] || getNameData()['lastName']) }}</span></div>
                     <div class="acct-field"><span class="acct-field-label">Full Name</span><span class="acct-field-value" data-testid="field-name-full-name">{{ getNameFullName() }}</span></div>
-                    <div class="acct-field"><span class="acct-field-label">Is Farmer?</span><span class="acct-field-value">{{ safeStr(getNameData()['isFarmer']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Is Farmer?</span><span class="acct-field-value">{{ formatYesNo(getNameData()['isFarmer'] ?? getNameData()['farmer']) }}</span></div>
                   </div>
                   <div class="acct-col">
-                    <div class="acct-field"><span class="acct-field-label">Is Sole Proprietor?</span><span class="acct-field-value">{{ safeStr(getNameData()['isSoleProp']) }}</span></div>
-                    <div class="acct-field"><span class="acct-field-label">Nickname</span><span class="acct-field-value">{{ safeStr(getNameData()['nickName']) }}</span></div>
-                    <div class="acct-field"><span class="acct-field-label">Maiden Name</span><span class="acct-field-value">{{ safeStr(getNameData()['maidenName']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Is Sole Proprietor?</span><span class="acct-field-value">{{ formatYesNo(getNameData()['isSoleProp'] ?? getNameData()['isSoleProprietor'] ?? getNameData()['soleProprietor']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Nickname</span><span class="acct-field-value">{{ safeStr(getNameData()['nickName'] || getNameData()['nickname']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Maiden Name</span><span class="acct-field-value">{{ safeStr(getNameData()['maidenName'] || getNameData()['maiden']) }}</span></div>
                     <div class="acct-field"><span class="acct-field-label">Date of Birth</span><span class="acct-field-value">{{ getNameDob() }}</span></div>
-                    <div class="acct-field"><span class="acct-field-label">Gender</span><span class="acct-field-value">{{ safeStr(getNameData()['genderDesc']) }}</span></div>
-                    <div class="acct-field"><span class="acct-field-label">Ethnicity</span><span class="acct-field-value">{{ safeStr(getNameData()['ethnicDesc']) }}</span></div>
-                    <div class="acct-field"><span class="acct-field-label">Language for Correspondence</span><span class="acct-field-value">{{ safeStr(getNameData()['languageCorrespond']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Gender</span><span class="acct-field-value">{{ safeStr(getNameData()['genderDesc'] || getNameData()['gender'] || getNameData()['genderDescription']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Ethnicity</span><span class="acct-field-value">{{ safeStr(getNameData()['ethnicDesc'] || getNameData()['ethnicity'] || getNameData()['ethnicityDesc']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Language for Correspondence</span><span class="acct-field-value">{{ safeStr(getNameData()['languageCorrespond'] || getNameData()['language'] || getNameData()['languageDescription'] || getNameData()['correspondLanguage']) }}</span></div>
                   </div>
                 </div>
               </div>
@@ -1676,18 +1676,18 @@
                 <div class="acct-section-card">
                   <div class="acct-section-header">💼 Employer Details</div>
                   <div class="acct-col" style="padding: 0 16px 16px;">
-                    <div class="acct-field"><span class="acct-field-label">Employment Status</span><span class="acct-field-value">{{ safeStr(getNameData()['employementStatusDesc']) }}</span></div>
-                    <div class="acct-field"><span class="acct-field-label">Employer</span><span class="acct-field-value">{{ safeStr(getNameData()['employer']) }}</span></div>
-                    <div class="acct-field"><span class="acct-field-label">Contact Person</span><span class="acct-field-value">{{ safeStr(getNameData()['contactPerson']) }}</span></div>
-                    <div class="acct-field"><span class="acct-field-label">Contact Telephone</span><span class="acct-field-value">{{ safeStr(getNameData()['tel_ContactPerson'] || getNameData()['tel_ContactPerson1']) }}</span></div>
-                    <div class="acct-field"><span class="acct-field-label">Occupation</span><span class="acct-field-value">{{ safeStr(getNameData()['occupation'] || getNameData()['occupation1']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Employment Status</span><span class="acct-field-value">{{ safeStr(getNameData()['employementStatusDesc'] || getNameData()['employmentStatus'] || getNameData()['employmentStatusDesc']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Employer</span><span class="acct-field-value">{{ safeStr(getNameData()['employer'] || getNameData()['employerName']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Contact Person</span><span class="acct-field-value">{{ safeStr(getNameData()['contactPerson'] || getNameData()['contactPersonName']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Contact Telephone</span><span class="acct-field-value">{{ safeStr(getNameData()['tel_ContactPerson'] || getNameData()['tel_ContactPerson1'] || getNameData()['contactTelephone']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Occupation</span><span class="acct-field-value">{{ safeStr(getNameData()['occupation'] || getNameData()['occupation1'] || getNameData()['occupationDesc']) }}</span></div>
                   </div>
                 </div>
 
                 <div class="acct-section-card">
                   <div class="acct-section-header">💍 Marital Details</div>
                   <div class="acct-col" style="padding: 0 16px 16px;">
-                    <div class="acct-field"><span class="acct-field-label">Marital Status</span><span class="acct-field-value">{{ safeStr(getNameData()['kinMarriedStatus']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Marital Status</span><span class="acct-field-value">{{ safeStr(getNameData()['kinMarriedStatus'] || getNameData()['maritalStatus'] || getNameData()['maritalStatusDesc'] || getNameData()['marriedStatus']) }}</span></div>
                   </div>
                 </div>
               </div>
@@ -1697,17 +1697,17 @@
                 <div class="acct-section-header">👨‍👩‍👧 Next of Kin</div>
                 <div class="acct-two-col">
                   <div class="acct-col">
-                    <div class="acct-field"><span class="acct-field-label">Last Name</span><span class="acct-field-value">{{ safeStr(getNameData()['kinLastName']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Last Name</span><span class="acct-field-value">{{ safeStr(getNameData()['kinLastName'] || getNameData()['nextOfKinSurname']) }}</span></div>
                     <div class="acct-field"><span class="acct-field-label">Full Name</span><span class="acct-field-value">{{ getNameKinFullName() }}</span></div>
-                    <div class="acct-field"><span class="acct-field-label">Relationship</span><span class="acct-field-value">{{ safeStr(getNameData()['kinRelationShip']) }}</span></div>
-                    <div class="acct-field"><span class="acct-field-label">Town/City</span><span class="acct-field-value">{{ safeStr(getNameData()['kinTown']) }}</span></div>
-                    <div class="acct-field"><span class="acct-field-label">Suburb</span><span class="acct-field-value">{{ safeStr(getNameData()['kinSuburb']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Relationship</span><span class="acct-field-value">{{ safeStr(getNameData()['kinRelationShip'] || getNameData()['nextOfKinRelationship']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Town/City</span><span class="acct-field-value">{{ safeStr(getNameData()['kinTown'] || getNameData()['nextOfKinTown']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Suburb</span><span class="acct-field-value">{{ safeStr(getNameData()['kinSuburb'] || getNameData()['nextOfKinSuburb']) }}</span></div>
                   </div>
                   <div class="acct-col">
-                    <div class="acct-field"><span class="acct-field-label">Street Name</span><span class="acct-field-value">{{ safeStr(getNameData()['kinStreetName']) }}</span></div>
-                    <div class="acct-field"><span class="acct-field-label">Street Number</span><span class="acct-field-value">{{ safeStr(getNameData()['kinStreetNumber']) }}</span></div>
-                    <div class="acct-field"><span class="acct-field-label">Telephone (Home)</span><span class="acct-field-value">{{ safeStr(getNameData()['kinTelephone']) }}</span></div>
-                    <div class="acct-field"><span class="acct-field-label">Telephone (Mobile)</span><span class="acct-field-value">{{ safeStr(getNameData()['kinMobile']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Street Name</span><span class="acct-field-value">{{ safeStr(getNameData()['kinStreetName'] || getNameData()['nextOfKinStreetName']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Street Number</span><span class="acct-field-value">{{ safeStr(getNameData()['kinStreetNumber'] || getNameData()['nextOfKinStreetNo']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Telephone (Home)</span><span class="acct-field-value">{{ safeStr(getNameData()['kinTelephone'] || getNameData()['nextOfKinTelephone']) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Telephone (Mobile)</span><span class="acct-field-value">{{ safeStr(getNameData()['kinMobile'] || getNameData()['nextOfKinMobile']) }}</span></div>
                   </div>
                 </div>
               </div>

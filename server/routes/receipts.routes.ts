@@ -189,6 +189,10 @@ export function registerReceiptsRoutes(app: Express, httpServer: Server): void {
     try {
       const session = requireAuth(req, res); if (!session) return;
       const data = await platinumGet(session, "/api/cons-names/" + req.params.id);
+      if (data && !data._error) {
+        console.log(`[cons-names] ID=${req.params.id} keys:`, Object.keys(data));
+        console.log(`[cons-names] ID=${req.params.id} sample:`, JSON.stringify(data).substring(0, 800));
+      }
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
