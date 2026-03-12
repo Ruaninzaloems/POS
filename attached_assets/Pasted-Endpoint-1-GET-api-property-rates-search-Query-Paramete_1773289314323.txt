@@ -1,0 +1,100 @@
+Endpoint 1 — GET /api/property-rates/search
+ 
+  Query Parameters:
+  finYear            string   required          e.g. "2025/2026"
+  valuationImportId  int      default: 0        0 = all imports
+  accountId          int?     optional          exact match
+  unitId             int?     optional          exact match
+  unitPartitionId    int?     optional          exact match
+  sgNumber           string   optional          flexible SG format
+  searchTerm         string   optional          searches across AccountId, UnitId, SGNumber,
+                                                RollNumber, OwnerFullName, FarmName,
+                                                SectionalTitleSchemeNumberDesc
+  singleResult       bool     default: false    returns only first/best match
+  page               int      default: 1
+  pageSize           int      default: 50       capped at 500
+ 
+  Response 200 OK:
+  {
+    "success": true,
+    "message": "Results found",
+    "singleResult": false,
+    "totalRecords": 142,
+    "page": 1,
+    "pageSize": 50,
+    "data": [
+      {
+        "propertyRaterateprocessId": 1001,
+        "rollNumber": "R-0001234",
+        "valuationType": "General",
+        "accountId": 5678,
+        "ownerFullName": "John Smith",
+        "unitPartitionId": 9012,
+        "unitPartitionDescription": "ERF 123",
+        "multiplePurpose": "",
+        "unitId": 3456,
+        "propertyTypeDescription": "Residential",
+        "sgNumber": "T0AB00001/00001",
+        "sgNumber26": "T0AB00001/00001",
+        "farmName": "",
+        "sectionalTitleSchemeNumberDesc": "",
+        "sectionNumber": "",
+        "financialYear": "2025/2026",
+        "tariffDescription": "Residential Rates",
+        "tariffRate": 0.01234,
+        "ntPropertyCategory": "Residential",
+        "propertyTypeOfUse": "Residential",
+        "unitPartitionSize": "500m²",
+        "marketValue": 1200000.00,
+        "rateableMarketValue": 1200000.00,
+        "rateabilityId": 1,
+        "propertyRatesAmount": 14808.00,
+        "attpRebate": 0.00,
+        "legislativeRebate": 0.00,
+        "legislativeAdditionalRebate": 0.00,
+        "rebateApplicationAmount": 0.00,
+        "rebatePercentageAmount": 0.00,
+        "newErvenRebateAmount": 0.00,
+        "generalRebateAmount": 0.00,
+        "tariffRebate": 0.00,
+        "tariffAdditionalRebate": 0.00,
+        "totalRebate": 0.00,
+        "calculatedAnnualRatesAmount": 14808.00,
+        "rateablePeriods": 12,
+        "periodInstallmentCalculatedOn": 12,
+        "tariffRebatePercent": "",
+        "startBillPeriodId": 202504
+      }
+    ]
+  }
+ 
+ 
+Endpoint 2 — GET /api/property-rates/{unitPartitionId}
+ 
+  Path Parameter:
+  unitPartitionId    int      required
+ 
+  Query Parameters:
+  finYear            string   required          e.g. "2025/2026"
+  valuationImportId  int      default: 0
+ 
+  Response 200 OK:
+  {
+    "success": true,
+    "message": "Record found",
+    "data": {
+      /* same 36-field object as above */
+    }
+  }
+ 
+  Response 404 Not Found:
+  {
+    "success": false,
+    "message": "No property rates record found for UnitPartitionId=9012 in 2025/2026."
+  }
+ 
+  Response 400 Bad Request:
+  {
+    "success": false,
+    "message": "finYear is required. Example: 2025/2026"
+  }

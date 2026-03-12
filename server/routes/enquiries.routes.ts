@@ -744,4 +744,43 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
       res.status(502).json({ message: "Failed to fetch templates", detail: e.message });
     }
   });
+
+  app.get("/api/platinum/billing-enquiry/property-rates-search", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const params: Record<string, string> = {};
+      if (req.query.finYear) params.finYear = String(req.query.finYear);
+      if (req.query.accountId) params.accountId = String(req.query.accountId);
+      if (req.query.unitId) params.unitId = String(req.query.unitId);
+      if (req.query.unitPartitionId) params.unitPartitionId = String(req.query.unitPartitionId);
+      if (req.query.sgNumber) params.sgNumber = String(req.query.sgNumber);
+      if (req.query.searchTerm) params.searchTerm = String(req.query.searchTerm);
+      if (req.query.singleResult) params.singleResult = String(req.query.singleResult);
+      if (req.query.valuationImportId) params.valuationImportId = String(req.query.valuationImportId);
+      if (req.query.page) params.page = String(req.query.page);
+      if (req.query.pageSize) params.pageSize = String(req.query.pageSize);
+      console.log('[property-rates-search] params:', JSON.stringify(params));
+      const data = await platinumGet(session, "/api/property-rates/search", params);
+      res.json(data);
+    } catch (e: any) {
+      console.error('[property-rates-search] error:', e.message);
+      res.status(502).json({ message: "Failed to fetch property rates", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-enquiry/property-rates-by-partition/:unitPartitionId", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const unitPartitionId = req.params.unitPartitionId;
+      const params: Record<string, string> = {};
+      if (req.query.finYear) params.finYear = String(req.query.finYear);
+      if (req.query.valuationImportId) params.valuationImportId = String(req.query.valuationImportId);
+      console.log('[property-rates-by-partition] unitPartitionId:', unitPartitionId, 'params:', JSON.stringify(params));
+      const data = await platinumGet(session, `/api/property-rates/${unitPartitionId}`, params);
+      res.json(data);
+    } catch (e: any) {
+      console.error('[property-rates-by-partition] error:', e.message);
+      res.status(502).json({ message: "Failed to fetch property rates by partition", detail: e.message });
+    }
+  });
 }

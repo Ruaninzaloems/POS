@@ -1869,12 +1869,20 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           const ratesFy = this.ratesFinYear();
           const fyP: Record<string, string> = ratesFy ? { financialYear: ratesFy } : {};
           const ratesFyParam: Record<string, string> = ratesFy ? { finYear: ratesFy } : {};
-          const [ratesDetail, ratesHistory, ratesBalance, ratesServiceBal, ratesPropDetails] = await Promise.allSettled([
+          const acctForRates: any = this.selectedAccount();
+          const ratesUnitPartId = acctForRates?.unitPartitionID || acctForRates?.unitPartition_ID;
+          const [ratesDetail, ratesHistory, ratesBalance, ratesServiceBal, ratesPropDetails, propRatesSearch] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-rates-details/${accountId}`, ratesFyParam)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/rates-run-history/${accountId}`, ratesFyParam)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/total-balance-debt-inquiry/${accountId}`, fyP)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/service-type-balance/${accountId}`, fyP)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-rates-search`, {
+              finYear: ratesFy || this.getCurrentFinYear(),
+              accountId: String(Number(accountId) || accountId),
+              ...(ratesUnitPartId ? { unitPartitionId: String(Number(ratesUnitPartId) || ratesUnitPartId) } : {}),
+              pageSize: '50'
+            })),
           ]);
           const ratesDetailVal = ratesDetail.status === 'fulfilled' ? (Array.isArray(ratesDetail.value) ? ratesDetail.value[0] : ratesDetail.value) : null;
           const ratesHistoryVal = ratesHistory.status === 'fulfilled' ? this.normalizeArray(ratesHistory.value) : [];
@@ -1889,6 +1897,14 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             const desc = (b.serviceDescription || b.description || '').toLowerCase();
             return desc.includes('rate') || desc.includes('property') || desc.includes('valuation');
           });
+          const propRatesSearchVal = propRatesSearch.status === 'fulfilled' ? propRatesSearch.value : null;
+          const propRatesData: any[] = propRatesSearchVal?.data ? (Array.isArray(propRatesSearchVal.data) ? propRatesSearchVal.data : [propRatesSearchVal.data]) : (Array.isArray(propRatesSearchVal) ? propRatesSearchVal : propRatesSearchVal && !propRatesSearchVal._error ? [propRatesSearchVal] : []);
+          if (propRatesData.length > 0) {
+            console.log('[rates] property-rates-search returned', propRatesData.length, 'records, keys:', Object.keys(propRatesData[0]));
+            console.log('[rates] property-rates sample:', JSON.stringify(propRatesData[0]).substring(0, 800));
+          } else {
+            console.log('[rates] property-rates-search returned no data, raw:', JSON.stringify(propRatesSearchVal)?.substring(0, 300));
+          }
           if (ratesDetailVal) console.log('[rates] account-rates-details keys:', Object.keys(ratesDetailVal));
           if (balanceItems.length) console.log('[rates] balance items count:', balanceItems.length, 'rates-filtered:', ratesBalanceItems.length);
           if (svcBalItems.length) console.log('[rates] service-type-balance count:', svcBalItems.length, 'rates-filtered:', ratesServiceItems.length);
@@ -1921,6 +1937,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             valuations: valuationsArr,
             valuationData: valuationDataVal,
             valuationImport: valuationImportVal,
+            propertyRatesData: propRatesData,
           };
           break;
 
