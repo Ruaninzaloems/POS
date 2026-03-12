@@ -209,16 +209,6 @@
         <!-- Account Info Tab -->
         @if (activeTab() === 'account') {
           <div class="tab-panel" data-testid="account-info-panel">
-            <div class="acct-tab-toolbar">
-              <button class="rebuild-account-btn" (click)="rebuildFullAccount()" [disabled]="rebuildingAccount()" data-testid="button-rebuild-account">
-                @if (rebuildingAccount()) {
-                  <span class="rebuild-spinner"></span> Rebuilding...
-                } @else {
-                  🔄 Rebuild Account
-                }
-              </button>
-            </div>
-
             <div class="acct-section-card">
               <div class="acct-section-header">Account Information</div>
               <div class="acct-two-col">
@@ -376,6 +366,15 @@
         <!-- Balance / Debt Tab -->
         @if (activeTab() === 'balance') {
           <div class="tab-panel" data-testid="balance-debt-panel">
+            <div class="acct-tab-toolbar">
+              <button class="rebuild-account-btn" (click)="rebuildFullAccount()" [disabled]="rebuildingAccount()" data-testid="button-rebuild-account">
+                @if (rebuildingAccount()) {
+                  <span class="rebuild-spinner"></span> Rebuilding...
+                } @else {
+                  🔄 Rebuild Account
+                }
+              </button>
+            </div>
             @if (getBalanceItems().length > 0) {
               <div class="export-toolbar">
                 <button class="export-btn export-csv" (click)="exportBalanceCsv()" data-testid="button-export-balance-csv">📥 Excel/CSV</button>
