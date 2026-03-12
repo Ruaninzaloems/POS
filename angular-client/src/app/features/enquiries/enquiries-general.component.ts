@@ -731,10 +731,16 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const hasAdvanced = Object.values(c).some(v => v && String(v).trim());
     if (!hasQuick && !hasAdvanced) return;
 
+    if (this.debounceTimer) { clearTimeout(this.debounceTimer); this.debounceTimer = null; }
+    ++this.quickSearchToken;
+    this.dropdownSearching.set(false);
+    this.showDropdown.set(false);
+    this.dropdownResults.set([]);
+    this.highlightIdx.set(-1);
+
     this.searching.set(true);
     this.searchError.set(null);
     this.hasSearched.set(true);
-    this.showDropdown.set(false);
     const token = ++this.searchToken;
 
     try {
@@ -865,6 +871,10 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       this.highlightIdx.update(prev => Math.max(prev - 1, -1));
     } else if (event.key === 'Enter') {
       event.preventDefault();
+      if (this.debounceTimer) { clearTimeout(this.debounceTimer); this.debounceTimer = null; }
+      ++this.quickSearchToken;
+      this.dropdownSearching.set(false);
+      this.showDropdown.set(false);
       const idx = this.highlightIdx();
       if (idx >= 0 && idx < dr.length) {
         this.selectAccount(dr[idx]);
