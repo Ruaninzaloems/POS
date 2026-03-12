@@ -83,7 +83,10 @@ export class CashierDayEndComponent implements OnInit {
 
   activeSection = signal<'takings' | 'cancellation' | 'dropbox'>('takings');
 
-  cancelReceiptId = signal('');
+  cancelSearchQuery = signal('');
+  cancelSearching = signal(false);
+  cancelFoundReceipt = signal<any>(null);
+  cancelSearchError = signal('');
   cancelReason = signal('');
   isCancellingReceipt = signal(false);
 
@@ -361,11 +364,55 @@ export class CashierDayEndComponent implements OnInit {
     }
   }
 
+  async searchCancelReceipt(): Promise<void> {
+    const query = this.cancelSearchQuery().trim();
+    if (!query) return;
+
+    this.cancelSearching.set(true);
+    this.cancelFoundReceipt.set(null);
+    this.cancelSearchError.set('');
+
+    try {
+      const data: any = await firstValueFrom(
+        this.api.get('/api/platinum/view-receipt/search-receipt-numbers', { receiptNumbers: query })
+      );
+
+      const results = Array.isArray(data) ? data : (data?.result || data?.data || []);
+      if (!Array.isArray(results) || results.length === 0) {
+        this.cancelSearchError.set(`No receipt found for "${query}". Please check the number and try again.`);
+        return;
+      }
+
+      const match = results.find((r: any) => {
+        const rNo = String(r.receiptNo || r.receipt_no || r.receiptNumber || '');
+        return rNo.includes(query) || query.includes(rNo);
+      }) || results[0];
+
+      this.cancelFoundReceipt.set(match);
+    } catch (e: any) {
+      this.cancelSearchError.set(e?.message || 'Failed to search for receipt. Please try again.');
+    } finally {
+      this.cancelSearching.set(false);
+    }
+  }
+
+  clearCancelSearch(): void {
+    this.cancelSearchQuery.set('');
+    this.cancelFoundReceipt.set(null);
+    this.cancelSearchError.set('');
+    this.cancelReason.set('');
+  }
+
   async handleRequestCancel(): Promise<void> {
-    const receiptId = this.cancelReceiptId();
+    const receipt = this.cancelFoundReceipt();
     const reason = this.cancelReason();
+    if (!receipt) {
+      this.toast.error('Please search for a receipt first.');
+      return;
+    }
+    const receiptId = receipt.receiptId || receipt.receiptID || receipt.receipt_ID || receipt.id;
     if (!receiptId) {
-      this.toast.error('Please select a receipt to cancel.');
+      this.toast.error('Could not determine receipt ID. Please try a different receipt.');
       return;
     }
     if (!reason.trim()) {
@@ -389,8 +436,7 @@ export class CashierDayEndComponent implements OnInit {
       }
 
       this.toast.success('Cancellation request submitted. Awaiting supervisor approval.');
-      this.cancelReceiptId.set('');
-      this.cancelReason.set('');
+      this.clearCancelSearch();
 
       const cid = this.sessionCashierId();
       if (cid) this.loadReceiptData(cid);
