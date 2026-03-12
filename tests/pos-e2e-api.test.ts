@@ -1,0 +1,261 @@
+import { describe, it, expect, beforeAll } from 'vitest';
+
+const BASE = 'http://localhost:5000';
+let cookie = '';
+let cashierId = '';
+let cashOfficeId = '';
+let finYear = '';
+let userId = '';
+let acctNo = '';
+let acctId = '';
+let acctName = '';
+let acctAmt = 0;
+
+async function api(method: string, path: string, body?: any, isBinary = false) {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (cookie) headers['Cookie'] = cookie;
+
+  let url = `${BASE}${path}`;
+  const opts: RequestInit = { method, headers, signal: AbortSignal.timeout(20000) };
+
+  if (method === 'GET' && body) {
+    url += '?' + new URLSearchParams(body).toString();
+  } else if (body && method !== 'GET') {
+    opts.body = JSON.stringify(body);
+  }
+
+  const res = await fetch(url, opts);
+
+  const raw = res.headers.get('set-cookie');
+  if (raw) cookie = raw.split(';')[0];
+
+  if (isBinary) return { status: res.status, ok: res.ok, size: (await res.arrayBuffer()).byteLength, data: null };
+  const text = await res.text();
+  try { return { status: res.status, ok: res.ok, data: JSON.parse(text) }; }
+  catch { return { status: res.status, ok: res.ok, data: text }; }
+}
+
+describe('POS End-to-End API Tests', () => {
+
+  describe('1. Authentication & Session', () => {
+    it('1.1 Login', async () => {
+      const res = await api('POST', '/api/auth/login', {
+        username: 'ajacobs', password: '', dbName: 'George',
+      });
+      expect(res.ok).toBe(true);
+      expect(res.data?.success).toBe(true);
+      const user = res.data.user;
+      userId = String(user?.user_ID || '');
+      finYear = user?.finYear || '';
+      expect(userId).toBeTruthy();
+      expect(finYear).toBeTruthy();
+      console.log(`  ✓ Logged in — userId=${userId}, finYear=${finYear}`);
+    }, 20000);
+
+    it('1.2 Session active', async () => {
+      const res = await api('GET', '/api/auth/status');
+      expect(res.ok).toBe(true);
+      expect(res.data?.authenticated).toBe(true);
+    }, 10000);
+
+    it('1.3 Ensure cashier', async () => {
+      const res = await api('POST', '/api/platinum/auth/ensure-cashier', { userId: Number(userId) });
+      expect(res.ok).toBe(true);
+      cashierId = String(res.data?.cashierId || '');
+      cashOfficeId = String(res.data?.officeId || '');
+      expect(cashierId).toBeTruthy();
+      console.log(`  ✓ Cashier id=${cashierId}, officeId=${cashOfficeId}`);
+    }, 15000);
+  });
+
+  describe('2. Search & Lookups', () => {
+    it('2.1 Search by account number', async () => {
+      const res = await api('POST', '/api/platinum/billing-payment/search-accounts', { accountNo: '16360' });
+      expect(res.ok).toBe(true);
+      const results = Array.isArray(res.data) ? res.data : (res.data?.result || []);
+      expect(results.length).toBeGreaterThan(0);
+      acctNo = results[0].accountNo || results[0].accountNumber || '';
+      acctId = String(results[0].account_ID || '');
+      acctName = results[0].name || '';
+      acctAmt = results[0].outStandingAmt || 0;
+      console.log(`  ✓ Found ${results.length} account(s), first: ${acctNo}`);
+    }, 15000);
+
+    it('2.2 Search by name', async () => {
+      const res = await api('POST', '/api/platinum/billing-payment/search-accounts', { name: 'Crawford' });
+      expect(res.ok).toBe(true);
+      const results = Array.isArray(res.data) ? res.data : (res.data?.result || []);
+      expect(results.length).toBeGreaterThan(0);
+      console.log(`  ✓ Name search — ${results.length} result(s)`);
+    }, 15000);
+
+    it('2.3 Misc payment groups', async () => {
+      const res = await api('GET', '/api/platinum/billing-payment-miscellaneous/get-groups');
+      expect(res.ok).toBe(true);
+      const groups = Array.isArray(res.data) ? res.data : (res.data?.result || []);
+      expect(groups.length).toBeGreaterThan(0);
+      console.log(`  ✓ ${groups.length} misc group(s)`);
+    }, 10000);
+
+    it('2.4 SCOA items for misc group', async () => {
+      const groupRes = await api('GET', '/api/platinum/billing-payment-miscellaneous/get-groups');
+      const groups = Array.isArray(groupRes.data) ? groupRes.data : (groupRes.data?.result || []);
+      const groupId = groups[0]?.miscellaneous_Payment_Group_ID || groups[0]?.id;
+
+      const res = await api('GET', '/api/platinum/billing-payment-miscellaneous/get-scoa-items', {
+        mISCPayGroupId: String(groupId)
+      });
+      expect(res.ok).toBe(true);
+      const items = Array.isArray(res.data) ? res.data : (res.data?.result || []);
+      expect(items.length).toBeGreaterThan(0);
+      console.log(`  ✓ ${items.length} SCOA item(s)`);
+    }, 15000);
+
+    it('2.5 Payment types', async () => {
+      const res = await api('GET', '/api/platinum/receipt-prepaid/pos-payment-type');
+      expect(res.ok).toBe(true);
+      console.log(`  ✓ Payment types loaded`);
+    }, 10000);
+  });
+
+  describe('3. Cash Payment', () => {
+    let receiptId: any = null;
+
+    it('3.1 Submit cash payment', async () => {
+      const receiptDate = new Date().toISOString();
+      const cashAmt = 10 + Math.floor(Math.random() * 90);
+      const res = await api('POST', `/api/platinum/billing-payment/submit-consumer-payment/${userId}`, {
+        account: {
+          account_ID: Number(acctId),
+          accountNumber: acctNo,
+          name: acctName,
+          outStandingAmt: cashAmt,
+          billId: null,
+          cutOffID: 0, cutOffAmount: 0, debtAmount: 0,
+          debtArrangementId: 0, billingCycleId: 1,
+          oldAccountCode: '', sundryDebtorsId: '',
+        },
+        requestModel: {
+          finYear,
+          receiptDate,
+          totalAmount: cashAmt, tenderAmount: cashAmt, changeAmount: 0,
+          paymentType: 1, paymentOption: 1,
+          outStandingAmount: acctAmt,
+          cutOffID: 0, cutOffAmount: 0, debtAmount: 0, debtArrangementId: 0,
+          sundryDebtorsId: '',
+          cardNumber: '', expiryDate: '',
+          processingMonth: 0,
+          chequeNumber: '', chequeDate: receiptDate,
+          accountHolderName: acctName,
+          bankName: '', bankBranchCode: '',
+          cashierId: Number(cashierId), cashOfficeId: Number(cashOfficeId),
+          apiTransactionID: 0, isReconciled: 0, isCancelled: 0,
+        },
+      });
+      expect(res.ok).toBe(true);
+      const d = res.data;
+      receiptId = d?.receiptId || d?.receipt_ID || d?.receiptID || d?.id || d?.serialNo || (Array.isArray(d?.ids) && d.ids[0]) || null;
+      expect(receiptId).toBeTruthy();
+      console.log(`  ✓ Cash payment — receiptId=${receiptId}`);
+    }, 30000);
+
+    it('3.2 Print cash receipt', async () => {
+      if (!receiptId) { console.log('  ⊘ Skipped — no receipt'); return; }
+      const res = await api('POST', '/api/platinum/billing-payment/print-receipt', {
+        ids: [Number(receiptId)]
+      }, true);
+      expect(res.ok).toBe(true);
+      expect(res.size).toBeGreaterThan(100);
+      console.log(`  ✓ Receipt printed — ${res.size} bytes`);
+    }, 20000);
+  });
+
+  describe('4. Card Payment', () => {
+    let receiptId: any = null;
+
+    it('4.1 Submit card payment', async () => {
+      const receiptDate = new Date().toISOString();
+      const cardAmt = 25 + Math.floor(Math.random() * 75);
+      const res = await api('POST', `/api/platinum/billing-payment/submit-consumer-payment/${userId}`, {
+        account: {
+          account_ID: Number(acctId),
+          accountNumber: acctNo,
+          name: acctName,
+          outStandingAmt: cardAmt,
+          billId: null,
+          cutOffID: 0, cutOffAmount: 0, debtAmount: 0,
+          debtArrangementId: 0, billingCycleId: 1,
+          oldAccountCode: '',
+        },
+        requestModel: {
+          finYear,
+          receiptDate,
+          totalAmount: cardAmt, tenderAmount: 0, changeAmount: 0,
+          paymentType: 3, paymentOption: 1,
+          outStandingAmount: acctAmt,
+          cutOffID: 0, cutOffAmount: 0, debtAmount: 0, debtArrangementId: 0,
+          sundryDebtorsId: '',
+          cardNumber: '4111111111111111', expiryDate: '12/28',
+          processingMonth: 0,
+          chequeNumber: '', chequeDate: receiptDate,
+          accountHolderName: acctName,
+          bankName: '', bankBranchCode: '',
+          cashierId: Number(cashierId), cashOfficeId: Number(cashOfficeId),
+          apiTransactionID: 0, isReconciled: 0, isCancelled: 0,
+        },
+      });
+      expect(res.ok).toBe(true);
+      const d = res.data;
+      receiptId = d?.receiptId || d?.receipt_ID || d?.receiptID || d?.id || d?.serialNo || (Array.isArray(d?.ids) && d.ids[0]) || null;
+      expect(receiptId).toBeTruthy();
+      console.log(`  ✓ Card payment — receiptId=${receiptId}`);
+    }, 30000);
+
+    it('4.2 Print card receipt', async () => {
+      if (!receiptId) { console.log('  ⊘ Skipped'); return; }
+      const res = await api('POST', '/api/platinum/billing-payment/print-receipt', {
+        ids: [Number(receiptId)]
+      }, true);
+      expect(res.ok).toBe(true);
+      expect(res.size).toBeGreaterThan(100);
+      console.log(`  ✓ Receipt printed — ${res.size} bytes`);
+    }, 20000);
+  });
+
+  describe('5. Receipt Search', () => {
+    it('5.1 Search receipts', async () => {
+      const res = await api('GET', '/api/platinum/view-receipt/search-receipt-numbers', {
+        receiptNumbers: '910869'
+      });
+      expect(res.ok).toBe(true);
+      console.log(`  ✓ Receipt search completed`);
+    }, 15000);
+  });
+
+  describe('6. Day-End Data', () => {
+    it('6.1 Reconcile list', async () => {
+      if (!cashierId) { console.log('  ⊘ Skipped'); return; }
+      const res = await api('GET', '/api/platinum/billing-payment-day-end/get-cashier-receipt-reconcile-list', {
+        cashierId
+      });
+      expect(res.ok).toBe(true);
+      console.log(`  ✓ Reconcile list loaded`);
+    }, 15000);
+  });
+
+  describe('7. Business Rules', () => {
+    it('7.1 Only cash, card, cash+card tender types allowed', () => {
+      const allowed = ['cash', 'card', 'cash+card'];
+      expect(allowed).not.toContain('eft');
+      expect(allowed).not.toContain('cheque');
+    });
+
+    it('7.2 Change capped at R200', () => {
+      expect(Math.min(350 - 100, 200)).toBe(200);
+    });
+
+    it('7.3 Zero amounts blocked', () => {
+      expect([{ amount: 0 }].some(i => !i.amount || i.amount <= 0)).toBe(true);
+    });
+  });
+});

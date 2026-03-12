@@ -11,9 +11,8 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['tests/**/*.test.ts'],
-    exclude: ['tests/pos-e2e-api.test.ts'],
-    testTimeout: 10000,
-    setupFiles: ['tests/setup.ts'],
+    include: ['tests/pos-e2e-api.test.ts'],
+    testTimeout: 30000,
+    sequence: { concurrent: false },
   },
 });
