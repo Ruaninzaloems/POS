@@ -225,8 +225,21 @@ export class CashierSetupComponent implements OnInit {
       );
       const officeList = Array.isArray(offices) ? offices : offices?.data || [];
       if (officeList.length > 0) {
+        console.log('[cashier-setup] Loaded', officeList.length, 'offices. First:', officeList[0] ? { id: officeList[0].cashOffice_ID, vote: officeList[0].vote, vote1: officeList[0].vote1, voteDesc: officeList[0].voteDesc, vote_ID: officeList[0].vote_ID } : 'empty');
         this.cashOffices.set(officeList);
         this.step2Status.set('success');
+        const selId = this.selectedOfficeId();
+        if (selId) {
+          const match = officeList.find((o: any) => String(o.cashOffice_ID) === selId);
+          console.log('[cashier-setup] After load — selectedOfficeId:', selId, 'match:', match ? 'found' : 'NOT FOUND');
+        } else if (officeList.length > 0) {
+          const defaultId = String(officeList[0].cashOffice_ID);
+          this.selectedOfficeId.set(defaultId);
+          console.log('[cashier-setup] Auto-selected first office:', defaultId, officeList[0].cashOfficeDesc);
+          if (this.isCashierRegistered()) {
+            this.loadCashierConfig();
+          }
+        }
       } else {
         this.cashOffices.set([]);
         this.step2Status.set('error');
@@ -293,7 +306,11 @@ export class CashierSetupComponent implements OnInit {
   }
 
   onOfficeChange(): void {
-    if (this.isCashierRegistered() && this.selectedOfficeId()) {
+    const officeId = this.selectedOfficeId();
+    const office = this.selectedOffice();
+    console.log('[cashier-setup] onOfficeChange — selectedOfficeId:', officeId, 'selectedOffice:', office ? { id: office.cashOffice_ID, vote: office.vote, vote1: office.vote1, voteDesc: office.voteDesc, vote_ID: office.vote_ID } : 'null');
+    console.log('[cashier-setup] scoaCode:', this.scoaCode(), 'ledgerVoteDisplay:', this.ledgerVoteDisplay(), 'hasValidVote:', this.hasValidVote());
+    if (this.isCashierRegistered() && officeId) {
       this.loadCashierConfig();
     }
   }

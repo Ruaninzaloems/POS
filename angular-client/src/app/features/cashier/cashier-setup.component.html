@@ -245,7 +245,7 @@
             >
               <option value="">{{ step2Status() === 'loading' ? 'Loading offices...' : '-- Select Cash Office --' }}</option>
               @for (office of cashOffices(); track office.cashOffice_ID) {
-                <option [value]="office.cashOffice_ID" [attr.data-testid]="'office-option-' + office.cashOffice_ID">
+                <option [value]="'' + office.cashOffice_ID" [attr.data-testid]="'office-option-' + office.cashOffice_ID">
                   {{ office.cashOfficeDesc || 'Office ' + office.cashOffice_ID }}{{ defaultOfficeId() && office.cashOffice_ID.toString() === defaultOfficeId() ? ' (Default)' : '' }}
                 </option>
               }
