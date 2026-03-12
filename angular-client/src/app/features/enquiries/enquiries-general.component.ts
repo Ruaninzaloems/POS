@@ -1146,18 +1146,24 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           const acctFyParam: Record<string, string> = acctFinYear ? { finYear: acctFinYear } : {};
           const acctForPRS: any = this.selectedAccount();
           const acctUnitPartForSearch = acctForPRS?.unitPartitionID || acctForPRS?.unitPartition_ID;
-          const [basic, accountInfo, acctPropDetails, acctContactInfo, acctConsUnit, acctConsUnitById, acctRates, acctDepositAmt, acctMgmt, acctSectTitle, acctConsDetails, acctPropRatesSearch, acctMgmtDetails, acctHandover, acctAttpHistory, acctRppStatus, acctNameInfo] = await Promise.allSettled([
+
+          const fastPromises = Promise.allSettled([
             this.cachedGet(`/api/platinum/billing-enquiry/basic-account-details/${accountId}`),
             this.cachedGet(`/api/platinum/billing-enquiry/account-info-result/${accountId}`),
-            this.cachedGet(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`),
             this.cachedGet(`/api/platinum/billing-enquiry/get-contact-details/${accountId}`),
-            this.cachedGet(`/api/platinum/billing-enquiry/consumption-units/${accountId}`),
             this.cachedGet(`/api/platinum/billing-enquiry/cons-unit-by-account`, { AccountId: String(accountId) }),
             this.cachedGet(`/api/platinum/billing-enquiry/account-rates-details/${accountId}`, acctFyParam),
             this.cachedGet(`/api/platinum/billing-enquiry/deposit-amount`, { accountId: String(accountId) }),
             this.cachedGet(`/api/platinum/billing-account-management/account-information`, { accountId: String(accountId) }),
-            this.cachedGet(`/api/platinum/billing-enquiry/sectional-title-scheme`, { accountId: String(accountId) }),
             this.cachedGet(`/api/platinum/receipt-prepaid/cons-account-details`, { accountId: String(accountId) }),
+            this.cachedGet(`/api/platinum/billing-enquiry/attp-application-history/${accountId}`),
+            this.cachedGet(`/api/platinum/billing-enquiry/repayment-plan-status/${accountId}`),
+          ]);
+
+          const slowPromises = Promise.allSettled([
+            this.cachedGet(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`),
+            this.cachedGet(`/api/platinum/billing-enquiry/consumption-units/${accountId}`),
+            this.cachedGet(`/api/platinum/billing-enquiry/sectional-title-scheme`, { accountId: String(accountId) }),
             this.cachedGet(`/api/platinum/billing-enquiry/property-rates-search`, {
               finYear: acctFinYear || this.getCurrentFinYear(),
               accountId: String(Number(accountId) || accountId),
@@ -1166,16 +1172,15 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             }),
             this.cachedGet(`/api/platinum/billing-account-management/account-details`, { accountId: String(accountId) }),
             this.cachedGet(`/api/platinum/billing-enquiry/handover-info/${accountId}`),
-            this.cachedGet(`/api/platinum/billing-enquiry/attp-application-history/${accountId}`),
-            this.cachedGet(`/api/platinum/billing-enquiry/repayment-plan-status/${accountId}`),
             this.cachedGet(`/api/platinum/billing-enquiry/name-info/${accountId}`),
           ]);
+
+          const [basic, accountInfo, acctContactInfo, acctConsUnitById, acctRates, acctDepositAmt, acctMgmt, acctConsDetails, acctAttpHistory, acctRppStatus] = await fastPromises;
           const basicVal = basic.status === 'fulfilled' ? (Array.isArray(basic.value) ? basic.value[0] : basic.value) : null;
           const airVal = accountInfo.status === 'fulfilled' ? (Array.isArray(accountInfo.value) ? accountInfo.value[0] : accountInfo.value) : null;
-          const acctPropVal = acctPropDetails.status === 'fulfilled' ? (Array.isArray(acctPropDetails.value) ? acctPropDetails.value[0] : acctPropDetails.value) : null;
+          let acctPropVal: any = null;
           const acctContactVal = acctContactInfo.status === 'fulfilled' ? (Array.isArray(acctContactInfo.value) ? acctContactInfo.value[0] : acctContactInfo.value) : null;
-          let acctConsUnitVal = acctConsUnit.status === 'fulfilled' ? (Array.isArray(acctConsUnit.value) ? acctConsUnit.value[0] : acctConsUnit.value) : null;
-          if (acctConsUnitVal && acctConsUnitVal._error) acctConsUnitVal = null;
+          let acctConsUnitVal: any = null;
           const acctConsUnitByIdVal = acctConsUnitById.status === 'fulfilled' ? (Array.isArray(acctConsUnitById.value) ? acctConsUnitById.value[0] : acctConsUnitById.value) : null;
           if (acctConsUnitByIdVal && !acctConsUnitByIdVal._error) {
             console.log('[account] ConsUnitByAccountId keys:', Object.keys(acctConsUnitByIdVal));
@@ -1184,15 +1189,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           }
           const acctRatesVal = acctRates.status === 'fulfilled' ? (Array.isArray(acctRates.value) ? acctRates.value[0] : acctRates.value) : null;
           const acctMgmtVal = acctMgmt.status === 'fulfilled' ? (Array.isArray(acctMgmt.value) ? acctMgmt.value[0] : acctMgmt.value) : null;
-          const acctSectTitleVal = acctSectTitle.status === 'fulfilled' ? (Array.isArray(acctSectTitle.value) ? acctSectTitle.value[0] : acctSectTitle.value) : null;
+          let acctSectTitleVal: any = null;
           if (basicVal) console.log('[account] basic keys:', Object.keys(basicVal));
           if (airVal) console.log('[account] accountInfo keys:', Object.keys(airVal));
-          if (acctPropVal) console.log('[account] property keys:', Object.keys(acctPropVal));
           if (acctContactVal) console.log('[account] contact keys:', Object.keys(acctContactVal));
           if (acctConsUnitVal) console.log('[account] consUnit keys:', Object.keys(acctConsUnitVal));
           if (acctRatesVal) console.log('[account] rates keys:', Object.keys(acctRatesVal));
           if (acctMgmtVal) console.log('[account] acctMgmt keys:', Object.keys(acctMgmtVal));
-          if (acctSectTitleVal) console.log('[account] sectionalTitle keys:', Object.keys(acctSectTitleVal));
           const mergedBasic = { ...basicVal, ...airVal };
           if (acctDepositAmt.status === 'fulfilled' && acctDepositAmt.value != null) {
             const depVal = acctDepositAmt.value;
@@ -1398,23 +1401,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             } catch (e) { console.log('[account] valuation-by-unit failed:', e); }
           }
 
-          const acctPropRatesSearchVal = acctPropRatesSearch.status === 'fulfilled' ? acctPropRatesSearch.value : null;
-          let acctPropRatesData: any[] = acctPropRatesSearchVal?.data ? (Array.isArray(acctPropRatesSearchVal.data) ? acctPropRatesSearchVal.data : [acctPropRatesSearchVal.data]) : (Array.isArray(acctPropRatesSearchVal) ? acctPropRatesSearchVal : acctPropRatesSearchVal && !acctPropRatesSearchVal._error ? [acctPropRatesSearchVal] : []);
-          if (acctPropRatesData.length > 0) {
-            console.log('[account] property-rates-search keys:', Object.keys(acctPropRatesData[0]));
-            console.log('[account] property-rates-search sample:', JSON.stringify(acctPropRatesData[0]).substring(0, 800));
-          }
-
-          const acctMgmtDetailsVal = acctMgmtDetails.status === 'fulfilled' ? (Array.isArray(acctMgmtDetails.value) ? acctMgmtDetails.value[0] : acctMgmtDetails.value) : null;
-          if (acctMgmtDetailsVal && !acctMgmtDetailsVal._error) {
-            console.log('[account] acctMgmtDetails keys:', Object.keys(acctMgmtDetailsVal));
-            console.log('[account] acctMgmtDetails sample:', JSON.stringify(acctMgmtDetailsVal).substring(0, 2000));
-          }
-
-          let acctHandoverVal: any = null;
-          if (acctHandover.status === 'fulfilled' && acctHandover.value && !acctHandover.value._error) {
-            acctHandoverVal = acctHandover.value;
-          }
           let acctAttpVal: any[] = [];
           if (acctAttpHistory.status === 'fulfilled') {
             const attpRaw = acctAttpHistory.value;
@@ -1423,14 +1409,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
           const derivedStatuses: Record<string, string> = {};
 
-          const acctHoArr = Array.isArray(acctHandoverVal) ? acctHandoverVal : acctHandoverVal ? [acctHandoverVal] : [];
-          const acctActiveHo = acctHoArr.find((h: any) => {
-            const st = (h.handoverStatus || h.status || h.handoverStatusDesc || '').toLowerCase();
-            return st.includes('active') || st.includes('handed') || st.includes('legal') || st.includes('pending');
-          });
-          derivedStatuses['handoverStatus'] = acctActiveHo
-            ? (acctActiveHo.handoverStatus || acctActiveHo.handoverStatusDesc || acctActiveHo.status || 'Handed Over')
-            : (acctHoArr.length > 0 ? (acctHoArr[0].handoverStatus || acctHoArr[0].handoverStatusDesc || 'N/A') : 'N/A');
+          derivedStatuses['handoverStatus'] = 'N/A';
           const acctActiveIndigent = acctAttpVal.find((r: any) => {
             const st = (r.attpStatus || r.status || '').toLowerCase();
             return st.includes('active') || st.includes('approved') || st.includes('registered');
@@ -1438,9 +1417,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           derivedStatuses['indigentSubsidyStatus'] = acctActiveIndigent
             ? (acctActiveIndigent.attpStatus || acctActiveIndigent.status || 'Active')
             : (acctAttpVal.length > 0 ? (acctAttpVal[0].attpStatus || acctAttpVal[0].status || '') : '');
-          if (acctMgmtDetailsVal && !acctMgmtDetailsVal._error) {
-            derivedStatuses['departmentalAccount'] = acctMgmtDetailsVal.departmentID != null && acctMgmtDetailsVal.departmentID !== 0 ? 'Active' : 'Inactive';
-          }
 
           let acctRppStatusVal: any = null;
           if (acctRppStatus.status === 'fulfilled') {
@@ -1487,34 +1463,32 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             consUnit: acctConsUnitByIdVal && !acctConsUnitByIdVal._error ? acctConsUnitByIdVal : acctConsUnitVal,
             ratesDetails: acctRatesVal && !acctRatesVal._error ? acctRatesVal : null,
             valuationData: acctValuationData,
-            propertyRatesData: acctPropRatesData,
+            propertyRatesData: [],
             mgmt: acctMgmtVal && !acctMgmtVal._error ? acctMgmtVal : null,
             consDetails: acctConsDetailsVal && !acctConsDetailsVal._error ? acctConsDetailsVal : null,
-            mgmtDetails: acctMgmtDetailsVal && !acctMgmtDetailsVal._error ? acctMgmtDetailsVal : null,
+            mgmtDetails: null,
             derivedStatuses,
           };
 
           {
             const cuVal = acctConsUnitByIdVal && !acctConsUnitByIdVal._error ? acctConsUnitByIdVal : acctConsUnitVal;
-            const propV = acctPropVal && !acctPropVal._error ? acctPropVal : null;
             const snapSa: any = this.selectedAccount();
             const snap: Record<string, any> = {};
-            snap['ownerName'] = basicVal?.fullNAME || acctConsDetailsVal?.fullNAME || propV?.accountableOwnerName || propV?.ownerName || snapSa?.fullNAME || snapSa?.name || '';
-            snap['address'] = basicVal?.deliveryAddress || propV?.locationAddress || propV?.propertyStreet ||
-              (propV?.streetNumber ? propV.streetNumber + ' ' + propV.streetName + ', ' + (propV?.town || '') : propV?.streetName || '') ||
+            snap['ownerName'] = basicVal?.fullNAME || acctConsDetailsVal?.fullNAME || snapSa?.fullNAME || snapSa?.name || '';
+            snap['address'] = basicVal?.deliveryAddress ||
               cuVal?.nonStandAddLine1 || snapSa?.fullAddress || snapSa?.address || '';
-            snap['accountType'] = acctConsDetailsVal?.accountDesc || propV?.accountDesc || acctMgmtVal?.accountDesc || basicVal?.accountDesc || snapSa?.accountDesc || '';
-            snap['sgNumber'] = propV?.sgNumber || cuVal?.sgNumber || snapSa?.sgNumber || '';
+            snap['accountType'] = acctConsDetailsVal?.accountDesc || acctMgmtVal?.accountDesc || basicVal?.accountDesc || snapSa?.accountDesc || '';
+            snap['sgNumber'] = cuVal?.sgNumber || snapSa?.sgNumber || '';
             const sgParts = (snap['sgNumber'] || '').split('/');
-            snap['erfNumber'] = sgParts.length >= 3 ? sgParts[2].replace(/^0+/, '') || '0' : (cuVal?.erfNumber || propV?.erfNumber || '');
+            snap['erfNumber'] = sgParts.length >= 3 ? sgParts[2].replace(/^0+/, '') || '0' : (cuVal?.erfNumber || '');
             snap['portionNumber'] = sgParts.length >= 4 ? sgParts[3].replace(/^0+/, '') || '0' : '';
-            snap['town'] = acctConsDetailsVal?.town || propV?.town || cuVal?.nonStandAddSuburb || snapSa?.town || '';
-            snap['propertyType'] = propV?.propertyTypeDesc || propV?.propertyType || this.resolvePropertyType(cuVal?.propertyTypeID, propV?.sgNumber || cuVal?.sgNumber, cuVal?.sectionNumber, cuVal?.farmID) || '';
-            snap['propertyCategory'] = propV?.propertyCategory || acctConsDetailsVal?.zoneDesc || propV?.zoneDesc || propV?.category || '';
-            snap['propertyTypeOfUse'] = acctConsDetailsVal?.typeOfUseDesc || propV?.typeOfUse || propV?.typeofUse || propV?.typeOfUseDesc || '';
-            snap['billingCycle'] = acctMgmtVal?.cycleDescription || acctConsDetailsVal?.cycleDescription || propV?.cycleDescription || cuVal?.billingCycleID || '';
-            snap['marketValue'] = acctValuationData?.marketValue || acctValuationData?.standMarketValue || cuVal?.marketValue || propV?.marketValue || null;
-            snap['status'] = basicVal?.accountStatus || acctConsDetailsVal?.statusDesc || acctMgmtVal?.accountStatus || propV?.propertyStatus || snapSa?.accountStatus || '';
+            snap['town'] = acctConsDetailsVal?.town || cuVal?.nonStandAddSuburb || snapSa?.town || '';
+            snap['propertyType'] = this.resolvePropertyType(cuVal?.propertyTypeID, cuVal?.sgNumber, cuVal?.sectionNumber, cuVal?.farmID) || '';
+            snap['propertyCategory'] = acctConsDetailsVal?.zoneDesc || '';
+            snap['propertyTypeOfUse'] = acctConsDetailsVal?.typeOfUseDesc || '';
+            snap['billingCycle'] = acctMgmtVal?.cycleDescription || acctConsDetailsVal?.cycleDescription || cuVal?.billingCycleID || '';
+            snap['marketValue'] = acctValuationData?.marketValue || acctValuationData?.standMarketValue || cuVal?.marketValue || null;
+            snap['status'] = basicVal?.accountStatus || acctConsDetailsVal?.statusDesc || acctMgmtVal?.accountStatus || snapSa?.accountStatus || '';
             const depRaw = acctDepositAmt.status === 'fulfilled' ? acctDepositAmt.value : null;
             snap['depositValue'] = depRaw != null && !depRaw?._error ? (typeof depRaw === 'number' ? depRaw : Number(depRaw?.totalDeposit ?? depRaw?.amount ?? depRaw?.depositAmount ?? depRaw) || 0) : null;
             snap['handoverStatus'] = derivedStatuses['handoverStatus'] || 'N/A';
@@ -1526,15 +1500,113 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             this.globalSnapshotLoading.set(false);
           }
 
-          {
-            const riskDetected: RiskFlag[] = [];
-            const hoArr = Array.isArray(acctHandoverVal) ? acctHandoverVal : acctHandoverVal ? [acctHandoverVal] : [];
-            const activeHo = hoArr.find((h: any) => {
+          if (generation === this._loadTabGeneration) {
+            this.tabData.set(data);
+            this.tabLoading.set(false);
+          }
+
+          this.loadLinkedAccounts(accountId);
+
+          slowPromises.then((slowResults) => {
+            if (generation !== this._loadTabGeneration) return;
+            const [acctPropDetails, acctConsUnit, acctSectTitle, acctPropRatesSearch, acctMgmtDetails, acctHandover, acctNameInfo] = slowResults;
+
+            const slowPropVal = acctPropDetails.status === 'fulfilled' ? (Array.isArray(acctPropDetails.value) ? acctPropDetails.value[0] : acctPropDetails.value) : null;
+            if (slowPropVal && !slowPropVal._error) {
+              acctPropVal = slowPropVal;
+              console.log('[account] property keys:', Object.keys(slowPropVal));
+            }
+            let slowConsUnitVal = acctConsUnit.status === 'fulfilled' ? (Array.isArray(acctConsUnit.value) ? acctConsUnit.value[0] : acctConsUnit.value) : null;
+            if (slowConsUnitVal && slowConsUnitVal._error) slowConsUnitVal = null;
+            if (slowConsUnitVal && !acctConsUnitVal) acctConsUnitVal = slowConsUnitVal;
+
+            const slowSectTitleVal = acctSectTitle.status === 'fulfilled' ? (Array.isArray(acctSectTitle.value) ? acctSectTitle.value[0] : acctSectTitle.value) : null;
+            if (slowSectTitleVal && !slowSectTitleVal._error) {
+              acctSectTitleVal = slowSectTitleVal;
+              const stName = slowSectTitleVal.schemeName || slowSectTitleVal.description || slowSectTitleVal.sectionalTitleSchemeName || slowSectTitleVal.name;
+              if (stName && !acctPropFinal['sectionalTitleScheme']) acctPropFinal['sectionalTitleScheme'] = stName;
+            }
+
+            if (slowConsUnitVal && !slowConsUnitVal._error) {
+              const cuFieldMap: Record<string, string[]> = {
+                'propertyStatus': ['propertyStatus'], 'marketValue': ['marketValue'], 'town': ['town'],
+                'farmName': ['farmName'], 'registrationStatus': ['registrationStatus'], 'oldPropertyCode': ['oldPropertyCode', 'oldAccountCode'],
+                'longitude': ['longitude'], 'latitude': ['latitude'],
+              };
+              for (const [target, sources] of Object.entries(cuFieldMap)) {
+                if (acctPropFinal[target] != null && acctPropFinal[target] !== '') continue;
+                for (const src of sources) {
+                  if (slowConsUnitVal[src] != null && slowConsUnitVal[src] !== '') { acctPropFinal[target] = slowConsUnitVal[src]; break; }
+                }
+              }
+            }
+
+            if (slowPropVal && !slowPropVal._error) {
+              const propEnrichMap: Record<string, string[]> = {
+                'sgNumber': ['sgNumber'], 'propertyId': ['propertyId'], 'locationAddress': ['locationAddress'],
+                'propertyStatus': ['propertyStatus'], 'zoneDesc': ['zoneDesc'], 'typeOfUseDesc': ['typeOfUseDesc'],
+                'owner': ['owner'], 'town': ['town'], 'suburb': ['suburb'],
+              };
+              for (const [target, sources] of Object.entries(propEnrichMap)) {
+                if (acctPropFinal[target] != null && acctPropFinal[target] !== '') continue;
+                for (const src of sources) {
+                  if (slowPropVal[src] != null && slowPropVal[src] !== '') { acctPropFinal[target] = slowPropVal[src]; break; }
+                }
+              }
+            }
+
+            const acctPropRatesSearchVal = acctPropRatesSearch.status === 'fulfilled' ? acctPropRatesSearch.value : null;
+            let acctPropRatesData: any[] = acctPropRatesSearchVal?.data ? (Array.isArray(acctPropRatesSearchVal.data) ? acctPropRatesSearchVal.data : [acctPropRatesSearchVal.data]) : (Array.isArray(acctPropRatesSearchVal) ? acctPropRatesSearchVal : acctPropRatesSearchVal && !acctPropRatesSearchVal._error ? [acctPropRatesSearchVal] : []);
+
+            const slowMgmtDetailsVal = acctMgmtDetails.status === 'fulfilled' ? (Array.isArray(acctMgmtDetails.value) ? acctMgmtDetails.value[0] : acctMgmtDetails.value) : null;
+            if (slowMgmtDetailsVal && !slowMgmtDetailsVal._error) {
+              console.log('[account] acctMgmtDetails keys:', Object.keys(slowMgmtDetailsVal));
+              derivedStatuses['departmentalAccount'] = slowMgmtDetailsVal.departmentID != null && slowMgmtDetailsVal.departmentID !== 0 ? 'Active' : 'Inactive';
+            }
+
+            let acctHandoverVal: any = null;
+            if (acctHandover.status === 'fulfilled' && acctHandover.value && !acctHandover.value._error) {
+              acctHandoverVal = acctHandover.value;
+            }
+            const acctHoArr = Array.isArray(acctHandoverVal) ? acctHandoverVal : acctHandoverVal ? [acctHandoverVal] : [];
+            const acctActiveHo = acctHoArr.find((h: any) => {
               const st = (h.handoverStatus || h.status || h.handoverStatusDesc || '').toLowerCase();
               return st.includes('active') || st.includes('handed') || st.includes('legal') || st.includes('pending');
             });
-            if (activeHo) {
-              riskDetected.push({ id: 'handover', label: 'Handed Over / Legal', detail: `${activeHo.handoverStatus || activeHo.status || 'Handed Over'}${activeHo.attorneyName ? ` — Attorney: ${activeHo.attorneyName}` : ''}`, severity: 'critical', icon: '⚖️' });
+            derivedStatuses['handoverStatus'] = acctActiveHo
+              ? (acctActiveHo.handoverStatus || acctActiveHo.handoverStatusDesc || acctActiveHo.status || 'Handed Over')
+              : (acctHoArr.length > 0 ? (acctHoArr[0].handoverStatus || acctHoArr[0].handoverStatusDesc || 'N/A') : 'N/A');
+
+            const updatedData = {
+              ...data,
+              property: acctPropFinal,
+              consUnit: acctConsUnitByIdVal && !acctConsUnitByIdVal._error ? acctConsUnitByIdVal : acctConsUnitVal,
+              propertyRatesData: acctPropRatesData,
+              mgmtDetails: slowMgmtDetailsVal && !slowMgmtDetailsVal._error ? slowMgmtDetailsVal : null,
+              derivedStatuses: { ...derivedStatuses },
+            };
+            if (generation === this._loadTabGeneration) {
+              this.tabData.set(updatedData);
+            }
+
+            const propV = acctPropVal && !acctPropVal._error ? acctPropVal : null;
+            const cuVal = acctConsUnitByIdVal && !acctConsUnitByIdVal._error ? acctConsUnitByIdVal : acctConsUnitVal;
+            const currentSnap = this.globalSnapshot();
+            if (currentSnap && propV) {
+              const enrichedSnap = { ...currentSnap };
+              if (!enrichedSnap['ownerName'] && (propV.accountableOwnerName || propV.ownerName)) enrichedSnap['ownerName'] = propV.accountableOwnerName || propV.ownerName;
+              if (propV.locationAddress || propV.propertyStreet) enrichedSnap['address'] = enrichedSnap['address'] || propV.locationAddress || propV.propertyStreet;
+              if (propV.sgNumber && !enrichedSnap['sgNumber']) enrichedSnap['sgNumber'] = propV.sgNumber;
+              if (propV.town && !enrichedSnap['town']) enrichedSnap['town'] = propV.town;
+              if (propV.propertyTypeDesc || propV.propertyType) enrichedSnap['propertyType'] = enrichedSnap['propertyType'] || propV.propertyTypeDesc || propV.propertyType;
+              if (propV.propertyCategory) enrichedSnap['propertyCategory'] = enrichedSnap['propertyCategory'] || propV.propertyCategory;
+              enrichedSnap['handoverStatus'] = derivedStatuses['handoverStatus'] || 'N/A';
+              this.globalSnapshot.set(enrichedSnap);
+            }
+
+            const riskDetected: RiskFlag[] = [];
+            if (acctActiveHo) {
+              riskDetected.push({ id: 'handover', label: 'Handed Over / Legal', detail: `${acctActiveHo.handoverStatus || acctActiveHo.status || 'Handed Over'}${acctActiveHo.attorneyName ? ` — Attorney: ${acctActiveHo.attorneyName}` : ''}`, severity: 'critical', icon: '⚖️' });
             }
             const activeIndigent = acctAttpVal.find((r: any) => {
               const st = (r.attpStatus || r.status || '').toLowerCase();
@@ -1569,9 +1641,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
               this.riskFlags.set([...riskDetected]);
               this.riskFlagsLoading.set(false);
             });
-          }
+          });
 
-          this.loadLinkedAccounts(accountId);
+          return;
           break;
 
         case 'balance':
