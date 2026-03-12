@@ -6,6 +6,7 @@ import { ApiService } from '../../core/services/api.service';
 import { ToastService } from '../../core/services/toast.service';
 import { AuthService } from '../../core/services/auth.service';
 import { PosBasketService } from '../../services/pos-basket.service';
+import { EnquiriesGeneralComponent } from '../enquiries/enquiries-general.component';
 import { firstValueFrom } from 'rxjs';
 import {
   BasketItem,
@@ -65,7 +66,7 @@ type PaymentMode = 'account' | 'clearance' | 'prepaid' | 'misc';
 @Component({
   selector: 'app-pos',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, EnquiriesGeneralComponent],
   templateUrl: './pos.component.html',
   styleUrl: './pos.component.css'
 })
@@ -124,6 +125,7 @@ export class PosComponent implements OnInit, OnDestroy {
   cancelReason = signal('');
   cancellingReceipt = signal(false);
 
+  showEnquiryOverlay = signal(false);
   showDropBoxDialog = signal(false);
   dropBoxAmount = signal(0);
   dropBoxReference = signal('');
@@ -1988,7 +1990,11 @@ export class PosComponent implements OnInit, OnDestroy {
   }
 
   navigateToEnquiries(): void {
-    this.router.navigate(['/enquiries']);
+    this.showEnquiryOverlay.set(true);
+  }
+
+  closeEnquiryOverlay(): void {
+    this.showEnquiryOverlay.set(false);
   }
 
   formatCurrency(amount: number): string {

@@ -2845,3 +2845,59 @@
 .btn-outline:hover {
   background: #f8fafc;
 }
+
+.enquiry-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  animation: enquirySlideIn 0.2s ease-out;
+}
+@keyframes enquirySlideIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.enquiry-overlay-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: var(--platinum-primary, #0f2b46);
+  color: white;
+  flex-shrink: 0;
+}
+.enquiry-overlay-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.enquiry-overlay-close {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.15);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 8px;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.enquiry-overlay-close:hover {
+  background: rgba(255,255,255,0.25);
+}
+.enquiry-overlay-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+.enquiry-overlay-body app-enquiries-general {
+  display: block;
+  height: 100%;
+}
