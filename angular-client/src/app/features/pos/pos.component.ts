@@ -2044,6 +2044,9 @@ export class PosComponent implements OnInit, OnDestroy {
         || obj.prepaidReceiptId || obj.prepaid_receipt_id || obj.tokenReceiptId
         || 0);
     };
+    if (Array.isArray(data.ids) && data.ids.length > 0 && Number(data.ids[0]) > 0) {
+      return Number(data.ids[0]);
+    }
     let val = extract(data);
     if (val > 0) return val;
     if (data.objData) { val = extract(data.objData); if (val > 0) return val; }
@@ -2101,16 +2104,18 @@ export class PosComponent implements OnInit, OnDestroy {
         }
 
         const receiptIds = nonMiscResults.map(r => this.getReceiptSerialNo(r.rawResponse)).filter(id => id > 0);
-        const receiptNos = nonMiscResults.map(r => r.receiptNumber).filter(n => n && n !== 'N/A');
+        const realReceiptNos = nonMiscResults
+          .map(r => r.receiptNumber)
+          .filter(n => n && n !== 'N/A' && !n.startsWith('REC-'));
 
-        console.log(`[printReceipt] Non-misc print: ids=[${receiptIds.join(',')}], nos=[${receiptNos.join(',')}]`);
+        console.log(`[printReceipt] Non-misc print: ids=[${receiptIds.join(',')}], realNos=[${realReceiptNos.join(',')}]`);
 
-        if (receiptIds.length > 0 || receiptNos.length > 0) {
+        if (receiptIds.length > 0 || realReceiptNos.length > 0) {
           try {
             const blob = await firstValueFrom(
               this.api.postBlob('/api/platinum/billing-payment/print-receipt', {
                 ids: receiptIds.length > 0 ? receiptIds : [0],
-                receiptNos,
+                receiptNos: realReceiptNos,
                 isReprint: false,
               })
             );
@@ -2430,18 +2435,25 @@ export class PosComponent implements OnInit, OnDestroy {
     console.log(`[resolveReceiptNo] Extracted receipt IDs: [${receiptIds.join(',')}] from response:`, JSON.stringify(result).substring(0, 500));
 
     if (receiptIds.length > 0) {
-      for (const rid of receiptIds) {
-        try {
-          const detailData: any = await firstValueFrom(
-            this.api.get('/api/platinum/pos-multi-receipt-print', { receiptId: String(rid) })
-          );
-          const items = Array.isArray(detailData) ? detailData : (detailData?.value || []);
-          if (items.length > 0 && items[0].receiptNo) {
-            console.log(`[resolveReceiptNo] Resolved receiptNo "${items[0].receiptNo}" via pos-multi-receipt-print for ID ${rid}`);
-            return String(items[0].receiptNo);
+      const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) await delay(800);
+        for (const rid of receiptIds) {
+          try {
+            console.log(`[resolveReceiptNo] Attempt ${attempt + 1}: looking up receiptNo for ID ${rid} via pos-multi-receipt-print`);
+            const detailData: any = await firstValueFrom(
+              this.api.get('/api/platinum/pos-multi-receipt-print', { receiptId: String(rid) })
+            );
+            const items = Array.isArray(detailData) ? detailData : (detailData?.value || detailData?.items || []);
+            if (items.length > 0 && items[0].receiptNo) {
+              console.log(`[resolveReceiptNo] Resolved receiptNo "${items[0].receiptNo}" via pos-multi-receipt-print for ID ${rid}`);
+              return String(items[0].receiptNo);
+            }
+            console.log(`[resolveReceiptNo] Attempt ${attempt + 1}: pos-multi-receipt-print returned ${items.length} items, receiptNo=${items[0]?.receiptNo || 'N/A'}`);
+          } catch (e: any) {
+            console.warn(`[resolveReceiptNo] Attempt ${attempt + 1}: pos-multi-receipt-print lookup failed for ID ${rid}:`, e?.message);
           }
-        } catch (e: any) {
-          console.warn(`[resolveReceiptNo] pos-multi-receipt-print lookup failed for ID ${rid}:`, e?.message);
         }
       }
 
@@ -2449,11 +2461,11 @@ export class PosComponent implements OnInit, OnDestroy {
         const cashierId = this.cashierInfo()?.id || this.cashierInfo()?.cashier_ID || this.user()?.user_ID;
         if (cashierId) {
           const unreconciledList: any = await firstValueFrom(
-            this.api.get('/api/platinum/billing-payment-day-end/get-unreconciled-receipt-list', { id: String(cashierId) })
+            this.api.get('/api/platinum/billing-payment-day-end/cashier-receipt-unreconciled-list', { id: String(cashierId) })
           );
           const list = Array.isArray(unreconciledList) ? unreconciledList : (unreconciledList?.data || unreconciledList?.items || []);
           for (const rid of receiptIds) {
-            const match = list.find((r: any) => r.id === rid || r.receiptId === rid);
+            const match = list.find((r: any) => r.id === rid || r.receiptId === rid || r.receiptID === rid);
             if (match?.receiptNo) {
               console.log(`[resolveReceiptNo] Found receiptNo "${match.receiptNo}" from unreconciled list for ID ${rid}`);
               return String(match.receiptNo);
