@@ -115,7 +115,7 @@ export class CashierSetupComponent implements OnInit {
   async runSetupFlow(): Promise<void> {
     this.sessionLoading.set(true);
     this.step1Status.set('loading');
-    this.step2Status.set('pending');
+    this.step2Status.set('loading');
     this.error.set('');
 
     const userId = this.userId();
@@ -127,64 +127,31 @@ export class CashierSetupComponent implements OnInit {
       return;
     }
 
-    try {
-      const data: any = await firstValueFrom(
-        this.api.get('/api/platinum/auth/active-cashier-by-userid', {
-          userid: String(userId),
-          finYear: finYear
-        })
-      );
+    const cashierPromise = firstValueFrom(
+      this.api.get('/api/platinum/auth/active-cashier-by-userid', {
+        userid: String(userId),
+        finYear: finYear
+      })
+    ).catch((e: any) => ({ _fetchError: true, message: e.message }));
 
-      if (data.cashierRegistered === true) {
-        this.isCashierRegistered.set(true);
-        this.cashierId.set(data.cashierId || userId);
-        this.cashierDetails.set(data.details || null);
-        this.step1Status.set('success');
+    const officesPromise = firstValueFrom(
+      this.api.get('/api/platinum/receipt-prepaid/cash-offices', { finYear: finYear })
+    ).catch(() => []);
 
-        const existingId = data.details?.id || data.cashierId || null;
-        if (existingId) {
-          this.existingCashierId.set(existingId);
-        }
+    const [cashierResult, officesResult] = await Promise.all([cashierPromise, officesPromise]) as [any, any];
 
-        if (data.hasPendingDayEnd === true) {
-          this.dayEndPending.set(true);
-          this.resumingSession.set(false);
-          this.step2Status.set('success');
-          this.dayEndReconcileData.set(data.cashierReconcile || null);
-          const statusId = data.reconcileStatusId;
-          const statusLabel = data.reconcileStatusDesc || (statusId === 174 ? 'Pending Approval' : 'Pending');
-          this.dayEndStatusDesc.set(statusLabel);
-          if (statusId === 174) {
-            this.dayEndPendingMessage.set('Your previous day-end reconciliation has been submitted and is awaiting supervisor authorisation. You cannot start a new session until a supervisor has approved or returned your day-end.');
-          } else {
-            this.dayEndPendingMessage.set('Your previous day-end reconciliation is pending supervisor approval. You cannot start a new session until it has been authorised.');
-          }
-          this.sessionLoading.set(false);
-          return;
-        } else if (data.isActive === true && data.officeId) {
-          this.resumingSession.set(true);
-          this.step2Status.set('success');
-          this.step3Status.set('pending');
-        }
+    const officeList = Array.isArray(officesResult) ? officesResult : officesResult?.data || [];
+    if (officeList.length > 0) {
+      this.cashOffices.set(officeList);
+      this.step2Status.set('success');
+      console.log('[cashier-setup] Loaded', officeList.length, 'offices (parallel). First vote:', officeList[0]?.vote);
+    } else {
+      this.cashOffices.set([]);
+      this.step2Status.set('error');
+    }
 
-        const currentOfficeId = data.officeId || data.details?.officeId;
-        if (currentOfficeId) {
-          this.selectedOfficeId.set(String(currentOfficeId));
-          this.defaultOfficeId.set(String(currentOfficeId));
-        }
-
-        if (data.cashFloat != null && data.cashFloat > 0) {
-          this.floatInput.set(String(data.cashFloat));
-        } else if (this.user()?.cashFloat && this.user()!.cashFloat > 0) {
-          this.floatInput.set(String(this.user()!.cashFloat));
-        }
-      } else {
-        this.isCashierRegistered.set(false);
-        this.step1Status.set('error');
-        this.sessionLoading.set(false);
-        return;
-      }
-    } catch (e: any) {
+    const data = cashierResult;
+    if (data._fetchError) {
       this.isCashierRegistered.set(false);
       this.step1Status.set('error');
       this.error.set('Unable to connect to the billing system. Please try again later.');
@@ -192,62 +159,63 @@ export class CashierSetupComponent implements OnInit {
       return;
     }
 
-    if (!this.dayEndPending() && this.cashierId()) {
-      try {
-        const reconcileData: any = await firstValueFrom(
-          this.api.get('/api/platinum/auth-day-end/cashier-reconcile-by-cashierid', {
-            cashierId: String(this.cashierId())
-          })
-        );
-        const statusId = Number(reconcileData?.statusId || reconcileData?.status_ID || reconcileData?.statusID || 0);
-        const statusDesc = String(reconcileData?.status || reconcileData?.reconcileStatus || '').toLowerCase().trim();
-        console.log('[cashier-setup] Direct reconcile check — statusId:', statusId, 'statusDesc:', statusDesc, 'data:', JSON.stringify(reconcileData));
-        if (statusId === 174 || (statusDesc && !statusDesc.includes('complet') && !statusDesc.includes('return') && !statusDesc.includes('approved') && !statusDesc.includes('not yet submitted') && !statusDesc.includes('not submitted') && statusDesc !== '')) {
-          this.dayEndPending.set(true);
-          this.resumingSession.set(false);
-          this.dayEndReconcileData.set(reconcileData);
-          this.dayEndStatusDesc.set(reconcileData?.status || reconcileData?.reconcileStatus || (statusId === 174 ? 'Pending Approval' : 'Pending'));
-          this.dayEndPendingMessage.set(statusId === 174
-            ? 'Your previous day-end reconciliation has been submitted and is awaiting supervisor authorisation. You cannot start a new session until a supervisor has approved or returned your day-end.'
-            : `Your day-end reconciliation is currently in status "${reconcileData?.status || reconcileData?.reconcileStatus || 'Pending'}". You cannot start a new session until it has been resolved.`);
-          this.sessionLoading.set(false);
-          return;
-        }
-      } catch (reconcileErr: any) {
-        console.log('[cashier-setup] Direct reconcile check failed (non-blocking):', reconcileErr?.message);
+    if (data.cashierRegistered === true) {
+      this.isCashierRegistered.set(true);
+      this.cashierId.set(data.cashierId || userId);
+      this.cashierDetails.set(data.details || null);
+      this.step1Status.set('success');
+
+      const existingId = data.details?.id || data.cashierId || null;
+      if (existingId) {
+        this.existingCashierId.set(existingId);
       }
+
+      if (data.hasPendingDayEnd === true) {
+        this.dayEndPending.set(true);
+        this.resumingSession.set(false);
+        this.step2Status.set('success');
+        this.dayEndReconcileData.set(data.cashierReconcile || null);
+        const statusId = data.reconcileStatusId;
+        const statusLabel = data.reconcileStatusDesc || (statusId === 174 ? 'Pending Approval' : 'Pending');
+        this.dayEndStatusDesc.set(statusLabel);
+        if (statusId === 174) {
+          this.dayEndPendingMessage.set('Your previous day-end reconciliation has been submitted and is awaiting supervisor authorisation. You cannot start a new session until a supervisor has approved or returned your day-end.');
+        } else {
+          this.dayEndPendingMessage.set('Your previous day-end reconciliation is pending supervisor approval. You cannot start a new session until it has been authorised.');
+        }
+        this.sessionLoading.set(false);
+        return;
+      } else if (data.isActive === true && data.officeId) {
+        this.resumingSession.set(true);
+        this.step2Status.set('success');
+        this.step3Status.set('pending');
+      }
+
+      const currentOfficeId = data.officeId || data.details?.officeId;
+      if (currentOfficeId) {
+        this.selectedOfficeId.set(String(currentOfficeId));
+        this.defaultOfficeId.set(String(currentOfficeId));
+      } else if (officeList.length > 0) {
+        const defaultId = String(officeList[0].cashOffice_ID);
+        this.selectedOfficeId.set(defaultId);
+        console.log('[cashier-setup] Auto-selected first office:', defaultId, officeList[0].cashOfficeDesc);
+      }
+
+      if (data.cashFloat != null && data.cashFloat > 0) {
+        this.floatInput.set(String(data.cashFloat));
+      } else if (this.user()?.cashFloat && this.user()!.cashFloat > 0) {
+        this.floatInput.set(String(this.user()!.cashFloat));
+      }
+    } else {
+      this.isCashierRegistered.set(false);
+      this.step1Status.set('error');
+      this.sessionLoading.set(false);
+      return;
     }
 
-    this.step2Status.set('loading');
-    try {
-      const offices: any = await firstValueFrom(
-        this.api.get('/api/platinum/receipt-prepaid/cash-offices', { finYear: finYear })
-      );
-      const officeList = Array.isArray(offices) ? offices : offices?.data || [];
-      if (officeList.length > 0) {
-        console.log('[cashier-setup] Loaded', officeList.length, 'offices. First:', officeList[0] ? { id: officeList[0].cashOffice_ID, vote: officeList[0].vote, vote1: officeList[0].vote1, voteDesc: officeList[0].voteDesc, vote_ID: officeList[0].vote_ID } : 'empty');
-        this.cashOffices.set(officeList);
-        this.step2Status.set('success');
-        const selId = this.selectedOfficeId();
-        if (selId) {
-          const match = officeList.find((o: any) => String(o.cashOffice_ID) === selId);
-          console.log('[cashier-setup] After load — selectedOfficeId:', selId, 'match:', match ? 'found' : 'NOT FOUND');
-        } else if (officeList.length > 0) {
-          const defaultId = String(officeList[0].cashOffice_ID);
-          this.selectedOfficeId.set(defaultId);
-          console.log('[cashier-setup] Auto-selected first office:', defaultId, officeList[0].cashOfficeDesc);
-          if (this.isCashierRegistered()) {
-            this.loadCashierConfig();
-          }
-        }
-      } else {
-        this.cashOffices.set([]);
-        this.step2Status.set('error');
-        this.error.set('No cash offices found. Please contact your administrator.');
-      }
-    } catch (e: any) {
+    if (officeList.length === 0) {
       this.step2Status.set('error');
-      this.error.set('Failed to load cash offices. Please try again.');
+      this.error.set('No cash offices found. Please contact your administrator.');
     }
 
     this.sessionLoading.set(false);

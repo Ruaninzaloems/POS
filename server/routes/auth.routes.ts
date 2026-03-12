@@ -138,13 +138,10 @@ export function registerAuthRoutes(app: Express, httpServer: Server): void {
         return res.status(400).json({ message: "finYear is required" });
       }
 
-      console.log(`[active-cashier] Using validate-cashier API as single source of truth — userId=${userId}, finYear=${finYear}`);
+      const t0 = Date.now();
+      console.log(`[active-cashier] Starting — userId=${userId}, finYear=${finYear}`);
       const vcData = await platinumGet(session, "/api/ReceiptPrepaid/validate-cashier", { userId, finYear });
-      console.log(`[active-cashier] RAW validate-cashier top-level keys:`, vcData ? Object.keys(vcData).join(', ') : 'null');
-      console.log(`[active-cashier] RAW cashier field:`, JSON.stringify(vcData?.cashier)?.substring(0, 500) || 'null');
-      console.log(`[active-cashier] RAW cashOffice field:`, JSON.stringify(vcData?.cashOffice)?.substring(0, 300) || 'null');
-      console.log(`[active-cashier] RAW cashierReconcile field:`, JSON.stringify(vcData?.cashierReconcile)?.substring(0, 500));
-      console.log(`[active-cashier] RAW reconcileStatusCode: ${vcData?.reconcileStatusCode}, reconcileStatusDescription: ${vcData?.reconcileStatusDescription}`);
+      console.log(`[active-cashier] validate-cashier took ${Date.now() - t0}ms — cashier: ${vcData?.cashier ? 'PRESENT' : 'null'}, reconcileStatus: ${vcData?.reconcileStatusDescription || 'none'}`);
 
       if (!vcData || vcData._error) {
         console.error(`[active-cashier] validate-cashier API failed or returned error:`, vcData?._error || 'no data');
@@ -166,105 +163,64 @@ export function registerAuthRoutes(app: Express, httpServer: Server): void {
       let sessionFromCache = false;
 
       if (!cashier) {
-        console.log(`[active-cashier] validate-cashier returned cashier=null — checking fallbacks`);
-
+        console.log(`[active-cashier] cashier=null — running parallel fallbacks`);
+        const numUserId = parseInt(String(userId), 10);
         const knownId = (session as any).knownCashierId;
+
+        const fallbackPromises: Promise<any>[] = [];
+
         if (knownId && knownId > 0) {
-          console.log(`[active-cashier] Trying knownCashierId=${knownId} from session`);
-          try {
-            const details = await platinumGet(session, `/api/ReceiptPrepaid/cashier-detailsById`, { cashierId: String(knownId) });
-            if (details && !details._error && details.id) {
-              if (details.isActive === true) {
-                cashier = details;
-                cashOffice = details.const_CashOffice || null;
-                console.log(`[active-cashier] knownCashierId fallback SUCCESS — id: ${details.id}, isActive: ${details.isActive}, isVirtual: ${details.isVirtual}, officeId: ${details.officeId}`);
-              } else if (topLevelIsReturned || cashierReconcile) {
-                cashier = details;
-                cashOffice = details.const_CashOffice || null;
-                console.log(`[active-cashier] knownCashierId fallback: cashier isActive=false but day-end is RETURNED — using cashier record for session recovery. id: ${details.id}, officeId: ${details.officeId}`);
-              } else {
-                console.log(`[active-cashier] knownCashierId fallback returned no active session: id=${details?.id}, isActive=${details?.isActive}`);
-              }
-            }
-          } catch (knownErr: any) {
-            console.warn(`[active-cashier] knownCashierId lookup failed:`, knownErr.message);
-          }
+          fallbackPromises.push(
+            platinumGet(session, `/api/ReceiptPrepaid/cashier-detailsById`, { cashierId: String(knownId) })
+              .then((d: any) => ({ source: 'knownId', data: d }))
+              .catch(() => ({ source: 'knownId', data: null }))
+          );
         }
 
-        if (!cashier) {
-          try {
-            const fallbackCashierId = await platinumGet(session, "/api/billing/auth-day-end-reconcile/active-cashierid-by-userid", { userid: userId });
-            const numFallback = typeof fallbackCashierId === 'number' ? fallbackCashierId : parseInt(String(fallbackCashierId), 10);
-            const numUserId = parseInt(String(userId), 10);
-            if (numFallback && numFallback !== 0 && !isNaN(numFallback) && !(fallbackCashierId as any)?._error) {
-              if (numFallback === numUserId) {
-                console.log(`[active-cashier] Fallback returned userId ${numFallback} (same as user_Id) — still trying details lookup in case it's also a valid cashier ID`);
+        fallbackPromises.push(
+          platinumGet(session, "/api/billing/auth-day-end-reconcile/active-cashierid-by-userid", { userid: userId })
+            .then((d: any) => ({ source: 'activeCashierId', data: d }))
+            .catch(() => ({ source: 'activeCashierId', data: null }))
+        );
+
+        const results = await Promise.all(fallbackPromises);
+        
+        for (const r of results) {
+          if (cashier) break;
+          if (r.source === 'knownId' && r.data && !r.data._error && r.data.id > 0) {
+            if (r.data.isActive === true || topLevelIsReturned || cashierReconcile) {
+              cashier = r.data;
+              cashOffice = r.data.const_CashOffice || null;
+              console.log(`[active-cashier] knownId fallback hit — id: ${r.data.id}, isActive: ${r.data.isActive}`);
+            }
+          }
+          if (r.source === 'activeCashierId') {
+            const numFallback = typeof r.data === 'number' ? r.data : parseInt(String(r.data), 10);
+            if (numFallback && numFallback !== 0 && !isNaN(numFallback) && !r.data?._error) {
+              if (!cashier) {
                 try {
                   const details = await platinumGet(session, `/api/ReceiptPrepaid/cashier-detailsById`, { cashierId: String(numFallback) });
-                  if (details && !details._error && details.id) {
+                  if (details && !details._error && details.id > 0) {
                     cashier = details;
                     cashOffice = details.const_CashOffice || null;
-                    console.log(`[active-cashier] userId=cashierId fallback SUCCESS — id: ${details.id}, isActive: ${details.isActive}, officeId: ${details.officeId}`);
-                  } else {
-                    console.log(`[active-cashier] userId=cashierId fallback returned no valid cashier: ${JSON.stringify(details)?.substring(0, 200)}`);
+                    console.log(`[active-cashier] activeCashierId fallback hit — id: ${details.id}, isActive: ${details.isActive}`);
                   }
-                } catch (sameIdErr: any) {
-                  console.warn(`[active-cashier] userId=cashierId details lookup failed:`, sameIdErr.message);
-                }
-              } else {
-                console.log(`[active-cashier] Fallback found active cashierId: ${numFallback} (different from userId ${numUserId}) — fetching details`);
-                const details = await platinumGet(session, `/api/ReceiptPrepaid/cashier-detailsById`, { cashierId: String(numFallback) });
-                if (details && !details._error && details.id) {
-                  cashier = details;
-                  cashOffice = details.const_CashOffice || null;
-                  console.log(`[active-cashier] Fallback cashier details loaded — id: ${details.id}, isActive: ${details.isActive}, isVirtual: ${details.isVirtual}, officeId: ${details.officeId}`);
-                }
+                } catch {}
               }
-            } else {
-              console.log(`[active-cashier] Fallback returned no active cashier: ${JSON.stringify(fallbackCashierId)}`);
             }
-          } catch (fbErr: any) {
-            console.warn(`[active-cashier] Fallback active-cashierid check failed:`, fbErr.message);
-          }
-        }
-
-        if (!cashier && (topLevelIsReturned || cashierReconcile)) {
-          console.log(`[active-cashier] Day-end is returned/pending but no cashier found — searching cashier-list for userId=${userId}`);
-          try {
-            const cashierList = await platinumGet(session, "/api/ReceiptPrepaid/cashier-list", {});
-            const allCashiers = Array.isArray(cashierList) ? cashierList : [];
-            const numUserId = parseInt(String(userId), 10);
-            const matchedCashier = allCashiers.find((c: any) => c.user_Id === numUserId || c.userId === numUserId);
-            if (matchedCashier) {
-              console.log(`[active-cashier] Found cashier in cashier-list for userId=${userId} — cashierId=${matchedCashier.id}, isActive=${matchedCashier.isActive}`);
-              cashier = matchedCashier;
-              cashOffice = matchedCashier.const_CashOffice || null;
-              if (!cashOffice && matchedCashier.officeId) {
-                try {
-                  const offices = await platinumGet(session, "/api/ReceiptPrepaid/cash-offices", { finYear, userId });
-                  const officeList = Array.isArray(offices) ? offices : [];
-                  cashOffice = officeList.find((o: any) => (o.cashOffice_ID || o.id) === matchedCashier.officeId) || null;
-                } catch (officeErr: any) {
-                  console.warn(`[active-cashier] Failed to fetch cash offices for cashier officeId=${matchedCashier.officeId}:`, officeErr.message);
-                } 
-              }
-            } else {
-              console.log(`[active-cashier] No matching cashier found in cashier-list for userId=${userId}`);
-            }
-          } catch (clErr: any) {
-            console.warn(`[active-cashier] cashier-list lookup failed:`, clErr.message);
           }
         }
 
         if (!cashier && (session as any).knownCashierData) {
           const stored = (session as any).knownCashierData;
           if (stored.id > 0) {
-            console.log(`[active-cashier] Using stored knownCashierData for registration info only — id: ${stored.id} (NOT treating as active since Platinum API returned cashier=null)`);
             cashier = { ...stored, isActive: false };
             cashOffice = stored.const_CashOffice || null;
             sessionFromCache = true;
+            console.log(`[active-cashier] Using cached cashier data — id: ${stored.id}`);
           }
         }
+        console.log(`[active-cashier] Fallbacks took ${Date.now() - t0}ms total`);
       }
 
       const hasReceiptRangeData = receiptRange != null && (receiptRange.user_Id > 0 || receiptRange.isEnabled === true);
@@ -278,55 +234,31 @@ export function registerAuthRoutes(app: Express, httpServer: Server): void {
 
       let resolvedCashierReconcile = cashierReconcile;
 
-      const reconcileCheckIds: string[] = [];
-      if (cashierId) reconcileCheckIds.push(String(cashierId));
-      if (!cashierId || String(cashierId) !== String(userId)) reconcileCheckIds.push(String(userId));
-
       if (!resolvedCashierReconcile) {
-        for (const checkId of reconcileCheckIds) {
-          try {
-            console.log(`[active-cashier] validate-cashier cashierReconcile=null — calling cashier-reconcile-by-cashierid?cashierId=${checkId} as secondary check`);
-            const reconcileData = await platinumGet(session, "/api/billing/auth-day-end-reconcile/cashier-reconcile-by-cashierid", { cashierId: checkId });
-            if (reconcileData && !reconcileData._error && reconcileData !== null && typeof reconcileData === 'object') {
-              const hasId = reconcileData.id || reconcileData.reconcileId || reconcileData.cashierReconcile_ID;
-              if (hasId) {
-                console.log(`[active-cashier] cashier-reconcile-by-cashierid (id=${checkId}) returned a reconcile record — id: ${hasId}, status: ${reconcileData.status || reconcileData.reconcileStatus || 'unknown'}`);
-                resolvedCashierReconcile = reconcileData;
-                break;
-              } else {
-                console.log(`[active-cashier] cashier-reconcile-by-cashierid (id=${checkId}) returned data but no reconcile ID — treating as no pending reconcile`);
-              }
-            } else {
-              console.log(`[active-cashier] cashier-reconcile-by-cashierid (id=${checkId}) returned null/error — no pending reconcile`);
+        const reconcileCheckIds: string[] = [];
+        if (cashierId) reconcileCheckIds.push(String(cashierId));
+        if (!cashierId || String(cashierId) !== String(userId)) reconcileCheckIds.push(String(userId));
+
+        const reconcileResults = await Promise.all(
+          reconcileCheckIds.map(checkId =>
+            platinumGet(session, "/api/billing/auth-day-end-reconcile/cashier-reconcile-by-cashierid", { cashierId: checkId })
+              .then((d: any) => ({ checkId, data: d }))
+              .catch(() => ({ checkId, data: null }))
+          )
+        );
+
+        for (const r of reconcileResults) {
+          if (r.data && !r.data._error && typeof r.data === 'object') {
+            const hasId = r.data.id || r.data.reconcileId || r.data.cashierReconcile_ID;
+            if (hasId) {
+              console.log(`[active-cashier] reconcile check (id=${r.checkId}) found record — id: ${hasId}`);
+              resolvedCashierReconcile = r.data;
+              break;
             }
-          } catch (reconcileErr: any) {
-            console.warn(`[active-cashier] cashier-reconcile-by-cashierid (id=${checkId}) check failed:`, reconcileErr.message);
           }
         }
-      }
-
-      if (!resolvedCashierReconcile && !cashierId) {
-        try {
-          console.log(`[active-cashier] No cashier found — searching cashier-list for userId=${userId} to check reconcile status`);
-          const cashierList = await platinumGet(session, "/api/ReceiptPrepaid/cashier-list", {});
-          const allCashiers = Array.isArray(cashierList) ? cashierList : [];
-          const numUserId = parseInt(String(userId), 10);
-          const matchedCashier = allCashiers.find((c: any) => c.user_Id === numUserId || c.userId === numUserId);
-          if (matchedCashier?.id && matchedCashier.id > 0) {
-            console.log(`[active-cashier] Found cashier in cashier-list — cashierId=${matchedCashier.id}, checking reconcile`);
-            cashier = matchedCashier;
-            cashOffice = matchedCashier.const_CashOffice || null;
-            const reconcileData = await platinumGet(session, "/api/billing/auth-day-end-reconcile/cashier-reconcile-by-cashierid", { cashierId: String(matchedCashier.id) });
-            if (reconcileData && !reconcileData._error && typeof reconcileData === 'object') {
-              const hasId = reconcileData.id || reconcileData.reconcileId || reconcileData.cashierReconcile_ID;
-              if (hasId) {
-                console.log(`[active-cashier] cashier-reconcile for list-cashier ${matchedCashier.id} — id: ${hasId}, status: ${reconcileData.status || reconcileData.reconcileStatus || 'unknown'}`);
-                resolvedCashierReconcile = reconcileData;
-              }
-            }
-          }
-        } catch (clErr: any) {
-          console.warn(`[active-cashier] cashier-list reconcile check failed:`, clErr.message);
+        if (!resolvedCashierReconcile) {
+          console.log(`[active-cashier] No pending reconcile found`);
         }
       }
 
