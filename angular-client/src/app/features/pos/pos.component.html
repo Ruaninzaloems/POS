@@ -577,39 +577,80 @@
             <span>Payment Summary</span>
           </div>
           <div class="summary-body">
-            <div class="summary-row">
+            <div class="summary-row" style="border-bottom:1px solid #e5e7eb;padding-bottom:6px;margin-bottom:4px">
               <span>Items</span>
               <span data-testid="text-item-count">{{ basket.itemCount() }}</span>
             </div>
+
             @if (basket.itemsByType()['account'].length > 0) {
-              <div class="summary-row type-row">
+              <div class="summary-type-header">
                 <span class="type-dot" [style.background]="getTypeColor('account')"></span>
-                <span>Consumer ({{ basket.itemsByType()['account'].length }})</span>
-                <span class="mono">R {{ formatCurrency(getTypeSubtotal('account')) }}</span>
+                <span class="summary-type-label">Consumer ({{ basket.itemsByType()['account'].length }})</span>
+                <span class="mono summary-type-total">R {{ formatCurrency(getTypeSubtotal('account')) }}</span>
               </div>
+              @for (item of basket.itemsByType()['account']; track item.id) {
+                <div class="summary-item-detail">
+                  <div class="summary-item-name">{{ item.accountData?.name || item.label }}</div>
+                  <div class="summary-item-meta">
+                    <span>Acc: {{ item.accountData?.accountNumber }}</span>
+                    <span class="mono" [class.summary-zero]="item.amountToPay <= 0">R {{ formatCurrency(item.amountToPay) }}</span>
+                  </div>
+                </div>
+              }
             }
+
             @if (basket.itemsByType()['clearance'].length > 0) {
-              <div class="summary-row type-row">
+              <div class="summary-type-header">
                 <span class="type-dot" [style.background]="getTypeColor('clearance')"></span>
-                <span>Clearance ({{ basket.itemsByType()['clearance'].length }})</span>
-                <span class="mono">R {{ formatCurrency(getTypeSubtotal('clearance')) }}</span>
+                <span class="summary-type-label">Clearance ({{ basket.itemsByType()['clearance'].length }})</span>
+                <span class="mono summary-type-total">R {{ formatCurrency(getTypeSubtotal('clearance')) }}</span>
               </div>
+              @for (item of basket.itemsByType()['clearance']; track item.id) {
+                <div class="summary-item-detail">
+                  <div class="summary-item-name">{{ item.clearanceData?.ownerName || item.label }}</div>
+                  <div class="summary-item-meta">
+                    <span>{{ item.clearanceData?.propertyDesc || item.clearanceData?.clearanceId }}</span>
+                    <span class="mono" [class.summary-zero]="item.amountToPay <= 0">R {{ formatCurrency(item.amountToPay) }}</span>
+                  </div>
+                </div>
+              }
             }
+
             @if (basket.itemsByType()['prepaid'].length > 0) {
-              <div class="summary-row type-row">
+              <div class="summary-type-header">
                 <span class="type-dot" [style.background]="getTypeColor('prepaid')"></span>
-                <span>Prepaid ({{ basket.itemsByType()['prepaid'].length }})</span>
-                <span class="mono">R {{ formatCurrency(getTypeSubtotal('prepaid')) }}</span>
+                <span class="summary-type-label">Prepaid ({{ basket.itemsByType()['prepaid'].length }})</span>
+                <span class="mono summary-type-total">R {{ formatCurrency(getTypeSubtotal('prepaid')) }}</span>
               </div>
+              @for (item of basket.itemsByType()['prepaid']; track item.id) {
+                <div class="summary-item-detail">
+                  <div class="summary-item-name">{{ item.prepaidData?.serviceType || 'Electricity' }} Recharge</div>
+                  <div class="summary-item-meta">
+                    <span>Meter: {{ item.prepaidData?.meterNumber }}</span>
+                    <span class="mono" [class.summary-zero]="item.amountToPay <= 0">R {{ formatCurrency(item.amountToPay) }}</span>
+                  </div>
+                </div>
+              }
             }
+
             @if (basket.itemsByType()['misc'].length > 0) {
-              <div class="summary-row type-row">
+              <div class="summary-type-header">
                 <span class="type-dot" [style.background]="getTypeColor('misc')"></span>
-                <span>Misc ({{ basket.itemsByType()['misc'].length }})</span>
-                <span class="mono">R {{ formatCurrency(getTypeSubtotal('misc')) }}</span>
+                <span class="summary-type-label">Misc ({{ basket.itemsByType()['misc'].length }})</span>
+                <span class="mono summary-type-total">R {{ formatCurrency(getTypeSubtotal('misc')) }}</span>
               </div>
+              @for (item of basket.itemsByType()['misc']; track item.id) {
+                <div class="summary-item-detail">
+                  <div class="summary-item-name">{{ item.miscData?.groupName || item.label }}</div>
+                  <div class="summary-item-meta">
+                    <span>{{ item.miscData?.scoaItemName }}</span>
+                    <span class="mono" [class.summary-zero]="item.amountToPay <= 0">R {{ formatCurrency(item.amountToPay) }}</span>
+                  </div>
+                </div>
+              }
             }
-            <div class="summary-row">
+
+            <div class="summary-row" style="border-top:1px solid #e5e7eb;padding-top:8px;margin-top:8px">
               <span>Total Due</span>
               <span class="mono" data-testid="text-total-due">R {{ formatCurrency(basket.totalDue()) }}</span>
             </div>
