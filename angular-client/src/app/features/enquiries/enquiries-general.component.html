@@ -3441,7 +3441,20 @@
             </div>
 
             @if (tabData()?.ratesDetails || tabData()?.propertyDetails || (tabData()?.ratesHistory || []).length > 0 || (tabData()?.valuations || []).length > 0 || tabData()?.valuationData || tabData()?.valuationImport || (tabData()?.propertyRatesData || []).length > 0 || (tabData()?.ratesBillingHistory || []).length > 0) {
-              <div class="export-toolbar">
+
+              <div class="rates-letters-toolbar" data-testid="rates-letters-bar">
+                <div class="rates-letters-group">
+                  <span class="rates-letters-label">Property Letters:</span>
+                  <button class="rates-letter-btn" (click)="generatePropertyLetter('section49')" [disabled]="generatingPropertyLetter() !== null" data-testid="rates-btn-section49">
+                    @if (generatingPropertyLetter() === 'section49') { <span class="stmt-spinner"></span> } @else { 📋 } View Section 49 Letter
+                  </button>
+                  <button class="rates-letter-btn" (click)="generatePropertyLetter('section78')" [disabled]="generatingPropertyLetter() !== null" data-testid="rates-btn-section78">
+                    @if (generatingPropertyLetter() === 'section78') { <span class="stmt-spinner"></span> } @else { 📋 } View Section 78 Letter
+                  </button>
+                  <button class="rates-letter-btn rates-letter-cert" (click)="generatePropertyLetter('valuation')" [disabled]="generatingPropertyLetter() !== null" data-testid="rates-btn-valuation-cert">
+                    @if (generatingPropertyLetter() === 'valuation') { <span class="stmt-spinner"></span> } @else { 📜 } View Valuation Certificate
+                  </button>
+                </div>
                 <button class="export-btn export-csv" (click)="exportRatesCsv()" data-testid="button-export-rates-csv">📥 Excel/CSV</button>
               </div>
 

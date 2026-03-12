@@ -2634,6 +2634,63 @@
 .snap-badge-label { color: rgba(255,255,255,0.6); white-space: nowrap; }
 .snap-badge-value { color: white; white-space: nowrap; }
 
+.rates-letters-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--platinum-bg, #f8fafc);
+  border: 1px solid var(--platinum-border, #e2e8f0);
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+}
+.rates-letters-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.rates-letters-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--platinum-text-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 0.25rem;
+}
+.rates-letter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.4rem 0.875rem;
+  border: 1px solid var(--platinum-border, #e2e8f0);
+  border-radius: 0.375rem;
+  background: white;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--platinum-primary, #0f2b46);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.rates-letter-btn:hover:not(:disabled) {
+  background: var(--platinum-primary, #0f2b46);
+  color: white;
+  border-color: var(--platinum-primary, #0f2b46);
+}
+.rates-letter-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.rates-letter-btn.rates-letter-cert {
+  border-color: var(--platinum-accent, #c9a84c);
+  color: var(--platinum-accent-dark, #a08536);
+}
+.rates-letter-btn.rates-letter-cert:hover:not(:disabled) {
+  background: var(--platinum-accent, #c9a84c);
+  color: white;
+  border-color: var(--platinum-accent, #c9a84c);
+}
+
 .export-toolbar {
   display: flex;
   justify-content: flex-end;

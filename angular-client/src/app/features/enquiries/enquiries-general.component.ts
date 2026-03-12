@@ -1494,13 +1494,26 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             }
           }
           let propValuations: any[] = [];
-          const propPropertyId = propVal?.propertyId || propVal?.property_ID || propConsUnitVal?.unit_ID;
-          if (propPropertyId) {
+          const propTabUnitPartIdForVal = propUnitPartId || propConsUnitVal?.unitPartitionID || propConsUnitVal?.unitPartition_ID;
+          if (propTabUnitPartIdForVal) {
             try {
-              const valResult = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/supplementary-valuations`, { propertyId: propPropertyId }));
-              propValuations = this.normalizeArray(valResult);
+              const valByUnit = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/valuation-by-unit`, { unitPartitionID: String(propTabUnitPartIdForVal) }));
+              if (valByUnit && !valByUnit._error) {
+                propValuations = this.normalizeArray(valByUnit);
+              }
             } catch (e) {
-              console.log('[property] supplementary valuations fetch failed:', e);
+              console.log('[property] valuation-by-unit failed:', e);
+            }
+          }
+          if (propValuations.length === 0) {
+            const propPropertyId = propVal?.propertyId || propVal?.property_ID || propConsUnitVal?.unit_ID;
+            if (propPropertyId) {
+              try {
+                const valResult = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/supplementary-valuations`, { propertyId: propPropertyId }));
+                propValuations = this.normalizeArray(valResult);
+              } catch (e) {
+                console.log('[property] supplementary valuations fetch failed:', e);
+              }
             }
           }
           let propRebatesLevies: any[] = [];
@@ -1960,19 +1973,34 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
               item.rebate = monthlyRebate;
             }
           }
-          const propId = propDetailsVal?.property_ID || propDetailsVal?.propertyID || propDetailsVal?.propertyId || accountId;
           let valuationsArr: any[] = [];
           let valuationDataVal: any = null;
           let valuationImportVal: any = null;
-          if (propId) {
-            const [suppVal, valById, valImport] = await Promise.allSettled([
-              firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/supplementary-valuations`, { propertyId: String(propId) })),
-              firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/valuation-by-id`, { propertyId: String(propId) })),
-              firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/valuation-import-by-id`, { propertyId: String(propId) })),
-            ]);
-            valuationsArr = suppVal.status === 'fulfilled' ? this.normalizeArray(suppVal.value) : [];
-            valuationDataVal = valById.status === 'fulfilled' && valById.value && !valById.value._error ? (Array.isArray(valById.value) ? valById.value[0] : valById.value) : null;
-            valuationImportVal = valImport.status === 'fulfilled' && valImport.value && !valImport.value._error ? (Array.isArray(valImport.value) ? valImport.value[0] : valImport.value) : null;
+          const ratesUnitPartIdForVal = ratesUnitPartId || propDetailsVal?.unitPartitionID || propDetailsVal?.unitPartition_ID;
+          if (ratesUnitPartIdForVal) {
+            try {
+              const valByUnit = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/valuation-by-unit`, { unitPartitionID: String(ratesUnitPartIdForVal) }));
+              if (valByUnit && !valByUnit._error) {
+                const valArr = Array.isArray(valByUnit) ? valByUnit : [valByUnit];
+                valuationsArr = valArr;
+                if (valArr.length > 0) valuationDataVal = valArr[0];
+              }
+            } catch (e) {
+              console.log('[rates] valuation-by-unit failed:', e);
+            }
+          }
+          if (valuationsArr.length === 0) {
+            const propId = propDetailsVal?.property_ID || propDetailsVal?.propertyID || propDetailsVal?.propertyId;
+            if (propId) {
+              const [suppVal, valById, valImport] = await Promise.allSettled([
+                firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/supplementary-valuations`, { propertyId: String(propId) })),
+                firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/valuation-by-id`, { propertyId: String(propId) })),
+                firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/valuation-import-by-id`, { propertyId: String(propId) })),
+              ]);
+              valuationsArr = suppVal.status === 'fulfilled' ? this.normalizeArray(suppVal.value) : [];
+              valuationDataVal = valById.status === 'fulfilled' && valById.value && !valById.value._error ? (Array.isArray(valById.value) ? valById.value[0] : valById.value) : null;
+              valuationImportVal = valImport.status === 'fulfilled' && valImport.value && !valImport.value._error ? (Array.isArray(valImport.value) ? valImport.value[0] : valImport.value) : null;
+            }
           }
 
           data = {
@@ -5802,14 +5830,31 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     if (!accountId) return;
     this.generatingPropertyLetter.set(type);
     try {
-      const [propRes, consUnitRes, valRes] = await Promise.allSettled([
+      const [propRes, consUnitRes] = await Promise.allSettled([
         firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
         firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/consumption-units/${accountId}`)),
-        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/supplementary-valuations`, { propertyId: String(accountId) })),
       ]);
       const prop = propRes.status === 'fulfilled' ? (Array.isArray(propRes.value) ? propRes.value[0] : propRes.value) : null;
       const consUnit = consUnitRes.status === 'fulfilled' ? (Array.isArray(consUnitRes.value) ? consUnitRes.value[0] : consUnitRes.value) : null;
-      const vals = valRes.status === 'fulfilled' ? this.normalizeArray(valRes.value) : [];
+      const letterUnitPartId = this.selectedAccount()?.unitPartitionID || consUnit?.unitPartitionID || consUnit?.unitPartition_ID;
+      let vals: any[] = [];
+      if (letterUnitPartId) {
+        try {
+          const valByUnit = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/valuation-by-unit`, { unitPartitionID: String(letterUnitPartId) }));
+          if (valByUnit && !valByUnit._error) {
+            vals = this.normalizeArray(valByUnit);
+          }
+        } catch (e) { console.log('[letter] valuation-by-unit failed:', e); }
+      }
+      if (vals.length === 0) {
+        const letterPropId = prop?.property_ID || prop?.propertyID || prop?.propertyId;
+        if (letterPropId) {
+          try {
+            const suppVal = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/supplementary-valuations`, { propertyId: String(letterPropId) }));
+            vals = this.normalizeArray(suppVal);
+          } catch (e) { console.log('[letter] supplementary-valuations failed:', e); }
+        }
+      }
       const acct = this.selectedAccount();
       const ownerName = this.escHtml(prop?.name || prop?.owner || consUnit?.ownerName || acct?.name || '');
       const address = this.escHtml(prop?.propertyStreet || prop?.streetName || acct?.locationAddress || '');
