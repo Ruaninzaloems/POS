@@ -1377,9 +1377,10 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           break;
 
         case 'property':
-          const [prop, consUnit, rates, meters, transfers, propAcctInfo, propConsAcctDetails, propHandoverInfo, propAcctMgmt] = await Promise.allSettled([
+          const [prop, consUnit, consUnitById, rates, meters, transfers, propAcctInfo, propConsAcctDetails, propHandoverInfo, propAcctMgmt] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/consumption-units/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/cons-unit-by-account`, { AccountId: String(accountId) })),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-rates-details/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/metered-services-on-account/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/transfer-ownership/${accountId}`)),
@@ -1418,29 +1419,46 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             }
           }
           const propConsUnitVal = consUnit.status === 'fulfilled' ? (Array.isArray(consUnit.value) ? consUnit.value[0] : consUnit.value) : null;
+          const propConsUnitByIdVal = consUnitById.status === 'fulfilled' ? (Array.isArray(consUnitById.value) ? consUnitById.value[0] : consUnitById.value) : null;
+          if (propConsUnitByIdVal && !propConsUnitByIdVal._error) {
+            console.log('[property] ConsUnitByAccountId keys:', Object.keys(propConsUnitByIdVal));
+            console.log('[property] ConsUnitByAccountId sample:', JSON.stringify(propConsUnitByIdVal).substring(0, 1200));
+          }
           const propRatesVal = rates.status === 'fulfilled' ? (Array.isArray(rates.value) ? rates.value[0] : rates.value) : null;
           if (propVal) {
+            const allConsUnitEnrichKeys = ['marketValue', 'propertyMarketValue', 'partitionMarketValue', 'partMarketValue',
+              'valuationCategory', 'valuationCat', 'partitionDescription', 'partitionDesc',
+              'propertyCategory', 'category', 'billingCycle', 'billingCycleID', 'allotmentArea', 'farmName',
+              'magisterialDistrict', 'magisterialID', 'registrationStatus', 'oldPropertyCode', 'oldAccountCode',
+              'sectionalTitleScheme', 'accountableOwnerName', 'ownerName',
+              'suburb', 'subSuburb', 'town', 'latitude', 'longitude', 'gpsLat', 'gpsLong',
+              'propertyStatus', 'propertyStatusDesc', 'allotmentCode', 'allotment',
+              'nonStandAddLine1', 'nonStandAddSuburb', 'nonStandAddTown',
+              'cycleDescription', 'unitPartitionID', 'unitPartition_ID',
+              'standSize', 'propertyType', 'typeOfUse', 'typeofUse', 'typeOfUseDesc',
+              'propertyCategory', 'isMasterProperty', 'masterPropertyCode'];
+            if (propConsUnitByIdVal && !propConsUnitByIdVal._error) {
+              for (const k of allConsUnitEnrichKeys) {
+                if (propConsUnitByIdVal[k] != null && propConsUnitByIdVal[k] !== '' && !propVal[k]) propVal[k] = propConsUnitByIdVal[k];
+              }
+            }
             if (propConsUnitVal && !propConsUnitVal._error) {
-              const enrichKeys = ['marketValue', 'propertyMarketValue', 'partitionMarketValue', 'partMarketValue',
-                'valuationCategory', 'valuationCat', 'partitionDescription', 'partitionDesc',
-                'propertyCategory', 'category', 'billingCycle', 'allotmentArea', 'farmName',
-                'magisterialDistrict', 'registrationStatus', 'oldPropertyCode', 'sectionalTitleScheme',
-                'accountableOwnerName', 'ownerName'];
-              for (const k of enrichKeys) {
+              for (const k of allConsUnitEnrichKeys) {
                 if (propConsUnitVal[k] != null && propConsUnitVal[k] !== '' && !propVal[k]) propVal[k] = propConsUnitVal[k];
               }
             }
             if (propRatesVal && !propRatesVal._error) {
-              const enrichKeys = ['marketValue', 'propertyMarketValue', 'partitionMarketValue', 'partMarketValue',
+              const ratesEnrichKeys = ['marketValue', 'propertyMarketValue', 'partitionMarketValue', 'partMarketValue',
                 'valuationCategory', 'valuationCat', 'partitionDescription', 'partitionDesc',
                 'propertyCategory', 'category', 'billingCycle', 'accountableOwnerName', 'ownerName'];
-              for (const k of enrichKeys) {
+              for (const k of ratesEnrichKeys) {
                 if (propRatesVal[k] != null && propRatesVal[k] !== '' && !propVal[k]) propVal[k] = propRatesVal[k];
               }
             }
           }
           let propPartOwnerResult: any = null;
           const propUnitPartId = propVal?.unitPartitionID || propVal?.unitPartition_ID ||
+            propConsUnitByIdVal?.unitPartitionID || propConsUnitByIdVal?.unitPartition_ID ||
             propConsUnitVal?.unitPartitionID || propConsUnitVal?.unitPartition_ID;
           if (propUnitPartId && propVal) {
             console.log('[property] fetching partition & valuation for unitPartitionID:', propUnitPartId);
@@ -1588,9 +1606,10 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           acctSnapshot['creditStatus'] = propConsAcctVal?.creditStatusDesc || propAcctMgmtVal?.creditStatusDesc || propConsAcctVal?.creditStatus || '';
           acctSnapshot['accountStatus'] = propConsAcctVal?.statusDesc || propAcctMgmtVal?.accountStatus || propVal?.accountStatus || sa?.accountStatus || '';
           acctSnapshot['cycleDescription'] = propAcctMgmtVal?.cycleDescription || propVal?.cycleDescription || propVal?.billingCycle || '';
+          const mergedConsUnit = { ...(propConsUnitByIdVal && !propConsUnitByIdVal._error ? propConsUnitByIdVal : {}), ...(propConsUnitVal && !propConsUnitVal._error ? propConsUnitVal : {}) };
           data = {
             property: propVal,
-            consUnit: propConsUnitVal,
+            consUnit: Object.keys(mergedConsUnit).length > 0 ? mergedConsUnit : propConsUnitVal,
             partitionOwner: propPartOwnerResult,
             rates: rates.status === 'fulfilled' ? rates.value : null,
             meters: propMetersMerged,

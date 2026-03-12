@@ -299,6 +299,9 @@ export function registerSupervisorRoutes(app: Express, httpServer: Server): void
     try {
       const session = requireAuth(req, res); if (!session) return;
       const data = await platinumGet(session, "/api/BillingEnquiry/ConsUnitByAccountId", req.query as Record<string, string>);
+      const sample = Array.isArray(data) ? data[0] : data;
+      console.log(`[billing-enquiry] ConsUnitByAccountId keys:`, sample ? Object.keys(sample) : 'empty/null', `isArray=${Array.isArray(data)} count=${Array.isArray(data) ? data.length : 'single'}`);
+      if (sample) console.log(`[billing-enquiry] ConsUnitByAccountId sample:`, JSON.stringify(sample).substring(0, 1200));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
