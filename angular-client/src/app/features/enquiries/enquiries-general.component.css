@@ -2691,6 +2691,61 @@
   border-color: var(--platinum-accent, #c9a84c);
 }
 
+.rates-prop-info-card {
+  background: linear-gradient(135deg, var(--platinum-primary, #0f2b46) 0%, #1a3d5c 100%);
+  border-radius: 0.625rem;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+  color: white;
+}
+.rates-prop-info-title {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255,255,255,0.6);
+  margin-bottom: 0.875rem;
+}
+.rates-prop-info-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+  gap: 1rem 1.5rem;
+  align-items: start;
+}
+.rates-prop-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.rates-prop-info-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255,255,255,0.5);
+}
+.rates-prop-info-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: white;
+  word-break: break-word;
+}
+.rates-prop-info-value-lg {
+  font-size: 1rem;
+  font-weight: 700;
+}
+.rates-prop-info-market .rates-prop-info-value {
+  color: var(--platinum-accent, #c9a84c);
+}
+@media (max-width: 900px) {
+  .rates-prop-info-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .rates-prop-info-desc {
+    grid-column: 1 / -1;
+  }
+}
+
 .export-toolbar {
   display: flex;
   justify-content: flex-end;

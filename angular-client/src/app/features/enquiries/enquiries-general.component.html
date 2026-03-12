@@ -3458,6 +3458,39 @@
                 <button class="export-btn export-csv" (click)="exportRatesCsv()" data-testid="button-export-rates-csv">📥 Excel/CSV</button>
               </div>
 
+              <!-- PROPERTY INFO CARD -->
+              <div class="rates-prop-info-card" data-testid="rates-property-info-card">
+                <div class="rates-prop-info-title">🏠 Property Information</div>
+                <div class="rates-prop-info-grid">
+                  <div class="rates-prop-info-item rates-prop-info-desc">
+                    <span class="rates-prop-info-label">Property Description</span>
+                    <span class="rates-prop-info-value rates-prop-info-value-lg">{{ buildPropertyDescription() }}</span>
+                  </div>
+                  <div class="rates-prop-info-item">
+                    <span class="rates-prop-info-label">Property Category</span>
+                    <span class="rates-prop-info-value">{{ safeStr(tabData()?.consUnit?.propertyCategory || tabData()?.consUnit?.category || tabData()?.propertyDetails?.propertyCategory || (tabData()?.propertyRatesData || [])[0]?.propertyCategory || tabData()?.propertyDetails?.category) }}</span>
+                  </div>
+                  <div class="rates-prop-info-item">
+                    <span class="rates-prop-info-label">Property Type of Use</span>
+                    <span class="rates-prop-info-value">{{ safeStr(tabData()?.consUnit?.typeOfUseDesc || tabData()?.consUnit?.typeOfUse || tabData()?.consUnit?.typeofUse || tabData()?.propertyDetails?.typeOfUseDesc || tabData()?.propertyDetails?.typeOfUse || (tabData()?.propertyRatesData || [])[0]?.propertyTypeOfUse) }}</span>
+                  </div>
+                  <div class="rates-prop-info-item">
+                    <span class="rates-prop-info-label">Active Rates Tariff</span>
+                    <span class="rates-prop-info-value">{{ getRatesActiveTariff() }}</span>
+                  </div>
+                  <div class="rates-prop-info-item rates-prop-info-market">
+                    <span class="rates-prop-info-label">Market Value</span>
+                    <span class="rates-prop-info-value rates-prop-info-value-lg mono">
+                      @if (getRatesMarketValue() != null) {
+                        R {{ formatCurrency(getRatesMarketValue()!) }}
+                      } @else {
+                        -
+                      }
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               <!-- SECTION 1: Property & Valuation Overview -->
               @if ((tabData()?.propertyRatesData || []).length > 0) {
                 @for (pr of tabData()?.propertyRatesData || []; track $index) {

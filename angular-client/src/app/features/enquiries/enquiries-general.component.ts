@@ -1932,7 +1932,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           const ratesFyParam: Record<string, string> = ratesFy ? { finYear: ratesFy } : {};
           const acctForRates: any = this.selectedAccount();
           const ratesUnitPartId = acctForRates?.unitPartitionID || acctForRates?.unitPartition_ID;
-          const [ratesDetail, ratesHistory, ratesPropDetails, propRatesSearch, detailedTxns] = await Promise.allSettled([
+          const [ratesDetail, ratesHistory, ratesPropDetails, propRatesSearch, detailedTxns, ratesConsUnitById] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-rates-details/${accountId}`, ratesFyParam)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/rates-run-history/${accountId}`, ratesFyParam)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
@@ -1943,10 +1943,16 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
               pageSize: '50'
             })),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/detailed-transaction-results/${accountId}`, ratesFyParam)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/cons-unit-by-account`, { AccountId: String(accountId) })),
           ]);
           const ratesDetailVal = ratesDetail.status === 'fulfilled' ? (Array.isArray(ratesDetail.value) ? ratesDetail.value[0] : ratesDetail.value) : null;
           const ratesHistoryVal = ratesHistory.status === 'fulfilled' ? this.normalizeArray(ratesHistory.value) : [];
           const propDetailsVal = ratesPropDetails.status === 'fulfilled' ? (Array.isArray(ratesPropDetails.value) ? ratesPropDetails.value[0] : ratesPropDetails.value) : null;
+          const ratesConsUnitByIdVal = ratesConsUnitById.status === 'fulfilled' ? (Array.isArray(ratesConsUnitById.value) ? ratesConsUnitById.value[0] : ratesConsUnitById.value) : null;
+          if (ratesConsUnitByIdVal && !ratesConsUnitByIdVal._error) {
+            console.log('[rates] ConsUnitByAccountId keys:', Object.keys(ratesConsUnitByIdVal));
+            console.log('[rates] ConsUnitByAccountId sample:', JSON.stringify(ratesConsUnitByIdVal).substring(0, 1500));
+          }
           const propRatesSearchVal = propRatesSearch.status === 'fulfilled' ? propRatesSearch.value : null;
           let propRatesData: any[] = propRatesSearchVal?.data ? (Array.isArray(propRatesSearchVal.data) ? propRatesSearchVal.data : [propRatesSearchVal.data]) : (Array.isArray(propRatesSearchVal) ? propRatesSearchVal : propRatesSearchVal && !propRatesSearchVal._error ? [propRatesSearchVal] : []);
           if (propRatesData.length === 0 && ratesUnitPartId) {
@@ -2022,6 +2028,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             }
           }
 
+          const ratesConsUnit = ratesConsUnitByIdVal && !ratesConsUnitByIdVal._error ? ratesConsUnitByIdVal : null;
           data = {
             ratesDetails: ratesDetailVal && !ratesDetailVal._error ? ratesDetailVal : null,
             ratesHistory: ratesHistoryVal,
@@ -2032,6 +2039,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             valuationData: valuationDataVal,
             valuationImport: valuationImportVal,
             propertyRatesData: propRatesData,
+            consUnit: ratesConsUnit,
           };
           break;
 
@@ -2508,6 +2516,71 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const p = this.tabData()?.property;
     const v = p?.partitionMarketValue ?? p?.partMarketValue ?? null;
     return (v != null && v !== '') ? v : null;
+  }
+
+  buildPropertyDescription(): string {
+    const td = this.tabData();
+    const cu = td?.consUnit;
+    const p = td?.propertyDetails || td?.property;
+    const pr = (td?.propertyRatesData || [])[0];
+    const sg = cu?.sgNumber || p?.sgNumber || pr?.sgNumber || '';
+    const erfNum = cu?.erfNumber || p?.erfNumber || pr?.erfNumber || '';
+    const portion = cu?.portion || p?.portion || '';
+    const farmName = cu?.farmName || p?.farmName || pr?.farmName || '';
+    const sectionalTitle = cu?.sectionalTitleScheme || cu?.sectionalTitleSchemeName || p?.sectionalTitleScheme || pr?.sectionalTitleSchemeName || '';
+    const sectionNumber = cu?.sectionNumber || cu?.unitNumber || p?.sectionNumber || pr?.sectionNumber || '';
+    const town = cu?.town || cu?.nonStandAddTown || p?.town || pr?.town || '';
+    const propType = (cu?.propertyType || cu?.typeOfUse || cu?.typeofUse || p?.propertyType || p?.typeOfUse || pr?.propertyTypeOfUse || '').toString().toUpperCase();
+    if (sectionalTitle || sectionNumber) {
+      const parts: string[] = [];
+      if (sectionNumber) parts.push(`Section ${sectionNumber}`);
+      if (sectionalTitle) parts.push(sectionalTitle);
+      if (town && !sectionalTitle.toLowerCase().includes(town.toLowerCase())) parts.push(town);
+      return parts.join(', ') || '-';
+    }
+    if (farmName && (propType.includes('FARM') || propType.includes('AGR'))) {
+      const parts: string[] = [];
+      if (portion && portion !== '0') parts.push(`Portion ${portion} of`);
+      parts.push(`Farm ${farmName}`);
+      if (town) parts.push(town);
+      return parts.join(' ') || '-';
+    }
+    if (erfNum || sg) {
+      const erf = erfNum || (sg ? sg.split('/')[2]?.replace(/^0+/, '') : '');
+      if (erf) {
+        const parts: string[] = [];
+        if (portion && portion !== '0') {
+          parts.push(`Portion ${portion} of Erf ${erf}`);
+        } else {
+          parts.push(`Erf ${erf}`);
+        }
+        if (town) parts.push(town);
+        return parts.join(', ') || '-';
+      }
+    }
+    return cu?.unitDescription || cu?.description || p?.description || pr?.unitPartitionDescription || '-';
+  }
+
+  getRatesMarketValue(): number | null {
+    const td = this.tabData();
+    const vd = td?.valuationData;
+    const cu = td?.consUnit;
+    const p = td?.propertyDetails;
+    const pr = (td?.propertyRatesData || [])[0];
+    const v = vd?.marketValue ?? vd?.standMarketValue ?? vd?.totalMarketValue ??
+      cu?.marketValue ?? cu?.propertyMarketValue ??
+      p?.marketValue ?? p?.propertyMarketValue ??
+      pr?.marketValue ?? null;
+    return (v != null && v !== '' && v !== 0) ? v : null;
+  }
+
+  getRatesActiveTariff(): string {
+    const td = this.tabData();
+    const pr = (td?.propertyRatesData || [])[0];
+    const rd = td?.ratesDetails;
+    return pr?.tariffDescription || pr?.tariffDesc || pr?.ratesTariffDescription ||
+      rd?.tariffDescription || rd?.tariffDesc ||
+      pr?.levyDescription || rd?.levyDescription || '-';
   }
 
   getRatesTotalLevy(): number {
