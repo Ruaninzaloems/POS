@@ -4233,29 +4233,29 @@
                   <button class="export-btn export-pdf" (click)="exportConsumptionPdf()" data-testid="button-export-consumption-pdf">🖨️ Print/PDF</button>
                 </div>
               }
-              <div class="cons-layout">
-                <div class="cons-meter-sidebar">
-                  <div class="cons-sidebar-title">Meters on Account</div>
-                  @for (m of tabData()?.meters || []; track $index) {
-                    <div class="cons-meter-card" [class.cons-meter-active]="consumptionSelectedMeter()?.physicalMeterNo === m.physicalMeterNo && consumptionSelectedMeter()?.serviceDesc === m.serviceDesc" (click)="selectConsumptionMeter(m)" [attr.data-testid]="'consumption-meter-' + $index">
-                      <div class="cons-meter-icon">
-                        @if ((m.serviceDesc || m.serviceDescription || '').toLowerCase().includes('water')) { 💧 }
-                        @else if ((m.serviceDesc || m.serviceDescription || '').toLowerCase().includes('elec')) { ⚡ }
-                        @else if ((m.serviceDesc || m.serviceDescription || '').toLowerCase().includes('sewer') || (m.serviceDesc || m.serviceDescription || '').toLowerCase().includes('effluent')) { 🚿 }
-                        @else { 📊 }
-                      </div>
-                      <div class="cons-meter-info">
-                        <div class="cons-meter-name">{{ m.serviceDesc || m.serviceDescription || 'Service' }}</div>
-                        <div class="cons-meter-no mono">{{ m.physicalMeterNo || m.meterNo || 'No Meter' }}</div>
-                        <div class="cons-meter-status">
-                          <span class="svc-status-badge" [class.svc-active]="(m.serviceStatus || m.meterStatus || '').toLowerCase() === 'active'">{{ m.serviceStatus || m.meterStatus || '-' }}</span>
-                        </div>
-                      </div>
+              <div class="cons-layout-full">
+                @if ((tabData()?.meters || []).length > 1) {
+                  <div class="cons-meter-strip" data-testid="meter-strip">
+                    <span class="cons-strip-label">Meters ({{ (tabData()?.meters || []).length }})</span>
+                    <div class="cons-strip-tabs">
+                      @for (m of tabData()?.meters || []; track $index) {
+                        <button class="cons-strip-tab" [class.cons-strip-tab-active]="consumptionSelectedMeter()?.physicalMeterNo === m.physicalMeterNo && consumptionSelectedMeter()?.serviceDesc === m.serviceDesc" (click)="selectConsumptionMeter(m)" [attr.data-testid]="'consumption-meter-' + $index">
+                          <span class="cons-strip-icon">
+                            @if ((m.serviceDesc || m.serviceDescription || '').toLowerCase().includes('water')) { 💧 }
+                            @else if ((m.serviceDesc || m.serviceDescription || '').toLowerCase().includes('elec')) { ⚡ }
+                            @else if ((m.serviceDesc || m.serviceDescription || '').toLowerCase().includes('sewer') || (m.serviceDesc || m.serviceDescription || '').toLowerCase().includes('effluent')) { 🚿 }
+                            @else { 📊 }
+                          </span>
+                          <span class="cons-strip-name">{{ m.serviceDesc || m.serviceDescription || 'Service' }}</span>
+                          <span class="cons-strip-no mono">{{ m.physicalMeterNo || m.meterNo || '-' }}</span>
+                          <span class="cons-strip-status svc-status-badge" [class.svc-active]="(m.serviceStatus || m.meterStatus || '').toLowerCase() === 'active'">{{ m.serviceStatus || m.meterStatus || '-' }}</span>
+                        </button>
+                      }
                     </div>
-                  }
-                </div>
+                  </div>
+                }
 
-                <div class="cons-main-panel">
+                <div class="cons-main-panel-full">
                   @if (consumptionSelectedMeter()) {
                     <div class="cons-selected-header">
                       <div class="cons-selected-title">
@@ -4827,10 +4827,10 @@
                         <p class="empty-text">No reading history available for this meter</p>
                       </div>
                     }
-                  } @else {
+                  } @else if ((tabData()?.meters || []).length > 0) {
                     <div class="empty-state">
                       <div class="empty-icon">👈</div>
-                      <p class="empty-text">Select a meter to view consumption details</p>
+                      <p class="empty-text">Select a meter above to view consumption details</p>
                     </div>
                   }
                 </div>
