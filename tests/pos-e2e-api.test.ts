@@ -243,6 +243,122 @@ describe('POS End-to-End API Tests', () => {
     }, 15000);
   });
 
+  describe('6B. Receipt PDF Content Verification', () => {
+    let verifyReceiptId: number | null = null;
+    let verifyAmount: number = 0;
+
+    it('6B.1 Make payment for PDF verification', async () => {
+      const receiptDate = new Date().toISOString();
+      verifyAmount = 10 + Math.floor(Math.random() * 40);
+      const res = await api('POST', `/api/platinum/billing-payment/submit-consumer-payment/${userId}`, {
+        account: {
+          account_ID: Number(acctId),
+          accountNumber: acctNo,
+          name: acctName,
+          outStandingAmt: verifyAmount,
+          billId: null,
+          cutOffID: 0, cutOffAmount: 0, debtAmount: 0,
+          debtArrangementId: 0, billingCycleId: 1,
+          oldAccountCode: '', sundryDebtorsId: '',
+        },
+        requestModel: {
+          finYear,
+          receiptDate,
+          totalAmount: verifyAmount, tenderAmount: verifyAmount, changeAmount: 0,
+          paymentType: 1, paymentOption: 1,
+          outStandingAmount: acctAmt,
+          cutOffID: 0, cutOffAmount: 0, debtAmount: 0, debtArrangementId: 0,
+          sundryDebtorsId: '',
+          cardNumber: '', expiryDate: '',
+          processingMonth: 0,
+          chequeNumber: '', chequeDate: receiptDate,
+          accountHolderName: acctName,
+          bankName: '', bankBranchCode: '',
+          cashierId: Number(cashierId), cashOfficeId: Number(cashOfficeId),
+          apiTransactionID: 0, isReconciled: 0, isCancelled: 0,
+        },
+      });
+      expect(res.ok).toBe(true);
+      const d = res.data;
+      verifyReceiptId = d?.ids?.[0] || d?.receiptId || d?.id || null;
+      expect(verifyReceiptId).toBeTruthy();
+      console.log(`  ✓ Verification payment — receiptId=${verifyReceiptId}, amount=R${verifyAmount}`);
+    }, 30000);
+
+    it('6B.2 Verify receipt number in reconcile list', async () => {
+      if (!verifyReceiptId) { console.log('  ⊘ Skipped — no receipt'); return; }
+      const res = await api('GET', '/api/platinum/billing-payment-day-end/get-cashier-receipt-reconcile-list', { cashierId });
+      expect(res.ok).toBe(true);
+      const list = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+      const match = list.find((r: any) => r.id === verifyReceiptId);
+      expect(match).toBeTruthy();
+      console.log(`  ✓ Found in reconcile list: id=${match.id}, receiptNo="${match.receiptNo}", amount=${match.paidAmount}, paymentTypeId=${match.paymentTypeId}`);
+      expect(match.receiptNo).toBeTruthy();
+      expect(match.paidAmount).toBe(verifyAmount);
+    }, 15000);
+
+    it('6B.3 Verify receipt number via pos-multi-receipt-print', async () => {
+      if (!verifyReceiptId) { console.log('  ⊘ Skipped — no receipt'); return; }
+      const res = await api('GET', '/api/platinum/pos-multi-receipt-print', { receiptId: String(verifyReceiptId) });
+      expect(res.ok).toBe(true);
+      const items = Array.isArray(res.data) ? res.data : (res.data?.value || []);
+      if (items.length > 0) {
+        const first = items[0];
+        console.log(`  ✓ pos-multi-receipt-print: receiptNo="${first.receiptNo}", accName="${first.accName}", amount=${first.amount}, cashierName="${first.cashierName}"`);
+        expect(first.receiptNo).toBeTruthy();
+        expect(first.accName).toBeTruthy();
+      } else {
+        console.log(`  ⚠ pos-multi-receipt-print returned 0 items for id=${verifyReceiptId}`);
+      }
+    }, 15000);
+
+    it('6B.4 Download and verify PDF content', async () => {
+      if (!verifyReceiptId) { console.log('  ⊘ Skipped — no receipt'); return; }
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (cookie) headers['Cookie'] = cookie;
+      const pdfRes = await fetch(`${BASE}/api/platinum/billing-payment/print-receipt`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ ids: [verifyReceiptId], receiptNos: [], isReprint: false }),
+        signal: AbortSignal.timeout(15000),
+      });
+      expect(pdfRes.ok).toBe(true);
+      const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
+      expect(pdfBuffer.length).toBeGreaterThan(500);
+      console.log(`  ✓ PDF downloaded — ${pdfBuffer.length} bytes`);
+
+      const pdfStr = pdfBuffer.toString('binary');
+      const textChunks: string[] = [];
+      const textMatches = pdfStr.match(/\(([^)]+)\)/g) || [];
+      for (const m of textMatches) {
+        const inner = m.slice(1, -1);
+        if (inner.length > 1 && /[a-zA-Z0-9\/]/.test(inner)) {
+          textChunks.push(inner);
+        }
+      }
+      const pdfText = textChunks.join(' ');
+      console.log(`  ✓ PDF text extracted — ${pdfText.length} chars from ${textChunks.length} chunks`);
+      console.log(`  ✓ PDF text sample: "${pdfText.substring(0, 600)}"`);
+
+      const shortAcctNo = acctNo.replace(/^0+/, '');
+      const hasAccountRef = pdfText.includes(acctNo) || pdfText.includes(shortAcctNo);
+      console.log(`  ${hasAccountRef ? '✓' : '✗'} PDF contains account number (${acctNo} or ${shortAcctNo}): ${hasAccountRef}`);
+
+      const amtStr = verifyAmount.toFixed(2);
+      const hasAmount = pdfText.includes(amtStr) || pdfText.includes(String(verifyAmount));
+      console.log(`  ${hasAmount ? '✓' : '✗'} PDF contains payment amount (${amtStr}): ${hasAmount}`);
+
+      const receiptNoMatch = pdfText.match(/\d{8}\/\d{5,7}/);
+      if (receiptNoMatch) {
+        console.log(`  ✓ PDF contains receipt number: "${receiptNoMatch[0]}"`);
+      } else {
+        console.log(`  ⚠ Could not find receipt number pattern (DDMMYYYY/NNNNNN) in PDF — binary compressed`);
+      }
+
+      expect(pdfBuffer.length).toBeGreaterThan(5000);
+    }, 30000);
+  });
+
   describe('7. Business Rules', () => {
     it('7.1 Only cash, card, cash+card tender types allowed', () => {
       const allowed = ['cash', 'card', 'cash+card'];

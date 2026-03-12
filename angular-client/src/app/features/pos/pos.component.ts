@@ -2525,28 +2525,6 @@ export class PosComponent implements OnInit, OnDestroy {
     console.log(`[resolveReceiptNo] Extracted receipt IDs: [${receiptIds.join(',')}] from response:`, JSON.stringify(result).substring(0, 500));
 
     if (receiptIds.length > 0) {
-      const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-      for (let attempt = 0; attempt < 3; attempt++) {
-        if (attempt > 0) await delay(800);
-        for (const rid of receiptIds) {
-          try {
-            console.log(`[resolveReceiptNo] Attempt ${attempt + 1}: looking up receiptNo for ID ${rid} via pos-multi-receipt-print`);
-            const detailData: any = await firstValueFrom(
-              this.api.get('/api/platinum/pos-multi-receipt-print', { receiptId: String(rid) })
-            );
-            const items = Array.isArray(detailData) ? detailData : (detailData?.value || detailData?.items || []);
-            if (items.length > 0 && items[0].receiptNo) {
-              console.log(`[resolveReceiptNo] Resolved receiptNo "${items[0].receiptNo}" via pos-multi-receipt-print for ID ${rid}`);
-              return String(items[0].receiptNo);
-            }
-            console.log(`[resolveReceiptNo] Attempt ${attempt + 1}: pos-multi-receipt-print returned ${items.length} items, receiptNo=${items[0]?.receiptNo || 'N/A'}`);
-          } catch (e: any) {
-            console.warn(`[resolveReceiptNo] Attempt ${attempt + 1}: pos-multi-receipt-print lookup failed for ID ${rid}:`, e?.message);
-          }
-        }
-      }
-
       try {
         const cashierId = this.cashierInfo()?.id || this.cashierInfo()?.cashier_ID || this.user()?.user_ID;
         if (cashierId) {
@@ -2564,6 +2542,22 @@ export class PosComponent implements OnInit, OnDestroy {
         }
       } catch (e: any) {
         console.warn(`[resolveReceiptNo] Unreconciled list lookup failed:`, e?.message);
+      }
+
+      for (const rid of receiptIds) {
+        try {
+          console.log(`[resolveReceiptNo] Looking up receiptNo for ID ${rid} via pos-multi-receipt-print`);
+          const detailData: any = await firstValueFrom(
+            this.api.get('/api/platinum/pos-multi-receipt-print', { receiptId: String(rid) })
+          );
+          const items = Array.isArray(detailData) ? detailData : (detailData?.value || detailData?.items || []);
+          if (items.length > 0 && items[0].receiptNo) {
+            console.log(`[resolveReceiptNo] Resolved receiptNo "${items[0].receiptNo}" via pos-multi-receipt-print for ID ${rid}`);
+            return String(items[0].receiptNo);
+          }
+        } catch (e: any) {
+          console.warn(`[resolveReceiptNo] pos-multi-receipt-print lookup failed for ID ${rid}:`, e?.message);
+        }
       }
 
       return `REC-${receiptIds[0]}`;
