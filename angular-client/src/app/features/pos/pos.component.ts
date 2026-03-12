@@ -1432,13 +1432,22 @@ export class PosComponent implements OnInit, OnDestroy {
     try {
       const paddedId = id.padStart(12, '0');
       const [dataResult, accountsResult] = await Promise.all([
-        firstValueFrom(this.api.post<any>('/api/platinum/billing-payment-clearance/get-clearance-data', { clearanceId: paddedId })),
-        firstValueFrom(this.api.post<any>('/api/platinum/billing-payment-clearance/get-accounts-for-clearance', { clearanceId: paddedId, userId: this.user()?.user_ID })),
+        firstValueFrom(this.api.post<any>('/api/platinum/billing-payment-clearance/get-clearance-data', { clearanceId: paddedId }))
+          .catch((e: any) => ({ _fetchError: true, msg: e?.error?.message || e?.message || 'Failed to load clearance data' })),
+        firstValueFrom(this.api.post<any>('/api/platinum/billing-payment-clearance/get-accounts-for-clearance', { clearanceId: paddedId, userId: this.user()?.user_ID }))
+          .catch((e: any) => ({ _fetchError: true, msg: e?.error?.message || e?.message || 'Failed to load clearance accounts' })),
       ]);
-      const dataItems = dataResult?.items || (Array.isArray(dataResult) ? dataResult : []);
-      const accounts = accountsResult?.items || (Array.isArray(accountsResult) ? accountsResult : []);
+
+      if ((dataResult as any)?._fetchError && (accountsResult as any)?._fetchError) {
+        this.clearanceError.set((dataResult as any).msg || 'Clearance search failed — Platinum API error.');
+        return;
+      }
+
+      const dataItems = (dataResult as any)?._fetchError ? [] : (dataResult?.items || (Array.isArray(dataResult) ? dataResult : []));
+      const accounts = (accountsResult as any)?._fetchError ? [] : (accountsResult?.items || (Array.isArray(accountsResult) ? accountsResult : []));
+
       if (dataItems.length === 0 && accounts.length === 0) {
-        this.clearanceError.set('No clearance certificate found.');
+        this.clearanceError.set('No clearance certificate found for this ID.');
         return;
       }
       const info = dataItems[0] || {};
@@ -1472,7 +1481,7 @@ export class PosComponent implements OnInit, OnDestroy {
       this.toast.success(`Clearance ${paddedId} added to basket.`);
       this.clearanceSearchId.set('');
     } catch (e: any) {
-      this.clearanceError.set(e?.error?.message || 'Clearance search failed.');
+      this.clearanceError.set(e?.error?.message || e?.message || 'Clearance search failed.');
     } finally {
       this.clearanceSearching.set(false);
     }
@@ -1537,7 +1546,8 @@ export class PosComponent implements OnInit, OnDestroy {
       const data: any = await firstValueFrom(
         this.api.get<any>('/api/platinum/receipt-prepaid/service-type-wise-prepaid-list')
       );
-      this.prepaidServiceTypes.set(Array.isArray(data) ? data : []);
+      const arr = Array.isArray(data) ? data : (data?.data || data?.serviceTypes || []);
+      this.prepaidServiceTypes.set(Array.isArray(arr) ? arr : []);
     } catch {
       this.toast.error('Failed to load prepaid service types.');
     }
@@ -1572,11 +1582,11 @@ export class PosComponent implements OnInit, OnDestroy {
       const data: any = await firstValueFrom(
         this.api.get<any>('/api/platinum/billing-payment-miscellaneous/get-scoa-items', { groupId: String(groupId) })
       );
-      const arr = Array.isArray(data) ? data : [];
+      const arr = Array.isArray(data) ? data : (data?.data || data?.items || []);
       const mapped = arr.map((s: any) => ({
         scoaItemId: s.scoaItemId || s.scoa_item_ID || s.scoaItem || s.id || 0,
         scoaItemName: s.scoaItemName || s.description || s.name || '',
-        description: s.description || s.scoaItemName || '',
+        description: s.description || s.scoaItemName || s.name || '',
         amount: s.amount || 0,
         isVatable: s.isVatable || false,
         vatPercentage: s.vatPercentage || 0,
