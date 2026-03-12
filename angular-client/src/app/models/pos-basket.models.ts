@@ -31,6 +31,7 @@ export interface AccountItemData {
   billingCycleId: number;
   hasPrepaidMeter: boolean;
   prepaidMeterNo: string;
+  prepaidType: string;
   originalData: any;
 }
 

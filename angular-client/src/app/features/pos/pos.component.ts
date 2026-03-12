@@ -583,19 +583,25 @@ export class PosComponent implements OnInit, OnDestroy {
           }
         }
         for (const a of accts) {
-          const meterNo = a.meterNo || a.prepaidMeterNo || a.meter_No || a.physicalMeterNo || '';
+          const meterNo = a.physicalMeterNo || a.prepaidMeterNo || a.meterNo || a.meter_No || '';
           const acctId = a.account_ID || a.accountID || a.accountId || 0;
           if (!acctId) continue;
           const isDuplicate = results.some(r => r.resultType === 'account' && r.id === acctId);
           if (isDuplicate) continue;
+          const addr = (a.deliveryAddress || a.streetName || a.address || a.physicalAddress || a.locationAddress || '').replace(/\r\n/g, ', ').replace(/,\s*$/, '');
+          const acctNo = a.accountNo || a.accountNumber || a.accountID || '';
+          const acctStatus = a.statusDesc || a.status || a.accountStatus || '';
+          const meterServiceType = a.meterServiceType || a.serviceType || a.prepaidType || '';
+          const isWaterMeter = /water/i.test(meterServiceType) || /^0[12]/i.test(meterNo);
+          const prepaidTypeLabel = meterNo ? (isWaterMeter ? 'Water' : 'Electricity') : '';
           results.push({
             resultType: 'account',
             id: acctId,
             label: a.name || a.accountName || a.consumerName || a.surname_Company || a.fullNAME || '',
-            description: `${a.accountNo || a.accountNumber || a.accountID || ''} — ${a.address || a.physicalAddress || a.locationAddress || ''}`,
+            description: `${acctNo} — ${addr || 'No address on file'}`,
             balance: Number(a.outstandingAmount || a.outStandingAmt || a.outStandingAmount || a.balance || a.totalDue || 0),
-            status: a.status || a.accountStatus || 'Active',
-            rawData: { ...a, hasPrepaidMeter: !!meterNo, prepaidMeterNo: meterNo },
+            status: acctStatus || 'Active',
+            rawData: { ...a, hasPrepaidMeter: !!meterNo, prepaidMeterNo: meterNo, prepaidType: prepaidTypeLabel, address: addr, accountStatus: acctStatus },
           });
         }
       }
@@ -714,14 +720,17 @@ export class PosComponent implements OnInit, OnDestroy {
     const merged = { ...acctData, ...(detailData && !detailData._error ? detailData : {}) };
     const balance = Number(merged.outstandingAmount || merged.outStandingAmt || merged.balance || merged.totalDue || 0);
     const name = merged.name || merged.accountName || merged.consumerName || merged.surname_Company || '';
-    const address = merged.address || merged.physicalAddress || merged.deliveryAddress || '';
-    const meterNo = merged.meterNo || merged.prepaidMeterNo || merged.meter_No || '';
+    const address = (merged.deliveryAddress || merged.streetName || merged.address || merged.physicalAddress || merged.locationAddress || '').replace(/\r\n/g, ', ').replace(/,\s*$/, '');
+    const meterNo = merged.physicalMeterNo || merged.prepaidMeterNo || merged.meterNo || merged.meter_No || '';
+    const meterSvcType = merged.meterServiceType || merged.serviceType || merged.prepaidType || '';
+    const isWater = /water/i.test(meterSvcType) || /^0[12]/i.test(meterNo);
+    const prepaidType = meterNo ? (isWater ? 'Water' : 'Electricity') : '';
 
     const item: BasketItem = {
       id: crypto.randomUUID(),
       type: 'account',
       label: name,
-      description: `${accountNo} — ${address}`,
+      description: `${accountNo} — ${address || 'No address on file'}`,
       amountDue: balance,
       amountToPay: 0,
       accountData: {
@@ -738,6 +747,7 @@ export class PosComponent implements OnInit, OnDestroy {
         billingCycleId: merged.billingCycleId || merged.billingCycle_ID || 0,
         hasPrepaidMeter: !!meterNo,
         prepaidMeterNo: meterNo,
+        prepaidType,
         originalData: merged,
       },
     };
@@ -814,6 +824,7 @@ export class PosComponent implements OnInit, OnDestroy {
           billingCycleId: acct.billingCycleId || 0,
           hasPrepaidMeter: !!meterNo,
           prepaidMeterNo: meterNo,
+          prepaidType: '',
           originalData: acct,
         },
       });
@@ -2766,6 +2777,7 @@ export class PosComponent implements OnInit, OnDestroy {
           billingCycleId: merged.billingCycleId || merged.billingCycle_ID || 0,
           hasPrepaidMeter: !!meterNo,
           prepaidMeterNo: meterNo,
+          prepaidType: '',
           originalData: merged,
         },
       };
