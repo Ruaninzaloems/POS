@@ -3485,105 +3485,57 @@
                 </div>
               }
 
-              @if ((tabData()?.ratesBalanceItems || []).length > 0) {
+              @if ((tabData()?.ratesBillingHistory || []).length > 0) {
                 <div class="detail-section" style="margin-top: 1rem;">
-                  <div class="section-header-bar">💳 Property Rates Balance</div>
+                  <div class="section-header-bar">📊 Property Rates — Monthly Billing <span class="section-count">{{ tabData()?.ratesBillingHistory?.length || 0 }} months</span></div>
                   <div class="data-table-wrapper">
-                    <table class="data-table" data-testid="table-rates-balance">
+                    <table class="data-table" data-testid="table-rates-billing-history">
                       <thead>
                         <tr>
-                          <th>Service</th>
-                          <th class="text-right">Current</th>
-                          <th class="text-right">30 Days</th>
-                          <th class="text-right">60 Days</th>
-                          <th class="text-right">90 Days</th>
-                          <th class="text-right">120+ Days</th>
-                          <th class="text-right">Total Outstanding</th>
+                          <th>Month</th>
+                          <th class="text-right">Levy</th>
+                          <th class="text-right">Rebate</th>
+                          <th class="text-right">Net Amount</th>
                         </tr>
                       </thead>
                       <tbody>
-                        @for (item of tabData()?.ratesBalanceItems || []; track $index) {
+                        @for (item of tabData()?.ratesBillingHistory || []; track $index) {
                           <tr>
-                            <td>{{ item.serviceDescription || item.description || '-' }}</td>
-                            <td class="text-right mono">R {{ formatCurrency(item.current || item.currentAmount || 0) }}</td>
-                            <td class="text-right mono">R {{ formatCurrency(item.days30 || 0) }}</td>
-                            <td class="text-right mono">R {{ formatCurrency(item.days60 || 0) }}</td>
-                            <td class="text-right mono">R {{ formatCurrency(item.days90 || 0) }}</td>
-                            <td class="text-right mono">R {{ formatCurrency((item.days120 || 0) + (item.days150 || 0) + (item.untill360 || 0)) }}</td>
-                            <td class="text-right mono" style="font-weight: 700;">R {{ formatCurrency(item.totalOutStanding || item.totalOutstanding || item.totalOutstandingAmount || 0) }}</td>
+                            <td style="font-weight: 600;">{{ item.month }} {{ item.financialYear }}</td>
+                            <td class="text-right mono">R {{ formatCurrency(item.levy || 0) }}</td>
+                            <td class="text-right mono" style="color: var(--platinum-accent);">
+                              @if (item.rebate && item.rebate !== 0) {
+                                R {{ formatCurrency(item.rebate) }}
+                              } @else {
+                                -
+                              }
+                            </td>
+                            <td class="text-right mono" style="font-weight: 700;">R {{ formatCurrency((item.levy || 0) + (item.rebate || 0)) }}</td>
                           </tr>
                         }
                       </tbody>
+                      <tfoot>
+                        <tr style="font-weight: 700; border-top: 2px solid var(--platinum-primary, #0f2b46);">
+                          <td>Total</td>
+                          <td class="text-right mono">R {{ formatCurrency(getRatesTotalLevy()) }}</td>
+                          <td class="text-right mono" style="color: var(--platinum-accent);">
+                            @if (getRatesTotalRebate() !== 0) {
+                              R {{ formatCurrency(getRatesTotalRebate()) }}
+                            } @else {
+                              -
+                            }
+                          </td>
+                          <td class="text-right mono">R {{ formatCurrency(getRatesTotalLevy() + getRatesTotalRebate()) }}</td>
+                        </tr>
+                      </tfoot>
                     </table>
                   </div>
                 </div>
-              }
-
-              @if ((tabData()?.ratesServiceItems || []).length > 0) {
+              } @else if (tabLoading()) {
+              } @else {
                 <div class="detail-section" style="margin-top: 1rem;">
-                  <div class="section-header-bar">📊 Rates Service Charges</div>
-                  <div class="data-table-wrapper">
-                    <table class="data-table" data-testid="table-rates-service">
-                      <thead>
-                        <tr>
-                          <th>Service</th>
-                          <th class="text-right">Amount</th>
-                          <th class="text-right">VAT</th>
-                          <th class="text-right">Total</th>
-                          <th class="text-right">Interest</th>
-                          <th class="text-right">Opening Balance</th>
-                          <th>Period</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        @for (item of tabData()?.ratesServiceItems || []; track $index) {
-                          <tr>
-                            <td>{{ item.serviceDescription || '-' }}</td>
-                            <td class="text-right mono">R {{ formatCurrency(item.amount || 0) }}</td>
-                            <td class="text-right mono">R {{ formatCurrency(item.vat || 0) }}</td>
-                            <td class="text-right mono" style="font-weight: 700;">R {{ formatCurrency(item.totalAmount || 0) }}</td>
-                            <td class="text-right mono">R {{ formatCurrency(item.interestAmount || 0) }}</td>
-                            <td class="text-right mono">R {{ formatCurrency(item.openingBalance || 0) }}</td>
-                            <td>{{ item.month || '' }} {{ item.financialYear || '' }}</td>
-                          </tr>
-                        }
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              }
-
-              @if ((tabData()?.allBalanceItems || []).length > 0) {
-                <div class="detail-section" style="margin-top: 1rem;">
-                  <div class="section-header-bar">📑 All Service Balance Summary</div>
-                  <div class="data-table-wrapper">
-                    <table class="data-table" data-testid="table-all-balance">
-                      <thead>
-                        <tr>
-                          <th>Service</th>
-                          <th class="text-right">Current</th>
-                          <th class="text-right">30 Days</th>
-                          <th class="text-right">60 Days</th>
-                          <th class="text-right">90 Days</th>
-                          <th class="text-right">120+ Days</th>
-                          <th class="text-right">Total Outstanding</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        @for (item of tabData()?.allBalanceItems || []; track $index) {
-                          <tr [class.rates-highlight-row]="(item.serviceDescription || item.description || '').toLowerCase().includes('rate')">
-                            <td>{{ item.serviceDescription || item.description || '-' }}</td>
-                            <td class="text-right mono">R {{ formatCurrency(item.current || item.currentAmount || 0) }}</td>
-                            <td class="text-right mono">R {{ formatCurrency(item.days30 || 0) }}</td>
-                            <td class="text-right mono">R {{ formatCurrency(item.days60 || 0) }}</td>
-                            <td class="text-right mono">R {{ formatCurrency(item.days90 || 0) }}</td>
-                            <td class="text-right mono">R {{ formatCurrency((item.days120 || 0) + (item.days150 || 0) + (item.untill360 || 0)) }}</td>
-                            <td class="text-right mono" style="font-weight: 700;">R {{ formatCurrency(item.totalOutStanding || item.totalOutstanding || item.totalOutstandingAmount || 0) }}</td>
-                          </tr>
-                        }
-                      </tbody>
-                    </table>
-                  </div>
+                  <div class="section-header-bar">📊 Property Rates — Monthly Billing</div>
+                  <div class="empty-inline">No property rates billing data found for this financial year</div>
                 </div>
               }
 

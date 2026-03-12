@@ -2440,6 +2440,8 @@
 
 .rates-highlight-row { background: rgba(201, 168, 76, 0.08) !important; }
 .rates-highlight-row td:first-child { font-weight: 700; color: var(--platinum-primary, #0f2b46); }
+.rates-rebate-row { background: rgba(201, 168, 76, 0.06) !important; }
+.rates-rebate-row td { font-style: italic; }
 
 .empty-sub { font-size: 0.75rem; color: var(--platinum-text-muted, #94a3b8); margin-top: 0.25rem; }
 

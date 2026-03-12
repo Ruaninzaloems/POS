@@ -1819,16 +1819,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           if (!this.ratesFinYear()) {
             this.ratesFinYear.set(this.userFinYear() || this.getCurrentFinYear());
           }
-          const ratesFy = this.ratesFinYear();
-          const fyP: Record<string, string> = ratesFy ? { financialYear: ratesFy } : {};
+          const ratesFy = this.ratesFinYear() || this.getCurrentFinYear();
           const ratesFyParam: Record<string, string> = ratesFy ? { finYear: ratesFy } : {};
           const acctForRates: any = this.selectedAccount();
           const ratesUnitPartId = acctForRates?.unitPartitionID || acctForRates?.unitPartition_ID;
-          const [ratesDetail, ratesHistory, ratesBalance, ratesServiceBal, ratesPropDetails, propRatesSearch] = await Promise.allSettled([
+          const [ratesDetail, ratesHistory, ratesPropDetails, propRatesSearch, detailedTxns] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-rates-details/${accountId}`, ratesFyParam)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/rates-run-history/${accountId}`, ratesFyParam)),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/total-balance-debt-inquiry/${accountId}`, fyP)),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/service-type-balance/${accountId}`, fyP)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-rates-search`, {
               finYear: ratesFy || this.getCurrentFinYear(),
@@ -1836,33 +1833,47 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
               ...(ratesUnitPartId ? { unitPartitionId: String(Number(ratesUnitPartId) || ratesUnitPartId) } : {}),
               pageSize: '50'
             })),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/detailed-transaction-results/${accountId}`, ratesFyParam)),
           ]);
           const ratesDetailVal = ratesDetail.status === 'fulfilled' ? (Array.isArray(ratesDetail.value) ? ratesDetail.value[0] : ratesDetail.value) : null;
           const ratesHistoryVal = ratesHistory.status === 'fulfilled' ? this.normalizeArray(ratesHistory.value) : [];
-          const balanceItems = ratesBalance.status === 'fulfilled' ? this.normalizeArray(ratesBalance.value) : [];
-          const svcBalItems = ratesServiceBal.status === 'fulfilled' ? this.normalizeArray(ratesServiceBal.value) : [];
           const propDetailsVal = ratesPropDetails.status === 'fulfilled' ? (Array.isArray(ratesPropDetails.value) ? ratesPropDetails.value[0] : ratesPropDetails.value) : null;
-          const ratesServiceItems = svcBalItems.filter((s: any) => {
-            const desc = (s.serviceDescription || s.description || '').toLowerCase();
-            return desc.includes('rate') || desc.includes('property') || desc.includes('valuation');
-          });
-          const ratesBalanceItems = balanceItems.filter((b: any) => {
-            const desc = (b.serviceDescription || b.description || '').toLowerCase();
-            return desc.includes('rate') || desc.includes('property') || desc.includes('valuation');
-          });
           const propRatesSearchVal = propRatesSearch.status === 'fulfilled' ? propRatesSearch.value : null;
           const propRatesData: any[] = propRatesSearchVal?.data ? (Array.isArray(propRatesSearchVal.data) ? propRatesSearchVal.data : [propRatesSearchVal.data]) : (Array.isArray(propRatesSearchVal) ? propRatesSearchVal : propRatesSearchVal && !propRatesSearchVal._error ? [propRatesSearchVal] : []);
-          if (propRatesData.length > 0) {
-            console.log('[rates] property-rates-search returned', propRatesData.length, 'records, keys:', Object.keys(propRatesData[0]));
-            console.log('[rates] property-rates sample:', JSON.stringify(propRatesData[0]).substring(0, 800));
-          } else {
-            console.log('[rates] property-rates-search returned no data, raw:', JSON.stringify(propRatesSearchVal)?.substring(0, 300));
+          const allDetailedTxns = detailedTxns.status === 'fulfilled' ? this.normalizeArray(detailedTxns.value) : [];
+          const monthOrder = ['july','august','september','october','november','december','january','february','march','april','may','june'];
+          const monthLabels: Record<string,string> = {july:'Jul',august:'Aug',september:'Sep',october:'Oct',november:'Nov',december:'Dec',january:'Jan',february:'Feb',march:'Mar',april:'Apr',may:'May',june:'Jun'};
+          const ratesRow = allDetailedTxns.find((t: any) => (t.serviceDesc || '').toLowerCase().includes('property rate') && t.transGroup === 201);
+          const ratesBillingHistory: any[] = [];
+          if (ratesRow) {
+            for (const m of monthOrder) {
+              const val = ratesRow[m] ?? 0;
+              if (val !== 0) {
+                ratesBillingHistory.push({
+                  month: monthLabels[m] || m,
+                  financialYear: ratesRow.financialYear || '',
+                  levy: val,
+                  serviceDesc: ratesRow.serviceDesc || 'Property Rates'
+                });
+              }
+            }
           }
-          if (ratesDetailVal) console.log('[rates] account-rates-details keys:', Object.keys(ratesDetailVal));
-          if (balanceItems.length) console.log('[rates] balance items count:', balanceItems.length, 'rates-filtered:', ratesBalanceItems.length);
-          if (svcBalItems.length) console.log('[rates] service-type-balance count:', svcBalItems.length, 'rates-filtered:', ratesServiceItems.length);
-          if (propDetailsVal) console.log('[rates] property-details keys:', Object.keys(propDetailsVal));
-
+          const ratesRebateRow = allDetailedTxns.find((t: any) => (t.serviceDesc || '').toLowerCase().includes('rate') && (t.serviceDesc || '').toLowerCase().includes('rebate'));
+          if (ratesRebateRow) {
+            for (let i = 0; i < ratesBillingHistory.length; i++) {
+              const m = monthOrder.find(mo => monthLabels[mo] === ratesBillingHistory[i].month);
+              if (m) {
+                ratesBillingHistory[i].rebate = ratesRebateRow[m] ?? 0;
+              }
+            }
+          }
+          const rebateAmt = ratesDetailVal && !ratesDetailVal._error ? (ratesDetailVal.rebateAmount || 0) : 0;
+          if (rebateAmt && ratesBillingHistory.length > 0 && !ratesRebateRow) {
+            const monthlyRebate = rebateAmt / ratesBillingHistory.length;
+            for (const item of ratesBillingHistory) {
+              item.rebate = monthlyRebate;
+            }
+          }
           const propId = propDetailsVal?.property_ID || propDetailsVal?.propertyID || propDetailsVal?.propertyId || accountId;
           let valuationsArr: any[] = [];
           let valuationDataVal: any = null;
@@ -1876,16 +1887,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             valuationsArr = suppVal.status === 'fulfilled' ? this.normalizeArray(suppVal.value) : [];
             valuationDataVal = valById.status === 'fulfilled' && valById.value && !valById.value._error ? (Array.isArray(valById.value) ? valById.value[0] : valById.value) : null;
             valuationImportVal = valImport.status === 'fulfilled' && valImport.value && !valImport.value._error ? (Array.isArray(valImport.value) ? valImport.value[0] : valImport.value) : null;
-            console.log('[rates] valuations count:', valuationsArr.length, 'valById:', valuationDataVal ? Object.keys(valuationDataVal).length + ' keys' : 'null', 'valImport:', valuationImportVal ? Object.keys(valuationImportVal).length + ' keys' : 'null');
           }
 
           data = {
             ratesDetails: ratesDetailVal && !ratesDetailVal._error ? ratesDetailVal : null,
             ratesHistory: ratesHistoryVal,
-            ratesBalanceItems: ratesBalanceItems,
-            ratesServiceItems: ratesServiceItems,
-            allBalanceItems: balanceItems,
-            allServiceItems: svcBalItems,
+            ratesBillingHistory: ratesBillingHistory,
+            allDetailedTxns: allDetailedTxns,
             propertyDetails: propDetailsVal && !propDetailsVal._error ? propDetailsVal : null,
             valuations: valuationsArr,
             valuationData: valuationDataVal,
@@ -2367,6 +2375,16 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const p = this.tabData()?.property;
     const v = p?.partitionMarketValue ?? p?.partMarketValue ?? null;
     return (v != null && v !== '') ? v : null;
+  }
+
+  getRatesTotalLevy(): number {
+    const items = this.tabData()?.ratesBillingHistory || [];
+    return items.reduce((sum: number, item: any) => sum + (item.levy || 0), 0);
+  }
+
+  getRatesTotalRebate(): number {
+    const items = this.tabData()?.ratesBillingHistory || [];
+    return items.reduce((sum: number, item: any) => sum + (item.rebate || 0), 0);
   }
 
   getPropertyRegistrationStatus(): string {

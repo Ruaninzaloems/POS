@@ -1,0 +1,151 @@
+General Valuations
+Market Value
+
+: 2 520 000.00
+
+Stand Size(m2)
+
+: 1000
+
+Land Size (ha)
+
+: 0.1
+
+Roll Number
+
+: Migrated
+
+Roll Start Date
+
+: 01/07/2022
+
+Phase in Commencement Date
+
+:
+
+Type of Use
+
+: RES
+
+Property Category
+
+: RES
+
+Rates Tariff Code
+
+: RAT04/GEN/2801 - Rates - Residential (M)
+
+Reason for Valuation Change
+
+: General
+
+Expected Expiry Date
+
+: 30/06/2027
+
+Land Reform / RDP
+
+:
+
+View Section 49 Letter:	View Section 78 Letter:	View Valuation Certificate:
+Financial Year
+Valuation Status
+Valuation Type
+Stand Size
+Land Size
+Market Value
+Roll Number
+Roll Date
+Property Category
+Type of Use
+Rates Tariff Code
+Phase in Commencement Date
+Valuation Expiry Date
+Reason for Valuation Change
+Captured Date
+2025/2026	Active	General	1000	0.1	2 520 000.00	Migrated	01/07/2022	RES	RES	RAT04/GEN/2801 - Rates - Residential (M)		2027-06-30T00:00:00	Annual	29/10/2025
+Items per page:
+50
+1 – 1 of 1
+Rebates and Levies:
+Financial Year
+Month
+Partition ID
+Partition Description
+Rates Tariff
+Rate Payer
+Stand Size
+Market Value
+Rateable Market Value
+Residential Exemption Legislative
+Residential Exemption Additional
+New Erven Rebate
+Rebate Category
+Rebate Application Amount
+General Exemption
+Indigent Amount
+Tariff Rebate Amount
+Total Yearly Rates
+Total Yearly Rebates
+Total Yearly Charge
+Payment Periods
+Property Rates Installment
+Calculated Periods (Remaining)
+Calculated Rates Installment
+No records to display.
+Items per page:
+50
+0 of 0
+Election Information:
+Ward
+
+: 6-5
+
+Polling Booth
+
+:
+
+Meters:
+Service Type
+
+:
+
+Meter Classification
+
+:
+
+Service Type
+Classification
+Physical Meter No
+Meter No
+Install Date
+Tariff Code
+Main Meter
+Billable
+Status
+Service Status
+Replace
+Reason
+Account Number
+Electricity Pre-Paid	Prepaid Electricity	04281441131	17466	01/07/2019	ELEC/CONS/PDOM	false	true	Active	Active	false		000000020707
+Water Metered	Normal Water	25906887	17467	01/07/2019	WATER/CONS/1401	false	true	Active	Active	false		000000020707
+Items per page:
+50
+1 – 2 of 2
+Transfer of Ownership History:
+Financial Year
+Status
+Transfer of Ownership Date
+Old Owner
+Old Account Number
+Title Deed Number
+Registration Date
+RDP / Land Reform Date
+Journal Amount - Services
+Journal Amount - Additional Billing
+Purchase Price
+Purchase Date
+No records to display.
+Items per page:
+50
+0 of 0
