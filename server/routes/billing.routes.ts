@@ -63,12 +63,15 @@ export function registerBillingRoutes(app: Express, httpServer: Server): void {
       const rm = body?.requestModel || {};
       const idempotencyToken = req.headers['x-idempotency-token'] as string | undefined;
 
-      console.log(`[submit-multiple-payment] userId=${userId}, ${accounts.length} acct(s), amt=${rm.totalAmount}, type=${rm.paymentType}, token=${idempotencyToken || 'none'}`);
-      const invalidAccounts = accounts.filter((a: any) => !a.accountID || a.accountID === 0);
-      if (invalidAccounts.length > 0) {
-        console.error(`[submit-multiple-payment] BLOCKED: ${invalidAccounts.length} account(s) have accountID=0 or missing`);
-        res.status(400).json({ isSuccess: false, message: `${invalidAccounts.length} account(s) have invalid Account IDs (0 or missing): ${invalidAccounts.map((a: any) => a.name || a.accountNumber || 'unknown').join(', ')}. Remove them from the cart and retry.` });
-        return;
+      const isMiscPayment = accounts.some((a: any) => a.accountType === 'Miscellaneous' || a.miscellaneousPaymentGroup);
+      console.log(`[submit-multiple-payment] userId=${userId}, ${accounts.length} acct(s), amt=${rm.totalAmount}, type=${rm.paymentType}, misc=${isMiscPayment}, token=${idempotencyToken || 'none'}`);
+      if (!isMiscPayment) {
+        const invalidAccounts = accounts.filter((a: any) => !a.accountID || a.accountID === 0);
+        if (invalidAccounts.length > 0) {
+          console.error(`[submit-multiple-payment] BLOCKED: ${invalidAccounts.length} account(s) have accountID=0 or missing`);
+          res.status(400).json({ isSuccess: false, message: `${invalidAccounts.length} account(s) have invalid Account IDs (0 or missing): ${invalidAccounts.map((a: any) => a.name || a.accountNumber || 'unknown').join(', ')}. Remove them from the cart and retry.` });
+          return;
+        }
       }
       const dedupKey = getPaymentDeduplicationKey(userId, body);
       const dedupCheck = checkPaymentDedup(dedupKey, idempotencyToken);

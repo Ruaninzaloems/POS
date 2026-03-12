@@ -359,6 +359,110 @@ describe('POS End-to-End API Tests', () => {
     }, 30000);
   });
 
+  describe('6C. Misc Payment via submit-multiple-payment', () => {
+    let miscReceiptId: number | null = null;
+
+    it('6C.1 Submit misc payment and get receipt ID', async () => {
+      const groupRes = await api('GET', '/api/platinum/billing-payment-miscellaneous/get-groups');
+      const groups = Array.isArray(groupRes.data) ? groupRes.data : [];
+      expect(groups.length).toBeGreaterThan(0);
+      const group = groups[0];
+      const groupId = group.miscellaneous_Payment_Group_ID || group.id;
+
+      const scoaRes = await api('GET', '/api/platinum/billing-payment-miscellaneous/get-scoa-items', {
+        mISCPayGroupId: String(groupId)
+      });
+      const scoaItems = Array.isArray(scoaRes.data) ? scoaRes.data : [];
+      expect(scoaItems.length).toBeGreaterThan(0);
+      const scoa = scoaItems[0];
+      const scoaId = scoa.scoA_Item_ID || scoa.id;
+
+      const miscAmt = 10 + Math.floor(Math.random() * 50);
+      const receiptDate = new Date().toISOString().split('T')[0];
+
+      const res = await api('POST', `/api/platinum/billing-payment/submit-multiple-payment/${userId}`, {
+        accounts: [{
+          capturerID: userId,
+          accountID: 0,
+          account_ID: 0,
+          oldAccountCode: '',
+          name: 'E2E Test Walk-in',
+          sgNumber: '',
+          address: '',
+          outstandingAmount: miscAmt,
+          outStandingAmt: miscAmt,
+          accountStatus: 'Active',
+          accountType: 'Miscellaneous',
+          paymentAmount: miscAmt,
+          accountNumber: '',
+          receiptID: 0,
+          billId: 0,
+          clearanceId: 0,
+          miscellaneousPaymentGroup: groupId,
+          scoaItem: scoaId,
+          description: scoa.name || 'E2E Test Misc',
+          lastName: 'E2ETest',
+          initials: 'T',
+          totalAmount: miscAmt,
+          amount: miscAmt,
+          vatAmount: 0,
+          vatPercentage: 0,
+          isVatable: false,
+        }],
+        requestModel: {
+          finYear,
+          receiptDate,
+          totalAmount: miscAmt,
+          tenderAmount: miscAmt,
+          changeAmount: 0,
+          paymentType: 1,
+          paymentOption: 1,
+          outStandingAmount: miscAmt,
+          cardNumber: '',
+          expiryDate: '',
+          processingMonth: 0,
+          chequeNumber: '',
+          chequeDate: receiptDate,
+          accountHolderName: 'E2E Test Walk-in',
+          bankName: '',
+          bankBranchCode: '',
+          cutOffID: 0,
+          debtArrangementId: 0,
+          cutOffAmount: 0,
+          debtAmount: 0,
+          sundryDebtorsId: '',
+          cashierId: Number(cashierId),
+          cashOfficeId: 1,
+          apiTransactionID: 0,
+          isReconciled: 0,
+          isCancelled: 0,
+        },
+      });
+      expect(res.ok).toBe(true);
+      const d = res.data;
+      expect(d.isSuccess).toBe(true);
+      miscReceiptId = d?.ids?.[0] || null;
+      expect(miscReceiptId).toBeTruthy();
+      console.log(`  ✓ Misc payment via submit-multiple-payment — receiptId=${miscReceiptId}, amount=R${miscAmt}`);
+    }, 30000);
+
+    it('6C.2 Print misc receipt PDF via standard print-receipt', async () => {
+      if (!miscReceiptId) { console.log('  ⊘ Skipped — no receipt'); return; }
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (cookie) headers['Cookie'] = cookie;
+      const pdfRes = await fetch(`${BASE}/api/platinum/billing-payment/print-receipt`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ ids: [miscReceiptId], receiptNos: [], isReprint: false }),
+        signal: AbortSignal.timeout(15000),
+      });
+      expect(pdfRes.ok).toBe(true);
+      const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
+      expect(pdfBuffer.length).toBeGreaterThan(5000);
+      console.log(`  ✓ Misc receipt PDF — ${pdfBuffer.length} bytes`);
+    }, 20000);
+  });
+
   describe('7. Business Rules', () => {
     it('7.1 Only cash, card, cash+card tender types allowed', () => {
       const allowed = ['cash', 'card', 'cash+card'];

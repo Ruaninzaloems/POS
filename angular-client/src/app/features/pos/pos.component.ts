@@ -2196,73 +2196,55 @@ export class PosComponent implements OnInit, OnDestroy {
     let printed = 0;
     const errors: string[] = [];
     try {
-      const miscResults = results.filter(r => r.items.every(i => i.type === 'misc'));
-      const nonMiscResults = results.filter(r => r.items.some(i => i.type !== 'misc'));
+      console.log(`[printReceipt] ${results.length} result(s) to print`);
 
-      console.log(`[printReceipt] ${results.length} result(s): ${miscResults.length} misc, ${nonMiscResults.length} non-misc`);
+      for (const r of results) {
+        const sid = this.getReceiptSerialNo(r.rawResponse);
+        const type = r.items[0]?.type || 'unknown';
+        console.log(`[printReceipt] ${type} receipt serialNo=${sid}, receiptNumber=${r.receiptNumber}`, JSON.stringify(r.rawResponse).substring(0, 300));
+      }
 
-      for (const mr of miscResults) {
-        const serialNo = this.getReceiptSerialNo(mr.rawResponse);
-        console.log(`[printReceipt] Misc receipt serialNo=${serialNo}, receiptNumber=${mr.receiptNumber}`, JSON.stringify(mr.rawResponse).substring(0, 300));
-        if (serialNo <= 0) {
-          errors.push(`Misc receipt ${mr.receiptNumber}: no serial number found in response`);
-          continue;
+      const allReceiptIds: number[] = [];
+      for (const r of results) {
+        const rawIds = this.extractReceiptIds(r.rawResponse);
+        if (rawIds.length > 0) {
+          allReceiptIds.push(...rawIds);
+        } else {
+          const serialNo = this.getReceiptSerialNo(r.rawResponse);
+          if (serialNo > 0) allReceiptIds.push(serialNo);
         }
+      }
+
+      const realReceiptNos = results
+        .map(r => r.receiptNumber)
+        .filter(n => n && n !== 'N/A' && !n.startsWith('REC-'));
+
+      const uniqueIds = Array.from(new Set(allReceiptIds));
+      console.log(`[printReceipt] All receipt IDs: [${uniqueIds.join(',')}], receiptNos: [${realReceiptNos.join(',')}]`);
+
+      if (uniqueIds.length > 0 || realReceiptNos.length > 0) {
         try {
           const blob = await firstValueFrom(
-            this.api.postBlob(`/api/platinum/billing-payment/print-miscellaneous-receipt?id=${serialNo}`, {})
+            this.api.postBlob('/api/platinum/billing-payment/print-receipt', {
+              ids: uniqueIds.length > 0 ? uniqueIds : [0],
+              receiptNos: realReceiptNos,
+              isReprint: false,
+            })
           );
           if (blob && blob.size > 0) {
             const url = URL.createObjectURL(blob);
             window.open(url, '_blank');
             printed++;
           } else {
-            errors.push(`Misc receipt ${mr.receiptNumber}: empty PDF returned`);
+            errors.push('Receipt PDF: empty response returned');
           }
-        } catch (miscErr: any) {
-          console.error(`[printReceipt] Misc receipt ${serialNo} print error:`, miscErr);
-          errors.push(`Misc receipt ${mr.receiptNumber}: ${miscErr?.error?.message || miscErr?.message || 'print failed'}`);
+        } catch (printErr: any) {
+          console.error(`[printReceipt] Print error:`, printErr);
+          errors.push(`Receipt print: ${printErr?.error?.message || printErr?.message || 'failed'}`);
         }
-      }
-
-      if (nonMiscResults.length > 0) {
-        for (const nr of nonMiscResults) {
-          const sid = this.getReceiptSerialNo(nr.rawResponse);
-          const type = nr.items[0]?.type || 'unknown';
-          console.log(`[printReceipt] ${type} receipt serialNo=${sid}, receiptNumber=${nr.receiptNumber}`, JSON.stringify(nr.rawResponse).substring(0, 300));
-        }
-
-        const receiptIds = nonMiscResults.map(r => this.getReceiptSerialNo(r.rawResponse)).filter(id => id > 0);
-        const realReceiptNos = nonMiscResults
-          .map(r => r.receiptNumber)
-          .filter(n => n && n !== 'N/A' && !n.startsWith('REC-'));
-
-        console.log(`[printReceipt] Non-misc print: ids=[${receiptIds.join(',')}], realNos=[${realReceiptNos.join(',')}]`);
-
-        if (receiptIds.length > 0 || realReceiptNos.length > 0) {
-          try {
-            const blob = await firstValueFrom(
-              this.api.postBlob('/api/platinum/billing-payment/print-receipt', {
-                ids: receiptIds.length > 0 ? receiptIds : [0],
-                receiptNos: realReceiptNos,
-                isReprint: false,
-              })
-            );
-            if (blob && blob.size > 0) {
-              const url = URL.createObjectURL(blob);
-              window.open(url, '_blank');
-              printed++;
-            } else {
-              errors.push('Standard receipt: empty PDF returned');
-            }
-          } catch (printErr: any) {
-            console.error(`[printReceipt] Standard print error:`, printErr);
-            errors.push(`Standard receipt print: ${printErr?.error?.message || printErr?.message || 'failed'}`);
-          }
-        } else {
-          const failedTypes = nonMiscResults.map(r => r.items[0]?.type || 'unknown').join(', ');
-          errors.push(`No receipt IDs extracted for ${failedTypes} payment(s) — receipt may not be printable yet`);
-        }
+      } else {
+        const failedTypes = results.map(r => r.items[0]?.type || 'unknown').join(', ');
+        errors.push(`No receipt IDs extracted for ${failedTypes} payment(s) — receipt may not be printable yet`);
       }
 
       if (printed > 0) {
