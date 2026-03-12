@@ -278,25 +278,62 @@ export function registerAuthRoutes(app: Express, httpServer: Server): void {
 
       let resolvedCashierReconcile = cashierReconcile;
 
-      if (!resolvedCashierReconcile && cashierId) {
-        try {
-          console.log(`[active-cashier] validate-cashier cashierReconcile=null — calling cashier-reconcile-by-cashierid?cashierId=${cashierId} as secondary check`);
-          const reconcileData = await platinumGet(session, "/api/billing/auth-day-end-reconcile/cashier-reconcile-by-cashierid", { cashierId: String(cashierId) });
-          if (reconcileData && !reconcileData._error && reconcileData !== null && typeof reconcileData === 'object') {
-            const hasId = reconcileData.id || reconcileData.reconcileId || reconcileData.cashierReconcile_ID;
-            if (hasId) {
-              console.log(`[active-cashier] cashier-reconcile-by-cashierid returned a reconcile record — id: ${hasId}, status: ${reconcileData.status || reconcileData.reconcileStatus || 'unknown'}`);
-              resolvedCashierReconcile = reconcileData;
+      const reconcileCheckIds: string[] = [];
+      if (cashierId) reconcileCheckIds.push(String(cashierId));
+      if (!cashierId || String(cashierId) !== String(userId)) reconcileCheckIds.push(String(userId));
+
+      if (!resolvedCashierReconcile) {
+        for (const checkId of reconcileCheckIds) {
+          try {
+            console.log(`[active-cashier] validate-cashier cashierReconcile=null — calling cashier-reconcile-by-cashierid?cashierId=${checkId} as secondary check`);
+            const reconcileData = await platinumGet(session, "/api/billing/auth-day-end-reconcile/cashier-reconcile-by-cashierid", { cashierId: checkId });
+            if (reconcileData && !reconcileData._error && reconcileData !== null && typeof reconcileData === 'object') {
+              const hasId = reconcileData.id || reconcileData.reconcileId || reconcileData.cashierReconcile_ID;
+              if (hasId) {
+                console.log(`[active-cashier] cashier-reconcile-by-cashierid (id=${checkId}) returned a reconcile record — id: ${hasId}, status: ${reconcileData.status || reconcileData.reconcileStatus || 'unknown'}`);
+                resolvedCashierReconcile = reconcileData;
+                break;
+              } else {
+                console.log(`[active-cashier] cashier-reconcile-by-cashierid (id=${checkId}) returned data but no reconcile ID — treating as no pending reconcile`);
+              }
             } else {
-              console.log(`[active-cashier] cashier-reconcile-by-cashierid returned data but no reconcile ID — treating as no pending reconcile`);
+              console.log(`[active-cashier] cashier-reconcile-by-cashierid (id=${checkId}) returned null/error — no pending reconcile`);
             }
-          } else {
-            console.log(`[active-cashier] cashier-reconcile-by-cashierid returned null/error — no pending reconcile`);
+          } catch (reconcileErr: any) {
+            console.warn(`[active-cashier] cashier-reconcile-by-cashierid (id=${checkId}) check failed:`, reconcileErr.message);
           }
-        } catch (reconcileErr: any) {
-          console.warn(`[active-cashier] cashier-reconcile-by-cashierid check failed:`, reconcileErr.message);
         }
       }
+
+      if (!resolvedCashierReconcile && !cashierId) {
+        try {
+          console.log(`[active-cashier] No cashier found — searching cashier-list for userId=${userId} to check reconcile status`);
+          const cashierList = await platinumGet(session, "/api/ReceiptPrepaid/cashier-list", {});
+          const allCashiers = Array.isArray(cashierList) ? cashierList : [];
+          const numUserId = parseInt(String(userId), 10);
+          const matchedCashier = allCashiers.find((c: any) => c.user_Id === numUserId || c.userId === numUserId);
+          if (matchedCashier?.id && matchedCashier.id > 0) {
+            console.log(`[active-cashier] Found cashier in cashier-list — cashierId=${matchedCashier.id}, checking reconcile`);
+            cashier = matchedCashier;
+            cashOffice = matchedCashier.const_CashOffice || null;
+            const reconcileData = await platinumGet(session, "/api/billing/auth-day-end-reconcile/cashier-reconcile-by-cashierid", { cashierId: String(matchedCashier.id) });
+            if (reconcileData && !reconcileData._error && typeof reconcileData === 'object') {
+              const hasId = reconcileData.id || reconcileData.reconcileId || reconcileData.cashierReconcile_ID;
+              if (hasId) {
+                console.log(`[active-cashier] cashier-reconcile for list-cashier ${matchedCashier.id} — id: ${hasId}, status: ${reconcileData.status || reconcileData.reconcileStatus || 'unknown'}`);
+                resolvedCashierReconcile = reconcileData;
+              }
+            }
+          }
+        } catch (clErr: any) {
+          console.warn(`[active-cashier] cashier-list reconcile check failed:`, clErr.message);
+        }
+      }
+
+      const finalCashierId = cashier?.id || cashier?.user_Id || cashierId || null;
+      const finalIsCashierRegistered = (cashier != null && (cashier.id > 0 || cashier.user_Id > 0)) || hasReceiptRangeData;
+      const finalActiveOfficeId = cashOffice?.cashOffice_ID || cashier?.officeId || activeOfficeId || null;
+      const finalActiveOfficeName = cashOffice?.cashOfficeDesc || activeOfficeName || null;
 
       const reconcileStatus = resolvedCashierReconcile ? String(resolvedCashierReconcile.status || resolvedCashierReconcile.reconcileStatus || '').toLowerCase().trim() : '';
       const reconcileStatusId = resolvedCashierReconcile ? Number(resolvedCashierReconcile.statusId || resolvedCashierReconcile.status_ID || resolvedCashierReconcile.statusID || 0) : 0;
@@ -318,10 +355,10 @@ export function registerAuthRoutes(app: Express, httpServer: Server): void {
         console.log(`[active-cashier] Reconcile record has COMPLETED status — day-end fully reconciled`);
         session.dayEndPending = false;
       }
-      console.log(`[active-cashier] validate-cashier result — registered: ${isCashierRegistered}, isActive: ${isSessionActive} (POS_Cashier.IsActive=${cashier?.isActive}), cashierId: ${cashierId}, officeId: ${activeOfficeId}, officeName: ${activeOfficeName}, cashierReconcile: ${resolvedCashierReconcile ? 'PRESENT' : 'null'}, reconcileStatus: "${reconcileStatus}", reconcileStatusId: ${reconcileStatusId}, session.dayEndPending: ${session.dayEndPending}, hasPendingDayEnd: ${hasPendingDayEnd}, hasDayEndReturned: ${hasDayEndReturned}, isReconcileCompleted: ${isReconcileCompleted}`);
+      console.log(`[active-cashier] validate-cashier result — registered: ${finalIsCashierRegistered}, isActive: ${isSessionActive} (POS_Cashier.IsActive=${cashier?.isActive}), cashierId: ${finalCashierId}, officeId: ${finalActiveOfficeId}, officeName: ${finalActiveOfficeName}, cashierReconcile: ${resolvedCashierReconcile ? 'PRESENT' : 'null'}, reconcileStatus: "${reconcileStatus}", reconcileStatusId: ${reconcileStatusId}, session.dayEndPending: ${session.dayEndPending}, hasPendingDayEnd: ${hasPendingDayEnd}, hasDayEndReturned: ${hasDayEndReturned}, isReconcileCompleted: ${isReconcileCompleted}`);
 
-      if (cashierId && cashierId > 0) {
-        (session as any).knownCashierId = cashierId;
+      if (finalCashierId && finalCashierId > 0) {
+        (session as any).knownCashierId = finalCashierId;
         if (cashier) (session as any).knownCashierData = cashier;
       }
 
@@ -332,11 +369,11 @@ export function registerAuthRoutes(app: Express, httpServer: Server): void {
 
       res.json({
         active: isSessionActive || hasDayEndReturned,
-        cashierId: isCashierRegistered ? cashierId : null,
-        cashierRegistered: isCashierRegistered,
+        cashierId: finalIsCashierRegistered ? finalCashierId : null,
+        cashierRegistered: finalIsCashierRegistered,
         cashFloat,
-        officeId: activeOfficeId,
-        officeName: activeOfficeName,
+        officeId: finalActiveOfficeId,
+        officeName: finalActiveOfficeName,
         cashOnHandLimit,
         isActive: isSessionActive,
         hasReceiptRange: receiptRange != null && receiptRange.isEnabled === true,
