@@ -2519,85 +2519,10 @@
                   </table>
                 </div>
               </div>
-            } @else if (!(tabData()?.repaymentStatus?.length) && !tabData()?.remainingCapital && !(tabData()?.extensions?.length) && !(tabData()?.paymentAmounts?.length)) {
+            } @else if (!(tabData()?.paymentAmounts?.length)) {
               <div class="empty-state">
                 <div class="empty-icon">📅</div>
                 <p class="empty-text">No payment plans found</p>
-              </div>
-            }
-
-            <div class="pp-panels-grid">
-              <div class="detail-section">
-                <div class="section-header-bar">🛡️ Repayment Plan Status</div>
-                <div class="pp-status-list">
-                  @if (getRepaymentStatusItems().length > 0) {
-                    @for (item of getRepaymentStatusItems(); track $index) {
-                      <div class="pp-status-item">
-                        <div class="pp-status-left">
-                          <span class="pp-status-dot" [class.pp-dot-active]="item.isActive" [class.pp-dot-inactive]="!item.isActive"></span>
-                          <span class="pp-status-label">{{ item.label }}</span>
-                        </div>
-                        <span class="inline-badge" [class.active]="item.isActive">{{ item.value }}</span>
-                      </div>
-                    }
-                  } @else {
-                    <div class="empty-state" style="padding: 1.5rem;">
-                      <div class="empty-icon">🛡️</div>
-                      <p class="empty-text">No repayment plan status available</p>
-                    </div>
-                  }
-                </div>
-              </div>
-
-              <div class="detail-section">
-                <div class="section-header-bar">💰 Remaining Capital</div>
-                <div class="pp-capital-content">
-                  @if (getRemainingCapitalEntries().length > 0) {
-                    @for (entry of getRemainingCapitalEntries(); track $index) {
-                      <div class="pp-capital-row">
-                        <span class="pp-capital-label">{{ entry.label }}</span>
-                        <span class="pp-capital-value mono">{{ entry.value }}</span>
-                      </div>
-                    }
-                  } @else {
-                    <div class="empty-state" style="padding: 1.5rem;">
-                      <div class="empty-icon">💰</div>
-                      <p class="empty-text">No remaining capital data available</p>
-                    </div>
-                  }
-                </div>
-              </div>
-            </div>
-
-            @if ((tabData()?.extensions || []).length > 0) {
-              <div class="detail-section" style="margin-top: 1rem;">
-                <div class="section-header-bar">📋 Payment Extensions</div>
-                <div class="data-table-wrapper">
-                  <table class="data-table" data-testid="table-payment-extensions">
-                    <thead>
-                      <tr>
-                        <th>Extension Status</th>
-                        <th>Extension Description</th>
-                        <th>Commencement Date</th>
-                        <th>Termination Date</th>
-                        <th>Captured By</th>
-                        <th>Capture Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (ext of tabData()?.extensions || []; track $index) {
-                        <tr [attr.data-testid]="'row-ext-' + $index">
-                          <td><span class="inline-badge">{{ ext.extensionStatus || ext.status || ext.statusDesc || '-' }}</span></td>
-                          <td>{{ ext.extensionDescription || ext.description || ext.extensionType || ext.type || '-' }}</td>
-                          <td>{{ formatDate(ext.commencementDate || ext.startDate) }}</td>
-                          <td>{{ formatDate(ext.terminationDate || ext.endDate) }}</td>
-                          <td>{{ ext.capturedBy || ext.capturerName || ext.capturer || '-' }}</td>
-                          <td>{{ formatDate(ext.captureDate || ext.dateCaptured) }}</td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
               </div>
             }
 
