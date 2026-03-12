@@ -1074,12 +1074,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.globalSnapshot.set(null);
     try {
       const sa: any = this.selectedAccount();
-      const [gsBasic, gsConsDetails, gsAcctMgmt, gsConsUnitById, gsPropDetails] = await Promise.allSettled([
+      const [gsBasic, gsConsDetails, gsAcctMgmt, gsConsUnitById, gsPropDetails, gsDeposit] = await Promise.allSettled([
         firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/basic-account-details/${accountId}`)),
         firstValueFrom(this.api.get<any>(`/api/platinum/receipt-prepaid/cons-account-details`, { accountId: String(accountId) })),
         firstValueFrom(this.api.get<any>(`/api/platinum/billing-account-management/account-information`, { accountId: String(accountId) })),
         firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/cons-unit-by-account`, { AccountId: String(accountId) })),
         firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/deposit-amount`, { accountId: String(accountId) })),
       ]);
       const basicVal = gsBasic.status === 'fulfilled' ? (Array.isArray(gsBasic.value) ? gsBasic.value[0] : gsBasic.value) : null;
       const consVal = gsConsDetails.status === 'fulfilled' ? (Array.isArray(gsConsDetails.value) ? gsConsDetails.value[0] : gsConsDetails.value) : null;
@@ -1114,6 +1115,12 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       snap['rebateStatus'] = consVal?.rebateStatus || consVal?.rebateStatusDesc || consVal?.rebate || '';
       snap['handoverStatus'] = consVal?.handoverStatus || consVal?.handoverStatusDesc || consVal?.handover || '';
       snap['interestWaiver'] = consVal?.interestWaiverStatus || consVal?.interestWaiverDesc || consVal?.interestWaiver || '';
+      if (gsDeposit.status === 'fulfilled' && gsDeposit.value != null) {
+        const depRaw = gsDeposit.value;
+        snap['depositValue'] = typeof depRaw === 'number' ? depRaw : Number(depRaw?.totalDeposit ?? depRaw?.amount ?? depRaw?.depositAmount ?? depRaw) || 0;
+      } else {
+        snap['depositValue'] = null;
+      }
       console.log('[globalSnapshot]', JSON.stringify(snap).substring(0, 500));
       this.globalSnapshot.set(snap);
     } catch (e) {

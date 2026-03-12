@@ -74,6 +74,10 @@
               <div class="global-snapshot-label">Market Value</div>
               <div class="global-snapshot-value gs-market-value">{{ globalSnapshot()!['marketValue'] ? 'R ' + formatCurrency(globalSnapshot()!['marketValue']) : '-' }}</div>
             </div>
+            <div class="global-snapshot-field">
+              <div class="global-snapshot-label">Deposit</div>
+              <div class="global-snapshot-value gs-deposit-value">{{ globalSnapshot()!['depositValue'] != null ? 'R ' + formatCurrency(globalSnapshot()!['depositValue']) : '-' }}</div>
+            </div>
           </div>
 
           <div class="global-snapshot-badges">
