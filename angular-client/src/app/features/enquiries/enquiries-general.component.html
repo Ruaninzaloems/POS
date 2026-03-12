@@ -3267,226 +3267,153 @@
               </select>
             </div>
 
-            @if (tabData()?.ratesDetails || (tabData()?.allBalanceItems || []).length > 0 || tabData()?.propertyDetails || (tabData()?.ratesHistory || []).length > 0 || (tabData()?.ratesBalanceItems || []).length > 0 || (tabData()?.ratesServiceItems || []).length > 0 || (tabData()?.valuations || []).length > 0 || tabData()?.valuationData || tabData()?.valuationImport || (tabData()?.propertyRatesData || []).length > 0) {
+            @if (tabData()?.ratesDetails || tabData()?.propertyDetails || (tabData()?.ratesHistory || []).length > 0 || (tabData()?.valuations || []).length > 0 || tabData()?.valuationData || tabData()?.valuationImport || (tabData()?.propertyRatesData || []).length > 0 || (tabData()?.ratesBillingHistory || []).length > 0) {
               <div class="export-toolbar">
                 <button class="export-btn export-csv" (click)="exportRatesCsv()" data-testid="button-export-rates-csv">📥 Excel/CSV</button>
               </div>
-              @if (tabData()?.propertyDetails) {
-                <div class="detail-section">
-                  <div class="section-header-bar">🏠 Property Information</div>
-                  <div class="detail-grid">
-                    @for (field of [
-                      { key: 'owner', label: 'Owner' },
-                      { key: 'propertyStreet', label: 'Property Address' },
-                      { key: 'suburb', label: 'Suburb' },
-                      { key: 'town', label: 'Town' },
-                      { key: 'sgNumber', label: 'SG Number' },
-                      { key: 'zoneDesc', label: 'Zoning' },
-                      { key: 'typeOfUseDesc', label: 'Type of Use' },
-                      { key: 'isMasterProperty', label: 'Master Property' }
-                    ]; track field.key) {
-                      @if (safeStr(tabData()?.propertyDetails?.[field.key]) !== '-') {
-                        <div class="detail-item">
-                          <div class="detail-label">{{ field.label }}</div>
-                          <div class="detail-value">{{ field.key === 'isMasterProperty' ? (tabData()?.propertyDetails?.[field.key] ? 'Yes' : 'No') : safeStr(tabData()?.propertyDetails?.[field.key]) }}</div>
-                        </div>
-                      }
-                    }
-                  </div>
-                </div>
-              }
 
+              <!-- SECTION 1: Property & Valuation Overview -->
               @if ((tabData()?.propertyRatesData || []).length > 0) {
-                <div class="detail-section val-info-section" data-testid="valuation-info-section">
-                  <div class="section-header-bar">🏛️ Valuation Information ({{ ratesFinYear() }})</div>
-                  @for (pr of tabData()?.propertyRatesData || []; track $index) {
-                    @if ($index > 0) { <div class="val-divider"></div> }
-                    <div class="val-info-grid">
-                      <div class="val-hero-row">
-                        <div class="val-hero-card val-hero-market">
-                          <div class="val-hero-label">Market Value</div>
-                          <div class="val-hero-value mono">R {{ formatCurrency(pr.marketValue || 0) }}</div>
-                        </div>
-                        <div class="val-hero-card val-hero-rateable">
-                          <div class="val-hero-label">Rateable Market Value</div>
-                          <div class="val-hero-value mono">R {{ formatCurrency(pr.rateableMarketValue || 0) }}</div>
-                        </div>
-                        <div class="val-hero-card val-hero-annual">
-                          <div class="val-hero-label">Annual Rates Amount</div>
-                          <div class="val-hero-value mono accent-text">R {{ formatCurrency(pr.calculatedAnnualRatesAmount || pr.propertyRatesAmount || 0) }}</div>
-                        </div>
-                        <div class="val-hero-card val-hero-tariff">
-                          <div class="val-hero-label">Tariff Rate</div>
-                          <div class="val-hero-value mono">{{ (pr.tariffRate || 0) | number:'1.5-5' }}</div>
-                        </div>
+                @for (pr of tabData()?.propertyRatesData || []; track $index) {
+                  @if ($index > 0) { <hr style="border: none; border-top: 1px dashed var(--platinum-border, #e2e8f0); margin: 1.25rem 0;"> }
+                  <div class="detail-section" data-testid="rates-property-overview">
+                    <div class="section-header-bar">🏠 Property & Valuation Overview ({{ pr.financialYear || ratesFinYear() }})</div>
+
+                    <div class="rates-hero-grid">
+                      <div class="rates-hero-card rates-hero-market">
+                        <div class="rates-hero-icon">💰</div>
+                        <div class="rates-hero-label">Market Value</div>
+                        <div class="rates-hero-value mono">R {{ formatCurrency(pr.marketValue || 0) }}</div>
                       </div>
-                      <div class="val-detail-columns">
-                        <div class="val-detail-col">
-                          <div class="val-col-title">Property Details</div>
-                          <div class="val-field"><span class="val-field-label">Roll Number</span><span class="val-field-value">{{ pr.rollNumber || '-' }}</span></div>
-                          <div class="val-field"><span class="val-field-label">Owner</span><span class="val-field-value">{{ pr.ownerFullName || '-' }}</span></div>
-                          <div class="val-field"><span class="val-field-label">SG Number</span><span class="val-field-value mono">{{ pr.sgNumber || '-' }}</span></div>
-                          <div class="val-field"><span class="val-field-label">Property Type</span><span class="val-field-value">{{ pr.propertyTypeDescription || pr.propertyTypeOfUse || '-' }}</span></div>
-                          <div class="val-field"><span class="val-field-label">NT Category</span><span class="val-field-value">{{ pr.ntPropertyCategory || '-' }}</span></div>
-                          <div class="val-field"><span class="val-field-label">Partition Size</span><span class="val-field-value">{{ pr.unitPartitionSize || '-' }}</span></div>
-                          <div class="val-field"><span class="val-field-label">Partition Description</span><span class="val-field-value">{{ pr.unitPartitionDescription || '-' }}</span></div>
-                          @if (pr.farmName) { <div class="val-field"><span class="val-field-label">Farm Name</span><span class="val-field-value">{{ pr.farmName }}</span></div> }
-                          @if (pr.sectionalTitleSchemeNumberDesc) { <div class="val-field"><span class="val-field-label">Sectional Title Scheme</span><span class="val-field-value">{{ pr.sectionalTitleSchemeNumberDesc }}</span></div> }
-                          @if (pr.sectionNumber) { <div class="val-field"><span class="val-field-label">Section Number</span><span class="val-field-value">{{ pr.sectionNumber }}</span></div> }
-                          @if (pr.multiplePurpose) { <div class="val-field"><span class="val-field-label">Multiple Purpose</span><span class="val-field-value">{{ pr.multiplePurpose }}</span></div> }
-                        </div>
-                        <div class="val-detail-col">
-                          <div class="val-col-title">Tariff &amp; Billing</div>
-                          <div class="val-field"><span class="val-field-label">Valuation Type</span><span class="val-field-value">{{ pr.valuationType || '-' }}</span></div>
-                          <div class="val-field"><span class="val-field-label">Tariff Description</span><span class="val-field-value">{{ pr.tariffDescription || '-' }}</span></div>
-                          <div class="val-field"><span class="val-field-label">Financial Year</span><span class="val-field-value">{{ pr.financialYear || '-' }}</span></div>
-                          <div class="val-field"><span class="val-field-label">Rateable Periods</span><span class="val-field-value">{{ pr.rateablePeriods ?? '-' }}</span></div>
-                          <div class="val-field"><span class="val-field-label">Period Calculated On</span><span class="val-field-value">{{ pr.periodInstallmentCalculatedOn ?? '-' }}</span></div>
-                          <div class="val-field"><span class="val-field-label">Start Bill Period</span><span class="val-field-value mono">{{ pr.startBillPeriodId || '-' }}</span></div>
-                          <div class="val-field"><span class="val-field-label">Rateability</span><span class="val-field-value">{{ pr.rateabilityId === 1 ? 'Rateable' : pr.rateabilityId === 0 ? 'Non-Rateable' : (pr.rateabilityId ?? '-') }}</span></div>
-                        </div>
-                        <div class="val-detail-col">
-                          <div class="val-col-title">Rebates</div>
-                          <div class="val-field"><span class="val-field-label">ATTP Rebate</span><span class="val-field-value mono">R {{ formatCurrency(pr.attpRebate || 0) }}</span></div>
-                          <div class="val-field"><span class="val-field-label">Legislative Rebate</span><span class="val-field-value mono">R {{ formatCurrency(pr.legislativeRebate || 0) }}</span></div>
-                          <div class="val-field"><span class="val-field-label">Legislative Additional</span><span class="val-field-value mono">R {{ formatCurrency(pr.legislativeAdditionalRebate || 0) }}</span></div>
-                          <div class="val-field"><span class="val-field-label">Rebate Application</span><span class="val-field-value mono">R {{ formatCurrency(pr.rebateApplicationAmount || 0) }}</span></div>
-                          <div class="val-field"><span class="val-field-label">Rebate Percentage</span><span class="val-field-value mono">R {{ formatCurrency(pr.rebatePercentageAmount || 0) }}</span></div>
-                          <div class="val-field"><span class="val-field-label">New Erven Rebate</span><span class="val-field-value mono">R {{ formatCurrency(pr.newErvenRebateAmount || 0) }}</span></div>
-                          <div class="val-field"><span class="val-field-label">General Rebate</span><span class="val-field-value mono">R {{ formatCurrency(pr.generalRebateAmount || 0) }}</span></div>
-                          <div class="val-field"><span class="val-field-label">Tariff Rebate</span><span class="val-field-value mono">R {{ formatCurrency(pr.tariffRebate || 0) }}</span></div>
-                          <div class="val-field"><span class="val-field-label">Tariff Additional Rebate</span><span class="val-field-value mono">R {{ formatCurrency(pr.tariffAdditionalRebate || 0) }}</span></div>
-                          <div class="val-field val-field-total"><span class="val-field-label">Total Rebate</span><span class="val-field-value mono bold">R {{ formatCurrency(pr.totalRebate || 0) }}</span></div>
-                          @if (pr.tariffRebatePercent) { <div class="val-field"><span class="val-field-label">Tariff Rebate %</span><span class="val-field-value">{{ pr.tariffRebatePercent }}</span></div> }
-                        </div>
+                      <div class="rates-hero-card rates-hero-rateable">
+                        <div class="rates-hero-icon">📊</div>
+                        <div class="rates-hero-label">Rateable Market Value</div>
+                        <div class="rates-hero-value mono">R {{ formatCurrency(pr.rateableMarketValue || 0) }}</div>
+                      </div>
+                      <div class="rates-hero-card rates-hero-annual">
+                        <div class="rates-hero-icon">⚖️</div>
+                        <div class="rates-hero-label">Calculated Annual Rates</div>
+                        <div class="rates-hero-value mono accent-text">R {{ formatCurrency(pr.calculatedAnnualRatesAmount || pr.propertyRatesAmount || 0) }}</div>
+                      </div>
+                      <div class="rates-hero-card rates-hero-rebate">
+                        <div class="rates-hero-icon">🏷️</div>
+                        <div class="rates-hero-label">Total Rebate</div>
+                        <div class="rates-hero-value mono" style="color: var(--platinum-accent);">R {{ formatCurrency(pr.totalRebate || 0) }}</div>
                       </div>
                     </div>
-                  }
-                  @if ((tabData()?.propertyRatesData || []).length > 1) {
-                    <div class="val-multi-note">{{ (tabData()?.propertyRatesData || []).length }} valuation records found for this account</div>
-                  }
-                </div>
+
+                    <div class="rates-prop-details-grid">
+                      <div class="rates-prop-col">
+                        <div class="rates-col-heading">Property Identification</div>
+                        <div class="rates-field"><span class="rates-field-label">Roll Number</span><span class="rates-field-value">{{ pr.rollNumber || '-' }}</span></div>
+                        <div class="rates-field"><span class="rates-field-label">Owner</span><span class="rates-field-value">{{ pr.ownerFullName || '-' }}</span></div>
+                        <div class="rates-field"><span class="rates-field-label">SG Number</span><span class="rates-field-value mono">{{ pr.sgNumber || pr.sgNumber26 || '-' }}</span></div>
+                        <div class="rates-field"><span class="rates-field-label">NT Property Category</span><span class="rates-field-value">{{ pr.ntPropertyCategory || '-' }}</span></div>
+                        <div class="rates-field"><span class="rates-field-label">Property Type of Use</span><span class="rates-field-value">{{ pr.propertyTypeDescription || pr.propertyTypeOfUse || '-' }}</span></div>
+                        <div class="rates-field"><span class="rates-field-label">Stand / Partition Size</span><span class="rates-field-value">{{ pr.unitPartitionSize || '-' }}</span></div>
+                        <div class="rates-field"><span class="rates-field-label">Partition Description</span><span class="rates-field-value">{{ pr.unitPartitionDescription || '-' }}</span></div>
+                        @if (pr.farmName) { <div class="rates-field"><span class="rates-field-label">Farm Name</span><span class="rates-field-value">{{ pr.farmName }}</span></div> }
+                        @if (pr.sectionalTitleSchemeNumberDesc) { <div class="rates-field"><span class="rates-field-label">Sectional Title</span><span class="rates-field-value">{{ pr.sectionalTitleSchemeNumberDesc }}</span></div> }
+                        @if (pr.sectionNumber) { <div class="rates-field"><span class="rates-field-label">Section Number</span><span class="rates-field-value">{{ pr.sectionNumber }}</span></div> }
+                        @if (pr.multiplePurpose) { <div class="rates-field"><span class="rates-field-label">Multiple Purpose</span><span class="rates-field-value">{{ pr.multiplePurpose }}</span></div> }
+                      </div>
+                      <div class="rates-prop-col">
+                        <div class="rates-col-heading">Tariff & Billing</div>
+                        <div class="rates-field"><span class="rates-field-label">Valuation Type</span><span class="rates-field-value">{{ pr.valuationType || '-' }}</span></div>
+                        <div class="rates-field"><span class="rates-field-label">Tariff Description</span><span class="rates-field-value">{{ pr.tariffDescription || '-' }}</span></div>
+                        <div class="rates-field"><span class="rates-field-label">Tariff Rate</span><span class="rates-field-value mono">{{ (pr.tariffRate || 0) | number:'1.5-5' }}</span></div>
+                        <div class="rates-field"><span class="rates-field-label">Rateability</span><span class="rates-field-value">{{ pr.rateabilityId === 1 ? 'Rateable' : pr.rateabilityId === 0 ? 'Non-Rateable' : (pr.rateabilityId ?? '-') }}</span></div>
+                        <div class="rates-field"><span class="rates-field-label">Rateable Periods</span><span class="rates-field-value">{{ pr.rateablePeriods ?? '-' }}</span></div>
+                        <div class="rates-field"><span class="rates-field-label">Period Installment Calculated On</span><span class="rates-field-value">{{ pr.periodInstallmentCalculatedOn ?? '-' }}</span></div>
+                        <div class="rates-field"><span class="rates-field-label">Start Bill Period</span><span class="rates-field-value mono">{{ pr.startBillPeriodId || '-' }}</span></div>
+                        <div class="rates-field"><span class="rates-field-label">Financial Year</span><span class="rates-field-value">{{ pr.financialYear || '-' }}</span></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- SECTION 2: Rates Calculation Breakdown -->
+                  <div class="detail-section" style="margin-top: 0.75rem;" data-testid="rates-calculation-breakdown">
+                    <div class="section-header-bar">🧮 Rates Calculation Breakdown</div>
+                    <div class="data-table-wrapper">
+                      <table class="data-table" data-testid="table-rates-calculation">
+                        <thead>
+                          <tr>
+                            <th style="width: 55%;">Description</th>
+                            <th class="text-right" style="width: 45%;">Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td style="font-weight: 600;">Property Rates Amount</td>
+                            <td class="text-right mono" style="font-weight: 600;">R {{ formatCurrency(pr.propertyRatesAmount || 0) }}</td>
+                          </tr>
+                          <tr class="rates-calc-rebate-row"><td>ATTP Rebate</td><td class="text-right mono">R {{ formatCurrency(pr.attpRebate || 0) }}</td></tr>
+                          <tr class="rates-calc-rebate-row"><td>Legislative Rebate</td><td class="text-right mono">R {{ formatCurrency(pr.legislativeRebate || 0) }}</td></tr>
+                          <tr class="rates-calc-rebate-row"><td>Legislative Additional Rebate</td><td class="text-right mono">R {{ formatCurrency(pr.legislativeAdditionalRebate || 0) }}</td></tr>
+                          <tr class="rates-calc-rebate-row"><td>Rebate Application Amount</td><td class="text-right mono">R {{ formatCurrency(pr.rebateApplicationAmount || 0) }}</td></tr>
+                          <tr class="rates-calc-rebate-row"><td>Rebate Percentage Amount</td><td class="text-right mono">R {{ formatCurrency(pr.rebatePercentageAmount || 0) }}</td></tr>
+                          <tr class="rates-calc-rebate-row"><td>New Erven Rebate Amount</td><td class="text-right mono">R {{ formatCurrency(pr.newErvenRebateAmount || 0) }}</td></tr>
+                          <tr class="rates-calc-rebate-row"><td>General Rebate Amount</td><td class="text-right mono">R {{ formatCurrency(pr.generalRebateAmount || 0) }}</td></tr>
+                          <tr class="rates-calc-rebate-row"><td>Tariff Rebate</td><td class="text-right mono">R {{ formatCurrency(pr.tariffRebate || 0) }}</td></tr>
+                          <tr class="rates-calc-rebate-row"><td>Tariff Additional Rebate</td><td class="text-right mono">R {{ formatCurrency(pr.tariffAdditionalRebate || 0) }}</td></tr>
+                          @if (pr.tariffRebatePercent) {
+                            <tr class="rates-calc-rebate-row"><td>Tariff Rebate %</td><td class="text-right">{{ pr.tariffRebatePercent }}</td></tr>
+                          }
+                          <tr class="rates-calc-total-row"><td style="font-weight: 700;">Total Rebate</td><td class="text-right mono" style="font-weight: 700; color: var(--platinum-accent);">R {{ formatCurrency(pr.totalRebate || 0) }}</td></tr>
+                          <tr class="rates-calc-grand-row"><td style="font-weight: 700;">Calculated Annual Rates Amount</td><td class="text-right mono" style="font-weight: 700; font-size: 1rem;">R {{ formatCurrency(pr.calculatedAnnualRatesAmount || 0) }}</td></tr>
+                          <tr><td>Rateable Periods</td><td class="text-right">{{ pr.rateablePeriods ?? '-' }}</td></tr>
+                          <tr><td>Period Installment Calculated On</td><td class="text-right">{{ pr.periodInstallmentCalculatedOn ?? '-' }}</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                }
+                @if ((tabData()?.propertyRatesData || []).length > 1) {
+                  <div style="text-align: center; font-size: 0.75rem; color: var(--platinum-text-muted, #94a3b8); margin-top: 0.5rem;">{{ (tabData()?.propertyRatesData || []).length }} rate records found for this account</div>
+                }
+              } @else {
+                @if (tabData()?.ratesDetails) {
+                  <div class="detail-section" data-testid="rates-summary-fallback">
+                    <div class="section-header-bar">⚖️ Rates Summary ({{ ratesFinYear() }})</div>
+                    <div class="rates-hero-grid">
+                      <div class="rates-hero-card rates-hero-annual">
+                        <div class="rates-hero-icon">📊</div>
+                        <div class="rates-hero-label">Annual Property Rates</div>
+                        <div class="rates-hero-value mono">R {{ formatCurrency(tabData()?.ratesDetails?.annualPropertyRates ?? 0) }}</div>
+                      </div>
+                      <div class="rates-hero-card">
+                        <div class="rates-hero-icon">💳</div>
+                        <div class="rates-hero-label">Instalment</div>
+                        <div class="rates-hero-value mono">R {{ formatCurrency(tabData()?.ratesDetails?.installment ?? 0) }}</div>
+                      </div>
+                      <div class="rates-hero-card">
+                        <div class="rates-hero-icon">🔄</div>
+                        <div class="rates-hero-label">Frequency</div>
+                        <div class="rates-hero-value">{{ tabData()?.ratesDetails?.frequency || '-' }}</div>
+                      </div>
+                      <div class="rates-hero-card">
+                        <div class="rates-hero-icon">📅</div>
+                        <div class="rates-hero-label">Remaining Instalments</div>
+                        <div class="rates-hero-value">{{ tabData()?.ratesDetails?.remainingInstallments ?? '-' }}</div>
+                      </div>
+                      <div class="rates-hero-card">
+                        <div class="rates-hero-icon">💵</div>
+                        <div class="rates-hero-label">Remaining Amount</div>
+                        <div class="rates-hero-value mono">R {{ formatCurrency(tabData()?.ratesDetails?.remaingAmount ?? 0) }}</div>
+                      </div>
+                      <div class="rates-hero-card rates-hero-rebate">
+                        <div class="rates-hero-icon">🏷️</div>
+                        <div class="rates-hero-label">Rebate Amount</div>
+                        <div class="rates-hero-value mono" style="color: var(--platinum-accent);">R {{ formatCurrency(tabData()?.ratesDetails?.rebateAmount ?? 0) }}</div>
+                      </div>
+                    </div>
+                  </div>
+                }
               }
 
-              @if (tabData()?.ratesDetails) {
-                <div class="detail-section">
-                  <div class="section-header-bar">⚖️ Rates Summary ({{ ratesFinYear() }})</div>
-                  <div class="rates-summary-grid">
-                    <div class="rates-summary-card">
-                      <div class="rates-summary-label">Annual Property Rates</div>
-                      <div class="rates-summary-value mono">R {{ formatCurrency(tabData()?.ratesDetails?.annualPropertyRates ?? tabData()?.ratesDetails?.annualRate ?? 0) }}</div>
-                    </div>
-                    <div class="rates-summary-card">
-                      <div class="rates-summary-label">Instalment</div>
-                      <div class="rates-summary-value mono">R {{ formatCurrency(tabData()?.ratesDetails?.installment ?? tabData()?.ratesDetails?.instalmentAmount ?? 0) }}</div>
-                    </div>
-                    <div class="rates-summary-card">
-                      <div class="rates-summary-label">Frequency</div>
-                      <div class="rates-summary-value">{{ tabData()?.ratesDetails?.frequency || 'Monthly' }}</div>
-                    </div>
-                    <div class="rates-summary-card">
-                      <div class="rates-summary-label">Remaining Instalments</div>
-                      <div class="rates-summary-value mono">{{ tabData()?.ratesDetails?.remainingInstallments ?? tabData()?.ratesDetails?.remainingInstalments ?? '-' }}</div>
-                    </div>
-                    <div class="rates-summary-card">
-                      <div class="rates-summary-label">Remaining Amount</div>
-                      <div class="rates-summary-value mono">R {{ formatCurrency(tabData()?.ratesDetails?.remaingAmount ?? tabData()?.ratesDetails?.remainingAmount ?? 0) }}</div>
-                    </div>
-                    <div class="rates-summary-card rates-summary-rebate">
-                      <div class="rates-summary-label">Rebate Amount</div>
-                      <div class="rates-summary-value mono">R {{ formatCurrency(tabData()?.ratesDetails?.rebateAmount ?? 0) }}</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="detail-section" style="margin-top: 0.5rem;">
-                  <div class="section-header-bar">💰 Property Valuation Cards</div>
-                  <div class="rates-cards-row">
-                    @for (card of [
-                      { key: 'marketValue', label: 'Market Value', isCurrency: true, icon: '💰' },
-                      { key: 'siteValue', label: 'Site Value', isCurrency: true, icon: '📐' },
-                      { key: 'improvementValue', label: 'Improvement Value', isCurrency: true, icon: '🏗️' }
-                    ]; track card.key) {
-                      @if (tabData()?.ratesDetails?.[card.key] != null) {
-                        <div class="rates-val-card">
-                          <div class="rates-val-icon">{{ card.icon }}</div>
-                          <div class="rates-val-label">{{ card.label }}</div>
-                          <div class="rates-val-amount">R {{ formatCurrency(tabData()?.ratesDetails?.[card.key]) }}</div>
-                        </div>
-                      }
-                    }
-                  </div>
-
-                  <div class="detail-grid" style="margin-top: 1rem;">
-                    @for (field of [
-                      { key: 'ratesCentAmount', label: 'Rates Cent Amount', isCurrency: true },
-                      { key: 'ratesRebate', label: 'Rates Rebate', isCurrency: true },
-                      { key: 'rebatePercentage', label: 'Rebate Percentage', isCurrency: false },
-                      { key: 'rebateAmount', label: 'Rebate Amount', isCurrency: true },
-                      { key: 'ratesTariff', label: 'Rates Tariff', isCurrency: false },
-                      { key: 'tariffCode', label: 'Tariff Code', isCurrency: false },
-                      { key: 'tariffDescription', label: 'Tariff Description', isCurrency: false },
-                      { key: 'categoryDescription', label: 'Category', isCurrency: false },
-                      { key: 'categoryCode', label: 'Category Code', isCurrency: false },
-                      { key: 'valuationDate', label: 'Valuation Date', isCurrency: false },
-                      { key: 'effectiveDate', label: 'Effective Date', isCurrency: false },
-                      { key: 'ratesDescription', label: 'Rates Description', isCurrency: false },
-                      { key: 'ratingAreaDesc', label: 'Rating Area', isCurrency: false },
-                      { key: 'ratingAreaCode', label: 'Rating Area Code', isCurrency: false },
-                      { key: 'municipalValue', label: 'Municipal Value', isCurrency: true },
-                      { key: 'ratableValue', label: 'Ratable Value', isCurrency: true },
-                      { key: 'exemptionAmount', label: 'Exemption Amount', isCurrency: true },
-                      { key: 'additionalRate', label: 'Additional Rate', isCurrency: true },
-                      { key: 'monthlyRate', label: 'Monthly Rate', isCurrency: true },
-                      { key: 'annualRate', label: 'Annual Rate', isCurrency: true },
-                      { key: 'interimRate', label: 'Interim Rate', isCurrency: true },
-                      { key: 'clearanceRate', label: 'Clearance Rate', isCurrency: true },
-                      { key: 'serviceTypeDescription', label: 'Service Type', isCurrency: false },
-                      { key: 'accountTypeDescription', label: 'Account Type', isCurrency: false }
-                    ]; track field.key) {
-                      @if (tabData()?.ratesDetails?.[field.key] != null && safeStr(tabData()?.ratesDetails?.[field.key]) !== '-' && safeStr(tabData()?.ratesDetails?.[field.key]) !== '' && safeStr(tabData()?.ratesDetails?.[field.key]) !== '0') {
-                        <div class="detail-item">
-                          <div class="detail-label">{{ field.label }}</div>
-                          <div class="detail-value" [class.mono]="field.isCurrency">
-                            @if (field.isCurrency) {
-                              R {{ formatCurrency(tabData()?.ratesDetails?.[field.key]) }}
-                            } @else if (field.key.includes('Date') || field.key.includes('date')) {
-                              {{ formatDate(tabData()?.ratesDetails?.[field.key]) }}
-                            } @else {
-                              {{ safeStr(tabData()?.ratesDetails?.[field.key]) }}
-                            }
-                          </div>
-                        </div>
-                      }
-                    }
-                  </div>
-                </div>
-
-                <div class="detail-section" style="margin-top: 0.5rem;">
-                  <div class="section-header-bar">📋 All Rates Fields (API Response)</div>
-                  <div class="detail-grid">
-                    @for (key of getObjectKeys(tabData()?.ratesDetails || {}); track key) {
-                      @if (tabData()?.ratesDetails?.[key] != null && tabData()?.ratesDetails?.[key] !== '' && !['_error'].includes(key)) {
-                        <div class="detail-item">
-                          <div class="detail-label">{{ key }}</div>
-                          <div class="detail-value" [class.mono]="isNumericValue(tabData()?.ratesDetails?.[key])">
-                            @if (isNumericValue(tabData()?.ratesDetails?.[key]) && isCurrencyField(key)) {
-                              R {{ formatCurrency(tabData()?.ratesDetails?.[key]) }}
-                            } @else if (isDateField(key)) {
-                              {{ formatDate(tabData()?.ratesDetails?.[key]) }}
-                            } @else {
-                              {{ safeStr(tabData()?.ratesDetails?.[key]) }}
-                            }
-                          </div>
-                        </div>
-                      }
-                    }
-                  </div>
-                </div>
-              }
-
+              <!-- SECTION 3: Monthly Billing Breakdown -->
               @if ((tabData()?.ratesBillingHistory || []).length > 0) {
-                <div class="detail-section" style="margin-top: 1rem;">
+                <div class="detail-section" style="margin-top: 0.75rem;">
                   <div class="section-header-bar">📊 Property Rates — Monthly Billing <span class="section-count">{{ tabData()?.ratesBillingHistory?.length || 0 }} months</span></div>
                   <div class="data-table-wrapper">
                     <table class="data-table" data-testid="table-rates-billing-history">
@@ -3533,7 +3460,7 @@
                 </div>
               } @else if (tabLoading()) {
               } @else {
-                <div class="detail-section" style="margin-top: 1rem;">
+                <div class="detail-section" style="margin-top: 0.75rem;">
                   <div class="section-header-bar">📊 Property Rates — Monthly Billing</div>
                   <div class="empty-inline">No property rates billing data found for this financial year</div>
                 </div>

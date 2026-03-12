@@ -2443,6 +2443,79 @@
 .rates-rebate-row { background: rgba(201, 168, 76, 0.06) !important; }
 .rates-rebate-row td { font-style: italic; }
 
+.rates-hero-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+@media (max-width: 900px) { .rates-hero-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px) { .rates-hero-grid { grid-template-columns: 1fr; } }
+.rates-hero-card {
+  background: var(--platinum-bg, #f8fafc);
+  border: 1px solid var(--platinum-border, #e2e8f0);
+  border-radius: 0.5rem;
+  padding: 0.875rem 1rem;
+  text-align: center;
+}
+.rates-hero-card.rates-hero-market { border-left: 3px solid var(--platinum-primary, #0f2b46); }
+.rates-hero-card.rates-hero-rateable { border-left: 3px solid #3b82f6; }
+.rates-hero-card.rates-hero-annual { border-left: 3px solid var(--platinum-accent, #c9a84c); }
+.rates-hero-card.rates-hero-rebate { border-left: 3px solid #10b981; }
+.rates-hero-icon { font-size: 1.25rem; margin-bottom: 0.125rem; }
+.rates-hero-label { font-size: 0.6875rem; font-weight: 600; color: var(--platinum-text-muted, #64748b); text-transform: uppercase; letter-spacing: 0.04em; }
+.rates-hero-value { font-size: 1.125rem; font-weight: 700; color: var(--platinum-primary, #0f2b46); margin-top: 0.25rem; }
+.rates-hero-value.accent-text { color: var(--platinum-accent, #c9a84c); }
+
+.rates-prop-details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+@media (max-width: 700px) { .rates-prop-details-grid { grid-template-columns: 1fr; } }
+.rates-prop-col {
+  background: white;
+  border: 1px solid var(--platinum-border, #e2e8f0);
+  border-radius: 0.375rem;
+  padding: 0.875rem 1rem;
+}
+.rates-col-heading {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--platinum-primary, #0f2b46);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--platinum-border, #e2e8f0);
+}
+.rates-field {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0.3rem 0;
+  font-size: 0.8125rem;
+}
+.rates-field-label {
+  color: var(--platinum-text-muted, #64748b);
+  font-weight: 500;
+  flex-shrink: 0;
+  margin-right: 0.5rem;
+}
+.rates-field-value {
+  color: var(--platinum-text, #1e293b);
+  font-weight: 600;
+  text-align: right;
+  word-break: break-all;
+}
+
+.rates-calc-rebate-row td { color: var(--platinum-text-muted, #64748b); font-size: 0.8125rem; }
+.rates-calc-rebate-row td:first-child { padding-left: 1.5rem; }
+.rates-calc-total-row { border-top: 1px solid var(--platinum-accent, #c9a84c); }
+.rates-calc-total-row td { background: rgba(201, 168, 76, 0.06); }
+.rates-calc-grand-row { border-top: 2px solid var(--platinum-primary, #0f2b46); }
+.rates-calc-grand-row td { background: rgba(15, 43, 70, 0.04); }
+
 .empty-sub { font-size: 0.75rem; color: var(--platinum-text-muted, #94a3b8); margin-top: 0.25rem; }
 
 .export-toolbar {

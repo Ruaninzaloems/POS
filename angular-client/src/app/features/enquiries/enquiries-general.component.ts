@@ -1839,7 +1839,16 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           const ratesHistoryVal = ratesHistory.status === 'fulfilled' ? this.normalizeArray(ratesHistory.value) : [];
           const propDetailsVal = ratesPropDetails.status === 'fulfilled' ? (Array.isArray(ratesPropDetails.value) ? ratesPropDetails.value[0] : ratesPropDetails.value) : null;
           const propRatesSearchVal = propRatesSearch.status === 'fulfilled' ? propRatesSearch.value : null;
-          const propRatesData: any[] = propRatesSearchVal?.data ? (Array.isArray(propRatesSearchVal.data) ? propRatesSearchVal.data : [propRatesSearchVal.data]) : (Array.isArray(propRatesSearchVal) ? propRatesSearchVal : propRatesSearchVal && !propRatesSearchVal._error ? [propRatesSearchVal] : []);
+          let propRatesData: any[] = propRatesSearchVal?.data ? (Array.isArray(propRatesSearchVal.data) ? propRatesSearchVal.data : [propRatesSearchVal.data]) : (Array.isArray(propRatesSearchVal) ? propRatesSearchVal : propRatesSearchVal && !propRatesSearchVal._error ? [propRatesSearchVal] : []);
+          if (propRatesData.length === 0 && ratesUnitPartId) {
+            try {
+              const partitionResult = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-rates-by-partition/${ratesUnitPartId}`, ratesFyParam));
+              if (partitionResult && !partitionResult._error) {
+                const partData = partitionResult?.data ? (Array.isArray(partitionResult.data) ? partitionResult.data : [partitionResult.data]) : (Array.isArray(partitionResult) ? partitionResult : [partitionResult]);
+                if (partData.length > 0) propRatesData = partData;
+              }
+            } catch (e) { }
+          }
           const allDetailedTxns = detailedTxns.status === 'fulfilled' ? this.normalizeArray(detailedTxns.value) : [];
           const monthOrder = ['july','august','september','october','november','december','january','february','march','april','may','june'];
           const monthLabels: Record<string,string> = {july:'Jul',august:'Aug',september:'Sep',october:'Oct',november:'Nov',december:'Dec',january:'Jan',february:'Feb',march:'Mar',april:'Apr',may:'May',june:'Jun'};
