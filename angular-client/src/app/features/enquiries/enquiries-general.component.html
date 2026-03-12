@@ -213,59 +213,6 @@
               </div>
             </div>
 
-            <div class="acct-section-card">
-              <div class="acct-section-header">Property</div>
-              <div class="acct-two-col">
-                <div class="acct-col">
-                  <div class="acct-field"><span class="acct-field-label">SG Number</span><span class="acct-field-value mono">{{ safeStr(getAccountProp()['sgNumber'] || getAccountBasic()['sgNumber']) }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Old Property Code</span><span class="acct-field-value mono">{{ safeStr(getAccountProp()['oldPropertyCode'] || getAccountProp()['oldPropCode'] || getAccountProp()['oldAccountCode'] || getAccountBasic()['oldAccountCode'] || getAccountBasic()['oldPropertyCode']) }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Billing Cycle</span><span class="acct-field-value">{{ getBillingCycleDisplay() }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Sectional Title Scheme</span><span class="acct-field-value">{{ safeStr(getAccountProp()['sectionalTitleScheme'] || getAccountProp()['sectionalTitle']) }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Location Address</span><span class="acct-field-value">{{ safeStr(getAccountProp()['locationAddress'] || getAccountProp()['propertyStreet'] || (getAccountProp()['streetNumber'] ? getAccountProp()['streetNumber'] + ' ' + getAccountProp()['streetName'] + ', ' + getAccountProp()['town'] : getAccountProp()['streetName']) || getAccountBasic()['fullAddress']) }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Longitude</span><span class="acct-field-value mono">{{ safeStr(getAccountProp()['longitude'] || getAccountProp()['gpsLong']) }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Registration Status</span><span class="acct-field-value">{{ getRegistrationStatusDisplay() }}</span></div>
-                </div>
-                <div class="acct-col">
-                  <div class="acct-field"><span class="acct-field-label">Property ID</span><span class="acct-field-value mono">{{ safeStr(getAccountProp()['propertyId'] || getAccountProp()['property_ID'] || getAccountBasic()['propertyID']) }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Property Status</span><span class="acct-field-value" [class.acct-status-active]="(getAccountProp()['propertyStatus'] || getAccountBasic()['accountStatus'] || '').toLowerCase().includes('active')">{{ safeStr(getAccountProp()['propertyStatus'] || getAccountProp()['statusDesc'] || getAccountBasic()['accountStatus']) }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Allotment Area</span><span class="acct-field-value">{{ safeStr(getAccountProp()['allotmentArea'] || getAccountProp()['allotment'] || getAccountProp()['town']) }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Farm Name</span><span class="acct-field-value">{{ safeStr(getAccountProp()['farmName'] || getAccountProp()['farm']) }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Property Type</span><span class="acct-field-value">{{ safeStr(getAccountProp()['propertyType'] || getAccountProp()['typeOfUse'] || getAccountProp()['typeofUse'] || getAccountProp()['typeOfUseDesc']) }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Latitude</span><span class="acct-field-value mono">{{ safeStr(getAccountProp()['latitude'] || getAccountProp()['gpsLat']) }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Magisterial District</span><span class="acct-field-value">{{ safeStr(getAccountProp()['magisterialDistrict'] || getAccountProp()['magDistrict'] || getAccountProp()['ward']) }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Property Market Value</span><span class="acct-field-value mono acct-highlight">
-                    @if (getAccountProp()['marketValue'] !== undefined && getAccountProp()['marketValue'] !== null && getAccountProp()['marketValue'] !== '' || getAccountProp()['propertyMarketValue'] !== undefined && getAccountProp()['propertyMarketValue'] !== null && getAccountProp()['propertyMarketValue'] !== '') {
-                      R {{ formatCurrency(getAccountProp()['marketValue'] || getAccountProp()['propertyMarketValue']) }}
-                    } @else {
-                      -
-                    }
-                  </span></div>
-                </div>
-              </div>
-            </div>
-
-            <div class="acct-section-card">
-              <div class="acct-section-header">Partition</div>
-              <div class="acct-two-col">
-                <div class="acct-col">
-                  <div class="acct-field"><span class="acct-field-label">Property Type of Use</span><span class="acct-field-value">{{ safeStr(getAccountProp()['propertyTypeOfUse'] || getAccountProp()['typeOfUse'] || getAccountProp()['typeofUse'] || getAccountProp()['typeOfUseDesc']) }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Property Category</span><span class="acct-field-value">{{ safeStr(getAccountProp()['propertyCategory'] || getAccountProp()['category'] || getAccountProp()['zoneDesc']) }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Accountable Owner Name</span><span class="acct-field-value">{{ safeStr(getAccountProp()['accountableOwnerName'] || getAccountProp()['ownerName'] || getAccountProp()['name'] || getAccountProp()['owner']) }}</span></div>
-                </div>
-                <div class="acct-col">
-                  <div class="acct-field"><span class="acct-field-label">Valuation Category</span><span class="acct-field-value">{{ safeStr(getAccountProp()['valuationCategory'] || getAccountProp()['valuationCat']) }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Partition Description</span><span class="acct-field-value">{{ safeStr(getAccountProp()['partitionDescription'] || getAccountProp()['partitionDesc']) }}</span></div>
-                  <div class="acct-field"><span class="acct-field-label">Partition Market Value</span><span class="acct-field-value mono acct-highlight">
-                    @if (getAccountProp()['partitionMarketValue'] !== undefined && getAccountProp()['partitionMarketValue'] !== null && getAccountProp()['partitionMarketValue'] !== '' || getAccountProp()['partMarketValue'] !== undefined && getAccountProp()['partMarketValue'] !== null && getAccountProp()['partMarketValue'] !== '') {
-                      R {{ formatCurrency(getAccountProp()['partitionMarketValue'] || getAccountProp()['partMarketValue']) }}
-                    } @else {
-                      -
-                    }
-                  </span></div>
-                </div>
-              </div>
-            </div>
-
             <div class="linked-section">
               <div class="linked-header">
                 <div class="linked-header-left">
@@ -934,43 +881,99 @@
           <div class="tab-panel" data-testid="property-details-tab">
             @if (tabData()?.property || tabData()?.consUnit) {
               <div class="acct-section-card">
-                <div class="acct-section-header">🏢 Property Information</div>
+                <div class="acct-section-header">Property</div>
+                <div class="acct-two-col">
+                  <div class="acct-col">
+                    <div class="acct-field"><span class="acct-field-label">SG Number</span><span class="acct-field-value mono">{{ safeStr(tabData()?.property?.sgNumber || tabData()?.consUnit?.sgNumber) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Erf Number</span><span class="acct-field-value">{{ formatSgErf(tabData()?.property?.sgNumber || tabData()?.consUnit?.sgNumber, tabData()?.property?.erfNumber || tabData()?.consUnit?.erfNumber) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Old Property Code</span><span class="acct-field-value mono">{{ safeStr(tabData()?.property?.oldPropertyCode || tabData()?.property?.oldPropCode || tabData()?.property?.oldAccountCode || tabData()?.consUnit?.oldPropertyCode || tabData()?.consUnit?.oldAccountCode) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Billing Cycle</span><span class="acct-field-value">{{ safeStr(tabData()?.property?.cycleDescription || tabData()?.property?.billingCycle || tabData()?.consUnit?.billingCycleID) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Sectional Title Scheme</span><span class="acct-field-value">{{ safeStr(tabData()?.property?.sectionalTitleScheme || tabData()?.property?.sectionalTitle) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Location Address</span><span class="acct-field-value">{{ safeStr(tabData()?.property?.locationAddress || tabData()?.property?.propertyStreet || (tabData()?.property?.streetNumber ? tabData()?.property?.streetNumber + ' ' + tabData()?.property?.streetName + ', ' + tabData()?.property?.town : tabData()?.property?.streetName) || tabData()?.consUnit?.nonStandAddLine1) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Suburb</span><span class="acct-field-value">{{ safeStr(tabData()?.property?.subSuburb || tabData()?.property?.suburb || tabData()?.consUnit?.nonStandAddSuburb) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Town</span><span class="acct-field-value">{{ safeStr(tabData()?.property?.town) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Longitude</span><span class="acct-field-value mono">{{ safeStr(tabData()?.property?.longitude || tabData()?.property?.gpsLong || tabData()?.consUnit?.longitude) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Registration Status</span><span class="acct-field-value">{{ getPropertyRegistrationStatus() }}</span></div>
+                  </div>
+                  <div class="acct-col">
+                    <div class="acct-field"><span class="acct-field-label">Property ID</span><span class="acct-field-value mono" data-testid="field-property-id">{{ safeStr(tabData()?.property?.propertyId || tabData()?.property?.property_ID || tabData()?.consUnit?.unit_ID) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Portion</span><span class="acct-field-value">{{ formatSgPortion(tabData()?.property?.sgNumber || tabData()?.consUnit?.sgNumber) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Property Status</span><span class="acct-field-value" [class.acct-status-active]="(tabData()?.property?.propertyStatus || tabData()?.property?.statusDesc || tabData()?.property?.accountStatus || '').toString().toLowerCase().includes('active')">{{ safeStr(tabData()?.property?.propertyStatus || tabData()?.property?.statusDesc || tabData()?.property?.accountStatus) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Allotment Area</span><span class="acct-field-value">{{ safeStr(tabData()?.property?.allotmentArea || tabData()?.property?.allotment || tabData()?.consUnit?.allotmentArea || tabData()?.property?.town) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Farm Name</span><span class="acct-field-value">{{ safeStr(tabData()?.property?.farmName || tabData()?.property?.farm || tabData()?.consUnit?.farmName) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Property Type</span><span class="acct-field-value">{{ safeStr(tabData()?.property?.propertyType || tabData()?.property?.typeOfUse || tabData()?.property?.typeofUse || tabData()?.property?.typeOfUseDesc || tabData()?.property?.zoneDesc) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Master Property</span><span class="acct-field-value">{{ tabData()?.property?.isMasterProperty === true || tabData()?.property?.isMasterProperty === 1 || tabData()?.property?.isMasterProperty === 'true' ? 'Yes' : tabData()?.property?.isMasterProperty === false || tabData()?.property?.isMasterProperty === 0 || tabData()?.property?.isMasterProperty === 'false' ? 'No' : safeStr(tabData()?.property?.masterProperty || tabData()?.property?.isMasterProperty) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Latitude</span><span class="acct-field-value mono">{{ safeStr(tabData()?.property?.latitude || tabData()?.property?.gpsLat || tabData()?.consUnit?.latitude) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Magisterial District</span><span class="acct-field-value">{{ safeStr(tabData()?.property?.magisterialDistrict || tabData()?.property?.magDistrict || tabData()?.consUnit?.magisterialID || tabData()?.property?.ward) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Property Market Value</span><span class="acct-field-value mono acct-highlight">
+                      @if (getPropertyMarketValue() != null) {
+                        R {{ formatCurrency(getPropertyMarketValue()) }}
+                      } @else {
+                        -
+                      }
+                    </span></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="acct-section-card">
+                <div class="acct-section-header">Partition</div>
+                <div class="acct-two-col">
+                  <div class="acct-col">
+                    <div class="acct-field"><span class="acct-field-label">Property Type of Use</span><span class="acct-field-value">{{ safeStr(tabData()?.property?.propertyTypeOfUse || tabData()?.property?.typeOfUse || tabData()?.property?.typeofUse || tabData()?.property?.typeOfUseDesc) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Property Category</span><span class="acct-field-value">{{ safeStr(tabData()?.property?.propertyCategory || tabData()?.property?.category || tabData()?.property?.zoneDesc) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Accountable Owner Name</span><span class="acct-field-value">{{ safeStr(tabData()?.property?.accountableOwnerName || tabData()?.property?.ownerName || tabData()?.partitionOwner?.accountableOwnerName || getPartitionOwnerName()) }}</span></div>
+                  </div>
+                  <div class="acct-col">
+                    <div class="acct-field"><span class="acct-field-label">Valuation Category</span><span class="acct-field-value">{{ safeStr(tabData()?.property?.valuationCategory || tabData()?.property?.valuationCat) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Partition Description</span><span class="acct-field-value">{{ safeStr(tabData()?.property?.partitionDescription || tabData()?.property?.partitionDesc) }}</span></div>
+                    <div class="acct-field"><span class="acct-field-label">Partition Market Value</span><span class="acct-field-value mono acct-highlight">
+                      @if (getPartitionMarketValue() != null) {
+                        R {{ formatCurrency(getPartitionMarketValue()) }}
+                      } @else {
+                        -
+                      }
+                    </span></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="acct-section-card">
+                <div class="acct-section-header">🛡️ Electoral &amp; Classification Details</div>
                 <div class="detail-grid three-col">
-                  <div class="detail-item"><div class="detail-label">Property ID</div><div class="detail-value mono" data-testid="field-property-id">{{ safeStr(tabData()?.property?.propertyId || tabData()?.property?.property_ID || tabData()?.consUnit?.unit_ID) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Erf Number</div><div class="detail-value" data-testid="field-erf-number">{{ formatSgErf(tabData()?.property?.sgNumber || tabData()?.consUnit?.sgNumber, tabData()?.property?.erfNumber || tabData()?.consUnit?.erfNumber) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Portion</div><div class="detail-value" data-testid="field-portion">{{ formatSgPortion(tabData()?.property?.sgNumber || tabData()?.consUnit?.sgNumber) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Allotment / Region Code</div><div class="detail-value" data-testid="field-allotment">{{ formatSgAllotment(tabData()?.property?.sgNumber || tabData()?.consUnit?.sgNumber) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">SG Number</div><div class="detail-value mono" data-testid="field-sg-number">{{ safeStr(tabData()?.property?.sgNumber || tabData()?.consUnit?.sgNumber) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Street Address</div><div class="detail-value" data-testid="field-street-address">{{ safeStr(tabData()?.property?.streetNumber ? tabData()?.property?.streetNumber + ' ' + tabData()?.property?.streetName : tabData()?.property?.streetName || tabData()?.consUnit?.nonStandAddLine1) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Suburb</div><div class="detail-value" data-testid="field-suburb">{{ safeStr(tabData()?.property?.subSuburb || tabData()?.property?.suburb || tabData()?.consUnit?.nonStandAddSuburb) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Town</div><div class="detail-value" data-testid="field-town">{{ safeStr(tabData()?.property?.town) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Property Type / Zoning</div><div class="detail-value" data-testid="field-property-type">{{ safeStr(tabData()?.property?.typeOfUse || tabData()?.property?.typeofUse || tabData()?.property?.townPlanningZoneType || tabData()?.property?.townPlanningZone) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Market Value</div><div class="detail-value mono accent" data-testid="field-market-value">R {{ formatCurrency(tabData()?.property?.marketValue || tabData()?.consUnit?.marketValue) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Stand Size (m²)</div><div class="detail-value" data-testid="field-stand-size">{{ formatIntValue(tabData()?.property?.standSize || tabData()?.consUnit?.standSize) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Extent (m²)</div><div class="detail-value" data-testid="field-extent">{{ formatIntValue(tabData()?.property?.extentM2 || tabData()?.property?.extent_M2 || tabData()?.consUnit?.extentM2 || tabData()?.consUnit?.extent_M2) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Land Size (ha)</div><div class="detail-value" data-testid="field-land-size">{{ safeStr(tabData()?.property?.landSize || tabData()?.consUnit?.landSize) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Rates Tariff</div><div class="detail-value" data-testid="field-rates-tariff">{{ safeStr(tabData()?.property?.ratesTariff) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Owner</div><div class="detail-value" data-testid="field-owner">{{ safeStr(tabData()?.property?.name) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Master Property</div><div class="detail-value" data-testid="field-master-property">{{ safeStr(tabData()?.property?.masterProperty) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Roll Number</div><div class="detail-value" data-testid="field-roll-number">{{ safeStr(tabData()?.property?.rollNumber) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Roll Start Date</div><div class="detail-value" data-testid="field-roll-start-date">{{ formatDate(tabData()?.property?.rollStartDate) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Expected Expiry Date</div><div class="detail-value" data-testid="field-expected-expiry">{{ formatDate(tabData()?.property?.expectedExpiryDate) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Ward</div><div class="detail-value" data-testid="field-ward">{{ tabData()?.consUnit?.wardID ? 'Ward ' + tabData()?.consUnit?.wardID : (tabData()?.property?.ward ? 'Ward ' + tabData()?.property?.ward : '-') }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Polling Station</div><div class="detail-value" data-testid="field-polling-station">{{ tabData()?.consUnit?.pollingStationID ? 'Station ' + tabData()?.consUnit?.pollingStationID : '-' }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Magisterial District</div><div class="detail-value" data-testid="field-magisterial-district">{{ safeStr(tabData()?.property?.magisterialDistrict || tabData()?.property?.magDistrict || (tabData()?.consUnit?.magisterialID ? 'District ' + tabData()?.consUnit?.magisterialID : null)) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">NT Property Category</div><div class="detail-value" data-testid="field-nt-category">{{ getNtPropertyCategoryDisplay(tabData()?.consUnit?.ntPropertyCategoryID, tabData()?.consUnit?.ntPropertyCategoryDescription) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Billing Cycle</div><div class="detail-value" data-testid="field-billing-cycle">{{ safeStr(tabData()?.property?.cycleDescription || tabData()?.property?.billingCycle || tabData()?.consUnit?.billingCycleID) }}</div></div>
+                  <div class="detail-item"><div class="detail-label">Owner</div><div class="detail-value" data-testid="field-owner">{{ safeStr(tabData()?.property?.name || tabData()?.property?.owner) }}</div></div>
+                  @if (tabData()?.property?.rollNumber) {
+                    <div class="detail-item"><div class="detail-label">Roll Number</div><div class="detail-value" data-testid="field-roll-number">{{ tabData()?.property?.rollNumber }}</div></div>
+                  }
+                  @if (tabData()?.property?.rollStartDate) {
+                    <div class="detail-item"><div class="detail-label">Roll Start Date</div><div class="detail-value" data-testid="field-roll-start-date">{{ formatDate(tabData()?.property?.rollStartDate) }}</div></div>
+                  }
+                  @if (tabData()?.property?.expectedExpiryDate) {
+                    <div class="detail-item"><div class="detail-label">Expected Expiry Date</div><div class="detail-value" data-testid="field-expected-expiry">{{ formatDate(tabData()?.property?.expectedExpiryDate) }}</div></div>
+                  }
                   @if (tabData()?.property?.rdpOrReform) {
                     <div class="detail-item"><div class="detail-label">RDP / Reform</div><div class="detail-value" data-testid="field-rdp-reform">{{ tabData()?.property?.rdpOrReform }}</div></div>
                   }
                   @if (tabData()?.property?.complexName) {
                     <div class="detail-item"><div class="detail-label">Complex</div><div class="detail-value" data-testid="field-complex">{{ tabData()?.property?.complexName }}</div></div>
                   }
-                </div>
-
-                <div class="prop-subsection-divider"></div>
-                <div class="prop-subsection-header">🛡️ Electoral &amp; Classification Details</div>
-                <div class="detail-grid three-col">
-                  <div class="detail-item"><div class="detail-label">Ward</div><div class="detail-value" data-testid="field-ward">{{ tabData()?.consUnit?.wardID ? 'Ward ' + tabData()?.consUnit?.wardID : (tabData()?.property?.ward ? 'Ward ' + tabData()?.property?.ward : '-') }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Polling Station</div><div class="detail-value" data-testid="field-polling-station">{{ tabData()?.consUnit?.pollingStationID ? 'Station ' + tabData()?.consUnit?.pollingStationID : '-' }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Magisterial District</div><div class="detail-value" data-testid="field-magisterial-district">{{ tabData()?.consUnit?.magisterialID ? 'District ' + tabData()?.consUnit?.magisterialID : '-' }}</div></div>
-                  <div class="detail-item"><div class="detail-label">NT Property Category</div><div class="detail-value" data-testid="field-nt-category">{{ getNtPropertyCategoryDisplay(tabData()?.consUnit?.ntPropertyCategoryID, tabData()?.consUnit?.ntPropertyCategoryDescription) }}</div></div>
-                  <div class="detail-item"><div class="detail-label">Billing Cycle</div><div class="detail-value" data-testid="field-billing-cycle">{{ safeStr(tabData()?.consUnit?.billingCycleID) }}</div></div>
+                  @if (tabData()?.property?.standSize || tabData()?.consUnit?.standSize) {
+                    <div class="detail-item"><div class="detail-label">Stand Size (m²)</div><div class="detail-value" data-testid="field-stand-size">{{ formatIntValue(tabData()?.property?.standSize || tabData()?.consUnit?.standSize) }}</div></div>
+                  }
+                  @if (tabData()?.property?.extentM2 || tabData()?.property?.extent_M2 || tabData()?.consUnit?.extentM2 || tabData()?.consUnit?.extent_M2) {
+                    <div class="detail-item"><div class="detail-label">Extent (m²)</div><div class="detail-value" data-testid="field-extent">{{ formatIntValue(tabData()?.property?.extentM2 || tabData()?.property?.extent_M2 || tabData()?.consUnit?.extentM2 || tabData()?.consUnit?.extent_M2) }}</div></div>
+                  }
+                  @if (tabData()?.property?.landSize || tabData()?.consUnit?.landSize) {
+                    <div class="detail-item"><div class="detail-label">Land Size (ha)</div><div class="detail-value" data-testid="field-land-size">{{ safeStr(tabData()?.property?.landSize || tabData()?.consUnit?.landSize) }}</div></div>
+                  }
+                  @if (tabData()?.property?.ratesTariff) {
+                    <div class="detail-item"><div class="detail-label">Rates Tariff</div><div class="detail-value" data-testid="field-rates-tariff">{{ tabData()?.property?.ratesTariff }}</div></div>
+                  }
                 </div>
               </div>
 
