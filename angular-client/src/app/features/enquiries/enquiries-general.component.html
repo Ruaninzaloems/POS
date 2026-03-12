@@ -69,6 +69,91 @@
       </div>
     }
 
+    <!-- Global Property Snapshot -->
+    @if (globalSnapshotLoading()) {
+      <div class="global-snapshot-loading">
+        <div class="skeleton-bar" style="height: 120px; border-radius: 0.75rem;"></div>
+      </div>
+    } @else if (globalSnapshot()) {
+      <div class="global-snapshot-card" data-testid="global-snapshot">
+        <div class="global-snapshot-header">
+          <div class="global-snapshot-title-row">
+            <div class="global-snapshot-identity">
+              <span class="global-snapshot-icon">🏠</span>
+              <div>
+                <div class="global-snapshot-owner">{{ globalSnapshot()!['ownerName'] || '-' }}</div>
+                <div class="global-snapshot-address">📍 {{ globalSnapshot()!['address'] || '-' }}</div>
+              </div>
+            </div>
+            <div class="global-snapshot-status-pill"
+              [class.gs-status-active]="(globalSnapshot()!['status'] || '').toLowerCase().includes('active')"
+              [class.gs-status-inactive]="!(globalSnapshot()!['status'] || '').toLowerCase().includes('active') && globalSnapshot()!['status']">
+              {{ globalSnapshot()!['status'] || '-' }}
+            </div>
+          </div>
+        </div>
+        <div class="global-snapshot-grid">
+          <div class="global-snapshot-field">
+            <div class="global-snapshot-label">Account Type</div>
+            <div class="global-snapshot-value">{{ globalSnapshot()!['accountType'] || '-' }}</div>
+          </div>
+          <div class="global-snapshot-field">
+            <div class="global-snapshot-label">SG Number</div>
+            <div class="global-snapshot-value mono">{{ globalSnapshot()!['sgNumber'] || '-' }}</div>
+          </div>
+          <div class="global-snapshot-field">
+            <div class="global-snapshot-label">Property Type</div>
+            <div class="global-snapshot-value">{{ globalSnapshot()!['propertyType'] || '-' }}</div>
+          </div>
+          <div class="global-snapshot-field">
+            <div class="global-snapshot-label">Property Category</div>
+            <div class="global-snapshot-value">{{ globalSnapshot()!['propertyCategory'] || '-' }}</div>
+          </div>
+          <div class="global-snapshot-field">
+            <div class="global-snapshot-label">Property Type of Use</div>
+            <div class="global-snapshot-value">{{ globalSnapshot()!['propertyTypeOfUse'] || '-' }}</div>
+          </div>
+          <div class="global-snapshot-field">
+            <div class="global-snapshot-label">Billing Cycle</div>
+            <div class="global-snapshot-value">{{ globalSnapshot()!['billingCycle'] || '-' }}</div>
+          </div>
+          @if (globalSnapshot()!['marketValue']) {
+            <div class="global-snapshot-field">
+              <div class="global-snapshot-label">Market Value</div>
+              <div class="global-snapshot-value gs-market-value">R {{ formatCurrency(globalSnapshot()!['marketValue']) }}</div>
+            </div>
+          }
+        </div>
+        <div class="global-snapshot-badges">
+          <div class="gs-badge" [class.gs-badge-active]="globalSnapshot()!['indigentSubsidy']" [class.gs-badge-none]="!globalSnapshot()!['indigentSubsidy']">
+            <span class="gs-badge-icon">🛡️</span>
+            <span class="gs-badge-lbl">Indigent Subsidy</span>
+            <span class="gs-badge-val">{{ globalSnapshot()!['indigentSubsidy'] || 'None' }}</span>
+          </div>
+          <div class="gs-badge" [class.gs-badge-active]="globalSnapshot()!['consumerRpp']" [class.gs-badge-none]="!globalSnapshot()!['consumerRpp']">
+            <span class="gs-badge-icon">🔄</span>
+            <span class="gs-badge-lbl">Consumer RPP</span>
+            <span class="gs-badge-val">{{ globalSnapshot()!['consumerRpp'] || 'None' }}</span>
+          </div>
+          <div class="gs-badge" [class.gs-badge-active]="globalSnapshot()!['rebateStatus']" [class.gs-badge-none]="!globalSnapshot()!['rebateStatus']">
+            <span class="gs-badge-icon">🏷️</span>
+            <span class="gs-badge-lbl">Rebate Status</span>
+            <span class="gs-badge-val">{{ globalSnapshot()!['rebateStatus'] || 'None' }}</span>
+          </div>
+          <div class="gs-badge" [class.gs-badge-warn]="globalSnapshot()!['handoverStatus']" [class.gs-badge-none]="!globalSnapshot()!['handoverStatus']">
+            <span class="gs-badge-icon">⚠️</span>
+            <span class="gs-badge-lbl">Handover Status</span>
+            <span class="gs-badge-val">{{ globalSnapshot()!['handoverStatus'] || 'None' }}</span>
+          </div>
+          <div class="gs-badge" [class.gs-badge-active]="globalSnapshot()!['interestWaiver']" [class.gs-badge-none]="!globalSnapshot()!['interestWaiver']">
+            <span class="gs-badge-icon">💳</span>
+            <span class="gs-badge-lbl">Interest Waiver</span>
+            <span class="gs-badge-val">{{ globalSnapshot()!['interestWaiver'] || 'None' }}</span>
+          </div>
+        </div>
+      </div>
+    }
+
     <!-- Tab Navigation -->
     <div class="tab-navigation">
       <div class="tab-nav-inner">
@@ -171,31 +256,6 @@
                     🔄 Rebuild Account
                   }
                 </button>
-              </div>
-            </div>
-
-            <div class="acct-property-info-card" data-testid="account-property-info-card">
-              <div class="acct-prop-info-row">
-                <div class="acct-prop-info-item">
-                  <span class="acct-prop-info-label">Property Description</span>
-                  <span class="acct-prop-info-value acct-prop-desc">{{ getAccountPropertyDescription() }}</span>
-                </div>
-                <div class="acct-prop-info-item">
-                  <span class="acct-prop-info-label">Property Category</span>
-                  <span class="acct-prop-info-value">{{ getAccountPropertyCategory() }}</span>
-                </div>
-                <div class="acct-prop-info-item">
-                  <span class="acct-prop-info-label">Type of Use</span>
-                  <span class="acct-prop-info-value">{{ getAccountTypeOfUse() }}</span>
-                </div>
-                <div class="acct-prop-info-item">
-                  <span class="acct-prop-info-label">Active Rates Tariff</span>
-                  <span class="acct-prop-info-value">{{ getAccountActiveTariff() }}</span>
-                </div>
-                <div class="acct-prop-info-item">
-                  <span class="acct-prop-info-label">Market Value</span>
-                  <span class="acct-prop-info-value acct-prop-market-value">{{ getAccountMarketValue() != null ? 'R ' + formatCurrency(getAccountMarketValue()!) : '-' }}</span>
-                </div>
               </div>
             </div>
 

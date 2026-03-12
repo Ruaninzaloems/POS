@@ -100,6 +100,8 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   showDropdown = signal(false);
   highlightIdx = signal(-1);
   headerBalance = signal<number | null>(null);
+  globalSnapshot = signal<Record<string, any> | null>(null);
+  globalSnapshotLoading = signal(false);
   riskFlags = signal<RiskFlag[]>([]);
   riskFlagsLoading = signal(false);
   expandedRowId = signal<number | null>(null);
@@ -829,6 +831,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     if (id) {
       this.loadHeaderBalance(id);
       this.loadRiskFlags(id);
+      this.loadGlobalSnapshot(id);
       this.loadTabData('account', id);
     }
   }
@@ -836,6 +839,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   backToResults(): void {
     this.selectedAccount.set(null);
     this.headerBalance.set(null);
+    this.globalSnapshot.set(null);
     this.riskFlags.set([]);
     this.tabData.set(null);
   }
@@ -848,6 +852,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.hasSearched.set(false);
     this.searchError.set(null);
     this.selectedAccount.set(null);
+    this.globalSnapshot.set(null);
     this.showDropdown.set(false);
     this.highlightIdx.set(-1);
     this.showAdvanced.set(false);
@@ -1053,6 +1058,60 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         if (total !== null && total !== undefined) this.headerBalance.set(Number(total));
       }
     } catch {}
+  }
+
+  async loadGlobalSnapshot(accountId: number): Promise<void> {
+    this.globalSnapshotLoading.set(true);
+    this.globalSnapshot.set(null);
+    try {
+      const sa: any = this.selectedAccount();
+      const [gsBasic, gsConsDetails, gsAcctMgmt, gsConsUnitById, gsPropDetails] = await Promise.allSettled([
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/basic-account-details/${accountId}`)),
+        firstValueFrom(this.api.get<any>(`/api/platinum/receipt-prepaid/cons-account-details`, { accountId: String(accountId) })),
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-account-management/account-information`, { accountId: String(accountId) })),
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/cons-unit-by-account`, { AccountId: String(accountId) })),
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
+      ]);
+      const basicVal = gsBasic.status === 'fulfilled' ? (Array.isArray(gsBasic.value) ? gsBasic.value[0] : gsBasic.value) : null;
+      const consVal = gsConsDetails.status === 'fulfilled' ? (Array.isArray(gsConsDetails.value) ? gsConsDetails.value[0] : gsConsDetails.value) : null;
+      const mgmtVal = gsAcctMgmt.status === 'fulfilled' ? (Array.isArray(gsAcctMgmt.value) ? gsAcctMgmt.value[0] : gsAcctMgmt.value) : null;
+      const cuVal = gsConsUnitById.status === 'fulfilled' ? (Array.isArray(gsConsUnitById.value) ? gsConsUnitById.value[0] : gsConsUnitById.value) : null;
+      const propVal = gsPropDetails.status === 'fulfilled' ? (Array.isArray(gsPropDetails.value) ? gsPropDetails.value[0] : gsPropDetails.value) : null;
+
+      let gsValuation: any = null;
+      const gsUnitId = cuVal?.unit_ID || propVal?.unit_ID || propVal?.propertyID || sa?.propertyID;
+      if (gsUnitId) {
+        try {
+          const valRes = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/valuation-by-unit`, { unitId: String(gsUnitId) }));
+          gsValuation = Array.isArray(valRes) ? valRes[0] : valRes;
+        } catch {}
+      }
+
+      const snap: Record<string, any> = {};
+      snap['ownerName'] = basicVal?.fullNAME || consVal?.fullNAME || propVal?.accountableOwnerName || propVal?.ownerName || sa?.fullNAME || sa?.name || '';
+      snap['address'] = basicVal?.deliveryAddress || propVal?.locationAddress || propVal?.propertyStreet ||
+        (propVal?.streetNumber ? propVal.streetNumber + ' ' + propVal.streetName + ', ' + (propVal?.town || '') : propVal?.streetName || '') ||
+        cuVal?.nonStandAddLine1 || sa?.fullAddress || sa?.address || '';
+      snap['accountType'] = consVal?.accountDesc || propVal?.accountDesc || mgmtVal?.accountDesc || basicVal?.accountDesc || sa?.accountDesc || '';
+      snap['sgNumber'] = propVal?.sgNumber || cuVal?.sgNumber || sa?.sgNumber || '';
+      snap['propertyType'] = propVal?.propertyType || consVal?.typeOfUseDesc || propVal?.typeOfUseDesc || propVal?.typeOfUse || '';
+      snap['propertyCategory'] = propVal?.propertyCategory || consVal?.zoneDesc || propVal?.zoneDesc || propVal?.category || '';
+      snap['propertyTypeOfUse'] = consVal?.typeOfUseDesc || propVal?.typeOfUse || propVal?.typeofUse || propVal?.typeOfUseDesc || '';
+      snap['billingCycle'] = mgmtVal?.cycleDescription || consVal?.cycleDescription || propVal?.cycleDescription || cuVal?.billingCycleID || '';
+      snap['marketValue'] = gsValuation?.marketValue || gsValuation?.standMarketValue || cuVal?.marketValue || propVal?.marketValue || null;
+      snap['status'] = basicVal?.accountStatus || consVal?.statusDesc || mgmtVal?.accountStatus || propVal?.propertyStatus || sa?.accountStatus || '';
+      snap['indigentSubsidy'] = consVal?.indigentSubsidyStatus || consVal?.indigentSubsidy || consVal?.indigentStatus || consVal?.attpStatus || '';
+      snap['consumerRpp'] = consVal?.consumerRppStatus || consVal?.consumerRPPStatus || consVal?.consumerRpp || '';
+      snap['rebateStatus'] = consVal?.rebateStatus || consVal?.rebateStatusDesc || consVal?.rebate || '';
+      snap['handoverStatus'] = consVal?.handoverStatus || consVal?.handoverStatusDesc || consVal?.handover || '';
+      snap['interestWaiver'] = consVal?.interestWaiverStatus || consVal?.interestWaiverDesc || consVal?.interestWaiver || '';
+      console.log('[globalSnapshot]', JSON.stringify(snap).substring(0, 500));
+      this.globalSnapshot.set(snap);
+    } catch (e) {
+      console.error('[globalSnapshot] load failed:', e);
+    } finally {
+      this.globalSnapshotLoading.set(false);
+    }
   }
 
   async loadRiskFlags(accountId: number): Promise<void> {
