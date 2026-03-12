@@ -17,7 +17,7 @@
             <div class="global-snapshot-status-pill"
               [class.gs-status-active]="(globalSnapshot()?.['status'] || selectedAccount()!.accountStatus || '').toLowerCase().includes('active')"
               [class.gs-status-inactive]="!(globalSnapshot()?.['status'] || selectedAccount()!.accountStatus || '').toLowerCase().includes('active')">
-              {{ globalSnapshot()?.['status'] || selectedAccount()!.accountStatus || selectedAccount()!.statusDesc || 'Unknown' }}
+              {{ globalSnapshot()?.['status'] || selectedAccount()!.accountStatus || selectedAccount()!.statusDesc || '-' }}
             </div>
             <div class="gs-balance-block" data-testid="header-balance-section">
               <div class="gs-balance-label">Balance</div>
@@ -854,13 +854,13 @@
                         <tbody>
                           @for (ab of tabData()?.additionalBilling || []; track $index) {
                             <tr>
-                              <td><span class="svc-status-badge" [class.svc-active]="(ab.status || ab.serviceStatus || '').toLowerCase() === 'active'">{{ ab.status || ab.serviceStatus || '-' }}</span></td>
-                              <td>{{ ab.type || ab.serviceType || ab.billingType || ab.description || '-' }}</td>
-                              <td class="text-right mono">{{ formatDebtAmt(ab.amount || ab.billingAmount || 0) }}</td>
-                              <td>{{ formatDate(ab.commencementDate || ab.startDate || ab.serviceCommencementDate) }}</td>
-                              <td>{{ formatDate(ab.terminationDate || ab.endDate) }}</td>
-                              <td>{{ ab.frequency || '-' }}</td>
-                              <td>{{ ab.levyMonth || ab.billingMonth || '-' }}</td>
+                              <td><span class="svc-status-badge" [class.svc-active]="(ab.addBillingStatus || ab.status || ab.serviceStatus || '').toLowerCase() === 'active'">{{ ab.addBillingStatus || ab.status || ab.serviceStatus || '-' }}</span></td>
+                              <td>{{ ab.additionalBillingTypeDesc || ab.type || ab.serviceType || ab.billingType || ab.description || '-' }}</td>
+                              <td class="text-right mono">{{ formatDebtAmt(ab.amount || ab.constantAmount || ab.billingAmount || 0) }}</td>
+                              <td>{{ formatDate(ab.additionalBillingCommencementDate || ab.commencementDate || ab.startDate) }}</td>
+                              <td>{{ formatDate(ab.additionalBillingTerminationDate || ab.terminationDate || ab.endDate) }}</td>
+                              <td>{{ ab.frequencyDesc || ab.frequency || '-' }}</td>
+                              <td>{{ ab.levyMonth || ab.increaseLevyMonth || ab.billingMonth || '-' }}</td>
                               <td class="text-right mono">{{ ab.factorQuantity ?? ab.factor ?? '-' }}</td>
                             </tr>
                           }
@@ -5751,7 +5751,7 @@
                     <div class="dropdown-info">
                       <div class="dropdown-info-top">
                         <span class="dropdown-acct-num">{{ getAccountNum(account) }}</span>
-                        @if (getAccountName(account) !== 'Unknown') {
+                        @if (getAccountName(account) !== '-') {
                           <span class="dropdown-name-divider">—</span>
                           <span class="dropdown-name">{{ getAccountName(account) }}</span>
                         }

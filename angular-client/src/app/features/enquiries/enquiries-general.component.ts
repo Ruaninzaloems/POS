@@ -427,7 +427,8 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   }
 
   getAccountName(account: SearchResult | null): string {
-    return account?.name || account?.surname_Company || 'Unknown';
+    const raw = (account as any)?.fullNAME || account?.name || account?.surname_Company || '';
+    return raw.trim() || '-';
   }
 
   getAccountNum(account: SearchResult | null): string {
