@@ -766,10 +766,15 @@
             <span class="mono" data-testid="text-total-tendered">R {{ formatCurrency(effectiveTotalTendered()) }}</span>
           </div>
           @if (changeAmount() > 0) {
-            <div class="total-line change-line">
+            <div class="total-line change-line" [class.change-exceeded]="changeExceedsLimit()">
               <span>Change</span>
               <span class="mono" data-testid="text-change">R {{ formatCurrency(changeAmount()) }}</span>
             </div>
+            @if (changeExceedsLimit()) {
+              <div class="change-warning" data-testid="text-change-warning">
+                Change cannot exceed R200.00 — reduce tendered amount
+              </div>
+            }
           }
           @if (shortfall() > 0) {
             <div class="total-line shortfall-line">
@@ -782,7 +787,7 @@
         <button
           class="complete-btn"
           (click)="processPayment()"
-          [disabled]="processingPayment() || shortfall() > 0"
+          [disabled]="processingPayment() || shortfall() > 0 || changeExceedsLimit()"
           data-testid="button-complete-payment"
         >
           @if (processingPayment()) {

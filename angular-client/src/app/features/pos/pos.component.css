@@ -989,6 +989,20 @@
   color: #16a34a;
   font-weight: 700;
 }
+.total-line.change-line.change-exceeded {
+  color: #dc2626;
+}
+.change-warning {
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #fecaca;
+  text-align: center;
+  margin-top: 4px;
+}
 .total-line.shortfall-line {
   color: #dc2626;
   font-weight: 700;

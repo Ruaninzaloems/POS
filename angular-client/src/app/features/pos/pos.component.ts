@@ -205,7 +205,14 @@ export class PosComponent implements OnInit, OnDestroy {
     return cash + this.cardAmount() + this.chequeAmount() + this.eftAmount();
   });
 
-  changeAmount = computed(() => Math.max(0, this.effectiveTotalTendered() - this.basket.totalToPay()));
+  private readonly MAX_CHANGE = 200;
+
+  changeAmount = computed(() => {
+    const raw = Math.max(0, this.effectiveTotalTendered() - this.basket.totalToPay());
+    return Math.round(raw * 100) / 100;
+  });
+
+  changeExceedsLimit = computed(() => this.changeAmount() > this.MAX_CHANGE);
 
   shortfall = computed(() => {
     const diff = this.basket.totalToPay() - this.effectiveTotalTendered();
@@ -1125,6 +1132,10 @@ export class PosComponent implements OnInit, OnDestroy {
       this.toast.error('Total tendered is less than the amount due.');
       return;
     }
+    if (this.changeExceedsLimit()) {
+      this.toast.error(`Change cannot exceed R${this.MAX_CHANGE.toFixed(2)}. Please reduce the tendered amount.`);
+      return;
+    }
     if (this.cardAmount() > 0 && !this.cardNumber().replace(/\s/g, '')) {
       this.toast.error('Please enter the card number for card payments.');
       return;
@@ -1215,31 +1226,46 @@ export class PosComponent implements OnInit, OnDestroy {
         }
       }
 
-      for (let ci2 = 0; ci2 < clearanceItems.length; ci2++) {
-        const clearItem = clearanceItems[ci2];
-        if (clearItem.amountToPay <= 0 || !clearItem.clearanceData) continue;
-        const result = await this.submitClearancePaymentItem(clearItem, userId!, ci, finYear, cardNum, `${paymentToken}-clr${ci2}`);
+      const effectivePaymentTypeId = this.getPaymentTypeId();
+      const effectiveTenderType = this.activeTender();
+      const effectiveChangeAmount = this.changeAmount();
+
+      const validClearance = clearanceItems.filter(i => i.amountToPay > 0 && i.clearanceData);
+      const validPrepaid = prepaidItems.filter(i => i.amountToPay > 0 && i.prepaidData);
+      const validMisc = miscItems.filter(i => i.amountToPay > 0 && i.miscData);
+      let changeApplied = allResults.length > 0;
+
+      for (let ci2 = 0; ci2 < validClearance.length; ci2++) {
+        const clearItem = validClearance[ci2];
+        const isLastItem = (ci2 === validClearance.length - 1) && validPrepaid.length === 0 && validMisc.length === 0;
+        const itemChange = (!changeApplied && isLastItem) ? effectiveChangeAmount : 0;
+        if (isLastItem && itemChange > 0) changeApplied = true;
+        const result = await this.submitClearancePaymentItem(clearItem, userId!, ci, finYear, cardNum, effectivePaymentTypeId, itemChange, `${paymentToken}-clr${ci2}`);
         console.log(`[processPayment] Clearance result:`, JSON.stringify(result).substring(0, 500));
         const clrReceiptNo = await this.resolveReceiptNo(result);
-        allResults.push({ receiptNumber: clrReceiptNo, tenderType: this.activeTender(), amount: clearItem.amountToPay, items: [clearItem], rawResponse: result });
+        allResults.push({ receiptNumber: clrReceiptNo, tenderType: effectiveTenderType, amount: clearItem.amountToPay, items: [clearItem], rawResponse: result });
       }
 
-      for (let pi = 0; pi < prepaidItems.length; pi++) {
-        const prepItem = prepaidItems[pi];
-        if (prepItem.amountToPay <= 0 || !prepItem.prepaidData) continue;
-        const result = await this.submitPrepaidPaymentItem(prepItem, `${paymentToken}-prep${pi}`);
+      for (let pi = 0; pi < validPrepaid.length; pi++) {
+        const prepItem = validPrepaid[pi];
+        const isLastItem = (pi === validPrepaid.length - 1) && validMisc.length === 0;
+        const itemChange = (!changeApplied && isLastItem) ? effectiveChangeAmount : 0;
+        if (isLastItem && itemChange > 0) changeApplied = true;
+        const result = await this.submitPrepaidPaymentItem(prepItem, effectivePaymentTypeId, itemChange, `${paymentToken}-prep${pi}`);
         console.log(`[processPayment] Prepaid result:`, JSON.stringify(result).substring(0, 500));
         const prepReceiptNo = await this.resolveReceiptNo(result);
-        allResults.push({ receiptNumber: prepReceiptNo, tenderType: this.activeTender(), amount: prepItem.amountToPay, items: [prepItem], rawResponse: result });
+        allResults.push({ receiptNumber: prepReceiptNo, tenderType: effectiveTenderType, amount: prepItem.amountToPay, items: [prepItem], rawResponse: result });
       }
 
-      for (let mi = 0; mi < miscItems.length; mi++) {
-        const miscItem = miscItems[mi];
-        if (miscItem.amountToPay <= 0 || !miscItem.miscData) continue;
-        const result = await this.submitMiscPaymentItem(miscItem, userId!, ci, finYear, cardNum, `${paymentToken}-misc${mi}`);
+      for (let mi = 0; mi < validMisc.length; mi++) {
+        const miscItem = validMisc[mi];
+        const isLastItem = (mi === validMisc.length - 1);
+        const itemChange = (!changeApplied && isLastItem) ? effectiveChangeAmount : 0;
+        if (isLastItem && itemChange > 0) changeApplied = true;
+        const result = await this.submitMiscPaymentItem(miscItem, userId!, ci, finYear, cardNum, effectivePaymentTypeId, itemChange, `${paymentToken}-misc${mi}`);
         console.log(`[processPayment] Misc result:`, JSON.stringify(result).substring(0, 500));
         const miscReceiptNo = await this.resolveReceiptNo(result);
-        allResults.push({ receiptNumber: miscReceiptNo, tenderType: this.activeTender(), amount: miscItem.amountToPay, items: [miscItem], rawResponse: result });
+        allResults.push({ receiptNumber: miscReceiptNo, tenderType: effectiveTenderType, amount: miscItem.amountToPay, items: [miscItem], rawResponse: result });
       }
 
       this.receiptResults.set(allResults);
@@ -1248,6 +1274,8 @@ export class PosComponent implements OnInit, OnDestroy {
       this.toast.success(`${allResults.length} receipt(s) processed successfully!`);
       this.basket.clearAll();
       this.resetTenderFields();
+
+      this.autoPrintReceipts();
     } catch (e: any) {
       this.toast.error(e?.error?.message || e?.message || 'Payment processing failed.');
     } finally {
@@ -1400,11 +1428,10 @@ export class PosComponent implements OnInit, OnDestroy {
     }
   }
 
-  private async submitClearancePaymentItem(item: BasketItem, userId: number, ci: any, finYear: string, cardNum: string, idempotencyToken?: string): Promise<any> {
+  private async submitClearancePaymentItem(item: BasketItem, userId: number, ci: any, finYear: string, cardNum: string, paymentTypeId: number, changeAmt: number, idempotencyToken?: string): Promise<any> {
     const cd = item.clearanceData!;
     const sessionCashierId = ci?.id || ci?.cashier_ID || userId;
     const sessionOfficeId = ci?.cashOffice_ID || 0;
-    const paymentTypeId = this.getPaymentTypeId();
     const isCardPayment = paymentTypeId === 3;
     const now = new Date();
     const receiptDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T00:00:00`;
@@ -1413,94 +1440,121 @@ export class PosComponent implements OnInit, OnDestroy {
       debT_TYPE: a.debtType || a.debT_TYPE || null,
       amount: a.paymentAmount || a.amount || 0,
     }));
-    return await firstValueFrom(
-      this.api.postWithIdempotency('/api/platinum/billing-payment-clearance/submit-payment', {
-        userId,
-        paymentTypeId,
-        cashierId: sessionCashierId,
-        cashOfficeId: sessionOfficeId,
-        receiptDate,
-        tenderAmount: item.amountToPay,
-        changeAmount: 0,
-        paidAmount: item.amountToPay,
-        outstandingAmount: item.amountDue || item.amountToPay,
-        clearance_ID: String(cd.clearanceId),
-        finYear,
-        accountHolderName: cd.ownerName || 'Walk-in',
-        chequeNo: this.chequeNumber() || null,
-        bankId: null,
-        branchId: null,
-        cardNo: isCardPayment ? cardNum : null,
-        cardExpiryDate: isCardPayment ? this.formatCardExpiry(this.cardExpiry()) : null,
-        paySection1181Only: false,
-        section1181Amount: 0,
-        paidItems,
-      }, idempotencyToken)
+    const tenderAmt = isCardPayment ? item.amountToPay : (this.cashAmount() > 0 ? this.cashRoundedAmount() : item.amountToPay);
+    const payload = {
+      userId,
+      paymentTypeId,
+      cashierId: sessionCashierId,
+      cashOfficeId: sessionOfficeId,
+      receiptDate,
+      tenderAmount: tenderAmt,
+      changeAmount: isCardPayment ? 0 : Math.max(0, changeAmt),
+      paidAmount: item.amountToPay,
+      outstandingAmount: item.amountDue || item.amountToPay,
+      clearance_ID: String(cd.clearanceId),
+      finYear,
+      accountHolderName: cd.ownerName || 'Walk-in',
+      chequeNo: this.chequeNumber() || null,
+      bankId: null,
+      branchId: null,
+      cardNo: isCardPayment ? cardNum : null,
+      cardExpiryDate: isCardPayment ? this.formatCardExpiry(this.cardExpiry()) : null,
+      paySection1181Only: false,
+      section1181Amount: 0,
+      paidItems,
+    };
+    const logSafe = {...payload, cardNo: payload.cardNo ? '****' + (payload.cardNo as string).slice(-4) : '', cardExpiryDate: payload.cardExpiryDate ? '**/**' : ''};
+    console.log(`[submitClearancePayment] Payload:`, JSON.stringify(logSafe).substring(0, 1000));
+    const result: any = await firstValueFrom(
+      this.api.postWithIdempotency('/api/platinum/billing-payment-clearance/submit-payment', payload, idempotencyToken)
     );
+    console.log(`[submitClearancePayment] Response:`, JSON.stringify(result).substring(0, 500));
+    if (result && result.isSuccess === false) {
+      throw new Error(result.message || result.detail || 'Clearance payment rejected by API');
+    }
+    return result;
   }
 
-  private async submitPrepaidPaymentItem(item: BasketItem, idempotencyToken?: string): Promise<any> {
+  private async submitPrepaidPaymentItem(item: BasketItem, paymentTypeId: number, changeAmt: number, idempotencyToken?: string): Promise<any> {
     const pd = item.prepaidData!;
     const ci = this.cashierInfo();
     const userId = this.user()?.user_ID;
     const sessionCashierId = ci?.id || ci?.cashier_ID || userId;
     const sessionOfficeId = ci?.cashOffice_ID || 0;
-    const paymentTypeId = this.getPaymentTypeId();
     const isCardPayment = paymentTypeId === 3;
     const now = new Date();
     const receiptDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T00:00:00`;
-    return await firstValueFrom(
-      this.api.postWithIdempotency('/api/platinum/receipt-prepaid/submit-prepaid-payment', {
-        userId,
-        cashierId: sessionCashierId,
-        cashOfficeId: sessionOfficeId,
-        accountId: pd.accountId || 0,
-        accountNumber: pd.accountNumber || '',
-        meterNumber: pd.meterNumber,
-        amount: item.amountToPay,
-        tenderAmount: item.amountToPay,
-        changeAmount: 0,
-        paymentTypeId,
-        receiptDate,
-        finYear: ci?.finYear || '',
-        prepaidType: pd.serviceType || 'Electricity',
-        cardNo: isCardPayment ? this.cardNumber().replace(/\s/g, '') : null,
-        cardExpiryDate: isCardPayment ? this.formatCardExpiry(this.cardExpiry()) : null,
-      }, idempotencyToken)
+    const tenderAmt = isCardPayment ? item.amountToPay : (this.cashAmount() > 0 ? this.cashRoundedAmount() : item.amountToPay);
+    const payload = {
+      userId,
+      cashierId: sessionCashierId,
+      cashOfficeId: sessionOfficeId,
+      accountId: pd.accountId || 0,
+      accountNumber: pd.accountNumber || '',
+      meterNumber: pd.meterNumber,
+      amount: item.amountToPay,
+      tenderAmount: tenderAmt,
+      changeAmount: isCardPayment ? 0 : Math.max(0, changeAmt),
+      paymentTypeId,
+      receiptDate,
+      finYear: ci?.finYear || '',
+      prepaidType: pd.serviceType || 'Electricity',
+      cardNo: isCardPayment ? this.cardNumber().replace(/\s/g, '') : null,
+      cardExpiryDate: isCardPayment ? this.formatCardExpiry(this.cardExpiry()) : null,
+    };
+    const logSafe = {...payload, cardNo: payload.cardNo ? '****' + (payload.cardNo as string).slice(-4) : '', cardExpiryDate: payload.cardExpiryDate ? '**/**' : ''};
+    console.log(`[submitPrepaidPayment] Payload:`, JSON.stringify(logSafe).substring(0, 1000));
+    const result: any = await firstValueFrom(
+      this.api.postWithIdempotency('/api/platinum/receipt-prepaid/submit-prepaid-payment', payload, idempotencyToken)
     );
+    console.log(`[submitPrepaidPayment] Response:`, JSON.stringify(result).substring(0, 500));
+    if (result && result.isSuccess === false) {
+      throw new Error(result.message || result.detail || 'Prepaid payment rejected by API');
+    }
+    return result;
   }
 
-  private async submitMiscPaymentItem(item: BasketItem, userId: number, ci: any, finYear: string, cardNum: string, idempotencyToken?: string): Promise<any> {
+  private async submitMiscPaymentItem(item: BasketItem, userId: number, ci: any, finYear: string, cardNum: string, paymentTypeId: number, changeAmt: number, idempotencyToken?: string): Promise<any> {
     const md = item.miscData!;
+    const isCardPayment = paymentTypeId === 3;
     const vatAmount = md.isVatable ? Math.round(item.amountToPay * md.vatPercentage / (100 + md.vatPercentage) * 100) / 100 : 0;
-    return await firstValueFrom(
-      this.api.postWithIdempotency('/api/platinum/billing-payment-miscellaneous/submit', {
-        userId,
-        cashierId: ci?.id || ci?.cashier_ID || userId,
-        cashOfficeId: ci?.cashOffice_ID,
-        finYear,
-        miscellaneousPaymentGroup: md.groupId,
-        scoaItem: md.scoaItemId,
-        description: md.description || md.scoaItemName,
-        lastName: md.lastName,
-        initials: md.initials,
-        totalAmount: item.amountToPay,
-        amount: item.amountToPay - vatAmount,
-        vatAmount,
-        vatPercentage: md.vatPercentage,
-        isVatable: md.isVatable,
-        tenderAmount: item.amountToPay,
-        changeAmount: 0,
-        paymentType: this.getPaymentTypeId(),
-        receiptDate: new Date().toISOString(),
-        cardNo: cardNum,
-        expiryDate: this.cardExpiry(),
-        chequeNo: this.chequeNumber(),
-        bankBranch: this.banks().find(b => b.bankID === this.chequeBankId())?.bankName || '',
-        bankBranchCode: this.banks().find(b => b.bankID === this.chequeBankId())?.branchCode || '',
-        accHolderName: this.chequeName(),
-      }, idempotencyToken)
+    const tenderAmt = isCardPayment ? item.amountToPay : (this.cashAmount() > 0 ? this.cashRoundedAmount() : item.amountToPay);
+    const payload = {
+      userId,
+      cashierId: ci?.id || ci?.cashier_ID || userId,
+      cashOfficeId: ci?.cashOffice_ID || 0,
+      finYear,
+      miscellaneousPaymentGroup: md.groupId,
+      scoaItem: md.scoaItemId,
+      description: md.description || md.scoaItemName,
+      lastName: md.lastName || '',
+      initials: md.initials || '',
+      totalAmount: item.amountToPay,
+      amount: item.amountToPay - vatAmount,
+      vatAmount,
+      vatPercentage: md.vatPercentage || 0,
+      isVatable: md.isVatable || false,
+      tenderAmount: tenderAmt,
+      changeAmount: isCardPayment ? 0 : Math.max(0, changeAmt),
+      paymentType: paymentTypeId,
+      receiptDate: new Date().toISOString(),
+      cardNo: isCardPayment ? cardNum : '',
+      expiryDate: isCardPayment ? this.formatCardExpiry(this.cardExpiry()) : '',
+      chequeNo: this.chequeNumber() || '',
+      bankBranch: this.banks().find((b: BankItem) => b.bankID === this.chequeBankId())?.bankName || '',
+      bankBranchCode: this.banks().find((b: BankItem) => b.bankID === this.chequeBankId())?.branchCode || '',
+      accHolderName: this.chequeName() || '',
+    };
+    const logSafe = {...payload, cardNo: payload.cardNo ? '****' + (payload.cardNo as string).slice(-4) : '', expiryDate: payload.expiryDate ? '**/**' : ''};
+    console.log(`[submitMiscPayment] Payload:`, JSON.stringify(logSafe).substring(0, 1000));
+    const result: any = await firstValueFrom(
+      this.api.postWithIdempotency('/api/platinum/billing-payment-miscellaneous/submit', payload, idempotencyToken)
     );
+    console.log(`[submitMiscPayment] Response:`, JSON.stringify(result).substring(0, 500));
+    if (result && result.isSuccess === false) {
+      throw new Error(result.message || result.detail || 'Miscellaneous payment rejected by API');
+    }
+    return result;
   }
 
   async searchClearance(): Promise<void> {
@@ -1852,6 +1906,19 @@ export class PosComponent implements OnInit, OnDestroy {
       this.toast.error('Failed to print receipt(s).');
     } finally {
       this.printingReceipt.set(false);
+    }
+  }
+
+  private async autoPrintReceipts(): Promise<void> {
+    const results = this.receiptResults();
+    if (!results.length) return;
+    console.log(`[autoPrint] Triggering auto-print for ${results.length} receipt(s)...`);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    try {
+      await this.printReceipt();
+    } catch (e: any) {
+      console.error('[autoPrint] Auto-print failed:', e);
+      this.toast.error('Auto-print failed — use the Print button to retry.');
     }
   }
 
