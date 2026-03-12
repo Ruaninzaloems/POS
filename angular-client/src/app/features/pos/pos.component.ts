@@ -570,7 +570,18 @@ export class PosComponent implements OnInit, OnDestroy {
       ]);
 
       if (accountData.status === 'fulfilled') {
-        const accts = Array.isArray(accountData.value) ? accountData.value : (accountData.value as any)?.accounts || (accountData.value as any)?.results || (accountData.value as any)?.data || [];
+        let accts = Array.isArray(accountData.value) ? accountData.value : (accountData.value as any)?.accounts || (accountData.value as any)?.results || (accountData.value as any)?.data || [];
+        if (/^\d+$/.test(query)) {
+          const queryStripped = query.replace(/^0+/, '') || '0';
+          const exactMatches = accts.filter((a: any) => {
+            const acctNo = String(a.accountNo || a.accountNumber || a.accountID || '');
+            const acctStripped = acctNo.replace(/^0+/, '') || '0';
+            return acctStripped === queryStripped;
+          });
+          if (exactMatches.length > 0) {
+            accts = exactMatches;
+          }
+        }
         for (const a of accts) {
           const meterNo = a.meterNo || a.prepaidMeterNo || a.meter_No || a.physicalMeterNo || '';
           const acctId = a.account_ID || a.accountID || a.accountId || 0;
