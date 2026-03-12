@@ -383,7 +383,7 @@
               </div>
               <div class="form-group">
                 <label class="form-label">Amount (R)</label>
-                <input class="form-input" type="number" min="1" step="1" placeholder="100" [ngModel]="prepaidAmount()" (ngModelChange)="prepaidAmount.set($event)" data-testid="input-prepaid-amount" />
+                <input class="form-input" type="number" min="1" step="1" placeholder="Enter amount" [ngModel]="prepaidAmount() || null" (ngModelChange)="prepaidAmount.set(+$event || 0)" (focus)="$event.target.select()" data-testid="input-prepaid-amount" />
               </div>
             </div>
             <button class="search-go-btn" style="margin-top:12px" (click)="searchPrepaid()" [disabled]="prepaidSearching() || !sessionActive()" data-testid="button-prepaid-breakdown">
@@ -434,7 +434,7 @@
               </div>
               <div class="form-group">
                 <label class="form-label">Amount (R)</label>
-                <input class="form-input" type="number" min="0" step="0.01" placeholder="0.00" [ngModel]="miscAmount()" (ngModelChange)="miscAmount.set($event)" data-testid="input-misc-amount" />
+                <input class="form-input" type="number" min="0" step="0.01" placeholder="Enter amount" [ngModel]="miscAmount() || null" (ngModelChange)="miscAmount.set(+$event || 0)" (focus)="$event.target.select()" data-testid="input-misc-amount" />
               </div>
             </div>
             <div class="form-row">
@@ -684,7 +684,7 @@
           @if (activeTender() === 'cash') {
             <div class="tender-section">
               <label class="form-label">Cash Amount (R)</label>
-              <input type="number" class="form-input tender-amount-input" step="0.10" min="0" [ngModel]="cashAmount()" (ngModelChange)="cashAmount.set($event)" data-testid="input-cash-amount" />
+              <input type="number" class="form-input tender-amount-input" step="0.10" min="0" placeholder="0.00" [ngModel]="cashAmount() || null" (ngModelChange)="cashAmount.set(+$event || 0)" (focus)="$event.target.select()" data-testid="input-cash-amount" />
               @if (cashRoundingDiff() !== 0) {
                 <div class="rounding-note">Rounded to R {{ formatCurrency(cashRoundedAmount()) }} (nearest 10c)</div>
               }
@@ -701,7 +701,7 @@
           @if (activeTender() === 'card') {
             <div class="tender-section">
               <label class="form-label">Card Amount (R)</label>
-              <input type="number" class="form-input tender-amount-input" step="0.01" min="0" [ngModel]="cardAmount()" (ngModelChange)="cardAmount.set($event)" data-testid="input-card-amount" />
+              <input type="number" class="form-input tender-amount-input" step="0.01" min="0" placeholder="0.00" [ngModel]="cardAmount() || null" (ngModelChange)="cardAmount.set(+$event || 0)" (focus)="$event.target.select()" data-testid="input-card-amount" />
               <label class="form-label">Card Number</label>
               <input type="text" class="form-input" placeholder="0000 0000 0000 0000" [ngModel]="cardNumber()" (ngModelChange)="formatCardNumber($event)" maxlength="19" data-testid="input-card-number" />
               <label class="form-label">Expiry Date</label>
@@ -713,7 +713,7 @@
           @if (activeTender() === 'cheque') {
             <div class="tender-section">
               <label class="form-label">Cheque Amount (R)</label>
-              <input type="number" class="form-input tender-amount-input" step="0.01" min="0" [ngModel]="chequeAmount()" (ngModelChange)="chequeAmount.set($event)" data-testid="input-cheque-amount" />
+              <input type="number" class="form-input tender-amount-input" step="0.01" min="0" placeholder="0.00" [ngModel]="chequeAmount() || null" (ngModelChange)="chequeAmount.set(+$event || 0)" (focus)="$event.target.select()" data-testid="input-cheque-amount" />
               <label class="form-label">Cheque Number</label>
               <input type="text" class="form-input" placeholder="Cheque number" [ngModel]="chequeNumber()" (ngModelChange)="chequeNumber.set($event)" data-testid="input-cheque-number" />
               <label class="form-label">Bank</label>
@@ -730,7 +730,7 @@
           @if (activeTender() === 'eft') {
             <div class="tender-section">
               <label class="form-label">EFT Amount (R)</label>
-              <input type="number" class="form-input tender-amount-input" step="0.01" min="0" [ngModel]="eftAmount()" (ngModelChange)="eftAmount.set($event)" data-testid="input-eft-amount" />
+              <input type="number" class="form-input tender-amount-input" step="0.01" min="0" placeholder="0.00" [ngModel]="eftAmount() || null" (ngModelChange)="eftAmount.set(+$event || 0)" (focus)="$event.target.select()" data-testid="input-eft-amount" />
               <label class="form-label">EFT Reference</label>
               <input type="text" class="form-input" placeholder="Bank reference number" [ngModel]="eftReference()" (ngModelChange)="eftReference.set($event)" data-testid="input-eft-ref" />
             </div>
@@ -1130,7 +1130,7 @@
         <div class="dialog-body">
           <p class="dialog-desc">Record cash being placed in the safe drop box.</p>
           <label class="form-label">Amount (R)</label>
-          <input class="form-input" type="number" min="0" step="0.01" placeholder="0.00" [ngModel]="dropBoxAmount()" (ngModelChange)="dropBoxAmount.set($event)" data-testid="input-dropbox-amount" />
+          <input class="form-input" type="number" min="0" step="0.01" placeholder="Enter amount" [ngModel]="dropBoxAmount() || null" (ngModelChange)="dropBoxAmount.set(+$event || 0)" (focus)="$event.target.select()" data-testid="input-dropbox-amount" />
           <label class="form-label">Reference / Note</label>
           <input class="form-input" type="text" placeholder="Optional reference" [ngModel]="dropBoxReference()" (ngModelChange)="dropBoxReference.set($event)" data-testid="input-dropbox-ref" />
           <button class="process-btn" (click)="submitDropBox()" [disabled]="submittingDropBox()" data-testid="button-submit-dropbox">
