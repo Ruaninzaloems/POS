@@ -123,9 +123,9 @@
           </div>
         }
 
-        <div class="form-group">
+        <div class="form-group form-group-grow">
           <label class="form-label">Message <span class="required">*</span></label>
-          <textarea class="form-input message-textarea" [ngModel]="messageBody()" (ngModelChange)="messageBody.set($event)" placeholder="Type your message here..." rows="8" data-testid="input-message"></textarea>
+          <textarea class="form-input message-textarea" [ngModel]="messageBody()" (ngModelChange)="messageBody.set($event)" placeholder="Type your message here..." data-testid="input-message"></textarea>
           @if (mode() === 'sms') {
             <span class="char-count">{{ messageBody().length }}/160 characters</span>
           }
