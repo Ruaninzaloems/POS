@@ -139,6 +139,11 @@ export function registerReceiptsRoutes(app: Express, httpServer: Server): void {
     try {
       const session = requireAuth(req, res); if (!session) return;
       const data = await platinumGet(session, "/api/cons-accounts/" + req.params.id);
+      if (data && !data._error) {
+        console.log(`[cons-accounts] ID=${req.params.id} keys:`, Object.keys(data));
+        if (!data.nameId && data.nameID) data.nameId = data.nameID;
+        if (!data.nameId && data.name_ID) data.nameId = data.name_ID;
+      }
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -155,11 +160,14 @@ export function registerReceiptsRoutes(app: Express, httpServer: Server): void {
 
       const accountData = await platinumGet(session, "/api/cons-accounts/" + accountId);
       if (!accountData || accountData._error) {
+        console.log(`[accounts-by-name-id] cons-accounts/${accountId} failed:`, accountData?._error || 'null');
         return res.status(404).json({ message: "Account not found" });
       }
+      console.log(`[accounts-by-name-id] cons-accounts/${accountId} keys:`, Object.keys(accountData));
 
-      const nameId = accountData.nameId;
+      const nameId = accountData.nameId || accountData.nameID || accountData.name_ID;
       if (!nameId) {
+        console.log(`[accounts-by-name-id] No nameId found in response`);
         return res.json({ nameId: null, accounts: [] });
       }
 
@@ -188,13 +196,17 @@ export function registerReceiptsRoutes(app: Express, httpServer: Server): void {
   app.get("/api/platinum/cons-names/:id", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
+      console.log(`[cons-names] Fetching cons-names for ID=${req.params.id}`);
       const data = await platinumGet(session, "/api/cons-names/" + req.params.id);
       if (data && !data._error) {
         console.log(`[cons-names] ID=${req.params.id} keys:`, Object.keys(data));
         console.log(`[cons-names] ID=${req.params.id} sample:`, JSON.stringify(data).substring(0, 800));
+      } else {
+        console.log(`[cons-names] ID=${req.params.id} ERROR:`, data?._error || 'null response');
       }
       handlePlatinumResult(res, data);
     } catch (e: any) {
+      console.error(`[cons-names] ID=${req.params.id} EXCEPTION:`, e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
@@ -219,10 +231,13 @@ export function registerReceiptsRoutes(app: Express, httpServer: Server): void {
       }
 
       const results: any = { account: accountData };
+      const resolvedNameId = accountData.nameId || accountData.nameID || accountData.name_ID;
+      const resolvedUnitId = accountData.unitId || accountData.unitID || accountData.unit_ID;
+      console.log(`[account-full-details] ID=${accountId} nameId=${resolvedNameId} unitId=${resolvedUnitId}`);
 
       const [nameData, unitData] = await Promise.all([
-        accountData.nameId ? platinumGet(session, "/api/cons-names/" + accountData.nameId).catch((err) => { console.error('[account-details] Failed to fetch name data:', err); return null; }) : null,
-        accountData.unitId ? platinumGet(session, "/api/cons-units/" + accountData.unitId).catch((err) => { console.error('[account-details] Failed to fetch unit data:', err); return null; }) : null,
+        resolvedNameId ? platinumGet(session, "/api/cons-names/" + resolvedNameId).catch((err) => { console.error('[account-details] Failed to fetch name data:', err); return null; }) : null,
+        resolvedUnitId ? platinumGet(session, "/api/cons-units/" + resolvedUnitId).catch((err) => { console.error('[account-details] Failed to fetch unit data:', err); return null; }) : null,
       ]);
 
       if (nameData && !nameData._error) results.name = nameData;

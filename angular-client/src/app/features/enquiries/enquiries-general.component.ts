@@ -2068,9 +2068,11 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
         case 'name':
           try {
-            const [nameInfoResult, consAcctResult, relatedAcctsResult] = await Promise.allSettled([
+            const [nameInfoResult, consAcctResult, fullDetailsResult, acctMgmtResult, relatedAcctsResult] = await Promise.allSettled([
               firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/name-info/${accountId}`)),
               firstValueFrom(this.api.get<any>(`/api/platinum/cons-accounts/${accountId}`)),
+              firstValueFrom(this.api.get<any>(`/api/platinum/account-full-details/${accountId}`)),
+              this.cachedGet(`/api/platinum/billing-account-management/account-details`, { accountId: String(accountId) }),
               firstValueFrom(this.api.get<any>(`/api/platinum/accounts-by-name-id`, { accountId: String(accountId) })),
             ]);
             let nameVal: any = null;
@@ -2078,20 +2080,54 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
               const nr = nameInfoResult.value;
               nameVal = Array.isArray(nr) ? nr[0] : nr;
               if (nameVal && nameVal._error) nameVal = null;
+              console.log('[name] name-info result:', nameVal ? Object.keys(nameVal) : 'null/error');
             }
             let consNameVal: any = null;
             if (consAcctResult.status === 'fulfilled') {
               const ca = consAcctResult.value;
-              if (ca && !ca._error && ca.nameId) {
-                console.log('[name] cons-accounts returned nameId:', ca.nameId);
+              const resolvedNameId = ca?.nameId || ca?.nameID || ca?.name_ID;
+              console.log('[name] cons-accounts result:', ca ? (ca._error ? 'ERROR' : `nameId=${resolvedNameId}, keys=${Object.keys(ca).join(',')}`) : 'null');
+              if (ca && !ca._error && resolvedNameId) {
+                console.log('[name] cons-accounts returned nameId:', resolvedNameId);
                 try {
-                  const cnResult = await firstValueFrom(this.api.get<any>(`/api/platinum/cons-names/${ca.nameId}`));
+                  const cnResult = await firstValueFrom(this.api.get<any>(`/api/platinum/cons-names/${resolvedNameId}`));
                   if (cnResult && !cnResult._error) {
                     consNameVal = cnResult;
                     console.log('[name] cons-names keys:', Object.keys(cnResult));
+                    console.log('[name] cons-names sample:', JSON.stringify(cnResult).substring(0, 1500));
                   }
                 } catch (cnErr: any) {
                   console.log('[name] cons-names fetch failed:', cnErr?.message);
+                }
+              }
+            } else {
+              console.log('[name] cons-accounts REJECTED:', (consAcctResult as any).reason?.message);
+            }
+            if (!consNameVal && fullDetailsResult.status === 'fulfilled') {
+              const fd = fullDetailsResult.value;
+              console.log('[name] account-full-details result:', fd ? Object.keys(fd) : 'null');
+              if (fd && !fd._error) {
+                if (fd.name && !fd.name._error) {
+                  consNameVal = fd.name;
+                  console.log('[name] Using name from account-full-details, keys:', Object.keys(consNameVal));
+                }
+              }
+            }
+            if (!consNameVal && acctMgmtResult.status === 'fulfilled') {
+              const mgmt = acctMgmtResult.value;
+              const mgmtObj = Array.isArray(mgmt) ? mgmt[0] : mgmt;
+              const mgmtNameId = mgmtObj?.nameID || mgmtObj?.nameId || mgmtObj?.name_ID;
+              console.log('[name] acctMgmt fallback nameID:', mgmtNameId, mgmtObj ? Object.keys(mgmtObj) : 'null');
+              if (mgmtNameId) {
+                try {
+                  const cnResult = await firstValueFrom(this.api.get<any>(`/api/platinum/cons-names/${mgmtNameId}`));
+                  if (cnResult && !cnResult._error) {
+                    consNameVal = cnResult;
+                    console.log('[name] Using cons-names from mgmt nameID, keys:', Object.keys(cnResult));
+                    console.log('[name] cons-names sample:', JSON.stringify(cnResult).substring(0, 1500));
+                  }
+                } catch (cnErr: any) {
+                  console.log('[name] cons-names via mgmt failed:', cnErr?.message);
                 }
               }
             }
