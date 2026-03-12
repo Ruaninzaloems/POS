@@ -24,7 +24,7 @@ Theme: Platinum SCM Design System — navy primary (`--platinum-primary: #0f2b46
 - **Role**: Pure authenticated proxy to Platinum Inzalo EMS API
 - **Route Structure**: Modular files under `server/routes/` for various functionalities including authentication, POS, billing, clearance, enquiries, day-end, deposits, supervisor, receipts, debt, legal, communications, and analytics.
 - **Session**: Express-session with PostgreSQL store
-- **Deployment**: Express serves Angular build output and API on port 5000 in production, and separately serves API on port 3000 in development.
+- **Deployment**: Express serves Angular build output and API on port 5000 in both development and production. In development, run `cd angular-client && npx ng build --configuration development` to rebuild Angular after frontend changes.
 
 ### Debt & Legal Hybrid Architecture
 The Debt & Legal solution uses a hybrid architecture:

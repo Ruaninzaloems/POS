@@ -2735,15 +2735,20 @@ thead .cons-sticky-col { z-index: 3; background: var(--platinum-primary, #0f2b46
 .cons-open-badge { display: inline-flex; align-items: center; padding: 0.125rem 0.5rem; background: #fef3c7; color: #92400e; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
 
 .cons-smart-table-wrap { overflow-x: auto; max-width: 100%; border-radius: 0.5rem; border: 1px solid #e2e8f0; }
+.cons-smart-table-wrap.cons-wide-grid { max-height: 600px; overflow-y: auto; }
 .cons-smart-table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 0.82rem; }
+.cons-wide-grid .cons-smart-table { min-width: 3600px; }
 .cons-smart-table thead tr { background: var(--platinum-primary, #0f2b46); }
+.cons-wide-grid .cons-smart-table thead { position: sticky; top: 0; z-index: 5; }
 .cons-smart-table th { padding: 0.625rem 0.75rem; color: #fff; font-weight: 600; font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; border-bottom: 2px solid rgba(255,255,255,0.15); }
+.cons-td-remarks { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cons-td-tariff { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cons-th-sortable { cursor: pointer; user-select: none; transition: background 0.15s; }
 .cons-th-sortable:hover { background: rgba(255,255,255,0.1); }
 .cons-sort-icon { margin-left: 0.35rem; font-size: 0.72rem; opacity: 0.7; }
 .cons-th-numeric { text-align: right; }
 .cons-th-consumption { min-width: 160px; }
-.cons-th-sticky { position: sticky; left: 0; z-index: 3; background: var(--platinum-primary, #0f2b46); box-shadow: 2px 0 6px rgba(0,0,0,0.1); }
+.cons-th-sticky { position: sticky; left: 0; z-index: 6; background: var(--platinum-primary, #0f2b46); box-shadow: 2px 0 6px rgba(0,0,0,0.1); }
 
 .cons-smart-table tbody tr { transition: background 0.1s; border-bottom: 1px solid #f1f5f9; }
 .cons-smart-table tbody tr:hover { background: #f8fafc; }

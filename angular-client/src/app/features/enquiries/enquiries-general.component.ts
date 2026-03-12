@@ -3398,6 +3398,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       const results = await Promise.all(requests);
       const allReadings = results.flat();
       console.log('[consumption] Total readings across all FYs:', allReadings.length);
+      if (allReadings.length > 0) { console.log('[consumption] READING KEYS:', Object.keys(allReadings[0])); console.log('[consumption] SAMPLE READING:', JSON.stringify(allReadings[0])); }
 
       if (allReadings.length === 0) {
         const barParams = { ...baseParams, financialYear: currentFy };

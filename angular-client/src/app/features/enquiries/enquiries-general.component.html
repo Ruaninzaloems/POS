@@ -4423,39 +4423,111 @@
                             }
                           </div>
                         </div>
-                        <div class="cons-smart-table-wrap">
+                        <div class="cons-smart-table-wrap cons-wide-grid">
                           <table class="cons-smart-table" data-testid="table-meter-history">
                             <thead>
                               <tr>
                                 <th class="cons-th-sticky cons-th-sortable" (click)="sortConsumptionBy('billingMonth')" data-testid="th-sort-month">
-                                  <span>Month</span><span class="cons-sort-icon">{{ getConsSortIcon('billingMonth') }}</span>
+                                  <span>Billing Month</span><span class="cons-sort-icon">{{ getConsSortIcon('billingMonth') }}</span>
                                 </th>
                                 <th class="cons-th-sortable" (click)="sortConsumptionBy('finYear')" data-testid="th-sort-fy">
                                   <span>Fin Year</span><span class="cons-sort-icon">{{ getConsSortIcon('finYear') }}</span>
                                 </th>
+                                <th class="cons-th-sortable" (click)="sortConsumptionBy('serviceType')">
+                                  <span>Service Type</span><span class="cons-sort-icon">{{ getConsSortIcon('serviceType') }}</span>
+                                </th>
+                                <th class="cons-th-sortable" (click)="sortConsumptionBy('meterClassification')">
+                                  <span>Meter Class</span><span class="cons-sort-icon">{{ getConsSortIcon('meterClassification') }}</span>
+                                </th>
+                                <th class="cons-th-sortable" (click)="sortConsumptionBy('tariff')">
+                                  <span>Tariff</span><span class="cons-sort-icon">{{ getConsSortIcon('tariff') }}</span>
+                                </th>
+                                <th class="cons-th-sortable" (click)="sortConsumptionBy('combinationMeterNo')">
+                                  <span>Comb Meter No</span><span class="cons-sort-icon">{{ getConsSortIcon('combinationMeterNo') }}</span>
+                                </th>
+                                <th class="cons-th-sortable cons-th-numeric" (click)="sortConsumptionBy('factor')">
+                                  <span>Factor</span><span class="cons-sort-icon">{{ getConsSortIcon('factor') }}</span>
+                                </th>
+                                <th class="cons-th-sortable" (click)="sortConsumptionBy('meterNo')">
+                                  <span>Meter No</span><span class="cons-sort-icon">{{ getConsSortIcon('meterNo') }}</span>
+                                </th>
+                                <th class="cons-th-sortable" (click)="sortConsumptionBy('physicalMeterNo')">
+                                  <span>Physical Meter No</span><span class="cons-sort-icon">{{ getConsSortIcon('physicalMeterNo') }}</span>
+                                </th>
+                                <th class="cons-th-sortable" (click)="sortConsumptionBy('meterBook')">
+                                  <span>Meter Book</span><span class="cons-sort-icon">{{ getConsSortIcon('meterBook') }}</span>
+                                </th>
+                                <th class="cons-th-sortable" (click)="sortConsumptionBy('route')">
+                                  <span>Route</span><span class="cons-sort-icon">{{ getConsSortIcon('route') }}</span>
+                                </th>
                                 <th class="cons-th-sortable" (click)="sortConsumptionBy('oldReadingDate')" data-testid="th-sort-old-date">
-                                  <span>Old Date</span><span class="cons-sort-icon">{{ getConsSortIcon('oldReadingDate') }}</span>
+                                  <span>Old Reading Date</span><span class="cons-sort-icon">{{ getConsSortIcon('oldReadingDate') }}</span>
                                 </th>
                                 <th class="cons-th-sortable cons-th-numeric" (click)="sortConsumptionBy('oldReading')" data-testid="th-sort-old-read">
                                   <span>Old Reading</span><span class="cons-sort-icon">{{ getConsSortIcon('oldReading') }}</span>
                                 </th>
                                 <th class="cons-th-sortable" (click)="sortConsumptionBy('newReadingDate')" data-testid="th-sort-new-date">
-                                  <span>New Date</span><span class="cons-sort-icon">{{ getConsSortIcon('newReadingDate') }}</span>
+                                  <span>New Reading Date</span><span class="cons-sort-icon">{{ getConsSortIcon('newReadingDate') }}</span>
                                 </th>
                                 <th class="cons-th-sortable cons-th-numeric" (click)="sortConsumptionBy('newReading')" data-testid="th-sort-new-read">
                                   <span>New Reading</span><span class="cons-sort-icon">{{ getConsSortIcon('newReading') }}</span>
                                 </th>
                                 <th class="cons-th-sortable cons-th-numeric" (click)="sortConsumptionBy('days')" data-testid="th-sort-days">
-                                  <span>Days</span><span class="cons-sort-icon">{{ getConsSortIcon('days') }}</span>
+                                  <span>Reading Days</span><span class="cons-sort-icon">{{ getConsSortIcon('days') }}</span>
                                 </th>
                                 <th class="cons-th-sortable cons-th-numeric cons-th-consumption" (click)="sortConsumptionBy('consumption')" data-testid="th-sort-consumption">
                                   <span>Consumption</span><span class="cons-sort-icon">{{ getConsSortIcon('consumption') }}</span>
                                 </th>
-                                <th class="cons-th-sortable cons-th-numeric" (click)="sortConsumptionBy('dailyAvg')" data-testid="th-sort-daily">
-                                  <span>Daily Avg</span><span class="cons-sort-icon">{{ getConsSortIcon('dailyAvg') }}</span>
+                                <th class="cons-th-sortable" (click)="sortConsumptionBy('levyStatus')">
+                                  <span>Levy Status</span><span class="cons-sort-icon">{{ getConsSortIcon('levyStatus') }}</span>
+                                </th>
+                                <th class="cons-th-sortable" (click)="sortConsumptionBy('testReadingDate')">
+                                  <span>Test Reading Date</span><span class="cons-sort-icon">{{ getConsSortIcon('testReadingDate') }}</span>
+                                </th>
+                                <th class="cons-th-sortable cons-th-numeric" (click)="sortConsumptionBy('testReading')">
+                                  <span>Test Reading</span><span class="cons-sort-icon">{{ getConsSortIcon('testReading') }}</span>
+                                </th>
+                                <th class="cons-th-sortable" (click)="sortConsumptionBy('declineReason')">
+                                  <span>Decline Reason</span><span class="cons-sort-icon">{{ getConsSortIcon('declineReason') }}</span>
+                                </th>
+                                <th class="cons-th-sortable" (click)="sortConsumptionBy('meterErrorCode')">
+                                  <span>Meter Error Code</span><span class="cons-sort-icon">{{ getConsSortIcon('meterErrorCode') }}</span>
+                                </th>
+                                <th class="cons-th-sortable" (click)="sortConsumptionBy('importStatus')">
+                                  <span>Import Status</span><span class="cons-sort-icon">{{ getConsSortIcon('importStatus') }}</span>
+                                </th>
+                                <th class="cons-th-sortable" (click)="sortConsumptionBy('meterChange')">
+                                  <span>Meter Change</span><span class="cons-sort-icon">{{ getConsSortIcon('meterChange') }}</span>
+                                </th>
+                                <th class="cons-th-sortable" (click)="sortConsumptionBy('meterStatus')">
+                                  <span>Meter Status</span><span class="cons-sort-icon">{{ getConsSortIcon('meterStatus') }}</span>
+                                </th>
+                                <th class="cons-th-sortable" (click)="sortConsumptionBy('serviceStatus')">
+                                  <span>Service Status</span><span class="cons-sort-icon">{{ getConsSortIcon('serviceStatus') }}</span>
                                 </th>
                                 <th class="cons-th-sortable" (click)="sortConsumptionBy('readingStatus')" data-testid="th-sort-status">
-                                  <span>Status</span><span class="cons-sort-icon">{{ getConsSortIcon('readingStatus') }}</span>
+                                  <span>Reading Status</span><span class="cons-sort-icon">{{ getConsSortIcon('readingStatus') }}</span>
+                                </th>
+                                <th class="cons-th-sortable" (click)="sortConsumptionBy('disconnectionStatus')">
+                                  <span>Disconn Status</span><span class="cons-sort-icon">{{ getConsSortIcon('disconnectionStatus') }}</span>
+                                </th>
+                                <th class="cons-th-sortable cons-th-numeric" (click)="sortConsumptionBy('disconnectionReading')">
+                                  <span>Disconn Reading</span><span class="cons-sort-icon">{{ getConsSortIcon('disconnectionReading') }}</span>
+                                </th>
+                                <th class="cons-th-sortable" (click)="sortConsumptionBy('disconnectionDate')">
+                                  <span>Disconn Date</span><span class="cons-sort-icon">{{ getConsSortIcon('disconnectionDate') }}</span>
+                                </th>
+                                <th class="cons-th-sortable" (click)="sortConsumptionBy('contractorRemarks')">
+                                  <span>Contractor Remarks</span><span class="cons-sort-icon">{{ getConsSortIcon('contractorRemarks') }}</span>
+                                </th>
+                                <th class="cons-th-sortable" (click)="sortConsumptionBy('disconnectionLetter')">
+                                  <span>Disconn Letter</span><span class="cons-sort-icon">{{ getConsSortIcon('disconnectionLetter') }}</span>
+                                </th>
+                                <th class="cons-th-sortable" (click)="sortConsumptionBy('supportingDocument')">
+                                  <span>Supporting Doc</span><span class="cons-sort-icon">{{ getConsSortIcon('supportingDocument') }}</span>
+                                </th>
+                                <th class="cons-th-sortable" (click)="sortConsumptionBy('capturedBy')">
+                                  <span>Captured By</span><span class="cons-sort-icon">{{ getConsSortIcon('capturedBy') }}</span>
                                 </th>
                               </tr>
                             </thead>
@@ -4471,10 +4543,19 @@
                                     </div>
                                   </td>
                                   <td class="cons-td-fy">{{ r.financialYear || r.finYear || '-' }}</td>
-                                  <td>{{ formatDate(r.reading1Date || r.readingDate) }}</td>
-                                  <td class="mono cons-td-numeric">{{ r.reading1 || r.previousReading || r.prevReading || '-' }}</td>
-                                  <td>{{ formatDate(r.reading2Date || r.date) }}</td>
-                                  <td class="mono cons-td-numeric">{{ r.reading2 || r.currentReading || r.reading || '-' }}</td>
+                                  <td>{{ r.serviceType || r.serviceDesc || r.serviceDescription || consumptionSelectedMeter()?.serviceDesc || '-' }}</td>
+                                  <td>{{ r.meterClassification || r.meterClass || r.meterClassificationDesc || consumptionSelectedMeter()?.meterClassificationDesc || '-' }}</td>
+                                  <td class="cons-td-tariff">{{ r.tariff || r.tariffDescription || r.tariffDesc || consumptionSelectedMeter()?.tariff || '-' }}</td>
+                                  <td class="mono">{{ r.combinationMeterNo || r.combMeterNo || r.combinationMeterPhysicalNumber || consumptionSelectedMeter()?.combinationMeterPhysicalNumber || '-' }}</td>
+                                  <td class="mono cons-td-numeric">{{ r.factor ?? r.tarifffactor ?? consumptionSelectedMeter()?.tarifffactor ?? '-' }}</td>
+                                  <td class="mono">{{ r.meterNo || r.meterNumber || consumptionSelectedMeter()?.meterNo || '-' }}</td>
+                                  <td class="mono">{{ r.physicalMeterNo || r.physicalMeterNumber || consumptionSelectedMeter()?.physicalMeterNo || '-' }}</td>
+                                  <td>{{ r.meterBook || r.meterBookNo || consumptionSelectedMeter()?.meterBookNo || '-' }}</td>
+                                  <td>{{ r.route || r.routeNo || r.routeFileName || consumptionSelectedMeter()?.routeFileName || '-' }}</td>
+                                  <td>{{ formatDate(r.reading1Date || r.oldReadingDate || r.readingDate) }}</td>
+                                  <td class="mono cons-td-numeric">{{ r.reading1 || r.previousReading || r.prevReading || r.oldReading || '-' }}</td>
+                                  <td>{{ formatDate(r.reading2Date || r.newReadingDate || r.date) }}</td>
+                                  <td class="mono cons-td-numeric">{{ r.reading2 || r.currentReading || r.reading || r.newReading || '-' }}</td>
                                   <td class="mono cons-td-numeric">{{ r.readingdays || r.readingDays || r.days || r.numberOfDays || '-' }}</td>
                                   <td class="mono cons-td-numeric cons-td-consumption">
                                     <div class="cons-bar-cell">
@@ -4482,14 +4563,39 @@
                                       <span class="cons-bar-value">{{ getConsumptionVal(r) | number:'1.0-0' }}</span>
                                     </div>
                                   </td>
-                                  <td class="mono cons-td-numeric">{{ getAvgDailyConsumption(r) }}</td>
                                   <td>
-                                    <span class="cons-status-badge" [class.cons-status-actual]="(r.readingStatus || r.levyStatus || '').toLowerCase() === 'actual'"
-                                      [class.cons-status-estimate]="(r.readingStatus || r.levyStatus || '').toLowerCase().includes('estimat') || (r.readingStatus || r.levyStatus || '').toLowerCase().includes('levy')"
-                                      [class.cons-status-awaiting]="isOpenPeriodRow(r)">
-                                      {{ isOpenPeriodRow(r) ? 'Awaiting Billing' : (r.readingStatus || r.levyStatus || r.status || '-') }}
+                                    <span class="cons-status-badge" [class.cons-status-estimate]="(r.levyStatus || '').toLowerCase().includes('levy')">
+                                      {{ r.levyStatus || '-' }}
                                     </span>
                                   </td>
+                                  <td>{{ formatDate(r.testReadingDate) }}</td>
+                                  <td class="mono cons-td-numeric">{{ r.testReading ?? '-' }}</td>
+                                  <td>{{ r.declineReason || r.declinedReason || '-' }}</td>
+                                  <td class="mono">{{ r.meterErrorCode || r.errorCode || '-' }}</td>
+                                  <td>{{ r.importStatus || '-' }}</td>
+                                  <td>{{ r.meterChange || '-' }}</td>
+                                  <td>
+                                    <span class="cons-status-badge">{{ r.meterStatus || '-' }}</span>
+                                  </td>
+                                  <td>
+                                    <span class="cons-status-badge" [class.cons-status-actual]="(r.serviceStatus || '').toLowerCase() === 'active'">
+                                      {{ r.serviceStatus || '-' }}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <span class="cons-status-badge" [class.cons-status-actual]="(r.readingStatus || '').toLowerCase() === 'actual'"
+                                      [class.cons-status-estimate]="(r.readingStatus || '').toLowerCase().includes('estimat') || (r.readingStatus || '').toLowerCase().includes('levy')"
+                                      [class.cons-status-awaiting]="isOpenPeriodRow(r)">
+                                      {{ isOpenPeriodRow(r) ? 'Awaiting Billing' : (r.readingStatus || r.status || '-') }}
+                                    </span>
+                                  </td>
+                                  <td>{{ r.disconnectionStatus || r.disconnectStatus || '-' }}</td>
+                                  <td class="mono cons-td-numeric">{{ r.disconnectionReading || r.disconnectReading || '-' }}</td>
+                                  <td>{{ formatDate(r.disconnectionDate || r.disconnectDate) }}</td>
+                                  <td class="cons-td-remarks">{{ r.contractorRemarks || r.contractorRemark || r.remarks || '-' }}</td>
+                                  <td>{{ r.disconnectionLetter || r.disconnectLetter || '-' }}</td>
+                                  <td>{{ r.supportingDocument || r.supportingDoc || '-' }}</td>
+                                  <td>{{ r.capturedBy || r.capturedByUser || r.user || r.userName || '-' }}</td>
                                 </tr>
                               }
                             </tbody>
