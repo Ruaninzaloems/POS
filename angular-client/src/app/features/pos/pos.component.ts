@@ -1549,11 +1549,11 @@ export class PosComponent implements OnInit, OnDestroy {
       const data: any = await firstValueFrom(
         this.api.get<any>('/api/platinum/billing-payment-miscellaneous/get-groups')
       );
-      const arr = Array.isArray(data) ? data : [];
+      const arr = Array.isArray(data) ? data : (data?.data || data?.groups || []);
       this.miscGroups.set(arr.map((g: any) => ({
         groupId: g.groupId || g.group_ID || g.miscellaneousPaymentGroup || g.id || 0,
-        groupName: g.groupName || g.group_name || g.description || '',
-        description: g.description || g.groupName || '',
+        groupName: g.groupName || g.group_name || g.name || g.description || '',
+        description: g.description || g.name || g.groupName || '',
       })));
     } catch {
       this.toast.error('Failed to load miscellaneous payment groups.');

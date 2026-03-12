@@ -378,9 +378,23 @@ export function registerClearanceRoutes(app: Express, httpServer: Server): void 
   app.get("/api/platinum/billing-payment-miscellaneous/get-groups", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
+      console.log(`[misc-groups] Fetching groups from Platinum API...`);
       const data = await platinumGet(session, "/api/billing-payment-miscellaneous/get-groups");
-      handlePlatinumResult(res, data);
+      console.log(`[misc-groups] RAW response type=${typeof data}, isArray=${Array.isArray(data)}, keys=${data ? Object.keys(data).slice(0,10) : 'null'}, length=${Array.isArray(data) ? data.length : 'N/A'}`);
+      let groups = data;
+      if (data && !Array.isArray(data)) {
+        groups = data.data || data.paymentGroups || data.groups || data.miscellaneousPaymentGroups || [];
+        console.log(`[misc-groups] Unwrapped from object — found ${Array.isArray(groups) ? groups.length : 0} groups. Full response:`, JSON.stringify(data).substring(0, 500));
+      }
+      if (Array.isArray(groups) && groups.length > 0) {
+        console.log(`[misc-groups] First item:`, JSON.stringify(groups[0]));
+        console.log(`[misc-groups] Returning ${groups.length} groups`);
+      } else {
+        console.log(`[misc-groups] WARNING: No groups found. Raw data:`, JSON.stringify(data).substring(0, 500));
+      }
+      res.json(Array.isArray(groups) ? groups : []);
     } catch (e: any) {
+      console.error(`[misc-groups] Error:`, e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
