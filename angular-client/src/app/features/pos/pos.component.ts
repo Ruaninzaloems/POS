@@ -1838,13 +1838,30 @@ export class PosComponent implements OnInit, OnDestroy {
   private async submitMiscPaymentItem(item: BasketItem, userId: number, ci: any, finYear: string, cardNum: string, paymentTypeId: number, changeAmt: number, idempotencyToken?: string): Promise<any> {
     const md = item.miscData!;
     const isCardPayment = paymentTypeId === 3;
+    const sessionCashierId = ci?.id || ci?.cashier_ID || userId;
+    const sessionOfficeId = ci?.cashOffice_ID || 0;
     const vatAmount = md.isVatable ? Math.round(item.amountToPay * md.vatPercentage / (100 + md.vatPercentage) * 100) / 100 : 0;
     const tenderAmt = isCardPayment ? item.amountToPay : (this.cashAmount() > 0 ? this.cashRoundedAmount() : item.amountToPay);
-    const payload = {
-      userId,
-      cashierId: ci?.id || ci?.cashier_ID || userId,
-      cashOfficeId: ci?.cashOffice_ID || 0,
-      finYear,
+    const now = new Date();
+    const receiptDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    const miscAccount = {
+      capturerID: userId,
+      accountID: 0,
+      account_ID: 0,
+      oldAccountCode: '',
+      name: [md.lastName, md.initials].filter(Boolean).join(' ') || 'Walk-in',
+      sgNumber: '',
+      address: '',
+      outstandingAmount: item.amountToPay,
+      outStandingAmt: item.amountToPay,
+      accountStatus: 'Active',
+      accountType: 'Miscellaneous',
+      paymentAmount: item.amountToPay,
+      accountNumber: '',
+      receiptID: 0,
+      billId: 0,
+      clearanceId: 0,
       miscellaneousPaymentGroup: md.groupId,
       scoaItem: md.scoaItemId,
       description: md.description || md.scoaItemName,
@@ -1855,21 +1872,43 @@ export class PosComponent implements OnInit, OnDestroy {
       vatAmount,
       vatPercentage: md.vatPercentage || 0,
       isVatable: md.isVatable || false,
-      tenderAmount: tenderAmt,
-      changeAmount: isCardPayment ? 0 : Math.max(0, changeAmt),
-      paymentType: paymentTypeId,
-      receiptDate: new Date().toISOString(),
-      cardNo: isCardPayment ? cardNum : '',
-      expiryDate: isCardPayment ? this.formatCardExpiry(this.cardExpiry()) : '',
-      chequeNo: this.chequeNumber() || '',
-      bankBranch: this.banks().find((b: BankItem) => b.bankID === this.chequeBankId())?.bankName || '',
-      bankBranchCode: this.banks().find((b: BankItem) => b.bankID === this.chequeBankId())?.branchCode || '',
-      accHolderName: this.chequeName() || '',
     };
-    const logSafe = {...payload, cardNo: payload.cardNo ? '****' + (payload.cardNo as string).slice(-4) : '', expiryDate: payload.expiryDate ? '**/**' : ''};
-    console.log(`[submitMiscPayment] Payload:`, JSON.stringify(logSafe).substring(0, 1000));
+
+    const payload = {
+      accounts: [miscAccount],
+      requestModel: {
+        finYear,
+        receiptDate,
+        totalAmount: item.amountToPay,
+        tenderAmount: tenderAmt,
+        changeAmount: isCardPayment ? 0 : Math.max(0, changeAmt),
+        paymentType: paymentTypeId,
+        paymentOption: this.getPaymentOptionId(),
+        outStandingAmount: item.amountToPay,
+        cardNumber: isCardPayment ? cardNum : '',
+        expiryDate: isCardPayment ? this.formatCardExpiry(this.cardExpiry()) : '',
+        processingMonth: 0,
+        chequeNumber: '',
+        chequeDate: receiptDate,
+        accountHolderName: [md.lastName, md.initials].filter(Boolean).join(' ') || 'Walk-in',
+        bankName: '',
+        bankBranchCode: '',
+        cutOffID: 0,
+        debtArrangementId: 0,
+        cutOffAmount: 0,
+        debtAmount: 0,
+        sundryDebtorsId: '',
+        cashierId: sessionCashierId,
+        cashOfficeId: sessionOfficeId,
+        apiTransactionID: 0,
+        isReconciled: 0,
+        isCancelled: 0,
+      },
+    };
+    const logSafe = {...payload, requestModel: {...payload.requestModel, cardNumber: payload.requestModel.cardNumber ? '****' + payload.requestModel.cardNumber.slice(-4) : '', expiryDate: payload.requestModel.expiryDate ? '**/**' : ''}};
+    console.log(`[submitMiscPayment] Payload via submit-multiple-payment:`, JSON.stringify(logSafe).substring(0, 1500));
     const result: any = await firstValueFrom(
-      this.api.postWithIdempotency('/api/platinum/billing-payment-miscellaneous/submit', payload, idempotencyToken)
+      this.api.postWithIdempotency(`/api/platinum/billing-payment/submit-multiple-payment/${userId}`, payload, idempotencyToken)
     );
     console.log(`[submitMiscPayment] Response:`, JSON.stringify(result).substring(0, 500));
     if (result && result.isSuccess === false) {
