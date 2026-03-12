@@ -522,10 +522,14 @@ export class PosComponent implements OnInit, OnDestroy {
     try {
       const results: UnifiedSearchResult[] = [];
 
+      const cachedMiscGroups = this.miscGroups().length > 0
+        ? Promise.resolve(this.miscGroups())
+        : firstValueFrom(this.api.get<any>('/api/platinum/billing-payment-miscellaneous/get-groups'));
+
       const [accountData, groupData, miscData] = await Promise.allSettled([
         firstValueFrom(this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: query })),
         firstValueFrom(this.api.post('/api/platinum/billing-payment/search-account-groups', { searchTerm: query })),
-        firstValueFrom(this.api.get<any>('/api/platinum/billing-payment-miscellaneous/get-groups')),
+        cachedMiscGroups,
       ]);
 
       if (accountData.status === 'fulfilled') {
@@ -565,10 +569,11 @@ export class PosComponent implements OnInit, OnDestroy {
       }
 
       if (miscData.status === 'fulfilled') {
-        const groups = Array.isArray(miscData.value) ? miscData.value : [];
+        const rawMisc = miscData.value;
+        const groups = Array.isArray(rawMisc) ? rawMisc : (rawMisc?.data || rawMisc?.groups || []);
         const queryLower = query.toLowerCase();
         for (const g of groups) {
-          const name = g.groupName || g.group_name || g.description || '';
+          const name = g.groupName || g.group_name || g.name || g.description || '';
           if (name.toLowerCase().includes(queryLower)) {
             results.push({
               resultType: 'misc',
@@ -768,18 +773,29 @@ export class PosComponent implements OnInit, OnDestroy {
 
   async addMiscToBasket(groupData: any): Promise<void> {
     const groupId = groupData.groupId || groupData.group_ID || groupData.miscellaneousPaymentGroup || groupData.id || 0;
-    const groupName = groupData.groupName || groupData.group_name || groupData.description || '';
+    const groupName = groupData.groupName || groupData.group_name || groupData.name || groupData.description || '';
+
+    if (this.miscGroups().length === 0) {
+      await this.loadMiscGroups();
+    }
+    this.searchMode.set('tabs');
+    this.activeMode.set('misc');
+    this.miscSelectedGroupId.set(groupId);
+    this.clearUnifiedSearch();
+    await this.onMiscGroupChange(groupId);
+    this.toast.success(`Switched to Misc tab — "${groupName}" selected. Enter amount and add to basket.`);
+    return;
 
     let scoaItems: ScoaItem[] = [];
     try {
       const data: any = await firstValueFrom(
         this.api.get<any>('/api/platinum/billing-payment-miscellaneous/get-scoa-items', { groupId: String(groupId) })
       );
-      const arr = Array.isArray(data) ? data : [];
+      const arr = Array.isArray(data) ? data : (data?.data || data?.items || []);
       scoaItems = arr.map((s: any) => ({
         scoaItemId: s.scoaItemId || s.scoa_item_ID || s.scoaItem || s.id || 0,
         scoaItemName: s.scoaItemName || s.description || s.name || '',
-        description: s.description || s.scoaItemName || '',
+        description: s.description || s.scoaItemName || s.name || '',
         amount: s.amount || 0,
         isVatable: s.isVatable || false,
         vatPercentage: s.vatPercentage || 0,
