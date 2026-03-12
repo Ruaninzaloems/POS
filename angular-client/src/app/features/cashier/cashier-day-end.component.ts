@@ -113,7 +113,7 @@ export class CashierDayEndComponent implements OnInit {
   totalCashOnHandPlusDropBox = computed(() => this.cashOnHand() + this.dropBoxTotal());
 
   grandTotal = computed(() =>
-    this.totalCashOnHandPlusDropBox() + this.totalCreditAmt() + this.totalChequeAmt()
+    this.totalCashOnHandPlusDropBox() + this.totalCreditAmt()
   );
 
   cancellableReceipts = computed(() =>

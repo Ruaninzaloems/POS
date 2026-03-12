@@ -159,58 +159,6 @@
             </div>
           </div>
 
-          <div class="receipt-section">
-            <div class="section-header">
-              <h4 class="section-title">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>
-                </svg>
-                Cheque Receipts
-              </h4>
-              <span class="badge badge-default">{{ chequeList().length }} record{{ chequeList().length !== 1 ? 's' : '' }}</span>
-            </div>
-            <div class="table-container">
-              <table>
-                <thead>
-                  <tr class="table-header-accent">
-                    <th>No</th>
-                    <th>Account/Invoice</th>
-                    <th>Receipt No</th>
-                    <th>Date</th>
-                    <th>Cancelled</th>
-                    <th>Cheque No</th>
-                    <th class="text-right">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @if (chequeList().length === 0) {
-                    <tr><td colspan="7" class="empty-cell">No records to display</td></tr>
-                  } @else {
-                    @for (item of chequeList(); track $index) {
-                      <tr>
-                        <td>{{ $index + 1 }}</td>
-                        <td class="font-mono">{{ item.accountNumber || item.accountId || item.invoiceNumber || '-' }}</td>
-                        <td class="font-mono">{{ item.receiptNo || item.receipt_no || '-' }}</td>
-                        <td>{{ formatDate(item) }}</td>
-                        <td>
-                          @if (isCancelled(item)) {
-                            <span class="badge badge-danger">Yes</span>
-                          } @else {
-                            <span class="text-muted">No</span>
-                          }
-                        </td>
-                        <td class="font-mono">{{ item.chequeNo || item.chequeNumber || '-' }}</td>
-                        <td class="text-right font-mono font-bold">R {{ (item.amount || 0).toFixed(2) }}</td>
-                      </tr>
-                    }
-                  }
-                </tbody>
-              </table>
-            </div>
-            <div class="section-total">
-              <span class="total-badge">Total: R {{ totalChequeAmt().toFixed(2) }}</span>
-            </div>
-          </div>
         </div>
 
         <div class="section-banner">
@@ -322,10 +270,6 @@
             <div class="summary-row">
               <span class="summary-label">Total Cash on Hand + Drop Box (R)</span>
               <span class="summary-value">{{ totalCashOnHandPlusDropBox().toFixed(2) }}</span>
-            </div>
-            <div class="summary-row">
-              <span class="summary-label">Total Cheque Receipts (R)</span>
-              <span class="summary-value">{{ totalChequeAmt().toFixed(2) }}</span>
             </div>
             <div class="summary-row">
               <span class="summary-label">Total Debit/Credit Card Receipts (R)</span>
