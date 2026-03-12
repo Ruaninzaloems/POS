@@ -4571,8 +4571,8 @@
                                   <td>{{ formatDate(r.testReadingDate) }}</td>
                                   <td class="mono cons-td-numeric">{{ r.testReading ?? '-' }}</td>
                                   <td>{{ r.declineReason || r.declinedReason || '-' }}</td>
-                                  <td class="mono">{{ r.meterErrorCode || r.errorCode || '-' }}</td>
-                                  <td>{{ r.importStatus || '-' }}</td>
+                                  <td class="mono">{{ r.errorcode || r.errorCode || r.systemErrorCode || '-' }}</td>
+                                  <td>{{ r.flag || r.importStatus || '-' }}</td>
                                   <td>{{ r.meterChange || '-' }}</td>
                                   <td>
                                     <span class="cons-status-badge">{{ r.meterStatus || '-' }}</span>
@@ -4592,10 +4592,10 @@
                                   <td>{{ r.disconnectionStatus || r.disconnectStatus || '-' }}</td>
                                   <td class="mono cons-td-numeric">{{ r.disconnectionReading || r.disconnectReading || '-' }}</td>
                                   <td>{{ formatDate(r.disconnectionDate || r.disconnectDate) }}</td>
-                                  <td class="cons-td-remarks">{{ r.contractorRemarks || r.contractorRemark || r.remarks || '-' }}</td>
-                                  <td>{{ r.disconnectionLetter || r.disconnectLetter || '-' }}</td>
-                                  <td>{{ r.supportingDocument || r.supportingDoc || '-' }}</td>
-                                  <td>{{ r.capturedBy || r.capturedByUser || r.user || r.userName || '-' }}</td>
+                                  <td class="cons-td-remarks">{{ r.disconnectionRemarks || r.contractorRemarks || r.remarks || '-' }}</td>
+                                  <td>{{ r.disconnectionLetter || r.cutOffHeader_ID || '-' }}</td>
+                                  <td>{{ r.fileName || r.supportingDocument || (r.supportingDocs_ID ? 'Doc #' + r.supportingDocs_ID : '-') }}</td>
+                                  <td>{{ r.capturedBy || r.capturedByUser || r.flag || '-' }}</td>
                                 </tr>
                               }
                             </tbody>

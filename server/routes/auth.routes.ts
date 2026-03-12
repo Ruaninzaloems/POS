@@ -299,11 +299,13 @@ export function registerAuthRoutes(app: Express, httpServer: Server): void {
       }
 
       const reconcileStatus = resolvedCashierReconcile ? String(resolvedCashierReconcile.status || resolvedCashierReconcile.reconcileStatus || '').toLowerCase().trim() : '';
-      const isReconcileReturned = reconcileStatus.includes('return');
-      const isReconcileCompleted = reconcileStatus.includes('complet') || reconcileStatus.includes('post') || reconcileStatus.includes('finish') || reconcileStatus.includes('approved');
+      const reconcileStatusId = resolvedCashierReconcile ? Number(resolvedCashierReconcile.statusId || resolvedCashierReconcile.status_ID || resolvedCashierReconcile.statusID || 0) : 0;
+      const isReconcileReturned = reconcileStatus.includes('return') || reconcileStatusId === 176;
+      const isReconcileCompleted = reconcileStatus.includes('complet') || reconcileStatus.includes('post') || reconcileStatus.includes('finish') || reconcileStatus.includes('approved') || reconcileStatusId === 175;
       const isReconcileNotSubmitted = reconcileStatus.includes('not yet submitted') || reconcileStatus.includes('not submitted') || reconcileStatus === '';
       const hasDayEndReturned = resolvedCashierReconcile != null && isReconcileReturned;
-      const reconcileIsPending = resolvedCashierReconcile != null && !isReconcileReturned && !isReconcileCompleted && !isReconcileNotSubmitted;
+      const isPendingByStatusId = reconcileStatusId === 174;
+      const reconcileIsPending = resolvedCashierReconcile != null && (isPendingByStatusId || (!isReconcileReturned && !isReconcileCompleted && !isReconcileNotSubmitted));
       const hasPendingDayEnd = reconcileIsPending || (!resolvedCashierReconcile && session.dayEndPending === true);
       if (!resolvedCashierReconcile && session.dayEndPending === true) {
         console.log(`[active-cashier] API cashierReconcile is null but session.dayEndPending=true — treating as pending (API may not reflect submission yet)`);
@@ -316,7 +318,7 @@ export function registerAuthRoutes(app: Express, httpServer: Server): void {
         console.log(`[active-cashier] Reconcile record has COMPLETED status — day-end fully reconciled`);
         session.dayEndPending = false;
       }
-      console.log(`[active-cashier] validate-cashier result — registered: ${isCashierRegistered}, isActive: ${isSessionActive} (POS_Cashier.IsActive=${cashier?.isActive}), cashierId: ${cashierId}, officeId: ${activeOfficeId}, officeName: ${activeOfficeName}, cashierReconcile: ${resolvedCashierReconcile ? 'PRESENT' : 'null'}, reconcileStatus: "${reconcileStatus}", session.dayEndPending: ${session.dayEndPending}, hasPendingDayEnd: ${hasPendingDayEnd}, hasDayEndReturned: ${hasDayEndReturned}, isReconcileCompleted: ${isReconcileCompleted}`);
+      console.log(`[active-cashier] validate-cashier result — registered: ${isCashierRegistered}, isActive: ${isSessionActive} (POS_Cashier.IsActive=${cashier?.isActive}), cashierId: ${cashierId}, officeId: ${activeOfficeId}, officeName: ${activeOfficeName}, cashierReconcile: ${resolvedCashierReconcile ? 'PRESENT' : 'null'}, reconcileStatus: "${reconcileStatus}", reconcileStatusId: ${reconcileStatusId}, session.dayEndPending: ${session.dayEndPending}, hasPendingDayEnd: ${hasPendingDayEnd}, hasDayEndReturned: ${hasDayEndReturned}, isReconcileCompleted: ${isReconcileCompleted}`);
 
       if (cashierId && cashierId > 0) {
         (session as any).knownCashierId = cashierId;
@@ -340,6 +342,8 @@ export function registerAuthRoutes(app: Express, httpServer: Server): void {
         hasReceiptRange: receiptRange != null && receiptRange.isEnabled === true,
         hasPendingDayEnd,
         hasDayEndReturned,
+        reconcileStatusId: reconcileStatusId || undefined,
+        reconcileStatusDesc: reconcileStatus || undefined,
         dayEndReturnReason: hasDayEndReturned ? (resolvedCashierReconcile?.returnReason || resolvedCashierReconcile?.reason || resolvedCashierReconcile?.returnedReason || resolvedCashierReconcile?.comments || '') : undefined,
         cashierReconcile: resolvedCashierReconcile,
         details: cashierDetails,

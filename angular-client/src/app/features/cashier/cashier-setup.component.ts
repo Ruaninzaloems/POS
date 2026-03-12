@@ -75,6 +75,7 @@ export class CashierSetupComponent implements OnInit {
 
   resumingSession = signal(false);
   dayEndPending = signal(false);
+  dayEndPendingMessage = signal('');
   dayEndCompleted = signal(false);
   setupComplete = signal(false);
   existingCashierId = signal<number | null>(null);
@@ -147,6 +148,12 @@ export class CashierSetupComponent implements OnInit {
           this.dayEndPending.set(true);
           this.resumingSession.set(false);
           this.step2Status.set('success');
+          const statusId = data.reconcileStatusId;
+          if (statusId === 174) {
+            this.dayEndPendingMessage.set('Your previous day-end reconciliation has been submitted and is pending supervisor approval (Status: Pending). You cannot start a new session until a supervisor has authorised or returned your day-end.');
+          } else {
+            this.dayEndPendingMessage.set('Your previous day-end reconciliation is pending supervisor approval. You cannot start a new session until it has been authorised.');
+          }
         } else if (data.isActive === true && data.officeId) {
           this.resumingSession.set(true);
           this.step2Status.set('success');
@@ -176,6 +183,28 @@ export class CashierSetupComponent implements OnInit {
       this.error.set('Unable to connect to the billing system. Please try again later.');
       this.sessionLoading.set(false);
       return;
+    }
+
+    if (!this.dayEndPending() && this.cashierId()) {
+      try {
+        const reconcileData: any = await firstValueFrom(
+          this.api.get('/api/platinum/auth-day-end/cashier-reconcile-by-cashierid', {
+            cashierId: String(this.cashierId())
+          })
+        );
+        const statusId = Number(reconcileData?.statusId || reconcileData?.status_ID || reconcileData?.statusID || 0);
+        const statusDesc = String(reconcileData?.status || reconcileData?.reconcileStatus || '').toLowerCase().trim();
+        console.log('[cashier-setup] Direct reconcile check — statusId:', statusId, 'statusDesc:', statusDesc, 'data:', JSON.stringify(reconcileData));
+        if (statusId === 174 || (statusDesc && !statusDesc.includes('complet') && !statusDesc.includes('return') && !statusDesc.includes('approved') && !statusDesc.includes('not yet submitted') && !statusDesc.includes('not submitted') && statusDesc !== '')) {
+          this.dayEndPending.set(true);
+          this.resumingSession.set(false);
+          this.dayEndPendingMessage.set(statusId === 174
+            ? 'Your previous day-end reconciliation has been submitted and is pending supervisor approval (Status: Pending). You cannot start a new session until a supervisor has authorised or returned your day-end.'
+            : `Your day-end reconciliation is currently in status "${reconcileData?.status || reconcileData?.reconcileStatus || 'Pending'}". You cannot start a new session until it has been resolved.`);
+        }
+      } catch (reconcileErr: any) {
+        console.log('[cashier-setup] Direct reconcile check failed (non-blocking):', reconcileErr?.message);
+      }
     }
 
     this.step2Status.set('loading');

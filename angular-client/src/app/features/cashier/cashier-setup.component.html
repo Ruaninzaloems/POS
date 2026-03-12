@@ -368,11 +368,17 @@
 
           <div class="form-actions">
             @if (dayEndPending()) {
-              <div class="day-end-block-msg" data-testid="day-end-block-message">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="2">
-                  <circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>
-                </svg>
-                <span>Your previous day-end reconciliation is pending supervisor approval. You cannot start a new session until it has been approved.</span>
+              <div class="day-end-block-banner" data-testid="day-end-block-message">
+                <div class="day-end-block-icon-wrap">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>
+                  </svg>
+                </div>
+                <div class="day-end-block-content">
+                  <div class="day-end-block-title">Session Blocked — Day-End Pending</div>
+                  <div class="day-end-block-desc">{{ dayEndPendingMessage() || 'Your previous day-end reconciliation is pending supervisor approval. You cannot start a new session until it has been authorised.' }}</div>
+                  <div class="day-end-block-hint">Please contact your supervisor to authorise or return your day-end reconciliation.</div>
+                </div>
               </div>
             }
             <button
