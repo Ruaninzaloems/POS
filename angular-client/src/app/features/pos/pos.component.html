@@ -407,9 +407,9 @@
                   <div class="spinner-sm"></div>
                 } @else {
                   <select class="form-select" [ngModel]="miscSelectedGroupId()" (ngModelChange)="onMiscGroupChange(+$event)" data-testid="select-misc-group">
-                    <option [value]="0">-- Select Group --</option>
+                    <option [ngValue]="0">-- Select Group --</option>
                     @for (g of miscGroups(); track g.groupId) {
-                      <option [value]="g.groupId">{{ g.groupName }}</option>
+                      <option [ngValue]="g.groupId">{{ g.groupName }}</option>
                     }
                   </select>
                 }
@@ -419,7 +419,7 @@
                 @if (miscScoaLoading()) {
                   <div class="spinner-sm"></div>
                 } @else {
-                  <input class="form-input" type="text" [value]="miscScoaItems().length > 0 ? miscScoaItems()[0].scoaItemName : 'Select a group first'" readonly data-testid="text-misc-scoa" />
+                  <input class="form-input" type="text" [value]="getSelectedScoaName()" readonly data-testid="text-misc-scoa" />
                 }
               </div>
             </div>

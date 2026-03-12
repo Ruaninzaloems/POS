@@ -1632,7 +1632,18 @@ export class PosComponent implements OnInit, OnDestroy {
     }
   }
 
+  getSelectedScoaName(): string {
+    const items = this.miscScoaItems();
+    if (!items || items.length === 0) {
+      return this.miscSelectedGroupId() ? 'Loading...' : 'Select a group first';
+    }
+    const selectedId = this.miscSelectedScoaId();
+    const found = items.find(s => s.scoaItemId === selectedId);
+    return found ? found.scoaItemName : items[0].scoaItemName;
+  }
+
   async onMiscGroupChange(groupId: number): Promise<void> {
+    console.log(`[onMiscGroupChange] groupId=${groupId}, type=${typeof groupId}`);
     this.miscSelectedGroupId.set(groupId);
     this.miscScoaItems.set([]);
     this.miscSelectedScoaId.set(0);
@@ -1642,6 +1653,7 @@ export class PosComponent implements OnInit, OnDestroy {
       const data: any = await firstValueFrom(
         this.api.get<any>('/api/platinum/billing-payment-miscellaneous/get-scoa-items', { groupId: String(groupId) })
       );
+      console.log(`[onMiscGroupChange] Raw SCOA response for group ${groupId}:`, JSON.stringify(data).substring(0, 500));
       const arr = Array.isArray(data) ? data : (data?.data || data?.items || []);
       const mapped = arr.map((s: any) => ({
         scoaItemId: s.scoaItemId || s.scoa_item_ID || s.scoaItem || s.id || 0,
@@ -1651,11 +1663,15 @@ export class PosComponent implements OnInit, OnDestroy {
         isVatable: s.isVatable || false,
         vatPercentage: s.vatPercentage || 0,
       }));
+      console.log(`[onMiscGroupChange] Mapped ${mapped.length} SCOA items`);
+      mapped.forEach((m: ScoaItem) => console.log(`  SCOA: ${m.scoaItemId} - ${m.scoaItemName}`));
       this.miscScoaItems.set(mapped);
       if (mapped.length > 0) {
         this.miscSelectedScoaId.set(mapped[0].scoaItemId);
+        console.log(`[onMiscGroupChange] Auto-selected SCOA item: ${mapped[0].scoaItemId} - ${mapped[0].scoaItemName}`);
       }
-    } catch {
+    } catch (err) {
+      console.error(`[onMiscGroupChange] Error loading SCOA items for group ${groupId}:`, err);
       this.toast.error('Failed to load SCOA items.');
     } finally {
       this.miscScoaLoading.set(false);
