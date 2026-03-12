@@ -120,6 +120,10 @@ export class PosComponent implements OnInit, OnDestroy {
   receiptPhone = signal('');
   sendingReceipt = signal(false);
 
+  paymentProgressTotal = signal(0);
+  paymentProgressCurrent = signal(0);
+  paymentProgressLabel = signal('');
+
   showCancelDialog = signal(false);
   cancelReceiptNo = signal('');
   cancelReason = signal('');
@@ -220,6 +224,7 @@ export class PosComponent implements OnInit, OnDestroy {
   });
 
   isSplitTender = computed(() => {
+    if (this.activeTender() === 'cash+card') return true;
     const methods = [this.cashAmount() > 0, this.cardAmount() > 0, this.chequeAmount() > 0, this.eftAmount() > 0];
     return methods.filter(Boolean).length > 1;
   });
@@ -295,6 +300,8 @@ export class PosComponent implements OnInit, OnDestroy {
       return (t.isTicked || t.enabled) && desc.includes('eft');
     });
   });
+
+  canTenderCashCard = computed(() => this.canTenderCash() && this.canTenderCard());
 
   csvImportOpen = signal(false);
   csvStep = signal<'upload' | 'preview' | 'validate' | 'done'>('upload');
@@ -1009,9 +1016,43 @@ export class PosComponent implements OnInit, OnDestroy {
       (type === 'cash' && this.canTenderCash()) ||
       (type === 'card' && this.canTenderCard()) ||
       (type === 'cheque' && this.canTenderCheque()) ||
-      (type === 'eft' && this.canTenderEft());
+      (type === 'eft' && this.canTenderEft()) ||
+      (type === 'cash+card' && this.canTenderCashCard());
     if (!allowed) return;
+    const total = this.basket.totalToPay();
+    if (type === 'cash+card') {
+      if (this.cashAmount() <= 0 && this.cardAmount() <= 0) {
+        this.cashAmount.set(0);
+        this.cardAmount.set(total);
+      }
+    } else if (type === 'cash') {
+      this.cardAmount.set(0);
+      this.cardNumber.set('');
+      this.cardExpiry.set('');
+      this.cashAmount.set(total);
+    } else if (type === 'card') {
+      this.cashAmount.set(0);
+      this.cardAmount.set(total);
+    }
     this.activeTender.set(type);
+  }
+
+  onCashCardCashChange(val: number): void {
+    this.cashAmount.set(val);
+    const remaining = Math.max(0, this.basket.totalToPay() - (val > 0 ? this.basket.roundToNearest10c(val) : 0));
+    this.cardAmount.set(Math.round(remaining * 100) / 100);
+  }
+
+  onCashCardCardChange(val: number): void {
+    this.cardAmount.set(val);
+    const remaining = Math.max(0, this.basket.totalToPay() - val);
+    const rounded = this.basket.roundToNearest10c(remaining);
+    this.cashAmount.set(rounded);
+  }
+
+  addDenominationCashCard(value: number): void {
+    const newCash = Math.round((this.cashAmount() + value) * 100) / 100;
+    this.onCashCardCashChange(newCash);
   }
 
   addDenomination(value: number): void {
@@ -1074,6 +1115,10 @@ export class PosComponent implements OnInit, OnDestroy {
         return eftType?.posPaymentType_ID || eftType?.paymentTypeId || 5;
       }
     }
+    if (tt === 'cash+card') {
+      const cashType = types.find((t: any) => (t.posPaymentTypeDesc || t.name || '').toLowerCase().includes('cash'));
+      return cashType?.posPaymentType_ID || cashType?.paymentTypeId || 1;
+    }
     if (tt === 'card' || this.cardAmount() > 0) {
       const cardType = types.find((t: any) => (t.posPaymentTypeDesc || t.name || '').toLowerCase().includes('card'));
       return cardType?.posPaymentType_ID || cardType?.paymentTypeId || 3;
@@ -1105,6 +1150,39 @@ export class PosComponent implements OnInit, OnDestroy {
     const arr = new Uint8Array(16);
     crypto.getRandomValues(arr);
     return Array.from(arr, b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  private updateProgress(current: number, total: number, label: string): void {
+    this.paymentProgressCurrent.set(current);
+    this.paymentProgressTotal.set(total);
+    this.paymentProgressLabel.set(label);
+  }
+
+  private countExpectedReceipts(): number {
+    const ordered = this.basket.orderedItems();
+    const isCashCard = this.activeTender() === 'cash+card' && this.cashAmount() > 0 && this.cardAmount() > 0;
+    const accountItems = ordered.filter(i => i.type === 'account' && i.amountToPay > 0);
+    const clearanceItems = ordered.filter(i => i.type === 'clearance' && i.amountToPay > 0 && i.clearanceData);
+    const prepaidItems = ordered.filter(i => i.type === 'prepaid' && i.amountToPay > 0 && i.prepaidData);
+    const miscItems = ordered.filter(i => i.type === 'misc' && i.amountToPay > 0 && i.miscData);
+    let count = 0;
+    if (accountItems.length > 0) count += isCashCard ? 2 : 1;
+    const nonAcctCount = clearanceItems.length + prepaidItems.length + miscItems.length;
+    if (isCashCard) {
+      const cashBudget = this.cashRoundedAmount();
+      let remaining = cashBudget;
+      const allNonAcct = [...clearanceItems, ...prepaidItems, ...miscItems];
+      for (const item of allNonAcct) {
+        const cashPortion = Math.min(item.amountToPay, Math.max(0, remaining));
+        const cardPortion = item.amountToPay - cashPortion;
+        if (cashPortion > 0.001) count++;
+        if (cardPortion > 0.001) count++;
+        remaining = Math.max(0, remaining - cashPortion);
+      }
+    } else {
+      count += nonAcctCount;
+    }
+    return Math.max(count, 1);
   }
 
   async processPayment(): Promise<void> {
@@ -1153,6 +1231,8 @@ export class PosComponent implements OnInit, OnDestroy {
       }
     }
 
+    const expectedTotal = this.countExpectedReceipts();
+    this.updateProgress(0, expectedTotal, 'Preparing payment...');
     this.processingPayment.set(true);
     this.lastPaymentTimestamp = Date.now();
     const paymentToken = this.generateIdempotencyToken();
@@ -1163,111 +1243,205 @@ export class PosComponent implements OnInit, OnDestroy {
     const receiptDate = `${dateNow.getFullYear()}-${String(dateNow.getMonth() + 1).padStart(2, '0')}-${String(dateNow.getDate()).padStart(2, '0')}T00:00:00`;
     const cardNum = this.cardNumber().replace(/\s/g, '');
     const allResults: ReceiptResult[] = [];
+    let receiptCounter = 0;
+
+    const isCashCard = this.activeTender() === 'cash+card' && this.cashAmount() > 0 && this.cardAmount() > 0;
+    const cashPaymentTypeId = this.getPaymentTypeId('cash');
+    const cardPaymentTypeId = this.getPaymentTypeId('card');
+    const cashTenderAmt = this.cashRoundedAmount();
+    const cardTenderAmt = this.cardAmount();
+    const effectiveChangeAmount = this.changeAmount();
 
     try {
       const ordered = this.basket.orderedItems();
-      const accountItems = ordered.filter(i => i.type === 'account');
-      const clearanceItems = ordered.filter(i => i.type === 'clearance');
-      const prepaidItems = ordered.filter(i => i.type === 'prepaid');
-      const miscItems = ordered.filter(i => i.type === 'misc');
-
-      const isSplit = this.isSplitTender();
-      const cashPaymentTypeId = this.getPaymentTypeId('cash');
-      const cardPaymentTypeId = this.getPaymentTypeId('card');
+      const accountItems = ordered.filter(i => i.type === 'account' && i.amountToPay > 0);
+      const clearanceItems = ordered.filter(i => i.type === 'clearance' && i.amountToPay > 0 && i.clearanceData);
+      const prepaidItems = ordered.filter(i => i.type === 'prepaid' && i.amountToPay > 0 && i.prepaidData);
+      const miscItems = ordered.filter(i => i.type === 'misc' && i.amountToPay > 0 && i.miscData);
 
       if (accountItems.length > 0) {
-        const accountItemsWithPay = accountItems.filter(i => i.amountToPay > 0);
-        if (accountItemsWithPay.length > 0) {
-          try {
-            const stagingPayload = accountItemsWithPay.map(item => {
-              const ad = item.accountData!;
-              const orig = ad.originalData || {};
-              return {
-                account_ID: ad.accountId,
-                accountNumber: ad.accountNumber,
-                name: ad.name,
-                outStandingAmt: item.amountDue,
-                paymentAmount: item.amountToPay,
-                deliveryAddress: ad.address || orig.deliveryAddress || '',
-                statusDesc: orig.statusDesc || '-',
-                accountDesc: orig.accountDesc || '',
-                erfNumber: orig.erfNumber || '',
-                billId: orig.billId ?? orig.bill_ID ?? null,
-              };
-            });
-            await firstValueFrom(
-              this.api.post(`/api/platinum/billing-payment/save-multiple-account-payment?userId=${userId}`, stagingPayload)
-            );
-          } catch (stageErr: any) {
-            console.warn('[processPayment] Staging save failed (non-blocking):', stageErr?.message);
-          }
+        try {
+          const stagingPayload = accountItems.map(item => {
+            const ad = item.accountData!;
+            const orig = ad.originalData || {};
+            return {
+              account_ID: ad.accountId,
+              accountNumber: ad.accountNumber,
+              name: ad.name,
+              outStandingAmt: item.amountDue,
+              paymentAmount: item.amountToPay,
+              deliveryAddress: ad.address || orig.deliveryAddress || '',
+              statusDesc: orig.statusDesc || '-',
+              accountDesc: orig.accountDesc || '',
+              erfNumber: orig.erfNumber || '',
+              billId: orig.billId ?? orig.bill_ID ?? null,
+            };
+          });
+          await firstValueFrom(
+            this.api.post(`/api/platinum/billing-payment/save-multiple-account-payment?userId=${userId}`, stagingPayload)
+          );
+        } catch (stageErr: any) {
+          console.warn('[processPayment] Staging save failed (non-blocking):', stageErr?.message);
+        }
 
-          if (isSplit && this.cashAmount() > 0 && this.cardAmount() > 0) {
-            const allocation = this.basket.allocateSplitTender(this.cashRoundedAmount(), this.cardAmount());
-            const cashAcctItems = allocation.cashItems.filter(i => i.type === 'account');
-            const cardAcctItems = allocation.cardItems.filter(i => i.type === 'account');
+        if (isCashCard) {
+          const allocation = this.basket.allocateSplitTender(cashTenderAmt, cardTenderAmt);
+          const cashAcctItems = allocation.cashItems.filter(i => i.type === 'account');
+          const cardAcctItems = allocation.cardItems.filter(i => i.type === 'account');
 
-            if (cashAcctItems.length > 0) {
-              const cashResult = await this.submitAccountPayment(cashAcctItems, userId!, finYear, receiptDate, cashPaymentTypeId, '', allocation.cashTotal, `${paymentToken}-cash`);
-              const cashReceiptNo = await this.resolveReceiptNo(cashResult);
-              allResults.push({ receiptNumber: cashReceiptNo, tenderType: 'cash', amount: allocation.cashTotal, items: cashAcctItems, rawResponse: cashResult });
-            }
-            if (cardAcctItems.length > 0) {
-              const cardResult = await this.submitAccountPayment(cardAcctItems, userId!, finYear, receiptDate, cardPaymentTypeId, cardNum, allocation.cardTotal, `${paymentToken}-card`);
-              const cardReceiptNo = await this.resolveReceiptNo(cardResult);
-              allResults.push({ receiptNumber: cardReceiptNo, tenderType: 'card', amount: allocation.cardTotal, items: cardAcctItems, rawResponse: cardResult });
-            }
-          } else {
-            const paymentTypeId = this.getPaymentTypeId();
-            const result = await this.submitAccountPayment(accountItemsWithPay, userId!, finYear, receiptDate, paymentTypeId, cardNum, this.basket.totalToPay(), paymentToken);
-            const acctReceiptNo = await this.resolveReceiptNo(result);
-            allResults.push({ receiptNumber: acctReceiptNo, tenderType: this.activeTender(), amount: accountItemsWithPay.reduce((s, i) => s + i.amountToPay, 0), items: accountItemsWithPay, rawResponse: result });
+          if (cashAcctItems.length > 0) {
+            receiptCounter++;
+            this.updateProgress(receiptCounter, expectedTotal, `Posting cash receipt for account(s)... (${receiptCounter} of ${expectedTotal})`);
+            const cashResult = await this.submitAccountPayment(cashAcctItems, userId!, finYear, receiptDate, cashPaymentTypeId, '', allocation.cashTotal, `${paymentToken}-acct-cash`);
+            const cashReceiptNo = await this.resolveReceiptNo(cashResult);
+            allResults.push({ receiptNumber: cashReceiptNo, tenderType: 'cash', amount: allocation.cashTotal, items: cashAcctItems, rawResponse: cashResult });
           }
+          if (cardAcctItems.length > 0) {
+            receiptCounter++;
+            this.updateProgress(receiptCounter, expectedTotal, `Posting card receipt for account(s)... (${receiptCounter} of ${expectedTotal})`);
+            const cardResult = await this.submitAccountPayment(cardAcctItems, userId!, finYear, receiptDate, cardPaymentTypeId, cardNum, allocation.cardTotal, `${paymentToken}-acct-card`);
+            const cardReceiptNo = await this.resolveReceiptNo(cardResult);
+            allResults.push({ receiptNumber: cardReceiptNo, tenderType: 'card', amount: allocation.cardTotal, items: cardAcctItems, rawResponse: cardResult });
+          }
+        } else {
+          receiptCounter++;
+          this.updateProgress(receiptCounter, expectedTotal, `Posting receipt for account(s)... (${receiptCounter} of ${expectedTotal})`);
+          const paymentTypeId = this.getPaymentTypeId();
+          const result = await this.submitAccountPayment(accountItems, userId!, finYear, receiptDate, paymentTypeId, cardNum, this.basket.totalToPay(), paymentToken);
+          const acctReceiptNo = await this.resolveReceiptNo(result);
+          allResults.push({ receiptNumber: acctReceiptNo, tenderType: this.activeTender(), amount: accountItems.reduce((s, i) => s + i.amountToPay, 0), items: accountItems, rawResponse: result });
         }
       }
 
-      const effectivePaymentTypeId = this.getPaymentTypeId();
-      const effectiveTenderType = this.activeTender();
-      const effectiveChangeAmount = this.changeAmount();
+      let changeAppliedOnce = false;
+      const applyChangeOnce = (): number => {
+        if (changeAppliedOnce) return 0;
+        changeAppliedOnce = true;
+        return effectiveChangeAmount;
+      };
 
-      const validClearance = clearanceItems.filter(i => i.amountToPay > 0 && i.clearanceData);
-      const validPrepaid = prepaidItems.filter(i => i.amountToPay > 0 && i.prepaidData);
-      const validMisc = miscItems.filter(i => i.amountToPay > 0 && i.miscData);
-      let changeApplied = allResults.length > 0;
+      const allNonAcctItems = [...clearanceItems, ...prepaidItems, ...miscItems];
+      const lastNonAcctIndex = allNonAcctItems.length - 1;
+      let nonAcctIdx = -1;
 
-      for (let ci2 = 0; ci2 < validClearance.length; ci2++) {
-        const clearItem = validClearance[ci2];
-        const isLastItem = (ci2 === validClearance.length - 1) && validPrepaid.length === 0 && validMisc.length === 0;
-        const itemChange = (!changeApplied && isLastItem) ? effectiveChangeAmount : 0;
-        if (isLastItem && itemChange > 0) changeApplied = true;
-        const result = await this.submitClearancePaymentItem(clearItem, userId!, ci, finYear, cardNum, effectivePaymentTypeId, itemChange, `${paymentToken}-clr${ci2}`);
-        console.log(`[processPayment] Clearance result:`, JSON.stringify(result).substring(0, 500));
-        const clrReceiptNo = await this.resolveReceiptNo(result);
-        allResults.push({ receiptNumber: clrReceiptNo, tenderType: effectiveTenderType, amount: clearItem.amountToPay, items: [clearItem], rawResponse: result });
+      for (let ci2 = 0; ci2 < clearanceItems.length; ci2++) {
+        nonAcctIdx++;
+        const clearItem = clearanceItems[ci2];
+        const itemLabel = clearItem.clearanceData?.ownerName || `Clearance #${ci2 + 1}`;
+        const isLastNonAcct = nonAcctIdx === lastNonAcctIndex;
+
+        if (isCashCard) {
+          const cashUsed = allResults.filter(r => r.tenderType === 'cash').reduce((s, r) => s + r.amount, 0);
+          const cashPortion = Math.min(clearItem.amountToPay, Math.max(0, cashTenderAmt - cashUsed));
+          const cardPortion = Math.round((clearItem.amountToPay - cashPortion) * 100) / 100;
+
+          if (cashPortion > 0) {
+            receiptCounter++;
+            this.updateProgress(receiptCounter, expectedTotal, `Posting cash clearance for ${itemLabel}... (${receiptCounter} of ${expectedTotal})`);
+            const cashItem = { ...clearItem, amountToPay: cashPortion };
+            const chg = (isLastNonAcct && cardPortion <= 0) ? applyChangeOnce() : 0;
+            const result = await this.submitClearancePaymentItem(cashItem, userId!, ci, finYear, '', cashPaymentTypeId, chg, `${paymentToken}-clr${ci2}-cash`);
+            const receiptNo = await this.resolveReceiptNo(result);
+            allResults.push({ receiptNumber: receiptNo, tenderType: 'cash', amount: cashPortion, items: [clearItem], rawResponse: result });
+          }
+          if (cardPortion > 0) {
+            receiptCounter++;
+            this.updateProgress(receiptCounter, expectedTotal, `Posting card clearance for ${itemLabel}... (${receiptCounter} of ${expectedTotal})`);
+            const cardItem = { ...clearItem, amountToPay: cardPortion };
+            const result = await this.submitClearancePaymentItem(cardItem, userId!, ci, finYear, cardNum, cardPaymentTypeId, 0, `${paymentToken}-clr${ci2}-card`);
+            const receiptNo = await this.resolveReceiptNo(result);
+            allResults.push({ receiptNumber: receiptNo, tenderType: 'card', amount: cardPortion, items: [clearItem], rawResponse: result });
+          }
+        } else {
+          receiptCounter++;
+          this.updateProgress(receiptCounter, expectedTotal, `Posting clearance for ${itemLabel}... (${receiptCounter} of ${expectedTotal})`);
+          const itemChange = isLastNonAcct ? applyChangeOnce() : 0;
+          const paymentTypeId = this.getPaymentTypeId();
+          const result = await this.submitClearancePaymentItem(clearItem, userId!, ci, finYear, cardNum, paymentTypeId, itemChange, `${paymentToken}-clr${ci2}`);
+          const receiptNo = await this.resolveReceiptNo(result);
+          allResults.push({ receiptNumber: receiptNo, tenderType: this.activeTender(), amount: clearItem.amountToPay, items: [clearItem], rawResponse: result });
+        }
       }
 
-      for (let pi = 0; pi < validPrepaid.length; pi++) {
-        const prepItem = validPrepaid[pi];
-        const isLastItem = (pi === validPrepaid.length - 1) && validMisc.length === 0;
-        const itemChange = (!changeApplied && isLastItem) ? effectiveChangeAmount : 0;
-        if (isLastItem && itemChange > 0) changeApplied = true;
-        const result = await this.submitPrepaidPaymentItem(prepItem, effectivePaymentTypeId, itemChange, `${paymentToken}-prep${pi}`);
-        console.log(`[processPayment] Prepaid result:`, JSON.stringify(result).substring(0, 500));
-        const prepReceiptNo = await this.resolveReceiptNo(result);
-        allResults.push({ receiptNumber: prepReceiptNo, tenderType: effectiveTenderType, amount: prepItem.amountToPay, items: [prepItem], rawResponse: result });
+      for (let pi = 0; pi < prepaidItems.length; pi++) {
+        nonAcctIdx++;
+        const prepItem = prepaidItems[pi];
+        const itemLabel = prepItem.prepaidData?.meterNumber || `Prepaid #${pi + 1}`;
+        const isLastNonAcct = nonAcctIdx === lastNonAcctIndex;
+
+        if (isCashCard) {
+          const cashUsed = allResults.filter(r => r.tenderType === 'cash').reduce((s, r) => s + r.amount, 0);
+          const cashPortion = Math.min(prepItem.amountToPay, Math.max(0, cashTenderAmt - cashUsed));
+          const cardPortion = Math.round((prepItem.amountToPay - cashPortion) * 100) / 100;
+
+          if (cashPortion > 0) {
+            receiptCounter++;
+            this.updateProgress(receiptCounter, expectedTotal, `Posting cash prepaid for ${itemLabel}... (${receiptCounter} of ${expectedTotal})`);
+            const cashItem = { ...prepItem, amountToPay: cashPortion };
+            const chg = (isLastNonAcct && cardPortion <= 0) ? applyChangeOnce() : 0;
+            const result = await this.submitPrepaidPaymentItem(cashItem, cashPaymentTypeId, chg, `${paymentToken}-prep${pi}-cash`);
+            const receiptNo = await this.resolveReceiptNo(result);
+            allResults.push({ receiptNumber: receiptNo, tenderType: 'cash', amount: cashPortion, items: [prepItem], rawResponse: result });
+          }
+          if (cardPortion > 0) {
+            receiptCounter++;
+            this.updateProgress(receiptCounter, expectedTotal, `Posting card prepaid for ${itemLabel}... (${receiptCounter} of ${expectedTotal})`);
+            const cardItem = { ...prepItem, amountToPay: cardPortion };
+            const result = await this.submitPrepaidPaymentItem(cardItem, cardPaymentTypeId, 0, `${paymentToken}-prep${pi}-card`);
+            const receiptNo = await this.resolveReceiptNo(result);
+            allResults.push({ receiptNumber: receiptNo, tenderType: 'card', amount: cardPortion, items: [prepItem], rawResponse: result });
+          }
+        } else {
+          receiptCounter++;
+          this.updateProgress(receiptCounter, expectedTotal, `Posting prepaid for ${itemLabel}... (${receiptCounter} of ${expectedTotal})`);
+          const itemChange = isLastNonAcct ? applyChangeOnce() : 0;
+          const paymentTypeId = this.getPaymentTypeId();
+          const result = await this.submitPrepaidPaymentItem(prepItem, paymentTypeId, itemChange, `${paymentToken}-prep${pi}`);
+          const receiptNo = await this.resolveReceiptNo(result);
+          allResults.push({ receiptNumber: receiptNo, tenderType: this.activeTender(), amount: prepItem.amountToPay, items: [prepItem], rawResponse: result });
+        }
       }
 
-      for (let mi = 0; mi < validMisc.length; mi++) {
-        const miscItem = validMisc[mi];
-        const isLastItem = (mi === validMisc.length - 1);
-        const itemChange = (!changeApplied && isLastItem) ? effectiveChangeAmount : 0;
-        if (isLastItem && itemChange > 0) changeApplied = true;
-        const result = await this.submitMiscPaymentItem(miscItem, userId!, ci, finYear, cardNum, effectivePaymentTypeId, itemChange, `${paymentToken}-misc${mi}`);
-        console.log(`[processPayment] Misc result:`, JSON.stringify(result).substring(0, 500));
-        const miscReceiptNo = await this.resolveReceiptNo(result);
-        allResults.push({ receiptNumber: miscReceiptNo, tenderType: effectiveTenderType, amount: miscItem.amountToPay, items: [miscItem], rawResponse: result });
+      for (let mi = 0; mi < miscItems.length; mi++) {
+        nonAcctIdx++;
+        const miscItem = miscItems[mi];
+        const itemLabel = miscItem.miscData?.scoaItemName || `Misc #${mi + 1}`;
+        const isLastNonAcct = nonAcctIdx === lastNonAcctIndex;
+
+        if (isCashCard) {
+          const cashUsed = allResults.filter(r => r.tenderType === 'cash').reduce((s, r) => s + r.amount, 0);
+          const cashPortion = Math.min(miscItem.amountToPay, Math.max(0, cashTenderAmt - cashUsed));
+          const cardPortion = Math.round((miscItem.amountToPay - cashPortion) * 100) / 100;
+
+          if (cashPortion > 0) {
+            receiptCounter++;
+            this.updateProgress(receiptCounter, expectedTotal, `Posting cash misc for ${itemLabel}... (${receiptCounter} of ${expectedTotal})`);
+            const cashMisc = { ...miscItem, amountToPay: cashPortion };
+            const chg = (isLastNonAcct && cardPortion <= 0) ? applyChangeOnce() : 0;
+            const result = await this.submitMiscPaymentItem(cashMisc, userId!, ci, finYear, '', cashPaymentTypeId, chg, `${paymentToken}-misc${mi}-cash`);
+            const receiptNo = await this.resolveReceiptNo(result);
+            allResults.push({ receiptNumber: receiptNo, tenderType: 'cash', amount: cashPortion, items: [miscItem], rawResponse: result });
+          }
+          if (cardPortion > 0) {
+            receiptCounter++;
+            this.updateProgress(receiptCounter, expectedTotal, `Posting card misc for ${itemLabel}... (${receiptCounter} of ${expectedTotal})`);
+            const cardMisc = { ...miscItem, amountToPay: cardPortion };
+            const result = await this.submitMiscPaymentItem(cardMisc, userId!, ci, finYear, cardNum, cardPaymentTypeId, 0, `${paymentToken}-misc${mi}-card`);
+            const receiptNo = await this.resolveReceiptNo(result);
+            allResults.push({ receiptNumber: receiptNo, tenderType: 'card', amount: cardPortion, items: [miscItem], rawResponse: result });
+          }
+        } else {
+          receiptCounter++;
+          this.updateProgress(receiptCounter, expectedTotal, `Posting misc for ${itemLabel}... (${receiptCounter} of ${expectedTotal})`);
+          const itemChange = isLastNonAcct ? applyChangeOnce() : 0;
+          const paymentTypeId = this.getPaymentTypeId();
+          const result = await this.submitMiscPaymentItem(miscItem, userId!, ci, finYear, cardNum, paymentTypeId, itemChange, `${paymentToken}-misc${mi}`);
+          const receiptNo = await this.resolveReceiptNo(result);
+          allResults.push({ receiptNumber: receiptNo, tenderType: this.activeTender(), amount: miscItem.amountToPay, items: [miscItem], rawResponse: result });
+        }
       }
 
+      this.updateProgress(expectedTotal, expectedTotal, 'All receipts posted successfully!');
       this.receiptResults.set(allResults);
       this.showReceipt.set(true);
       this.showPaymentPanel.set(false);
@@ -1277,9 +1451,21 @@ export class PosComponent implements OnInit, OnDestroy {
 
       this.autoPrintReceipts();
     } catch (e: any) {
-      this.toast.error(e?.error?.message || e?.message || 'Payment processing failed.');
+      if (allResults.length > 0) {
+        this.receiptResults.set(allResults);
+        this.showReceipt.set(true);
+        this.showPaymentPanel.set(false);
+        this.toast.error(`Partial success: ${allResults.length} receipt(s) posted. Error on remaining: ${e?.error?.message || e?.message}`);
+        this.basket.clearAll();
+        this.resetTenderFields();
+      } else {
+        this.toast.error(e?.error?.message || e?.message || 'Payment processing failed.');
+      }
     } finally {
       this.processingPayment.set(false);
+      this.paymentProgressTotal.set(0);
+      this.paymentProgressCurrent.set(0);
+      this.paymentProgressLabel.set('');
     }
   }
 
@@ -1349,7 +1535,8 @@ export class PosComponent implements OnInit, OnDestroy {
           isCancelled: 0,
         },
       };
-      console.log(`[submitAccountPayment] Single consumer payload for account ${ad.accountNumber}:`, JSON.stringify(payload).substring(0, 1000));
+      const logSafePayload = {...payload, requestModel: {...payload.requestModel, cardNumber: payload.requestModel.cardNumber ? '****' + payload.requestModel.cardNumber.slice(-4) : '', expiryDate: payload.requestModel.expiryDate ? '**/**' : ''}};
+      console.log(`[submitAccountPayment] Single consumer payload for account ${ad.accountNumber}:`, JSON.stringify(logSafePayload).substring(0, 1000));
       const result: any = await firstValueFrom(
         this.api.postWithIdempotency(`/api/platinum/billing-payment/submit-consumer-payment/${userId}`, payload, idempotencyToken)
       );
@@ -1415,7 +1602,8 @@ export class PosComponent implements OnInit, OnDestroy {
           isCancelled: 0,
         },
       };
-      console.log(`[submitAccountPayment] Multi payment for ${submitAccounts.length} accounts:`, JSON.stringify(payload).substring(0, 1000));
+      const logSafeMulti = {...payload, requestModel: {...payload.requestModel, cardNumber: payload.requestModel.cardNumber ? '****' + payload.requestModel.cardNumber.slice(-4) : '', expiryDate: payload.requestModel.expiryDate ? '**/**' : ''}};
+      console.log(`[submitAccountPayment] Multi payment for ${submitAccounts.length} accounts:`, JSON.stringify(logSafeMulti).substring(0, 1000));
       const result: any = await firstValueFrom(
         this.api.postWithIdempotency(`/api/platinum/billing-payment/submit-multiple-payment/${userId}`, payload, idempotencyToken)
       );
@@ -1907,6 +2095,22 @@ export class PosComponent implements OnInit, OnDestroy {
     } finally {
       this.printingReceipt.set(false);
     }
+  }
+
+  getReceiptGrandTotal(): number {
+    return this.receiptResults().reduce((s, r) => s + r.amount, 0);
+  }
+
+  getReceiptItemDesc(r: ReceiptResult): string {
+    if (!r.items || r.items.length === 0) return '';
+    const item = r.items[0];
+    if (item.type === 'account') {
+      return r.items.length > 1 ? `${r.items.length} account(s)` : (item.accountData?.accountNumber || item.label);
+    }
+    if (item.type === 'clearance') return item.clearanceData?.ownerName || 'Clearance';
+    if (item.type === 'prepaid') return `Meter ${item.prepaidData?.meterNumber || ''}`;
+    if (item.type === 'misc') return item.miscData?.scoaItemName || 'Miscellaneous';
+    return item.label || '';
   }
 
   private async autoPrintReceipts(): Promise<void> {

@@ -689,6 +689,12 @@
               EFT
             </button>
           }
+          @if (canTenderCashCard()) {
+            <button class="tender-tab tender-tab-split" [class.active]="activeTender() === 'cash+card'" (click)="setTenderType('cash+card')" data-testid="tender-tab-cashcard">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/></svg>
+              Cash + Card
+            </button>
+          }
         </div>
 
         <div class="tender-body">
@@ -746,6 +752,61 @@
               <input type="text" class="form-input" placeholder="Bank reference number" [ngModel]="eftReference()" (ngModelChange)="eftReference.set($event)" data-testid="input-eft-ref" />
             </div>
           }
+          @if (activeTender() === 'cash+card') {
+            <div class="tender-section cashcard-section">
+              <div class="cashcard-split-header">
+                <span class="split-badge">Split: Cash + Card</span>
+                <span class="cashcard-total">Total Due: R {{ formatCurrency(basket.totalToPay()) }}</span>
+              </div>
+              <div class="cashcard-grid">
+                <div class="cashcard-col">
+                  <div class="cashcard-col-header cash-header">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/></svg>
+                    Cash Portion
+                  </div>
+                  <label class="form-label">Cash Amount (R)</label>
+                  <input type="number" class="form-input tender-amount-input" step="0.10" min="0" placeholder="0.00" [ngModel]="cashAmount() || null" (ngModelChange)="onCashCardCashChange(+$event || 0)" (focus)="$event.target.select()" data-testid="input-cashcard-cash" />
+                  @if (cashRoundingDiff() !== 0) {
+                    <div class="rounding-note">Rounded to R {{ formatCurrency(cashRoundedAmount()) }} (nearest 10c)</div>
+                  }
+                  <div class="denomination-grid denomination-grid-sm">
+                    @for (d of denominations; track d) {
+                      <button class="denom-btn denom-btn-sm" (click)="addDenominationCashCard(d)" [attr.data-testid]="'btn-cashcard-denom-' + d">
+                        @if (d >= 1) { R{{ d }} } @else { {{ d * 100 }}c }
+                      </button>
+                    }
+                  </div>
+                </div>
+                <div class="cashcard-divider"></div>
+                <div class="cashcard-col">
+                  <div class="cashcard-col-header card-header">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                    Card Portion
+                  </div>
+                  <label class="form-label">Card Amount (R)</label>
+                  <input type="number" class="form-input tender-amount-input" step="0.01" min="0" placeholder="0.00" [ngModel]="cardAmount() || null" (ngModelChange)="onCashCardCardChange(+$event || 0)" (focus)="$event.target.select()" data-testid="input-cashcard-card" />
+                  <label class="form-label">Card Number</label>
+                  <input type="text" class="form-input" placeholder="0000 0000 0000 0000" [ngModel]="cardNumber()" (ngModelChange)="formatCardNumber($event)" maxlength="19" data-testid="input-cashcard-cardnum" />
+                  <label class="form-label">Expiry Date</label>
+                  <input type="text" class="form-input" placeholder="MM/YY" [ngModel]="cardExpiry()" (ngModelChange)="formatExpiry($event)" maxlength="5" data-testid="input-cashcard-expiry" />
+                </div>
+              </div>
+              <div class="cashcard-summary">
+                <div class="cashcard-summary-row">
+                  <span>Cash:</span>
+                  <span class="mono">R {{ formatCurrency(cashRoundedAmount()) }}</span>
+                </div>
+                <div class="cashcard-summary-row">
+                  <span>Card:</span>
+                  <span class="mono">R {{ formatCurrency(cardAmount()) }}</span>
+                </div>
+                <div class="cashcard-summary-row cashcard-summary-total">
+                  <span>Combined:</span>
+                  <span class="mono">R {{ formatCurrency(effectiveTotalTendered()) }}</span>
+                </div>
+              </div>
+            </div>
+          }
         </div>
 
         <div class="payment-totals">
@@ -784,6 +845,17 @@
           }
         </div>
 
+        @if (processingPayment() && paymentProgressTotal() > 0) {
+          <div class="payment-progress-panel" data-testid="payment-progress">
+            <div class="progress-bar-track">
+              <div class="progress-bar-fill" [style.width.%]="(paymentProgressCurrent() / paymentProgressTotal()) * 100"></div>
+            </div>
+            <div class="progress-text">
+              <span class="progress-counter">{{ paymentProgressCurrent() }} of {{ paymentProgressTotal() }}</span>
+              <span class="progress-label">{{ paymentProgressLabel() }}</span>
+            </div>
+          </div>
+        }
         <button
           class="complete-btn"
           (click)="processPayment()"
@@ -792,7 +864,7 @@
         >
           @if (processingPayment()) {
             <div class="spinner-sm"></div>
-            Processing Payment...
+            Processing {{ paymentProgressCurrent() }}/{{ paymentProgressTotal() }}...
           } @else {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
             Complete Payment
@@ -817,12 +889,22 @@
             <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
           </div>
 
+          <div class="receipt-summary-banner" data-testid="receipt-summary-banner">
+            <span class="receipt-count">{{ receiptResults().length }} Receipt(s) Generated</span>
+            <span class="receipt-total-amt">Total: R {{ formatCurrency(getReceiptGrandTotal()) }}</span>
+          </div>
+
           <div class="receipt-list">
-            @for (r of receiptResults(); track r.receiptNumber) {
-              <div class="receipt-item">
-                <span class="receipt-no">Receipt #{{ r.receiptNumber }}</span>
-                <span class="receipt-tender-badge">{{ r.tenderType | titlecase }}</span>
-                <span class="receipt-amt">R {{ formatCurrency(r.amount) }}</span>
+            @for (r of receiptResults(); track $index) {
+              <div class="receipt-item" [class.receipt-cash]="r.tenderType === 'cash'" [class.receipt-card]="r.tenderType === 'card'">
+                <div class="receipt-item-left">
+                  <span class="receipt-no" data-testid="text-receipt-no">Receipt #{{ r.receiptNumber }}</span>
+                  <span class="receipt-item-desc">{{ getReceiptItemDesc(r) }}</span>
+                </div>
+                <div class="receipt-item-right">
+                  <span class="receipt-tender-badge" [class.badge-cash]="r.tenderType === 'cash'" [class.badge-card]="r.tenderType === 'card'" [class.badge-cheque]="r.tenderType === 'cheque'" [class.badge-eft]="r.tenderType === 'eft'">{{ r.tenderType === 'cash+card' ? 'Split' : (r.tenderType | titlecase) }}</span>
+                  <span class="receipt-amt">R {{ formatCurrency(r.amount) }}</span>
+                </div>
               </div>
             }
           </div>

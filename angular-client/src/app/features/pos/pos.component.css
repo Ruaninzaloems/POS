@@ -1795,24 +1795,202 @@
   margin-left: 8px;
 }
 
-/* Receipt Delivery Section */
+/* Cash+Card Split Tender */
+.tender-tab-split {
+  background: linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%) !important;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px !important;
+  border-bottom: 2px solid transparent;
+}
+.tender-tab-split.active {
+  border-color: var(--platinum-accent, #c9a84c);
+  background: linear-gradient(135deg, #dcfce7 0%, #dbeafe 100%) !important;
+}
+.cashcard-section {
+  gap: 12px;
+}
+.cashcard-split-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%);
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+.cashcard-total {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--platinum-primary, #0f2b46);
+}
+.cashcard-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 0;
+}
+.cashcard-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  background: #fafbfc;
+  border-radius: 8px;
+}
+.cashcard-divider {
+  width: 1px;
+  background: #e2e8f0;
+  margin: 0 4px;
+}
+.cashcard-col-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding-bottom: 4px;
+  border-bottom: 2px solid #e2e8f0;
+  margin-bottom: 4px;
+}
+.cashcard-col-header.cash-header { color: #16a34a; border-bottom-color: #16a34a; }
+.cashcard-col-header.card-header { color: #2563eb; border-bottom-color: #2563eb; }
+.denomination-grid-sm {
+  grid-template-columns: repeat(5, 1fr) !important;
+  gap: 4px !important;
+}
+.denom-btn-sm {
+  padding: 4px 6px !important;
+  font-size: 10px !important;
+}
+.cashcard-summary {
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 10px 16px;
+  border: 1px solid #e2e8f0;
+}
+.cashcard-summary-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 3px 0;
+  color: #475569;
+}
+.cashcard-summary-row .mono {
+  font-family: 'SF Mono', ui-monospace, monospace;
+  font-weight: 600;
+}
+.cashcard-summary-total {
+  border-top: 1px solid #cbd5e1;
+  padding-top: 6px;
+  margin-top: 4px;
+  font-weight: 700;
+  color: var(--platinum-primary, #0f2b46);
+  font-size: 14px;
+}
+
+/* Payment Progress */
+.payment-progress-panel {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 10px;
+}
+.progress-bar-track {
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2563eb, #3b82f6);
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+.progress-text {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.progress-counter {
+  font-weight: 700;
+  font-size: 13px;
+  color: #1e40af;
+}
+.progress-label {
+  font-size: 12px;
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+/* Receipt Modal Enhanced */
+.receipt-summary-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border: 1px solid #86efac;
+  border-radius: 10px;
+  margin: 12px 0;
+}
+.receipt-count {
+  font-weight: 700;
+  font-size: 15px;
+  color: #15803d;
+}
+.receipt-total-amt {
+  font-family: 'SF Mono', ui-monospace, monospace;
+  font-weight: 700;
+  font-size: 16px;
+  color: #15803d;
+}
+
 .receipt-list {
   margin: 16px 0;
 }
 .receipt-item {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
-  padding: 8px 12px;
+  padding: 10px 14px;
   background: #f8fafc;
-  border-radius: 6px;
+  border-radius: 8px;
   margin-bottom: 6px;
+  border-left: 3px solid #e2e8f0;
+  transition: all 0.15s;
+}
+.receipt-item:hover { background: #f1f5f9; }
+.receipt-item.receipt-cash { border-left-color: #16a34a; }
+.receipt-item.receipt-card { border-left-color: #2563eb; }
+.receipt-item-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.receipt-item-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.receipt-item-desc {
+  font-size: 11px;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .receipt-no {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--platinum-primary);
-  flex: 1;
 }
 .receipt-tender-badge {
   font-size: 10px;
@@ -1822,7 +2000,12 @@
   font-weight: 600;
   color: #475569;
   text-transform: uppercase;
+  white-space: nowrap;
 }
+.receipt-tender-badge.badge-cash { background: #dcfce7; color: #15803d; }
+.receipt-tender-badge.badge-card { background: #dbeafe; color: #1d4ed8; }
+.receipt-tender-badge.badge-cheque { background: #fef9c3; color: #854d0e; }
+.receipt-tender-badge.badge-eft { background: #f3e8ff; color: #7e22ce; }
 .receipt-amt {
   font-family: 'SF Mono', ui-monospace, monospace;
   font-size: 13px;

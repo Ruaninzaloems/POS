@@ -34,7 +34,7 @@ The Debt & Legal solution uses a hybrid architecture:
 - All write actions include full audit metadata.
 
 ### Key Features
-- **POS Workflow**: Single-page workflow at `/pos` with three tabs: Session Setup, POS Receipting (multi-type basket, split tender, cash rounding, receipt delivery, CSV import), and Day-End Reconciliation.
+- **POS Workflow**: Single-page workflow at `/pos` with three tabs: Session Setup, POS Receipting (multi-type basket, split tender including Cash+Card combined mode with smart allocation, R200 change cap, cash rounding, auto-print receipts, real-time progress tracking, receipt delivery, CSV import), and Day-End Reconciliation. Cash+Card split creates separate receipts per tender type per item with proper API payload separation.
 - **Direct Deposits**: Auto-loading smart grid with allocation features (auto-allocate with AI matching, manual allocation, multi-source match resolution, CSV import), allocation history, and bulk CSV processing.
 - **Enquiries**: Multi-tab account detail view with 30 categories, quick/advanced search, and export capabilities. Includes Section 49/78 Letters and Valuation Certificate generation, and Occupiers tab with CRUD for Proof of Residence printing.
 - **Supervisor Dashboard**: Day-end approval/decline, cancellation requests, cash reports.

@@ -1,6 +1,6 @@
 export type BasketItemType = 'account' | 'clearance' | 'prepaid' | 'misc';
 export type ReceiptDeliveryMethod = 'print' | 'email' | 'whatsapp' | 'sms';
-export type TenderType = 'cash' | 'card' | 'cheque' | 'eft';
+export type TenderType = 'cash' | 'card' | 'cheque' | 'eft' | 'cash+card';
 export type SearchMode = 'tabs' | 'unified';
 
 export const PROCESSING_ORDER: Record<BasketItemType, number> = {
