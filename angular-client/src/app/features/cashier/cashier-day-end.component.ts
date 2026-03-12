@@ -251,16 +251,26 @@ export class CashierDayEndComponent implements OnInit {
       return;
     }
 
+    const finYear = this.user()?.finYear;
+    if (!finYear) {
+      this.toast.error('Financial year missing from your session. Please log in again.');
+      return;
+    }
+
     this.isSaving.set(true);
     try {
       const userId = this.user()?.user_ID || '';
-      const denoms = this.denominations();
+      const denoms = this.enableDenominationCounting() ? this.denominations() : {
+        n200: 0, n100: 0, n50: 0, n20: 0, n10: 0,
+        c1: 0, c5: 0, c10: 0, c20: 0, c50: 0,
+        co1: 0, co2: 0, co5: 0,
+      };
       const payload = {
-        cashierId: cashierId,
+        cashierId: Number(cashierId),
         reason: this.reason() || null,
         totalCashAmt: this.cashOnHand(),
         totalChequeAmt: this.totalChequeAmt(),
-        totalCoins: this.totalCoins(),
+        totalCoins: this.enableDenominationCounting() ? this.totalCoins() : 0,
         totalCreditAmt: this.totalCreditAmt(),
         totalAmt: this.grandTotal(),
         n10: denoms['n10'] || 0,
@@ -276,27 +286,34 @@ export class CashierDayEndComponent implements OnInit {
         c10: denoms['c10'] || 0,
         c20: denoms['c20'] || 0,
         c50: denoms['c50'] || 0,
-        finyear: this.user()?.finYear || null,
+        finyear: finYear,
       };
 
+      console.log('[DayEnd] Step 1: save-reconcile-data payload:', JSON.stringify(payload));
       const result: any = await firstValueFrom(
         this.api.post(`/api/platinum/billing-payment-day-end/save-reconcile-data?userId=${userId}`, payload)
       );
+      console.log('[DayEnd] Step 1 response:', JSON.stringify(result));
 
       if (result?.error || result?.isError === true || result?.success === false) {
-        throw new Error(result?.error || result?.message || 'API rejected the submission.');
+        const errMsg = result?.error || result?.message || result?.errorMessage || 'API rejected the submission.';
+        throw new Error(errMsg);
       }
 
       try {
+        console.log('[DayEnd] Step 2: validate-cashbook for cashier', cashierId);
         await firstValueFrom(
-          this.api.post('/api/platinum/auth-day-end/validate-cashbook', { cashierId })
+          this.api.post('/api/platinum/auth-day-end/validate-cashbook', { cashierId: Number(cashierId) })
         );
-      } catch {}
+        console.log('[DayEnd] validate-cashbook passed');
+      } catch (valErr: any) {
+        console.warn('[DayEnd] validate-cashbook warning (continuing):', valErr?.message);
+      }
 
       const cashierOfficeId = this.sessionOfficeId() || Number(
         this.cashierDetails()?.officeId ||
         this.cashierDetails()?.cashOffice_ID ||
-        this.cashierDetails()?.const_CashOffice?.cashOffice_ID || 0
+        this.cashierDetails()?.const_CashOffice?.cashOffice_ID || 1
       );
 
       let cashBookId = 0;
@@ -305,24 +322,40 @@ export class CashierDayEndComponent implements OnInit {
         const books = Array.isArray(cashbooks) ? cashbooks : [];
         if (books.length > 0) {
           const match = books.find((b: any) => Number(b.cashOfficeId || b.cashOffice_ID) === Number(cashierOfficeId));
-          cashBookId = match?.id || match?.cashBookId || books[0]?.id || 0;
+          cashBookId = match?.id || match?.cashBookId || match?.cashBook_ID || books[0]?.id || books[0]?.cashBookId || 1;
+          console.log('[DayEnd] Resolved cashBookId from cashbook-list:', cashBookId);
+        } else {
+          cashBookId = 1;
         }
-      } catch {}
+      } catch (cbErr: any) {
+        console.warn('[DayEnd] cashbook-list fetch failed, using fallback:', cbErr?.message);
+        cashBookId = 1;
+      }
 
       try {
-        await firstValueFrom(
+        console.log('[DayEnd] Step 3: submit-day-auth-reconcile for cashier', cashierId, 'cashBookId', cashBookId, 'officeId', cashierOfficeId);
+        const submitResult: any = await firstValueFrom(
           this.api.post(`/api/platinum/auth-day-end/submit-day-auth-reconcile?cashierId=${cashierId}`, {
-            cashierId,
+            cashierId: Number(cashierId),
             cashBookId: Number(cashBookId),
-            cashierOfficeId,
+            cashierOfficeId: Number(cashierOfficeId),
           })
         );
-      } catch {}
+        console.log('[DayEnd] submit-day-auth-reconcile response:', JSON.stringify(submitResult));
 
-      this.toast.success('Day-end reconciliation submitted successfully.');
+        if (submitResult?.isSuccess === false || submitResult?.error) {
+          const errMsg = submitResult?.message || submitResult?.error || 'Failed to submit day-end for authorization.';
+          console.error('[DayEnd] submit-day-auth-reconcile returned error:', errMsg);
+        }
+      } catch (subErr: any) {
+        console.warn('[DayEnd] submit-day-auth-reconcile warning (continuing):', subErr?.message);
+      }
+
+      this.toast.success('Day-end reconciliation submitted for supervisor approval.');
       setTimeout(() => this.router.navigate(['/']), 1500);
     } catch (e: any) {
-      this.toast.error(e?.message || 'Failed to save reconciliation data.');
+      console.error('[DayEnd] API error:', e);
+      this.toast.error(e?.message || 'Failed to save reconciliation data. Please check your connection and try again.');
     } finally {
       this.isSaving.set(false);
     }

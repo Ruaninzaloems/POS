@@ -135,6 +135,10 @@ export class PosWorkflowComponent implements OnInit {
     this.activeTab.set('transact');
   }
 
+  goToDayEnd(): void {
+    this.activeTab.set('day-end');
+  }
+
   setTab(tab: WorkflowTab): void {
     if (tab === 'setup' && !this.canAccessSetup()) return;
     if (tab === 'transact' && !this.canAccessTransact()) return;

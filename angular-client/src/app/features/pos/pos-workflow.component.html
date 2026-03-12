@@ -60,7 +60,7 @@
       }
 
       @if (activeTab() === 'transact') {
-        <app-pos></app-pos>
+        <app-pos (dayEndRequested)="goToDayEnd()"></app-pos>
       }
 
       @if (activeTab() === 'day-end') {

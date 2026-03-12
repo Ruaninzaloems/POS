@@ -1,4 +1,4 @@
-import { Component, signal, computed, OnInit, OnDestroy, inject, ElementRef, ViewChild, ChangeDetectorRef } from '@angular/core';
+import { Component, signal, computed, OnInit, OnDestroy, inject, ElementRef, ViewChild, ChangeDetectorRef, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -75,6 +75,8 @@ export class PosComponent implements OnInit, OnDestroy {
   private auth = inject(AuthService);
   private router = inject(Router);
   basket = inject(PosBasketService);
+
+  @Output() dayEndRequested = new EventEmitter<void>();
 
   user = this.auth.user;
   searchMode = signal<SearchMode>('unified');
@@ -1906,7 +1908,7 @@ export class PosComponent implements OnInit, OnDestroy {
   }
 
   navigateToDayEnd(): void {
-    this.router.navigate(['/cashier-day-end']);
+    this.dayEndRequested.emit();
   }
 
   navigateToEnquiries(): void {
