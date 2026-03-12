@@ -112,6 +112,27 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   tabLoading = signal(false);
   tabError = signal<string | null>(null);
 
+  private _apiCache = new Map<string, Promise<any>>();
+  private _apiCacheAccountId: number | null = null;
+
+  private cachedGet<T = any>(url: string, params?: Record<string, string>): Promise<T> {
+    const sortedParams = params ? Object.keys(params).sort().map(k => `${k}=${params[k]}`).join('&') : '';
+    const key = `${url}?${sortedParams}`;
+    const existing = this._apiCache.get(key);
+    if (existing) return existing;
+    const promise = firstValueFrom(this.api.get<T>(url, params)).catch((err: any) => {
+      return { _error: true, status: err?.status, statusText: err?.statusText, detail: err?.message } as any;
+    });
+    this._apiCache.set(key, promise);
+    return promise;
+  }
+
+  private clearApiCache(accountId?: number): void {
+    if (accountId && this._apiCacheAccountId === accountId) return;
+    this._apiCache.clear();
+    this._apiCacheAccountId = accountId || null;
+  }
+
   summaryFinYear = signal('');
   summaryData = signal<any[]>([]);
   summaryLoading = signal(false);
@@ -846,9 +867,12 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.mobileTabMenuOpen.set(false);
     const id = this.getAccountId(account);
     if (id) {
+      this.clearApiCache(id);
+      this.globalSnapshotLoading.set(true);
+      this.globalSnapshot.set(null);
+      this.riskFlagsLoading.set(true);
+      this.riskFlags.set([]);
       this.loadHeaderBalance(id);
-      this.loadRiskFlags(id);
-      this.loadGlobalSnapshot(id);
       this.loadTabData('account', id);
     }
   }
@@ -1077,208 +1101,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     } catch {}
   }
 
-  async loadGlobalSnapshot(accountId: number): Promise<void> {
-    this.globalSnapshotLoading.set(true);
-    this.globalSnapshot.set(null);
-    try {
-      const sa: any = this.selectedAccount();
-      const [gsBasic, gsConsDetails, gsAcctMgmt, gsConsUnitById, gsPropDetails, gsDeposit, gsHandover, gsAttp, gsRppStatus, gsRates, gsAcctMgmtDetails] = await Promise.allSettled([
-        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/basic-account-details/${accountId}`)),
-        firstValueFrom(this.api.get<any>(`/api/platinum/receipt-prepaid/cons-account-details`, { accountId: String(accountId) })),
-        firstValueFrom(this.api.get<any>(`/api/platinum/billing-account-management/account-information`, { accountId: String(accountId) })),
-        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/cons-unit-by-account`, { AccountId: String(accountId) })),
-        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
-        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/deposit-amount`, { accountId: String(accountId) })),
-        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/handover-info/${accountId}`)),
-        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/attp-application-history/${accountId}`)),
-        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/repayment-plan-status/${accountId}`)),
-        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-rates-details/${accountId}`)),
-        firstValueFrom(this.api.get<any>(`/api/platinum/billing-account-management/account-details`, { accountId: String(accountId) })),
-      ]);
-      const basicVal = gsBasic.status === 'fulfilled' ? (Array.isArray(gsBasic.value) ? gsBasic.value[0] : gsBasic.value) : null;
-      const consVal = gsConsDetails.status === 'fulfilled' ? (Array.isArray(gsConsDetails.value) ? gsConsDetails.value[0] : gsConsDetails.value) : null;
-      const mgmtVal = gsAcctMgmt.status === 'fulfilled' ? (Array.isArray(gsAcctMgmt.value) ? gsAcctMgmt.value[0] : gsAcctMgmt.value) : null;
-      const cuVal = gsConsUnitById.status === 'fulfilled' ? (Array.isArray(gsConsUnitById.value) ? gsConsUnitById.value[0] : gsConsUnitById.value) : null;
-      const propVal = gsPropDetails.status === 'fulfilled' ? (Array.isArray(gsPropDetails.value) ? gsPropDetails.value[0] : gsPropDetails.value) : null;
-
-      let gsValuation: any = null;
-      const gsUnitId = cuVal?.unit_ID || propVal?.unit_ID || propVal?.propertyID || sa?.propertyID;
-      if (gsUnitId) {
-        try {
-          const valRes = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/valuation-by-unit`, { unitId: String(gsUnitId) }));
-          gsValuation = Array.isArray(valRes) ? valRes[0] : valRes;
-        } catch {}
-      }
-
-      const snap: Record<string, any> = {};
-      snap['ownerName'] = basicVal?.fullNAME || consVal?.fullNAME || propVal?.accountableOwnerName || propVal?.ownerName || sa?.fullNAME || sa?.name || '';
-      snap['address'] = basicVal?.deliveryAddress || propVal?.locationAddress || propVal?.propertyStreet ||
-        (propVal?.streetNumber ? propVal.streetNumber + ' ' + propVal.streetName + ', ' + (propVal?.town || '') : propVal?.streetName || '') ||
-        cuVal?.nonStandAddLine1 || sa?.fullAddress || sa?.address || '';
-      snap['accountType'] = consVal?.accountDesc || propVal?.accountDesc || mgmtVal?.accountDesc || basicVal?.accountDesc || sa?.accountDesc || '';
-      snap['sgNumber'] = propVal?.sgNumber || cuVal?.sgNumber || sa?.sgNumber || '';
-      snap['propertyType'] = propVal?.propertyTypeDesc || propVal?.propertyType || this.resolvePropertyType(cuVal?.propertyTypeID, propVal?.sgNumber || cuVal?.sgNumber, cuVal?.sectionNumber, cuVal?.farmID) || '';
-      snap['propertyCategory'] = propVal?.propertyCategory || consVal?.zoneDesc || propVal?.zoneDesc || propVal?.category || '';
-      snap['propertyTypeOfUse'] = consVal?.typeOfUseDesc || propVal?.typeOfUse || propVal?.typeofUse || propVal?.typeOfUseDesc || '';
-      snap['billingCycle'] = mgmtVal?.cycleDescription || consVal?.cycleDescription || propVal?.cycleDescription || cuVal?.billingCycleID || '';
-      snap['marketValue'] = gsValuation?.marketValue || gsValuation?.standMarketValue || cuVal?.marketValue || propVal?.marketValue || null;
-      snap['status'] = basicVal?.accountStatus || consVal?.statusDesc || mgmtVal?.accountStatus || propVal?.propertyStatus || sa?.accountStatus || '';
-      if (gsDeposit.status === 'fulfilled' && gsDeposit.value != null) {
-        const depRaw = gsDeposit.value;
-        snap['depositValue'] = typeof depRaw === 'number' ? depRaw : Number(depRaw?.totalDeposit ?? depRaw?.amount ?? depRaw?.depositAmount ?? depRaw) || 0;
-      } else {
-        snap['depositValue'] = null;
-      }
-
-      const gsHoArr: any[] = [];
-      if (gsHandover.status === 'fulfilled' && gsHandover.value && !gsHandover.value._error) {
-        const hoRaw = gsHandover.value;
-        if (Array.isArray(hoRaw)) gsHoArr.push(...hoRaw); else gsHoArr.push(hoRaw);
-      }
-      const gsActiveHo = gsHoArr.find((h: any) => {
-        const st = (h.handoverStatus || h.status || '').toLowerCase();
-        return st.includes('active') || st.includes('handed') || st.includes('legal') || st.includes('pending');
-      });
-      snap['handoverStatus'] = gsActiveHo
-        ? (gsActiveHo.handoverStatus || gsActiveHo.handoverStatusDesc || gsActiveHo.status || 'Handed Over')
-        : (gsHoArr.length > 0 ? (gsHoArr[0].handoverStatus || gsHoArr[0].handoverStatusDesc || 'N/A') : 'N/A');
-
-      const gsAttpArr: any[] = [];
-      if (gsAttp.status === 'fulfilled') {
-        const attpRaw = gsAttp.value;
-        if (Array.isArray(attpRaw)) gsAttpArr.push(...attpRaw); else if (attpRaw && !attpRaw._error) gsAttpArr.push(attpRaw);
-      }
-      const gsActiveIndigent = gsAttpArr.find((r: any) => {
-        const st = (r.attpStatus || r.status || '').toLowerCase();
-        return st.includes('active') || st.includes('approved') || st.includes('registered');
-      });
-      snap['indigentSubsidy'] = gsActiveIndigent
-        ? (gsActiveIndigent.attpStatus || gsActiveIndigent.status || 'Active')
-        : (gsAttpArr.length > 0 ? (gsAttpArr[0].attpStatus || gsAttpArr[0].status || '') : '');
-
-      if (gsRppStatus.status === 'fulfilled') {
-        const rppRaw = gsRppStatus.value;
-        if (typeof rppRaw === 'string') {
-          snap['consumerRpp'] = rppRaw || 'N/A';
-        } else if (Array.isArray(rppRaw) && rppRaw.length > 0) {
-          const gsConsumerRpp = rppRaw.find((r: any) => {
-            const t = (r.planType || r.repaymentPlanType || r.type || '').toLowerCase();
-            return t.includes('consumer') || t.includes('cons');
-          });
-          snap['consumerRpp'] = gsConsumerRpp
-            ? (gsConsumerRpp.statusDesc || gsConsumerRpp.status || 'Active')
-            : 'N/A';
-        } else {
-          snap['consumerRpp'] = 'N/A';
-        }
-      } else {
-        snap['consumerRpp'] = 'N/A';
-      }
-
-      snap['rebateStatus'] = 'No Rebate on Account';
-      snap['interestWaiver'] = 'No Interest Waiver on Account';
-      console.log('[globalSnapshot]', JSON.stringify(snap).substring(0, 500));
-      this.globalSnapshot.set(snap);
-    } catch (e) {
-      console.error('[globalSnapshot] load failed:', e);
-    } finally {
-      this.globalSnapshotLoading.set(false);
-    }
-  }
-
-  async loadRiskFlags(accountId: number): Promise<void> {
-    this.riskFlagsLoading.set(true);
-    this.riskFlags.set([]);
-    const detected: RiskFlag[] = [];
-
-    const checks = [
-      firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/handover-info/${accountId}`)).then((ho: any) => {
-        if (!ho) return;
-        const arr = Array.isArray(ho) ? ho : [ho];
-        const active = arr.find((h: any) => {
-          const st = (h.handoverStatus || h.status || h.handoverStatusDesc || '').toLowerCase();
-          return st.includes('active') || st.includes('handed') || st.includes('legal') || st.includes('pending');
-        });
-        if (active) {
-          detected.push({
-            id: 'handover',
-            label: 'Handed Over / Legal',
-            detail: `${active.handoverStatus || active.status || 'Handed Over'}${active.attorneyName ? ` — Attorney: ${active.attorneyName}` : ''}`,
-            severity: 'critical',
-            icon: '⚖️',
-          });
-        }
-      }).catch(() => {}),
-
-      this.fetchAccountBalance(accountId).then((bal: any) => {
-        const items = Array.isArray(bal) ? bal : bal ? [bal] : [];
-        if (!items.length) return;
-        let totalArrears = 0;
-        let totalOutstanding = 0;
-        for (const item of items) {
-          totalOutstanding += item.totalOutStanding || item.totalOutstandingAmount || item.totalBalance || item.outstandingBalance || 0;
-          totalArrears += (item.days30 || 0) + (item.days60 || 0) + (item.days90 || 0) + (item.days120 || 0) + (item.days150 || 0) + (item.untill360 || 0);
-        }
-        if (totalArrears > 10000) {
-          detected.push({
-            id: 'high-arrears',
-            label: 'High Arrears',
-            detail: `Arrears (30+ days): R ${this.formatCurrency(totalArrears)} of R ${this.formatCurrency(totalOutstanding)} total`,
-            severity: totalArrears > 50000 ? 'critical' : 'warning',
-            icon: '⚠️',
-          });
-        } else if (totalArrears > 0) {
-          detected.push({
-            id: 'arrears',
-            label: 'Arrears',
-            detail: `Overdue (30+ days): R ${this.formatCurrency(totalArrears)}`,
-            severity: 'warning',
-            icon: '💰',
-          });
-        }
-      }).catch(() => {}),
-
-      firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/attp-application-history/${accountId}`)).then((data: any) => {
-        const records = Array.isArray(data) ? data : data ? [data] : [];
-        const activeIndigent = records.find((r: any) => {
-          const st = (r.attpStatus || r.status || '').toLowerCase();
-          return st.includes('active') || st.includes('approved') || st.includes('registered');
-        });
-        if (activeIndigent) {
-          detected.push({
-            id: 'indigent',
-            label: 'Indigent',
-            detail: `Subsidy active — ${activeIndigent.indigentType || activeIndigent.attpType || '-'}`,
-            severity: 'info',
-            icon: '🛡️',
-          });
-        }
-      }).catch(() => {}),
-
-      firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/name-info/${accountId}`)).then((name: any) => {
-        if (!name) return;
-        const n = Array.isArray(name) ? name[0] : name;
-        if (n.deceased || n.isDeceased || n.dateOfDeath || n.deathDate) {
-          detected.push({
-            id: 'deceased',
-            label: 'Owner Deceased',
-            detail: n.dateOfDeath || n.deathDate ? `Date of death: ${this.formatDate(n.dateOfDeath || n.deathDate)}` : 'Owner marked as deceased',
-            severity: 'critical',
-            icon: '💀',
-          });
-        }
-      }).catch(() => {}),
-    ];
-
-    await Promise.allSettled(checks);
-    detected.sort((a, b) => {
-      const ord: Record<string, number> = { critical: 0, warning: 1, info: 2 };
-      return (ord[a.severity] || 2) - (ord[b.severity] || 2);
-    });
-    this.riskFlags.set(detected);
-    this.riskFlagsLoading.set(false);
-  }
-
   private _loadTabGeneration = 0;
 
   async loadTabData(tab: string, accountId: number): Promise<void> {
@@ -1295,28 +1117,29 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           const acctFyParam: Record<string, string> = acctFinYear ? { finYear: acctFinYear } : {};
           const acctForPRS: any = this.selectedAccount();
           const acctUnitPartForSearch = acctForPRS?.unitPartitionID || acctForPRS?.unitPartition_ID;
-          const [basic, accountInfo, acctPropDetails, acctContactInfo, acctConsUnit, acctConsUnitById, acctRates, acctDepositAmt, acctMgmt, acctSectTitle, acctConsDetails, acctPropRatesSearch, acctMgmtDetails, acctHandover, acctAttpHistory, acctRppStatus] = await Promise.allSettled([
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/basic-account-details/${accountId}`)),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-info-result/${accountId}`)),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/get-contact-details/${accountId}`)),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/consumption-units/${accountId}`)),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/cons-unit-by-account`, { AccountId: String(accountId) })),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-rates-details/${accountId}`, acctFyParam)),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/deposit-amount`, { accountId: String(accountId) })),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-account-management/account-information`, { accountId: String(accountId) })),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/sectional-title-scheme`, { accountId: String(accountId) })),
-            firstValueFrom(this.api.get<any>(`/api/platinum/receipt-prepaid/cons-account-details`, { accountId: String(accountId) })),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-rates-search`, {
+          const [basic, accountInfo, acctPropDetails, acctContactInfo, acctConsUnit, acctConsUnitById, acctRates, acctDepositAmt, acctMgmt, acctSectTitle, acctConsDetails, acctPropRatesSearch, acctMgmtDetails, acctHandover, acctAttpHistory, acctRppStatus, acctNameInfo] = await Promise.allSettled([
+            this.cachedGet(`/api/platinum/billing-enquiry/basic-account-details/${accountId}`),
+            this.cachedGet(`/api/platinum/billing-enquiry/account-info-result/${accountId}`),
+            this.cachedGet(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`),
+            this.cachedGet(`/api/platinum/billing-enquiry/get-contact-details/${accountId}`),
+            this.cachedGet(`/api/platinum/billing-enquiry/consumption-units/${accountId}`),
+            this.cachedGet(`/api/platinum/billing-enquiry/cons-unit-by-account`, { AccountId: String(accountId) }),
+            this.cachedGet(`/api/platinum/billing-enquiry/account-rates-details/${accountId}`, acctFyParam),
+            this.cachedGet(`/api/platinum/billing-enquiry/deposit-amount`, { accountId: String(accountId) }),
+            this.cachedGet(`/api/platinum/billing-account-management/account-information`, { accountId: String(accountId) }),
+            this.cachedGet(`/api/platinum/billing-enquiry/sectional-title-scheme`, { accountId: String(accountId) }),
+            this.cachedGet(`/api/platinum/receipt-prepaid/cons-account-details`, { accountId: String(accountId) }),
+            this.cachedGet(`/api/platinum/billing-enquiry/property-rates-search`, {
               finYear: acctFinYear || this.getCurrentFinYear(),
               accountId: String(Number(accountId) || accountId),
               ...(acctUnitPartForSearch ? { unitPartitionId: String(Number(acctUnitPartForSearch) || acctUnitPartForSearch) } : {}),
               pageSize: '50'
-            })),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-account-management/account-details`, { accountId: String(accountId) })),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/handover-info/${accountId}`)),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/attp-application-history/${accountId}`)),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/repayment-plan-status/${accountId}`)),
+            }),
+            this.cachedGet(`/api/platinum/billing-account-management/account-details`, { accountId: String(accountId) }),
+            this.cachedGet(`/api/platinum/billing-enquiry/handover-info/${accountId}`),
+            this.cachedGet(`/api/platinum/billing-enquiry/attp-application-history/${accountId}`),
+            this.cachedGet(`/api/platinum/billing-enquiry/repayment-plan-status/${accountId}`),
+            this.cachedGet(`/api/platinum/billing-enquiry/name-info/${accountId}`),
           ]);
           const basicVal = basic.status === 'fulfilled' ? (Array.isArray(basic.value) ? basic.value[0] : basic.value) : null;
           const airVal = accountInfo.status === 'fulfilled' ? (Array.isArray(accountInfo.value) ? accountInfo.value[0] : accountInfo.value) : null;
@@ -1641,6 +1464,80 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             mgmtDetails: acctMgmtDetailsVal && !acctMgmtDetailsVal._error ? acctMgmtDetailsVal : null,
             derivedStatuses,
           };
+
+          {
+            const cuVal = acctConsUnitByIdVal && !acctConsUnitByIdVal._error ? acctConsUnitByIdVal : acctConsUnitVal;
+            const propV = acctPropVal && !acctPropVal._error ? acctPropVal : null;
+            const snapSa: any = this.selectedAccount();
+            const snap: Record<string, any> = {};
+            snap['ownerName'] = basicVal?.fullNAME || acctConsDetailsVal?.fullNAME || propV?.accountableOwnerName || propV?.ownerName || snapSa?.fullNAME || snapSa?.name || '';
+            snap['address'] = basicVal?.deliveryAddress || propV?.locationAddress || propV?.propertyStreet ||
+              (propV?.streetNumber ? propV.streetNumber + ' ' + propV.streetName + ', ' + (propV?.town || '') : propV?.streetName || '') ||
+              cuVal?.nonStandAddLine1 || snapSa?.fullAddress || snapSa?.address || '';
+            snap['accountType'] = acctConsDetailsVal?.accountDesc || propV?.accountDesc || acctMgmtVal?.accountDesc || basicVal?.accountDesc || snapSa?.accountDesc || '';
+            snap['sgNumber'] = propV?.sgNumber || cuVal?.sgNumber || snapSa?.sgNumber || '';
+            snap['propertyType'] = propV?.propertyTypeDesc || propV?.propertyType || this.resolvePropertyType(cuVal?.propertyTypeID, propV?.sgNumber || cuVal?.sgNumber, cuVal?.sectionNumber, cuVal?.farmID) || '';
+            snap['propertyCategory'] = propV?.propertyCategory || acctConsDetailsVal?.zoneDesc || propV?.zoneDesc || propV?.category || '';
+            snap['propertyTypeOfUse'] = acctConsDetailsVal?.typeOfUseDesc || propV?.typeOfUse || propV?.typeofUse || propV?.typeOfUseDesc || '';
+            snap['billingCycle'] = acctMgmtVal?.cycleDescription || acctConsDetailsVal?.cycleDescription || propV?.cycleDescription || cuVal?.billingCycleID || '';
+            snap['marketValue'] = acctValuationData?.marketValue || acctValuationData?.standMarketValue || cuVal?.marketValue || propV?.marketValue || null;
+            snap['status'] = basicVal?.accountStatus || acctConsDetailsVal?.statusDesc || acctMgmtVal?.accountStatus || propV?.propertyStatus || snapSa?.accountStatus || '';
+            const depRaw = acctDepositAmt.status === 'fulfilled' ? acctDepositAmt.value : null;
+            snap['depositValue'] = depRaw != null && !depRaw?._error ? (typeof depRaw === 'number' ? depRaw : Number(depRaw?.totalDeposit ?? depRaw?.amount ?? depRaw?.depositAmount ?? depRaw) || 0) : null;
+            snap['handoverStatus'] = derivedStatuses['handoverStatus'] || 'N/A';
+            snap['indigentSubsidy'] = derivedStatuses['indigentSubsidyStatus'] || '';
+            snap['consumerRpp'] = derivedStatuses['consumerRppStatus'] || 'N/A';
+            snap['rebateStatus'] = derivedStatuses['rebateStatus'] || 'No Rebate on Account';
+            snap['interestWaiver'] = derivedStatuses['interestWaiverStatus'] || 'No Interest Waiver on Account';
+            this.globalSnapshot.set(snap);
+            this.globalSnapshotLoading.set(false);
+          }
+
+          {
+            const riskDetected: RiskFlag[] = [];
+            const hoArr = Array.isArray(acctHandoverVal) ? acctHandoverVal : acctHandoverVal ? [acctHandoverVal] : [];
+            const activeHo = hoArr.find((h: any) => {
+              const st = (h.handoverStatus || h.status || h.handoverStatusDesc || '').toLowerCase();
+              return st.includes('active') || st.includes('handed') || st.includes('legal') || st.includes('pending');
+            });
+            if (activeHo) {
+              riskDetected.push({ id: 'handover', label: 'Handed Over / Legal', detail: `${activeHo.handoverStatus || activeHo.status || 'Handed Over'}${activeHo.attorneyName ? ` — Attorney: ${activeHo.attorneyName}` : ''}`, severity: 'critical', icon: '⚖️' });
+            }
+            const activeIndigent = acctAttpVal.find((r: any) => {
+              const st = (r.attpStatus || r.status || '').toLowerCase();
+              return st.includes('active') || st.includes('approved') || st.includes('registered');
+            });
+            if (activeIndigent) {
+              riskDetected.push({ id: 'indigent', label: 'Indigent', detail: `Subsidy active — ${activeIndigent.indigentType || activeIndigent.attpType || '-'}`, severity: 'info', icon: '🛡️' });
+            }
+            const nameVal = acctNameInfo.status === 'fulfilled' ? (Array.isArray(acctNameInfo.value) ? acctNameInfo.value[0] : acctNameInfo.value) : null;
+            if (nameVal && !nameVal._error && (nameVal.deceased || nameVal.isDeceased || nameVal.dateOfDeath || nameVal.deathDate)) {
+              riskDetected.push({ id: 'deceased', label: 'Owner Deceased', detail: nameVal.dateOfDeath || nameVal.deathDate ? `Date of death: ${this.formatDate(nameVal.dateOfDeath || nameVal.deathDate)}` : 'Owner marked as deceased', severity: 'critical', icon: '💀' });
+            }
+            this.fetchAccountBalance(accountId).then((bal: any) => {
+              const items = Array.isArray(bal) ? bal : bal ? [bal] : [];
+              let totalArrears = 0;
+              for (const item of items) {
+                totalArrears += (item.days30 || 0) + (item.days60 || 0) + (item.days90 || 0) + (item.days120 || 0) + (item.days150 || 0) + (item.untill360 || 0);
+              }
+              if (totalArrears > 10000) {
+                const totalOut = items.reduce((s: number, it: any) => s + (it.totalOutStanding || it.totalOutstandingAmount || 0), 0);
+                riskDetected.push({ id: 'high-arrears', label: 'High Arrears', detail: `Arrears (30+ days): R ${this.formatCurrency(totalArrears)} of R ${this.formatCurrency(totalOut)} total`, severity: totalArrears > 50000 ? 'critical' : 'warning', icon: '⚠️' });
+              } else if (totalArrears > 0) {
+                riskDetected.push({ id: 'arrears', label: 'Arrears', detail: `Overdue (30+ days): R ${this.formatCurrency(totalArrears)}`, severity: 'warning', icon: '💰' });
+              }
+              riskDetected.sort((a, b) => {
+                const ord: Record<string, number> = { critical: 0, warning: 1, info: 2 };
+                return (ord[a.severity] || 2) - (ord[b.severity] || 2);
+              });
+              this.riskFlags.set([...riskDetected]);
+              this.riskFlagsLoading.set(false);
+            }).catch(() => {
+              this.riskFlags.set([...riskDetected]);
+              this.riskFlagsLoading.set(false);
+            });
+          }
+
           this.loadLinkedAccounts(accountId);
           break;
 
@@ -1660,10 +1557,10 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
         case 'services':
           const [allSvc, svcSearch, addBilling, svcNotif] = await Promise.allSettled([
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/all-services/${accountId}`)),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/services-search-results/${accountId}`)),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/additional-billing-search-results/${accountId}`)),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-notifications/${accountId}`)),
+            this.cachedGet(`/api/platinum/billing-enquiry/all-services/${accountId}`),
+            this.cachedGet(`/api/platinum/billing-enquiry/services-search-results/${accountId}`),
+            this.cachedGet(`/api/platinum/billing-enquiry/additional-billing-search-results/${accountId}`),
+            this.cachedGet(`/api/platinum/billing-enquiry/account-notifications/${accountId}`),
           ]);
           data = {
             services: allSvc.status === 'fulfilled' ? this.normalizeArray(allSvc.value) : [],
@@ -1675,16 +1572,16 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
         case 'property':
           const [prop, consUnit, consUnitById, rates, meters, transfers, propAcctInfo, propConsAcctDetails, propHandoverInfo, propAcctMgmt] = await Promise.allSettled([
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/consumption-units/${accountId}`)),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/cons-unit-by-account`, { AccountId: String(accountId) })),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-rates-details/${accountId}`)),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/metered-services-on-account/${accountId}`)),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/transfer-ownership/${accountId}`)),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-info-result/${accountId}`)),
-            firstValueFrom(this.api.get<any>(`/api/platinum/receipt-prepaid/cons-account-details`, { accountId: String(accountId) })),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/handover-info/${accountId}`)),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-account-management/account-details`, { accountId: String(accountId) })),
+            this.cachedGet(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`),
+            this.cachedGet(`/api/platinum/billing-enquiry/consumption-units/${accountId}`),
+            this.cachedGet(`/api/platinum/billing-enquiry/cons-unit-by-account`, { AccountId: String(accountId) }),
+            this.cachedGet(`/api/platinum/billing-enquiry/account-rates-details/${accountId}`),
+            this.cachedGet(`/api/platinum/billing-enquiry/metered-services-on-account/${accountId}`),
+            this.cachedGet(`/api/platinum/billing-enquiry/transfer-ownership/${accountId}`),
+            this.cachedGet(`/api/platinum/billing-enquiry/account-info-result/${accountId}`),
+            this.cachedGet(`/api/platinum/receipt-prepaid/cons-account-details`, { accountId: String(accountId) }),
+            this.cachedGet(`/api/platinum/billing-enquiry/handover-info/${accountId}`),
+            this.cachedGet(`/api/platinum/billing-account-management/account-details`, { accountId: String(accountId) }),
           ]);
           let propVal = prop.status === 'fulfilled' ? (Array.isArray(prop.value) ? prop.value[0] : prop.value) : null;
           if (propVal && propVal._error) propVal = null;
