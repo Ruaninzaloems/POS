@@ -846,7 +846,7 @@ export class PosComponent implements OnInit, OnDestroy {
     let scoaItems: ScoaItem[] = [];
     try {
       const data: any = await firstValueFrom(
-        this.api.get<any>('/api/platinum/billing-payment-miscellaneous/get-scoa-items', { groupId: String(groupId) })
+        this.api.get<any>('/api/platinum/billing-payment-miscellaneous/get-scoa-items', { mISCPayGroupId: String(groupId) })
       );
       const arr = Array.isArray(data) ? data : (data?.data || data?.items || []);
       scoaItems = arr.map((s: any) => ({
@@ -1927,18 +1927,22 @@ export class PosComponent implements OnInit, OnDestroy {
     this.miscScoaLoading.set(true);
     try {
       const data: any = await firstValueFrom(
-        this.api.get<any>('/api/platinum/billing-payment-miscellaneous/get-scoa-items', { groupId: String(groupId) })
+        this.api.get<any>('/api/platinum/billing-payment-miscellaneous/get-scoa-items', { mISCPayGroupId: String(groupId) })
       );
       console.log(`[onMiscGroupChange] Raw SCOA response for group ${groupId}:`, JSON.stringify(data).substring(0, 500));
       const arr = Array.isArray(data) ? data : (data?.data || data?.items || []);
-      const mapped = arr.map((s: any) => ({
-        scoaItemId: s.scoaItemId || s.scoa_item_ID || s.scoaItem || s.id || 0,
-        scoaItemName: s.scoaItemName || s.description || s.name || '',
-        description: s.description || s.scoaItemName || s.name || '',
-        amount: s.amount || 0,
-        isVatable: s.isVatable || false,
-        vatPercentage: s.vatPercentage || 0,
-      }));
+      const mapped = arr.map((s: any) => {
+        const rawName = s.scoaItemName || s.description || s.name || '';
+        const cleanName = rawName.replace(/\s+[A-Z]{2}\d{30,}.*$/, '').trim() || rawName;
+        return {
+          scoaItemId: s.scoaItemId || s.scoa_item_ID || s.scoaItem || s.id || 0,
+          scoaItemName: cleanName,
+          description: s.description || rawName,
+          amount: s.amount || 0,
+          isVatable: s.isVatable !== false,
+          vatPercentage: s.vatPercentage || 0,
+        };
+      });
       console.log(`[onMiscGroupChange] Mapped ${mapped.length} SCOA items`);
       mapped.forEach((m: ScoaItem) => console.log(`  SCOA: ${m.scoaItemId} - ${m.scoaItemName}`));
       this.miscScoaItems.set(mapped);

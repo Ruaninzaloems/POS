@@ -418,9 +418,15 @@
                 }
               </div>
               <div class="form-group">
-                <label class="form-label">SCOA Item (auto)</label>
+                <label class="form-label">SCOA Item (Vote)</label>
                 @if (miscScoaLoading()) {
                   <div class="spinner-sm"></div>
+                } @else if (miscScoaItems().length > 1) {
+                  <select class="form-select" [ngModel]="miscSelectedScoaId()" (ngModelChange)="miscSelectedScoaId.set(+$event)" data-testid="select-misc-scoa">
+                    @for (s of miscScoaItems(); track s.scoaItemId) {
+                      <option [ngValue]="s.scoaItemId">{{ s.scoaItemName }}</option>
+                    }
+                  </select>
                 } @else {
                   <input class="form-input" type="text" [value]="getSelectedScoaName()" readonly data-testid="text-misc-scoa" />
                 }
