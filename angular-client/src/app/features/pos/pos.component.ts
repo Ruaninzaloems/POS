@@ -410,11 +410,7 @@ export class PosComponent implements OnInit, OnDestroy {
               }
             }
           } catch {
-            this.sessionActive.set(false);
-            this.sessionStatus.set('needs_reconcile');
-            this.reconcileMessage.set('Unable to verify reconciliation status. Please submit your day-end or contact your supervisor.');
-            this.sessionLoading.set(false);
-            return;
+            console.warn('[pos] validate-day-end-recon API error — treating as no reconciliation needed (new session or API unavailable)');
           }
         }
 

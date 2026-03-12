@@ -115,12 +115,7 @@ export class PosWorkflowComponent implements OnInit {
               }
             }
           } catch {
-            this.sessionReady.set(true);
-            this.sessionActive.set(true);
-            this.needsReconcile.set(true);
-            this.reconcileMessage.set('Unable to verify reconciliation status. Please submit your day-end or contact your supervisor.');
-            this.activeTab.set('day-end');
-            return;
+            console.warn('[pos-workflow] validate-day-end-recon API error — treating as no reconciliation needed');
           }
         }
 
