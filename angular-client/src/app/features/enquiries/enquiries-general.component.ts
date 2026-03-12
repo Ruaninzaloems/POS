@@ -662,91 +662,36 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const autocompleteItems = results.filter((r: any) => r._fromAutocomplete || (!r.name && !r.surname_Company && !(r as any).fullNAME));
     const allItems = results.slice(0, 10);
 
-    const enrichPromises = autocompleteItems.slice(0, 8).map(async (item) => {
+    const enrichPromises = autocompleteItems.slice(0, 10).map(async (item) => {
       try {
         const id = item.account_ID || item.accountID;
-        const detailResult = await Promise.allSettled([
-          this.withTimeout(firstValueFrom(this.api.post<any>('/api/platinum/billing-enquiry/enquiry-results', { accountID: String(id) })), 8000),
-        ]);
-
+        if (!id) return;
+        const basic = await this.withTimeout(
+          firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/basic-account-details/${id}`)), 6000
+        );
         if (this.quickSearchToken !== token) return;
-
-        let enriched = false;
-        if (detailResult[0].status === 'fulfilled') {
-          const arr = this.normalizeArray(detailResult[0].value);
-          if (arr.length > 0) {
-            const full = arr[0];
-            if (full.name || full.surname_Company) item.name = full.name || full.surname_Company;
-            if (full.surname_Company) item.surname_Company = full.surname_Company;
-            if (full.locationAddress) item.locationAddress = full.locationAddress;
-            if (full.address) item.address = full.address;
-            if (full.deliveryAddress) item.deliveryAddress = full.deliveryAddress;
-            if (full.accountStatus) item.accountStatus = full.accountStatus;
-            if (full.statusDesc) item.statusDesc = full.statusDesc;
-            if (full.accountNumber) item.accountNumber = full.accountNumber;
-            if (full.idRegistrationNumber) item.idRegistrationNumber = full.idRegistrationNumber;
-            if (full.accountType) item.accountType = full.accountType;
-            if (full.accountDesc) item.accountDesc = full.accountDesc;
-            if (full.outStandingAmount != null) item.outStandingAmount = full.outStandingAmount;
-            if (full.outStandingAmt != null) item.outStandingAmt = full.outStandingAmt;
-            if (full.oldAccountCode) item.oldAccountCode = full.oldAccountCode;
-            if (full.sgNumber) item.sgNumber = full.sgNumber;
-            if (full.unitID != null) (item as any).unitID = full.unitID;
-            if (full.unitPartitionID != null) (item as any).unitPartitionID = full.unitPartitionID;
-            if (full.propertyID) (item as any).propertyID = full.propertyID;
-            if (full.contactDetails) (item as any).contactDetails = full.contactDetails;
-            delete (item as any)._fromAutocomplete;
-            enriched = true;
-          }
-        }
-
-        if (!enriched && id) {
-          try {
-            const basic = await this.withTimeout(
-              firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/basic-account-details/${id}`)), 6000
-            );
-            if (this.quickSearchToken !== token) return;
-            if (basic && !basic._error) {
-              if (basic.fullNAME) { item.name = basic.fullNAME.trim(); (item as any).fullNAME = basic.fullNAME; }
-              if (basic.fullAddress) item.locationAddress = basic.fullAddress;
-              if (basic.deliveryAddress) item.deliveryAddress = basic.deliveryAddress;
-              if (basic.accountStatus) item.accountStatus = basic.accountStatus;
-              if (basic.accountNumber) item.accountNumber = basic.accountNumber;
-              if (basic.accountDesc) item.accountDesc = basic.accountDesc;
-              if (basic.sgNumber) item.sgNumber = basic.sgNumber;
-              if (basic.propertyID) (item as any).propertyID = basic.propertyID;
-              if (basic.unitPartitionID) (item as any).unitPartitionID = basic.unitPartitionID;
-              if (basic.oldAccountCode) item.oldAccountCode = basic.oldAccountCode;
-              delete (item as any)._fromAutocomplete;
-            }
-          } catch {}
-        }
-
-        if (!item.sgNumber && id) {
-          try {
-            const unitResult = await this.withTimeout(
-              firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/consumption-units/${id}`)), 6000
-            );
-            if (this.quickSearchToken !== token) return;
-            const units = this.normalizeArray(unitResult);
-            if (units.length > 0) {
-              const sg = units[0].sgNumber || units[0].sg_number || units[0].sgNo || units[0].lpiCode;
-              if (sg) {
-                item.sgNumber = sg;
-                console.log('[enrich] SG from cons_unit for', id, ':', sg);
-              }
-              if (!item.unitID && units[0].unit_ID) (item as any).unitID = units[0].unit_ID;
-            }
-          } catch {}
+        if (basic && !basic._error) {
+          if (basic.fullNAME) { item.name = basic.fullNAME.trim(); (item as any).fullNAME = basic.fullNAME; }
+          if (basic.fullAddress) item.locationAddress = basic.fullAddress;
+          if (basic.deliveryAddress) item.deliveryAddress = basic.deliveryAddress;
+          if (basic.accountStatus) item.accountStatus = basic.accountStatus;
+          if (basic.accountNumber) item.accountNumber = basic.accountNumber;
+          if (basic.accountDesc) item.accountDesc = basic.accountDesc;
+          if (basic.sgNumber) item.sgNumber = basic.sgNumber;
+          if (basic.propertyID) (item as any).propertyID = basic.propertyID;
+          if (basic.unitPartitionID) (item as any).unitPartitionID = basic.unitPartitionID;
+          if (basic.oldAccountCode) item.oldAccountCode = basic.oldAccountCode;
+          if (basic.creditStatusDesc) item.creditStatusDesc = basic.creditStatusDesc;
+          delete (item as any)._fromAutocomplete;
         }
       } catch {}
     });
 
-    const balancePromises = allItems.map(async (item) => {
+    const balancePromises = allItems.slice(0, 10).map(async (item) => {
       try {
         const id = item.account_ID || item.accountID;
         if (!id) return;
-        const bal = await this.withTimeout(this.fetchAccountBalance(id), 12000);
+        const bal = await this.withTimeout(this.fetchAccountBalance(id), 8000);
         if (this.quickSearchToken !== token) return;
         if (Array.isArray(bal)) {
           const total = bal.reduce((sum: number, s: any) => sum + (s.totalOutStanding ?? s.totalOutstandingAmount ?? s.totalOutstanding ?? s.outstandingBalance ?? s.closingBalance ?? s.closeBalance ?? 0), 0);
@@ -758,10 +703,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       } catch {}
     });
 
-    await Promise.allSettled([...enrichPromises, ...balancePromises]);
-    if (this.quickSearchToken === token) {
-      this.dropdownResults.set([...this.dropdownResults()]);
-    }
+    const enrichDone = Promise.allSettled(enrichPromises).then(() => {
+      if (this.quickSearchToken === token) this.dropdownResults.set([...this.dropdownResults()]);
+    });
+    const balDone = Promise.allSettled(balancePromises).then(() => {
+      if (this.quickSearchToken === token) this.dropdownResults.set([...this.dropdownResults()]);
+    });
+    await Promise.allSettled([enrichDone, balDone]);
   }
 
   getAutocompleteType(field: string): string {
