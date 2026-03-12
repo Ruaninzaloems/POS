@@ -141,9 +141,9 @@
               <input
                 class="search-input"
                 type="text"
-                [placeholder]="sessionActive() ? 'Search accounts, groups, misc items, meters...' : 'Start cashier session to search'"
+                [placeholder]="sessionActive() ? 'Type account number, name, or meter to search...' : 'Start cashier session to search'"
                 [ngModel]="unifiedSearchQuery()"
-                (ngModelChange)="unifiedSearchQuery.set($event)"
+                (ngModelChange)="onUnifiedSearchInput($event)"
                 (keydown)="onUnifiedSearchKeydown($event)"
                 [disabled]="!sessionActive()"
                 data-testid="input-unified-search"
@@ -163,37 +163,91 @@
             </div>
           </div>
 
-          @if (unifiedSearchActive() && unifiedSearchResults().length > 0) {
+          @if (unifiedSearchLoading()) {
+            <div class="search-results-panel" data-testid="unified-loading">
+              <div class="search-loading-bar">
+                <div class="spinner-sm"></div>
+                <span>Searching Platinum...</span>
+              </div>
+            </div>
+          }
+
+          @if (unifiedSearchActive() && !unifiedSearchLoading() && unifiedSearchResults().length > 0) {
             <div class="search-results-panel" data-testid="unified-results">
               <div class="results-header">
                 <span>{{ unifiedSearchResults().length }} result(s) found</span>
-                <button class="link-btn" (click)="clearUnifiedSearch()">Close</button>
+                <button class="link-btn" (click)="clearUnifiedSearch()">Clear</button>
               </div>
               @for (result of unifiedSearchResults(); track result.id + '-' + result.resultType) {
                 <div class="search-result-card unified-result" [attr.data-testid]="'result-' + result.resultType + '-' + result.id">
-                  <div class="result-top-row" (click)="addUnifiedResult(result)">
-                    <div class="result-type-badge" [style.background]="getTypeColor(result.resultType === 'group' ? 'account' : result.resultType)">
-                      {{ result.resultType === 'group' ? 'GROUP' : result.resultType.toUpperCase() }}
-                    </div>
-                    <div class="result-name-col">
-                      <span class="result-name">{{ result.label }}</span>
-                      <span class="result-address">{{ result.description }}</span>
-                    </div>
-                    @if (result.balance) {
-                      <div class="result-balance-col">
-                        <span class="result-balance" [class.owing]="result.balance > 0">R {{ formatCurrency(result.balance) }}</span>
+                  @if (result.resultType === 'account') {
+                    <div class="account-result-detail">
+                      <div class="account-result-header">
+                        <div class="result-type-badge" [style.background]="getTypeColor('account')">ACCOUNT</div>
+                        <div class="account-result-name">{{ result.label }}</div>
+                        <div class="account-result-status" [class.active]="(result.status || '').toLowerCase() === 'active'">{{ result.status }}</div>
                       </div>
-                    }
-                    <span class="result-add-hint">
-                      @if (result.resultType === 'group') {
-                        Expand
-                      } @else {
-                        Add
+                      <div class="account-result-info">
+                        <div class="account-info-row">
+                          <span class="info-label">Account:</span>
+                          <span class="info-value">{{ result.rawData?.accountNo || result.rawData?.accountNumber || '' }}</span>
+                        </div>
+                        <div class="account-info-row">
+                          <span class="info-label">Address:</span>
+                          <span class="info-value">{{ result.rawData?.address || result.rawData?.physicalAddress || result.rawData?.locationAddress || '-' }}</span>
+                        </div>
+                        <div class="account-info-row">
+                          <span class="info-label">Balance:</span>
+                          <span class="info-value balance-value" [class.owing]="result.balance > 0" [class.credit]="result.balance < 0">R {{ formatCurrency(result.balance) }}</span>
+                        </div>
+                        @if (result.rawData?.hasPrepaidMeter) {
+                          <div class="account-info-row">
+                            <span class="info-label">Meter:</span>
+                            <span class="info-value meter-value">{{ result.rawData.prepaidMeterNo }}</span>
+                          </div>
+                        }
+                      </div>
+                      <div class="account-result-actions">
+                        <button class="add-to-basket-btn" (click)="addUnifiedResult(result)" [disabled]="accountDetailLoading()" [attr.data-testid]="'button-add-account-' + result.id">
+                          @if (accountDetailLoading()) {
+                            <div class="spinner-sm"></div> Loading...
+                          } @else {
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                            Add to Basket
+                          }
+                        </button>
+                        @if (result.rawData?.hasPrepaidMeter) {
+                          <button class="add-prepaid-btn" (click)="addPrepaidPlaceholder(result.rawData.prepaidMeterNo); $event.stopPropagation()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                            Add Prepaid
+                          </button>
+                        }
+                      </div>
+                    </div>
+                  } @else {
+                    <div class="result-top-row" (click)="addUnifiedResult(result)">
+                      <div class="result-type-badge" [style.background]="getTypeColor(result.resultType === 'group' ? 'account' : result.resultType)">
+                        {{ result.resultType === 'group' ? 'GROUP' : result.resultType.toUpperCase() }}
+                      </div>
+                      <div class="result-name-col">
+                        <span class="result-name">{{ result.label }}</span>
+                        <span class="result-address">{{ result.description }}</span>
+                      </div>
+                      @if (result.balance) {
+                        <div class="result-balance-col">
+                          <span class="result-balance" [class.owing]="result.balance > 0">R {{ formatCurrency(result.balance) }}</span>
+                        </div>
                       }
-                    </span>
-                  </div>
+                      <span class="result-add-hint">
+                        @if (result.resultType === 'group') {
+                          Expand
+                        } @else {
+                          Add
+                        }
+                      </span>
+                    </div>
+                  }
 
-                  <!-- Expanded group accounts -->
                   @if (result.resultType === 'group' && expandedGroupId() === result.id + '') {
                     <div class="group-accounts-panel">
                       @if (groupAccountsLoading()) {

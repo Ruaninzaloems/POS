@@ -298,13 +298,28 @@ export class PosComponent implements OnInit, OnDestroy {
   processingOrder = PROCESSING_ORDER;
 
   private cashierCheckDone = false;
+  private searchDebounceTimer: any = null;
 
   ngOnInit(): void {
     this.loadCashierInfo();
     this.loadBanks();
   }
 
-  ngOnDestroy(): void {}
+  ngOnDestroy(): void {
+    if (this.searchDebounceTimer) clearTimeout(this.searchDebounceTimer);
+  }
+
+  onUnifiedSearchInput(value: string): void {
+    this.unifiedSearchQuery.set(value);
+    if (this.searchDebounceTimer) clearTimeout(this.searchDebounceTimer);
+    const trimmed = value.trim();
+    if (!trimmed || trimmed.length < 3 || !this.sessionActive()) {
+      return;
+    }
+    this.searchDebounceTimer = setTimeout(() => {
+      this.unifiedSearch();
+    }, 400);
+  }
 
   toggleSearchMode(): void {
     this.searchMode.update(m => m === 'tabs' ? 'unified' : 'tabs');
