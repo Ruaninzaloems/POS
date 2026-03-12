@@ -3371,6 +3371,8 @@
 .svc-card-actions { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #f0f0f0; }
 .svc-bal-btn { background: none; border: 1px solid var(--platinum-accent, #c9a84c); color: var(--platinum-accent, #c9a84c); border-radius: 0.375rem; padding: 0.35rem 0.75rem; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.15s; width: 100%; }
 .svc-bal-btn:hover { background: var(--platinum-accent, #c9a84c); color: #fff; }
+.svc-purchase-btn { border-color: #a855f7; color: #a855f7; }
+.svc-purchase-btn:hover { background: #a855f7; color: #fff; }
 
 .cons-bar-actual { background: linear-gradient(180deg, var(--platinum-primary, #0f2b46) 0%, rgba(15,43,70,0.4) 100%); }
 .cons-bar-estimate { background: linear-gradient(180deg, #94a3b8 0%, rgba(148,163,184,0.4) 100%); }

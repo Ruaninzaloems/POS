@@ -4930,6 +4930,22 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.svcBalanceLoading.set(false);
   }
 
+  async viewPrepaidPurchaseHistory(svc: any) {
+    const meterNo = (svc.physicalMeterMeterCode || svc.physicalMeterNo || svc.meterNo || svc.meterNumber || '').toLowerCase();
+    this.setActiveTab('consumption');
+    await new Promise(r => setTimeout(r, 800));
+    const prepaidMeters = this.tabData()?.prepaidMeters || [];
+    const match = prepaidMeters.find((m: any) => {
+      const mn = (m.prepaidMeterNo || m.meterNumber || m.physicalMeterNo || m.meterNo || m.meter_ID || '').toLowerCase();
+      return mn && meterNo && mn === meterNo;
+    });
+    if (match) {
+      this.selectPrepaidMeter(match);
+    } else if (prepaidMeters.length > 0) {
+      this.selectPrepaidMeter(prepaidMeters[0]);
+    }
+  }
+
   async changeSvcBalanceFinYear(fy: string) {
     this.svcBalanceFinYear.set(fy);
     await this.viewServiceBalance(this.svcSelectedService());

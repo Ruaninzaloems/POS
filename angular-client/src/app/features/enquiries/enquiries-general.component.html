@@ -816,7 +816,11 @@
                               </div>
                             }
                             <div class="svc-card-actions">
-                              <button class="svc-bal-btn" (click)="viewServiceBalance(svc)" [attr.data-testid]="'button-view-balance-' + $index">📊 View Balance</button>
+                              @if (cat.key === 'prepaid') {
+                                <button class="svc-bal-btn svc-purchase-btn" (click)="viewPrepaidPurchaseHistory(svc)" [attr.data-testid]="'button-purchase-history-' + $index">🧾 Purchase History</button>
+                              } @else {
+                                <button class="svc-bal-btn" (click)="viewServiceBalance(svc)" [attr.data-testid]="'button-view-balance-' + $index">📊 View Balance</button>
+                              }
                             </div>
                           </div>
                         }
