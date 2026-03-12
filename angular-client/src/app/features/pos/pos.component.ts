@@ -846,14 +846,21 @@ export class PosComponent implements OnInit, OnDestroy {
         this.api.get<any>('/api/platinum/billing-payment-miscellaneous/get-scoa-items', { mISCPayGroupId: String(groupId) })
       );
       const arr = Array.isArray(data) ? data : (data?.data || data?.items || []);
-      scoaItems = arr.map((s: any) => ({
-        scoaItemId: s.scoaItemId || s.scoa_item_ID || s.scoaItem || s.id || 0,
-        scoaItemName: s.scoaItemName || s.description || s.name || '',
-        description: s.description || s.scoaItemName || s.name || '',
-        amount: s.amount || 0,
-        isVatable: s.isVatable || false,
-        vatPercentage: s.vatPercentage || 0,
-      }));
+      scoaItems = arr.map((s: any) => {
+        const rawName = s.scoaItemName || s.description || s.name || '';
+        const codeMatch = rawName.match(/\s+([A-Z]{2}\d{30,})\s*$/);
+        const scoaCode = codeMatch ? codeMatch[1] : '';
+        const descPart = codeMatch ? rawName.replace(codeMatch[0], '').trim() : rawName;
+        const displayName = scoaCode ? `${scoaCode} — ${descPart}` : descPart || rawName;
+        return {
+          scoaItemId: s.scoaItemId || s.scoa_item_ID || s.scoaItem || s.id || 0,
+          scoaItemName: displayName,
+          description: s.description || rawName,
+          amount: s.amount || 0,
+          isVatable: s.isVatable || false,
+          vatPercentage: s.vatPercentage || 0,
+        };
+      });
     } catch {
       this.toast.error('Failed to load SCOA items for this group.');
       return;
@@ -1940,10 +1947,13 @@ export class PosComponent implements OnInit, OnDestroy {
       const arr = Array.isArray(data) ? data : (data?.data || data?.items || []);
       const mapped = arr.map((s: any) => {
         const rawName = s.scoaItemName || s.description || s.name || '';
-        const cleanName = rawName.replace(/\s+[A-Z]{2}\d{30,}.*$/, '').trim() || rawName;
+        const codeMatch = rawName.match(/\s+([A-Z]{2}\d{30,})\s*$/);
+        const scoaCode = codeMatch ? codeMatch[1] : '';
+        const descPart = codeMatch ? rawName.replace(codeMatch[0], '').trim() : rawName;
+        const displayName = scoaCode ? `${scoaCode} — ${descPart}` : descPart || rawName;
         return {
           scoaItemId: s.scoaItemId || s.scoa_item_ID || s.scoaItem || s.id || 0,
-          scoaItemName: cleanName,
+          scoaItemName: displayName,
           description: s.description || rawName,
           amount: s.amount || 0,
           isVatable: s.isVatable !== false,
