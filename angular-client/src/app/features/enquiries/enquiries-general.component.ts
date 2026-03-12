@@ -659,10 +659,10 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   }
 
   private async enrichAutocompleteResults(results: SearchResult[], token: number): Promise<void> {
-    const autocompleteItems = results.filter((r: any) => r._fromAutocomplete);
+    const autocompleteItems = results.filter((r: any) => r._fromAutocomplete || (!r.name && !r.surname_Company && !(r as any).fullNAME));
     const allItems = results.slice(0, 10);
 
-    const enrichPromises = autocompleteItems.slice(0, 5).map(async (item) => {
+    const enrichPromises = autocompleteItems.slice(0, 8).map(async (item) => {
       try {
         const id = item.account_ID || item.accountID;
         const detailResult = await Promise.allSettled([
@@ -671,6 +671,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
         if (this.quickSearchToken !== token) return;
 
+        let enriched = false;
         if (detailResult[0].status === 'fulfilled') {
           const arr = this.normalizeArray(detailResult[0].value);
           if (arr.length > 0) {
@@ -695,7 +696,30 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             if (full.propertyID) (item as any).propertyID = full.propertyID;
             if (full.contactDetails) (item as any).contactDetails = full.contactDetails;
             delete (item as any)._fromAutocomplete;
+            enriched = true;
           }
+        }
+
+        if (!enriched && id) {
+          try {
+            const basic = await this.withTimeout(
+              firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/basic-account-details/${id}`)), 6000
+            );
+            if (this.quickSearchToken !== token) return;
+            if (basic && !basic._error) {
+              if (basic.fullNAME) { item.name = basic.fullNAME.trim(); (item as any).fullNAME = basic.fullNAME; }
+              if (basic.fullAddress) item.locationAddress = basic.fullAddress;
+              if (basic.deliveryAddress) item.deliveryAddress = basic.deliveryAddress;
+              if (basic.accountStatus) item.accountStatus = basic.accountStatus;
+              if (basic.accountNumber) item.accountNumber = basic.accountNumber;
+              if (basic.accountDesc) item.accountDesc = basic.accountDesc;
+              if (basic.sgNumber) item.sgNumber = basic.sgNumber;
+              if (basic.propertyID) (item as any).propertyID = basic.propertyID;
+              if (basic.unitPartitionID) (item as any).unitPartitionID = basic.unitPartitionID;
+              if (basic.oldAccountCode) item.oldAccountCode = basic.oldAccountCode;
+              delete (item as any)._fromAutocomplete;
+            }
+          } catch {}
         }
 
         if (!item.sgNumber && id) {
@@ -807,17 +831,56 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       if (c.sgNumber) body['sgNumber'] = c.sgNumber;
       if (c.erfNumber) body['erfNumber'] = c.erfNumber;
 
-      const data = await this.withTimeout(
-        firstValueFrom(this.api.post<any>('/api/platinum/billing-enquiry/enquiry-results', body)),
-        20000
-      );
+      let data: any;
+      try {
+        data = await this.withTimeout(
+          firstValueFrom(this.api.post<any>('/api/platinum/billing-enquiry/enquiry-results', body)),
+          20000
+        );
+      } catch {
+        data = null;
+      }
       if (this.searchToken !== token) return;
-      const arr = this.normalizeArray(data);
+      let arr = this.normalizeArray(data);
+
+      if (arr.length === 0 && body['accountID']) {
+        const acctId = body['accountID'].replace(/^0+/, '') || body['accountID'];
+        try {
+          const basic = await this.withTimeout(
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/basic-account-details/${acctId}`)), 8000
+          );
+          if (this.searchToken !== token) return;
+          if (basic && !basic._error) {
+            arr = [{
+              account_ID: basic.account_ID || parseInt(acctId, 10),
+              accountID: basic.account_ID || parseInt(acctId, 10),
+              accountNumber: basic.accountNumber || '',
+              name: (basic.fullNAME || '').trim(),
+              fullNAME: basic.fullNAME,
+              surname_Company: (basic.fullNAME || '').trim(),
+              locationAddress: basic.fullAddress || '',
+              deliveryAddress: basic.deliveryAddress || '',
+              accountStatus: basic.accountStatus || '',
+              accountDesc: basic.accountDesc || '',
+              sgNumber: basic.sgNumber || '',
+              propertyID: basic.propertyID || '',
+              unitPartitionID: basic.unitPartitionID || '',
+              oldAccountCode: basic.oldAccountCode || '',
+              creditStatusDesc: basic.creditStatusDesc || '',
+            }] as any[];
+          }
+        } catch {}
+      }
+
       this.results.set(arr);
-      this.enrichBalances(arr, token);
+      if (arr.length === 0) {
+        this.searchError.set('No accounts found matching your search.');
+      } else {
+        this.enrichBalances(arr, token);
+      }
     } catch (e: any) {
       if (this.searchToken === token) {
-        const msg = e?.message === 'Request timeout' ? 'Search timed out. Please try again.' : (e?.error?.message || e?.message || 'Search failed');
+        const msg = e?.error?.message || e?.message || 'Search failed';
         this.searchError.set(msg);
         this.results.set([]);
       }
