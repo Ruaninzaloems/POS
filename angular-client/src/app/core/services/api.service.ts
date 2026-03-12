@@ -22,6 +22,10 @@ export class ApiService {
     return this.http.post<T>(url, body || {}, { withCredentials: true });
   }
 
+  postBlob(url: string, body?: any): Observable<Blob> {
+    return this.http.post(url, body || {}, { withCredentials: true, responseType: 'blob' });
+  }
+
   put<T = any>(url: string, body?: any): Observable<T> {
     return this.http.put<T>(url, body || {}, { withCredentials: true });
   }

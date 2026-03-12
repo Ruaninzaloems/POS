@@ -1566,44 +1566,70 @@ export class PosComponent implements OnInit, OnDestroy {
     this.miscInitials.set('');
   }
 
+  private getReceiptSerialNo(data: any): number {
+    if (!data) return 0;
+    const extract = (obj: any): number => {
+      if (!obj || typeof obj !== 'object') return 0;
+      return Number(obj.receiptSerialNo || obj.receipt_serial_no || obj.ReceiptSerialNo
+        || obj.receiptId || obj.receipt_ID || obj.receiptID || 0);
+    };
+    let val = extract(data);
+    if (val > 0) return val;
+    if (data.objData) { val = extract(data.objData); if (val > 0) return val; }
+    if (data.result) { val = extract(data.result); if (val > 0) return val; }
+    if (data.data) { val = extract(data.data); if (val > 0) return val; }
+    return 0;
+  }
+
   async printReceipt(): Promise<void> {
     const results = this.receiptResults();
     if (!results.length) return;
     this.printingReceipt.set(true);
+    let printed = 0;
     try {
-      const receiptIds = results.map(r => {
-        const raw = r.rawResponse;
-        return raw?.receiptSerialNo || raw?.receipt_serial_no || raw?.receiptId || raw?.receipt_ID || 0;
-      }).filter((id: number) => id > 0);
+      const miscResults = results.filter(r => r.items.every(i => i.type === 'misc'));
+      const nonMiscResults = results.filter(r => r.items.some(i => i.type !== 'misc'));
 
-      const receiptNos = results.map(r => r.receiptNumber).filter(n => n && n !== 'N/A');
-
-      if (receiptIds.length === 0 && receiptNos.length === 0) {
-        this.toast.error('No valid receipt IDs to print.');
-        this.printingReceipt.set(false);
-        return;
+      for (const mr of miscResults) {
+        const serialNo = this.getReceiptSerialNo(mr.rawResponse);
+        if (serialNo <= 0) continue;
+        try {
+          const blob = await firstValueFrom(
+            this.api.postBlob(`/api/platinum/billing-payment/print-miscellaneous-receipt?id=${serialNo}`, {})
+          );
+          if (blob && blob.size > 0) {
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            printed++;
+          }
+        } catch { }
       }
 
-      const result: any = await firstValueFrom(
-        this.api.post('/api/platinum/billing-payment/print-receipt', {
-          ids: receiptIds.length > 0 ? receiptIds : [0],
-          receiptNos,
-          isReprint: false,
-        })
-      );
+      if (nonMiscResults.length > 0) {
+        const receiptIds = nonMiscResults.map(r => this.getReceiptSerialNo(r.rawResponse)).filter(id => id > 0);
+        const receiptNos = nonMiscResults.map(r => r.receiptNumber).filter(n => n && n !== 'N/A');
 
-      if (result instanceof Blob) {
-        const url = URL.createObjectURL(result);
-        window.open(url, '_blank');
-      } else if (result?.pdfBase64) {
-        const byteCharacters = atob(result.pdfBase64);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
-        const blob = new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
+        if (receiptIds.length > 0 || receiptNos.length > 0) {
+          const blob = await firstValueFrom(
+            this.api.postBlob('/api/platinum/billing-payment/print-receipt', {
+              ids: receiptIds.length > 0 ? receiptIds : [0],
+              receiptNos,
+              isReprint: false,
+            })
+          );
+          if (blob && blob.size > 0) {
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            printed++;
+          }
+        }
       }
-      this.toast.success('Receipt(s) sent to printer.');
+
+      if (printed > 0) {
+        this.toast.success('Receipt(s) sent to printer.');
+      } else {
+        this.toast.error('No printable receipts found.');
+      }
     } catch {
       this.toast.error('Failed to print receipt(s).');
     } finally {
@@ -1758,7 +1784,23 @@ export class PosComponent implements OnInit, OnDestroy {
   }
 
   getReceiptNo(data: any): string {
-    return data?.receiptNumber || data?.receipt_no || data?.receiptNo || data?.ReceiptNo || 'N/A';
+    if (!data) return 'N/A';
+    const extract = (obj: any): string | null => {
+      if (!obj || typeof obj !== 'object') return null;
+      return obj.receiptNo || obj.receiptNumber || obj.receipt_no || obj.ReceiptNo
+        || obj.receiptSerialNo || obj.receipt_serial_no || obj.ReceiptSerialNo
+        || null;
+    };
+    let val = extract(data);
+    if (val) return String(val);
+    if (data.objData) { val = extract(data.objData); if (val) return String(val); }
+    if (data.result) { val = extract(data.result); if (val) return String(val); }
+    if (data.data) { val = extract(data.data); if (val) return String(val); }
+    if (data.receiptID || data.receipt_ID || data.id) {
+      return String(data.receiptID || data.receipt_ID || data.id);
+    }
+    console.warn('[POS] Could not extract receipt number from API response:', JSON.stringify(data).substring(0, 500));
+    return 'N/A';
   }
 
   getAccountNo(r: any): string {
