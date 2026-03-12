@@ -880,6 +880,81 @@
         @if (activeTab() === 'property') {
           <div class="tab-panel" data-testid="property-details-tab">
             @if (tabData()?.property || tabData()?.consUnit || (tabData()?.transfers || []).length > 0 || (tabData()?.meters || []).length > 0 || (tabData()?.valuations || []).length > 0 || (tabData()?.rebatesLevies || []).length > 0) {
+
+              @if (tabData()?.accountSnapshot) {
+                <div class="prop-snapshot-card" data-testid="property-snapshot">
+                  <div class="prop-snapshot-header">
+                    <div class="prop-snapshot-title-row">
+                      <div class="prop-snapshot-identity">
+                        <span class="prop-snapshot-icon">🏠</span>
+                        <div>
+                          <div class="prop-snapshot-owner">{{ tabData()?.accountSnapshot?.accountableOwnerName || '-' }}</div>
+                          <div class="prop-snapshot-address">📍 {{ tabData()?.accountSnapshot?.locationAddress || '-' }}</div>
+                        </div>
+                      </div>
+                      <div class="prop-snapshot-status-pill" [class.status-active]="(tabData()?.accountSnapshot?.propertyStatus || '').toLowerCase().includes('active')" [class.status-inactive]="!(tabData()?.accountSnapshot?.propertyStatus || '').toLowerCase().includes('active') && tabData()?.accountSnapshot?.propertyStatus">
+                        {{ tabData()?.accountSnapshot?.propertyStatus || '-' }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="prop-snapshot-grid">
+                    <div class="prop-snapshot-field">
+                      <div class="prop-snapshot-label">Account Type</div>
+                      <div class="prop-snapshot-value">{{ tabData()?.accountSnapshot?.accountType || '-' }}</div>
+                    </div>
+                    <div class="prop-snapshot-field">
+                      <div class="prop-snapshot-label">SG Number</div>
+                      <div class="prop-snapshot-value mono">{{ tabData()?.accountSnapshot?.sgNumber || '-' }}</div>
+                    </div>
+                    <div class="prop-snapshot-field">
+                      <div class="prop-snapshot-label">Property Type</div>
+                      <div class="prop-snapshot-value">{{ tabData()?.accountSnapshot?.propertyType || '-' }}</div>
+                    </div>
+                    <div class="prop-snapshot-field">
+                      <div class="prop-snapshot-label">Property Category</div>
+                      <div class="prop-snapshot-value">{{ tabData()?.accountSnapshot?.propertyCategory || '-' }}</div>
+                    </div>
+                    <div class="prop-snapshot-field">
+                      <div class="prop-snapshot-label">Property Type of Use</div>
+                      <div class="prop-snapshot-value">{{ tabData()?.accountSnapshot?.propertyTypeOfUse || '-' }}</div>
+                    </div>
+                    <div class="prop-snapshot-field">
+                      <div class="prop-snapshot-label">Billing Cycle</div>
+                      <div class="prop-snapshot-value">{{ tabData()?.accountSnapshot?.cycleDescription || '-' }}</div>
+                    </div>
+                  </div>
+
+                  <div class="prop-snapshot-badges">
+                    <div class="prop-snap-badge" [class.snap-badge-active]="tabData()?.accountSnapshot?.indigentSubsidyStatus" [class.snap-badge-none]="!tabData()?.accountSnapshot?.indigentSubsidyStatus" data-testid="snap-indigent">
+                      <span class="snap-badge-icon">🛡️</span>
+                      <span class="snap-badge-label">Indigent Subsidy</span>
+                      <span class="snap-badge-value">{{ tabData()?.accountSnapshot?.indigentSubsidyStatus || 'None' }}</span>
+                    </div>
+                    <div class="prop-snap-badge" [class.snap-badge-active]="tabData()?.accountSnapshot?.consumerRppStatus" [class.snap-badge-none]="!tabData()?.accountSnapshot?.consumerRppStatus" data-testid="snap-rpp">
+                      <span class="snap-badge-icon">🔄</span>
+                      <span class="snap-badge-label">Consumer RPP</span>
+                      <span class="snap-badge-value">{{ tabData()?.accountSnapshot?.consumerRppStatus || 'None' }}</span>
+                    </div>
+                    <div class="prop-snap-badge" [class.snap-badge-active]="tabData()?.accountSnapshot?.rebateStatus" [class.snap-badge-none]="!tabData()?.accountSnapshot?.rebateStatus" data-testid="snap-rebate">
+                      <span class="snap-badge-icon">🏷️</span>
+                      <span class="snap-badge-label">Rebate Status</span>
+                      <span class="snap-badge-value">{{ tabData()?.accountSnapshot?.rebateStatus || 'None' }}</span>
+                    </div>
+                    <div class="prop-snap-badge" [class.snap-badge-warn]="tabData()?.accountSnapshot?.handoverStatus" [class.snap-badge-none]="!tabData()?.accountSnapshot?.handoverStatus" data-testid="snap-handover">
+                      <span class="snap-badge-icon">⚠️</span>
+                      <span class="snap-badge-label">Handover Status</span>
+                      <span class="snap-badge-value">{{ tabData()?.accountSnapshot?.handoverStatus || 'None' }}</span>
+                    </div>
+                    <div class="prop-snap-badge" [class.snap-badge-active]="tabData()?.accountSnapshot?.interestWaiverStatus" [class.snap-badge-none]="!tabData()?.accountSnapshot?.interestWaiverStatus" data-testid="snap-interest-waiver">
+                      <span class="snap-badge-icon">💳</span>
+                      <span class="snap-badge-label">Interest Waiver</span>
+                      <span class="snap-badge-value">{{ tabData()?.accountSnapshot?.interestWaiverStatus || 'None' }}</span>
+                    </div>
+                  </div>
+                </div>
+              }
+
               <div class="acct-section-card">
                 <div class="acct-section-header">Property</div>
                 <div class="acct-two-col">

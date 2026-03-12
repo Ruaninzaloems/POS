@@ -1377,13 +1377,16 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           break;
 
         case 'property':
-          const [prop, consUnit, rates, meters, transfers, propAcctInfo] = await Promise.allSettled([
+          const [prop, consUnit, rates, meters, transfers, propAcctInfo, propConsAcctDetails, propHandoverInfo, propAcctMgmt] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/consumption-units/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-rates-details/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/metered-services-on-account/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/transfer-ownership/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-info-result/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/receipt-prepaid/cons-account-details`, { accountId: String(accountId) })),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/handover-info/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-account-management/account-details`, { accountId: String(accountId) })),
           ]);
           let propVal = prop.status === 'fulfilled' ? (Array.isArray(prop.value) ? prop.value[0] : prop.value) : null;
           if (propVal && propVal._error) propVal = null;
@@ -1542,6 +1545,36 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             const exists = propMetersMerged.find((m: any) => meterKey(m) === lk);
             if (!exists) propMetersMerged.push(lm);
           }
+          const propConsAcctVal = propConsAcctDetails.status === 'fulfilled' ? (Array.isArray(propConsAcctDetails.value) ? propConsAcctDetails.value[0] : propConsAcctDetails.value) : null;
+          const propHandoverVal = propHandoverInfo.status === 'fulfilled' ? this.normalizeArray(propHandoverInfo.value) : [];
+          const propAcctMgmtVal = propAcctMgmt.status === 'fulfilled' ? (Array.isArray(propAcctMgmt.value) ? propAcctMgmt.value[0] : propAcctMgmt.value) : null;
+          const acctSnapshot: Record<string, any> = {};
+          const sa = this.selectedAccount() as any;
+          acctSnapshot['accountType'] = propVal?.accountDesc || propConsAcctVal?.accountDesc || propAcctMgmtVal?.accountDesc || sa?.accountDesc || sa?.accountType || '';
+          acctSnapshot['sgNumber'] = propVal?.sgNumber || propConsUnitVal?.sgNumber || sa?.sgNumber || '';
+          acctSnapshot['locationAddress'] = propVal?.locationAddress || propVal?.propertyStreet ||
+            (propVal?.streetNumber ? propVal.streetNumber + ' ' + propVal.streetName + ', ' + propVal.town : propVal?.streetName ? propVal.streetName + ', ' + (propVal?.town || '') : '') ||
+            propConsUnitVal?.nonStandAddLine1 || sa?.locationAddress || sa?.address || '';
+          acctSnapshot['propertyStatus'] = propVal?.propertyStatus || propVal?.statusDesc || propConsAcctVal?.statusDesc || propVal?.accountStatus || sa?.accountStatus || '';
+          acctSnapshot['propertyType'] = propVal?.propertyType || propVal?.typeOfUse || propVal?.typeofUse || propVal?.typeOfUseDesc || propConsAcctVal?.typeOfUseDesc || propConsUnitVal?.typeOfUseDesc || '';
+          acctSnapshot['propertyCategory'] = propVal?.propertyCategory || propVal?.category || propVal?.zoneDesc || propConsAcctVal?.zoneDesc || propConsUnitVal?.zoneDesc || '';
+          acctSnapshot['propertyTypeOfUse'] = propVal?.propertyTypeOfUse || propVal?.typeOfUse || propVal?.typeofUse || propVal?.typeOfUseDesc || propConsAcctVal?.typeOfUseDesc || '';
+          acctSnapshot['accountableOwnerName'] = propVal?.accountableOwnerName || propVal?.ownerName || propPartOwnerResult?.ownerName || propPartOwnerResult?.name ||
+            propPartOwnerResult?.accountableOwnerName || propPartOwnerResult?.surname_Company || propPartOwnerResult?.fullName ||
+            (propPartOwnerResult?.firstNames || propPartOwnerResult?.lastName ? [propPartOwnerResult?.lastName, propPartOwnerResult?.firstNames].filter(Boolean).join(' ') : '') ||
+            propVal?.name || propVal?.owner || sa?.name || '';
+          acctSnapshot['indigentSubsidyStatus'] = propConsAcctVal?.indigentSubsidyStatus || propConsAcctVal?.indigentSubsidy || propConsAcctVal?.indigentStatus || propConsAcctVal?.attpStatus || '';
+          acctSnapshot['consumerRppStatus'] = propConsAcctVal?.consumerRppStatus || propConsAcctVal?.consumerRPPStatus || propConsAcctVal?.consumerRpp || '';
+          acctSnapshot['rebateStatus'] = propConsAcctVal?.rebateStatus || propConsAcctVal?.rebateStatusDesc || propConsAcctVal?.rebate || '';
+          const activeHandover = propHandoverVal.find((h: any) => {
+            const st = (h.handoverStatus || h.status || h.handoverStatusDesc || '').toLowerCase();
+            return st.includes('active') || st.includes('handed') || st.includes('progress');
+          });
+          acctSnapshot['handoverStatus'] = activeHandover ? (activeHandover.handoverStatus || activeHandover.status || 'Handed Over') : (propConsAcctVal?.handoverStatus || propConsAcctVal?.handoverStatusDesc || propConsAcctVal?.handover || '');
+          acctSnapshot['interestWaiverStatus'] = propConsAcctVal?.interestWaiverStatus || propConsAcctVal?.interestWaiverDesc || propConsAcctVal?.interestWaiver || '';
+          acctSnapshot['creditStatus'] = propConsAcctVal?.creditStatusDesc || propAcctMgmtVal?.creditStatusDesc || propConsAcctVal?.creditStatus || '';
+          acctSnapshot['accountStatus'] = propConsAcctVal?.statusDesc || propAcctMgmtVal?.accountStatus || propVal?.accountStatus || sa?.accountStatus || '';
+          acctSnapshot['cycleDescription'] = propAcctMgmtVal?.cycleDescription || propVal?.cycleDescription || propVal?.billingCycle || '';
           data = {
             property: propVal,
             consUnit: propConsUnitVal,
@@ -1551,6 +1584,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             transfers: transfers.status === 'fulfilled' ? this.normalizeArray(transfers.value) : [],
             valuations: propValuations,
             rebatesLevies: propRebatesLevies,
+            accountSnapshot: acctSnapshot,
           };
           break;
 
