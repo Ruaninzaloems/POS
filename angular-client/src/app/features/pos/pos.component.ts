@@ -212,7 +212,17 @@ export class PosComponent implements OnInit, OnDestroy {
   private readonly MAX_CHANGE = 200;
 
   changeAmount = computed(() => {
-    const raw = Math.max(0, this.effectiveTotalTendered() - this.basket.totalToPay());
+    const tender = this.activeTender();
+    if (tender === 'card') return 0;
+    const totalDue = this.basket.totalToPay();
+    if (tender === 'cash+card') {
+      const cashPortion = this.cashRoundedAmount();
+      const cardPortion = this.cardAmount();
+      const cashDue = Math.max(0, totalDue - cardPortion);
+      const raw = Math.max(0, cashPortion - cashDue);
+      return Math.round(raw * 100) / 100;
+    }
+    const raw = Math.max(0, this.cashRoundedAmount() - totalDue);
     return Math.round(raw * 100) / 100;
   });
 
@@ -1066,8 +1076,9 @@ export class PosComponent implements OnInit, OnDestroy {
   }
 
   onCashCardCardChange(val: number): void {
-    this.cardAmount.set(val);
-    const remaining = Math.max(0, this.basket.totalToPay() - val);
+    const capped = Math.max(0, Math.min(val, this.basket.totalToPay()));
+    this.cardAmount.set(capped);
+    const remaining = Math.max(0, this.basket.totalToPay() - capped);
     const rounded = this.basket.roundToNearest10c(remaining);
     this.cashAmount.set(rounded);
   }
@@ -1075,6 +1086,11 @@ export class PosComponent implements OnInit, OnDestroy {
   addDenominationCashCard(value: number): void {
     const newCash = Math.round((this.cashAmount() + value) * 100) / 100;
     this.onCashCardCashChange(newCash);
+  }
+
+  onCardOnlyAmountChange(val: number): void {
+    const max = this.basket.totalToPay();
+    this.cardAmount.set(Math.max(0, Math.min(val, max)));
   }
 
   addDenomination(value: number): void {

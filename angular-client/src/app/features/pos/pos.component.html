@@ -766,7 +766,7 @@
           @if (activeTender() === 'card') {
             <div class="tender-section">
               <label class="form-label">Card Amount (R)</label>
-              <input type="number" class="form-input tender-amount-input" step="0.01" min="0" placeholder="0.00" [ngModel]="cardAmount() || null" (ngModelChange)="cardAmount.set(+$event || 0)" (focus)="$event.target.select()" data-testid="input-card-amount" />
+              <input type="number" class="form-input tender-amount-input" step="0.01" min="0" placeholder="0.00" [ngModel]="cardAmount() || null" (ngModelChange)="onCardOnlyAmountChange(+$event || 0)" (focus)="$event.target.select()" data-testid="input-card-amount" />
               <label class="form-label">Card Number</label>
               <input type="text" class="form-input" placeholder="0000 0000 0000 0000" [ngModel]="cardNumber()" (ngModelChange)="formatCardNumber($event)" maxlength="19" data-testid="input-card-number" />
               <label class="form-label">Expiry Date</label>

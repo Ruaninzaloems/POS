@@ -959,6 +959,17 @@
   flex-direction: column;
 }
 
+.tender-warning {
+  font-size: 12px;
+  color: #dc2626;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
 .denomination-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
