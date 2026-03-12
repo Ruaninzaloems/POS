@@ -1223,7 +1223,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           const acctFyParam: Record<string, string> = acctFinYear ? { finYear: acctFinYear } : {};
           const acctForPRS: any = this.selectedAccount();
           const acctUnitPartForSearch = acctForPRS?.unitPartitionID || acctForPRS?.unitPartition_ID;
-          const [basic, accountInfo, acctPropDetails, acctContactInfo, acctConsUnit, acctConsUnitById, acctRates, acctDepositAmt, acctMgmt, acctSectTitle, acctConsDetails, acctPropRatesSearch] = await Promise.allSettled([
+          const [basic, accountInfo, acctPropDetails, acctContactInfo, acctConsUnit, acctConsUnitById, acctRates, acctDepositAmt, acctMgmt, acctSectTitle, acctConsDetails, acctPropRatesSearch, acctMgmtDetails, acctHandover, acctAttpHistory] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/basic-account-details/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-info-result/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
@@ -1241,6 +1241,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
               ...(acctUnitPartForSearch ? { unitPartitionId: String(Number(acctUnitPartForSearch) || acctUnitPartForSearch) } : {}),
               pageSize: '50'
             })),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-account-management/account-details`, { accountId: String(accountId) })),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/handover-info/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/attp-application-history/${accountId}`)),
           ]);
           const basicVal = basic.status === 'fulfilled' ? (Array.isArray(basic.value) ? basic.value[0] : basic.value) : null;
           const airVal = accountInfo.status === 'fulfilled' ? (Array.isArray(accountInfo.value) ? accountInfo.value[0] : accountInfo.value) : null;
@@ -1477,6 +1480,42 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             console.log('[account] property-rates-search sample:', JSON.stringify(acctPropRatesData[0]).substring(0, 800));
           }
 
+          const acctMgmtDetailsVal = acctMgmtDetails.status === 'fulfilled' ? (Array.isArray(acctMgmtDetails.value) ? acctMgmtDetails.value[0] : acctMgmtDetails.value) : null;
+          if (acctMgmtDetailsVal && !acctMgmtDetailsVal._error) {
+            console.log('[account] acctMgmtDetails keys:', Object.keys(acctMgmtDetailsVal));
+            console.log('[account] acctMgmtDetails sample:', JSON.stringify(acctMgmtDetailsVal).substring(0, 2000));
+          }
+
+          let acctHandoverVal: any = null;
+          if (acctHandover.status === 'fulfilled' && acctHandover.value && !acctHandover.value._error) {
+            acctHandoverVal = acctHandover.value;
+          }
+          let acctAttpVal: any[] = [];
+          if (acctAttpHistory.status === 'fulfilled') {
+            const attpRaw = acctAttpHistory.value;
+            acctAttpVal = Array.isArray(attpRaw) ? attpRaw : attpRaw && !attpRaw._error ? [attpRaw] : [];
+          }
+
+          const derivedStatuses: Record<string, string> = {};
+          const acctHoArr = Array.isArray(acctHandoverVal) ? acctHandoverVal : acctHandoverVal ? [acctHandoverVal] : [];
+          const acctActiveHo = acctHoArr.find((h: any) => {
+            const st = (h.handoverStatus || h.status || h.handoverStatusDesc || '').toLowerCase();
+            return st.includes('active') || st.includes('handed') || st.includes('legal') || st.includes('pending');
+          });
+          derivedStatuses['handoverStatus'] = acctActiveHo
+            ? (acctActiveHo.handoverStatus || acctActiveHo.handoverStatusDesc || acctActiveHo.status || 'Handed Over')
+            : (acctHoArr.length > 0 ? (acctHoArr[0].handoverStatus || acctHoArr[0].handoverStatusDesc || 'N/A') : 'N/A');
+          const acctActiveIndigent = acctAttpVal.find((r: any) => {
+            const st = (r.attpStatus || r.status || '').toLowerCase();
+            return st.includes('active') || st.includes('approved') || st.includes('registered');
+          });
+          derivedStatuses['indigentSubsidyStatus'] = acctActiveIndigent
+            ? (acctActiveIndigent.attpStatus || acctActiveIndigent.status || 'Active')
+            : (acctAttpVal.length > 0 ? (acctAttpVal[0].attpStatus || acctAttpVal[0].status || '-') : '-');
+          if (acctMgmtDetailsVal && !acctMgmtDetailsVal._error) {
+            derivedStatuses['departmentalAccount'] = acctMgmtDetailsVal.departmentID != null ? 'Active' : 'Inactive';
+          }
+
           data = {
             basic: mergedBasic,
             accountInfo: airVal,
@@ -1485,6 +1524,10 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             ratesDetails: acctRatesVal && !acctRatesVal._error ? acctRatesVal : null,
             valuationData: acctValuationData,
             propertyRatesData: acctPropRatesData,
+            mgmt: acctMgmtVal && !acctMgmtVal._error ? acctMgmtVal : null,
+            consDetails: acctConsDetailsVal && !acctConsDetailsVal._error ? acctConsDetailsVal : null,
+            mgmtDetails: acctMgmtDetailsVal && !acctMgmtDetailsVal._error ? acctMgmtDetailsVal : null,
+            derivedStatuses,
           };
           this.loadLinkedAccounts(accountId);
           break;
@@ -2851,19 +2894,26 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   getAccountStatusField(field: string): string {
     const b = this.getAccountBasic();
     const a = this.getAccountAir();
+    const td = this.tabData() || {};
+    const m = td.mgmt || {};
+    const c = td.consDetails || {};
+    const d = td.mgmtDetails || {};
+    const ds = td.derivedStatuses || {};
+    const sources = [ds, d, m, c, b, a];
     const fieldVariants: Record<string, string[]> = {
-      'interestWaiver': ['interestWaiverStatus', 'interestWaiverDesc', 'interestWaiver', 'InterestWaiverStatus', 'InterestWaiverDesc', 'interestWaiverStatusDesc'],
-      'indigentSubsidy': ['indigentSubsidyStatus', 'indigentSubsidy', 'indigentStatus', 'attpStatus', 'IndigentSubsidyStatus', 'IndigentStatus', 'indigentSubsidyStatusDesc'],
-      'consumerRpp': ['consumerRppStatus', 'consumerRPPStatus', 'consumerRpp', 'ConsumerRPPStatus', 'ConsumerRppStatus', 'consumerRppStatusDesc'],
-      'loanRpp': ['loanRppStatus', 'loanRPPStatus', 'loanRpp', 'LoanRPPStatus', 'LoanRppStatus', 'loanRppStatusDesc'],
-      'rebate': ['rebateStatus', 'rebateStatusDesc', 'rebate', 'RebateStatus', 'RebateStatusDesc'],
-      'handover': ['handoverStatus', 'handoverStatusDesc', 'handover', 'HandoverStatus', 'HandoverStatusDesc'],
-      'departmental': ['departmentalAccount', 'departmentalAccountDesc', 'isDepartmental', 'DepartmentalAccount', 'DepartmentalAccountDesc'],
+      'interestWaiver': ['interestWaiverStatus', 'interestWaiverDesc', 'interestWaiver', 'InterestWaiverStatus', 'InterestWaiverDesc', 'interestWaiverStatusDesc', 'interest_Waiver_Status'],
+      'indigentSubsidy': ['indigentSubsidyStatus', 'indigentSubsidy', 'indigentStatus', 'attpStatus', 'IndigentSubsidyStatus', 'IndigentStatus', 'indigentSubsidyStatusDesc', 'indigent_Subsidy_Status'],
+      'consumerRpp': ['consumerRppStatus', 'consumerRPPStatus', 'consumerRpp', 'ConsumerRPPStatus', 'ConsumerRppStatus', 'consumerRppStatusDesc', 'consumer_RPP_Status'],
+      'loanRpp': ['loanRppStatus', 'loanRPPStatus', 'loanRpp', 'LoanRPPStatus', 'LoanRppStatus', 'loanRppStatusDesc', 'loan_RPP_Status'],
+      'rebate': ['rebateStatus', 'rebateStatusDesc', 'rebate', 'RebateStatus', 'RebateStatusDesc', 'rebate_Status'],
+      'handover': ['handoverStatus', 'handoverStatusDesc', 'handover', 'HandoverStatus', 'HandoverStatusDesc', 'handover_Status'],
+      'departmental': ['departmentalAccount', 'departmentalAccountDesc', 'isDepartmental', 'DepartmentalAccount', 'DepartmentalAccountDesc', 'departmental_Account'],
     };
     const variants = fieldVariants[field] || [field];
     for (const v of variants) {
-      if (b[v] != null && b[v] !== '') return String(b[v]);
-      if (a[v] != null && a[v] !== '') return String(a[v]);
+      for (const src of sources) {
+        if (src[v] != null && src[v] !== '') return String(src[v]);
+      }
     }
     return '-';
   }
