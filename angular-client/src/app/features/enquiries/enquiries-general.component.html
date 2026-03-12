@@ -3990,8 +3990,77 @@
                               <span class="cons-selected-svc">{{ meterSelectedConv().serviceDesc || 'Meter' }}</span>
                               <span class="cons-selected-meter mono">Meter: {{ meterSelectedConv().physicalMeterNo || meterSelectedConv().meterNo || '-' }}</span>
                             </div>
-                            @if (meterSelectedConv().meterConnectionSize) {
-                              <span class="cons-conn-badge">Connection: {{ meterSelectedConv().meterConnectionSize }}</span>
+                            <div class="meter-header-badges">
+                              @if (meterSelectedConv().connectionSizeDesc || meterSelectedConv().meterConnectionSize) {
+                                <span class="cons-conn-badge">Connection: {{ meterSelectedConv().connectionSizeDesc || meterSelectedConv().meterConnectionSize }}</span>
+                              }
+                              @if (meterSelectedConv().meterClassificationDesc) {
+                                <span class="cons-conn-badge meter-class-badge">{{ meterSelectedConv().meterClassificationDesc }}</span>
+                              }
+                              @if (meterSelectedConv().serviceStatus || meterSelectedConv().meterStatus) {
+                                <span class="cons-conn-badge" [class.meter-status-active]="(meterSelectedConv().serviceStatus || meterSelectedConv().meterStatus || '').toLowerCase() === 'active'">{{ meterSelectedConv().serviceStatus || meterSelectedConv().meterStatus }}</span>
+                              }
+                            </div>
+                          </div>
+
+                          <div class="meter-detail-grid" data-testid="meter-detail-grid">
+                            <div class="meter-detail-item">
+                              <span class="meter-detail-label">Meter Number</span>
+                              <span class="meter-detail-value mono">{{ meterSelectedConv().physicalMeterNo || meterSelectedConv().meterNo || '-' }}</span>
+                            </div>
+                            <div class="meter-detail-item">
+                              <span class="meter-detail-label">Meter Book</span>
+                              <span class="meter-detail-value">{{ meterSelectedConv().meterBookNo || '-' }}</span>
+                            </div>
+                            <div class="meter-detail-item">
+                              <span class="meter-detail-label">Route / Source</span>
+                              <span class="meter-detail-value">{{ meterSelectedConv().routeFileName || '-' }}</span>
+                            </div>
+                            <div class="meter-detail-item">
+                              <span class="meter-detail-label">Tariff</span>
+                              <span class="meter-detail-value">{{ meterSelectedConv().tariff || '-' }}</span>
+                            </div>
+                            <div class="meter-detail-item">
+                              <span class="meter-detail-label">Tariff Factor</span>
+                              <span class="meter-detail-value mono">{{ meterSelectedConv().tarifffactor ?? '-' }}</span>
+                            </div>
+                            <div class="meter-detail-item">
+                              <span class="meter-detail-label">No. of Dials</span>
+                              <span class="meter-detail-value mono">{{ meterSelectedConv().numberofDials ?? '-' }}</span>
+                            </div>
+                            <div class="meter-detail-item">
+                              <span class="meter-detail-label">Meter Phase</span>
+                              <span class="meter-detail-value mono">{{ meterSelectedConv().meterPhase ?? '-' }}</span>
+                            </div>
+                            <div class="meter-detail-item">
+                              <span class="meter-detail-label">Location</span>
+                              <span class="meter-detail-value">{{ meterSelectedConv().meterLocationAddress || meterSelectedConv().propertyAddress || '-' }}</span>
+                            </div>
+                            @if (meterConvHistory().length > 0) {
+                              <div class="meter-detail-item meter-reading-highlight">
+                                <span class="meter-detail-label">Latest Reading Date</span>
+                                <span class="meter-detail-value mono accent-text">{{ formatDate(meterConvHistory()[0]?.reading2Date || meterConvHistory()[0]?.readingDate) }}</span>
+                              </div>
+                              <div class="meter-detail-item meter-reading-highlight">
+                                <span class="meter-detail-label">Latest Reading</span>
+                                <span class="meter-detail-value mono accent-text">{{ meterConvHistory()[0]?.reading2 ?? '-' }}</span>
+                              </div>
+                              <div class="meter-detail-item">
+                                <span class="meter-detail-label">Previous Reading Date</span>
+                                <span class="meter-detail-value mono">{{ formatDate(meterConvHistory()[0]?.reading1Date) }}</span>
+                              </div>
+                              <div class="meter-detail-item">
+                                <span class="meter-detail-label">Previous Reading</span>
+                                <span class="meter-detail-value mono">{{ meterConvHistory()[0]?.reading1 ?? '-' }}</span>
+                              </div>
+                              <div class="meter-detail-item">
+                                <span class="meter-detail-label">Reading Days</span>
+                                <span class="meter-detail-value mono">{{ meterConvHistory()[0]?.readingdays ?? '-' }}</span>
+                              </div>
+                              <div class="meter-detail-item">
+                                <span class="meter-detail-label">Reading Status</span>
+                                <span class="meter-detail-value">{{ meterConvHistory()[0]?.readingStatus || meterConvHistory()[0]?.levyStatus || '-' }}</span>
+                              </div>
                             }
                           </div>
 
@@ -4076,22 +4145,32 @@
                                 <table class="debt-table" data-testid="table-conv-meter-history">
                                   <thead>
                                     <tr>
+                                      <th class="debt-th-desc">FY</th>
                                       <th class="debt-th-desc">Month</th>
-                                      <th class="debt-th-desc">Date</th>
-                                      <th class="debt-th-amt">Previous</th>
-                                      <th class="debt-th-amt">Current</th>
+                                      <th class="debt-th-desc">Prev Date</th>
+                                      <th class="debt-th-amt">Prev Reading</th>
+                                      <th class="debt-th-desc">Curr Date</th>
+                                      <th class="debt-th-amt">Curr Reading</th>
+                                      <th class="debt-th-amt">Days</th>
                                       <th class="debt-th-amt">Consumption</th>
+                                      <th class="debt-th-desc">Status</th>
+                                      <th class="debt-th-desc">Levy</th>
                                       <th class="debt-th-desc">Flag</th>
                                     </tr>
                                   </thead>
                                   <tbody>
                                     @for (r of meterConvHistory(); track $index) {
                                       <tr [class.cons-row-spike]="isConvAnomaly(r, $index) === 'spike'" [class.cons-row-drop]="isConvAnomaly(r, $index) === 'drop'" [class.cons-row-zero]="isConvAnomaly(r, $index) === 'zero'">
+                                        <td class="debt-td-desc meter-fy-cell">{{ r.financialYear || '-' }}</td>
                                         <td class="debt-td-desc">{{ r.billingmonth || r.billingMonth || '-' }}</td>
-                                        <td class="debt-td-desc">{{ formatDate(r.reading2Date || r.reading1Date || r.readingDate || r.date) }}</td>
-                                        <td class="debt-td-amt mono">{{ r.reading1 || r.previousReading || r.prevReading || '-' }}</td>
-                                        <td class="debt-td-amt mono">{{ r.reading2 || r.currentReading || r.reading || '-' }}</td>
+                                        <td class="debt-td-desc mono">{{ formatDate(r.reading1Date) }}</td>
+                                        <td class="debt-td-amt mono">{{ r.reading1 ?? r.previousReading ?? r.prevReading ?? '-' }}</td>
+                                        <td class="debt-td-desc mono">{{ formatDate(r.reading2Date || r.readingDate || r.date) }}</td>
+                                        <td class="debt-td-amt mono">{{ r.reading2 ?? r.currentReading ?? r.reading ?? '-' }}</td>
+                                        <td class="debt-td-amt mono">{{ r.readingdays ?? '-' }}</td>
                                         <td class="debt-td-amt mono bold">{{ getConsumptionVal(r) | number:'1.0-0' }}</td>
+                                        <td class="debt-td-desc">{{ r.readingStatus || '-' }}</td>
+                                        <td class="debt-td-desc">{{ r.levyStatus || '-' }}</td>
                                         <td class="debt-td-desc">
                                           @if (isConvAnomaly(r, $index) === 'spike') { <span class="cons-flag cons-flag-spike">⚠️ Spike</span> }
                                           @else if (isConvAnomaly(r, $index) === 'drop') { <span class="cons-flag cons-flag-drop">⬇️ Drop</span> }
