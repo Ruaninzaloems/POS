@@ -116,9 +116,38 @@ export function registerBillingRoutes(app: Express, httpServer: Server): void {
   app.post("/api/platinum/billing-payment/search-accounts", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const data = await platinumPost(session, "/api/billing-payment/search-accounts", req.body, undefined, { timeout: 55000 });
-      handlePlatinumResult(res, data);
+      const { accountNo } = req.body;
+      console.log(`[search-accounts] Searching for: "${accountNo}"`);
+
+      const results: any[] = [];
+      const searchStrategies = [
+        { label: 'billing-payment/search-accounts', fn: () => platinumPost(session, "/api/billing-payment/search-accounts", req.body, undefined, { timeout: 15000 }) },
+        { label: 'enquiry-results (accountID)', fn: () => platinumPost(session, "/api/billing-enquiry/enquiry-results", { accountID: accountNo }, undefined, { timeout: 15000 }) },
+        { label: 'enquiry-results (oldAccount)', fn: () => platinumPost(session, "/api/billing-enquiry/enquiry-results", { oldAccount: accountNo }, undefined, { timeout: 15000 }) },
+      ];
+
+      const settled = await Promise.allSettled(searchStrategies.map(s => s.fn()));
+      for (let i = 0; i < settled.length; i++) {
+        const r = settled[i];
+        if (r.status === 'fulfilled' && r.value && !r.value._error) {
+          const items = Array.isArray(r.value) ? r.value : r.value?.accounts || r.value?.results || r.value?.data || [];
+          console.log(`[search-accounts] ${searchStrategies[i].label} → ${items.length} results`);
+          for (const item of items) {
+            const id = item.accountID || item.account_ID || item.accountId || 0;
+            if (id && !results.find((r: any) => (r.accountID || r.account_ID) === id)) {
+              results.push(item);
+            }
+          }
+        } else {
+          const reason = r.status === 'rejected' ? r.reason?.message : (r.value?._error ? `API error ${r.value.status}` : 'empty');
+          console.log(`[search-accounts] ${searchStrategies[i].label} → ${reason}`);
+        }
+      }
+
+      console.log(`[search-accounts] Total unique results: ${results.length}`);
+      res.json(results);
     } catch (e: any) {
+      console.error(`[search-accounts] Error:`, e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });

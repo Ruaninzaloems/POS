@@ -516,13 +516,17 @@ export class PosComponent implements OnInit, OnDestroy {
       if (accountData.status === 'fulfilled') {
         const accts = Array.isArray(accountData.value) ? accountData.value : (accountData.value as any)?.accounts || (accountData.value as any)?.results || (accountData.value as any)?.data || [];
         for (const a of accts) {
-          const meterNo = a.meterNo || a.prepaidMeterNo || a.meter_No || '';
+          const meterNo = a.meterNo || a.prepaidMeterNo || a.meter_No || a.physicalMeterNo || '';
+          const acctId = a.account_ID || a.accountID || a.accountId || 0;
+          if (!acctId) continue;
+          const isDuplicate = results.some(r => r.resultType === 'account' && r.id === acctId);
+          if (isDuplicate) continue;
           results.push({
             resultType: 'account',
-            id: a.account_ID || a.accountID || a.accountId || 0,
-            label: a.name || a.accountName || a.consumerName || a.surname_Company || '',
-            description: `${a.accountNo || a.accountNumber || ''} — ${a.address || a.physicalAddress || ''}`,
-            balance: Number(a.outstandingAmount || a.outStandingAmt || a.balance || a.totalDue || 0),
+            id: acctId,
+            label: a.name || a.accountName || a.consumerName || a.surname_Company || a.fullNAME || '',
+            description: `${a.accountNo || a.accountNumber || a.accountID || ''} — ${a.address || a.physicalAddress || a.locationAddress || ''}`,
+            balance: Number(a.outstandingAmount || a.outStandingAmt || a.outStandingAmount || a.balance || a.totalDue || 0),
             status: a.status || a.accountStatus || 'Active',
             rawData: { ...a, hasPrepaidMeter: !!meterNo, prepaidMeterNo: meterNo },
           });
