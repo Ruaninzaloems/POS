@@ -56,6 +56,8 @@ export interface PrepaidItemData {
   serviceType: string;
   breakdown: any;
   tokenResult: any;
+  accountId?: number;
+  accountNumber?: string;
 }
 
 export interface MiscItemData {

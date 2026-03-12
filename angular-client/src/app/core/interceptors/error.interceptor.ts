@@ -12,6 +12,7 @@ const SILENT_URL_PATTERNS = [
   '/api/platinum/billing-payment/search-accounts',
   '/api/platinum/billing-payment/search-account-groups',
   '/api/platinum/billing-payment-miscellaneous/',
+  '/api/platinum/billing-payment/save-multiple-account-payment',
 ];
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {

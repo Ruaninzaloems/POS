@@ -1051,6 +1051,29 @@ export class PosComponent implements OnInit, OnDestroy {
       if (accountItems.length > 0) {
         const accountItemsWithPay = accountItems.filter(i => i.amountToPay > 0);
         if (accountItemsWithPay.length > 0) {
+          try {
+            const stagingPayload = accountItemsWithPay.map(item => {
+              const ad = item.accountData!;
+              const orig = ad.originalData || {};
+              return {
+                account_ID: ad.accountId,
+                accountNumber: ad.accountNumber,
+                name: ad.name,
+                outStandingAmt: item.amountDue,
+                paymentAmount: item.amountToPay,
+                deliveryAddress: ad.address || orig.deliveryAddress || '',
+                statusDesc: orig.statusDesc || '-',
+                accountDesc: orig.accountDesc || '',
+                erfNumber: orig.erfNumber || '',
+                billId: orig.billId ?? null,
+              };
+            });
+            await firstValueFrom(
+              this.api.post(`/api/platinum/billing-payment/save-multiple-account-payment?userId=${userId}`, stagingPayload)
+            );
+          } catch {
+          }
+
           if (isSplit && this.cashAmount() > 0 && this.cardAmount() > 0) {
             const allocation = this.basket.allocateSplitTender(this.cashRoundedAmount(), this.cardAmount());
             const cashAcctItems = allocation.cashItems.filter(i => i.type === 'account');
@@ -1103,78 +1126,122 @@ export class PosComponent implements OnInit, OnDestroy {
     }
   }
 
+  private formatCardExpiry(raw: string): string {
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length >= 4) return `${digits.slice(0, 2)}/${digits.slice(2, 4)}`;
+    return raw;
+  }
+
   private async submitAccountPayment(items: BasketItem[], userId: number, finYear: string, receiptDate: string, paymentTypeId: number, cardNum: string, totalAmount: number): Promise<any> {
+    const ci = this.cashierInfo();
+    const sessionCashierId = ci?.id || ci?.cashier_ID || userId;
+    const sessionOfficeId = ci?.cashOffice_ID || 0;
+    const isCardPayment = paymentTypeId === 3;
+
     if (items.length === 1) {
       const item = items[0];
       const ad = item.accountData!;
+      const orig = ad.originalData || {};
+      const submitAccountBase: any = {
+        ...orig,
+        account_ID: ad.accountId,
+        accountNumber: ad.accountNumber,
+        name: ad.name,
+        outStandingAmt: item.amountToPay,
+        billId: null,
+        cutOffID: ad.cutOffID ?? 0,
+        cutOffAmount: ad.cutOffAmount ?? 0,
+        debtAmount: ad.debtAmount ?? 0,
+        debtArrangementId: ad.debtArrangementId ?? 0,
+        billingCycleId: ad.billingCycleId ?? 0,
+      };
+      if (isCardPayment) {
+        delete submitAccountBase.sundryDebtorsId;
+      } else {
+        submitAccountBase.sundryDebtorsId = ad.sundryDebtorsId ?? '';
+      }
       const payload = {
-        account: {
-          account_ID: ad.accountId,
-          accountNumber: ad.accountNumber,
-          name: ad.name,
-          outStandingAmt: item.amountDue,
-          billId: ad.billId,
-          cutOffID: ad.cutOffID,
-          cutOffAmount: ad.cutOffAmount,
-          debtAmount: ad.debtAmount,
-          debtArrangementId: ad.debtArrangementId,
-          sundryDebtorsId: ad.sundryDebtorsId,
-          billingCycleId: ad.billingCycleId,
-        },
+        account: submitAccountBase,
         requestModel: {
           finYear,
           receiptDate,
           totalAmount: item.amountToPay,
-          tenderAmount: totalAmount,
-          changeAmount: Math.max(0, totalAmount - item.amountToPay),
+          tenderAmount: isCardPayment ? 0 : totalAmount,
+          changeAmount: isCardPayment ? 0 : Math.max(0, totalAmount - item.amountToPay),
           paymentType: paymentTypeId,
           paymentOption: this.getPaymentOptionId(),
           outStandingAmount: item.amountDue,
-          cutOffID: ad.cutOffID,
-          cutOffAmount: ad.cutOffAmount,
-          debtAmount: ad.debtAmount,
-          debtArrangementId: ad.debtArrangementId,
-          sundryDebtorsId: ad.sundryDebtorsId,
-          cardNumber: cardNum,
-          apiTransactionID: 0,
-          isReconciled: 0,
-          isCancelled: 0,
+          cutOffID: ad.cutOffID ?? 0,
+          cutOffAmount: ad.cutOffAmount ?? 0,
+          debtAmount: ad.debtAmount ?? 0,
+          debtArrangementId: ad.debtArrangementId ?? 0,
+          sundryDebtorsId: String(ad.sundryDebtorsId ?? ''),
+          cardNumber: isCardPayment ? cardNum : '',
+          expiryDate: isCardPayment ? this.formatCardExpiry(this.cardExpiry()) : '',
+          processingMonth: 0,
+          chequeNumber: '',
+          chequeDate: receiptDate,
+          accountHolderName: ad.name || '',
+          bankName: '',
+          bankBranchCode: '',
+          cashierId: sessionCashierId,
+          cashOfficeId: sessionOfficeId,
         },
       };
       return await firstValueFrom(
         this.api.post(`/api/platinum/billing-payment/submit-consumer-payment/${userId}`, payload)
       );
     } else {
-      const payload = {
-        accounts: items.map(item => ({
-          accountID: item.accountData!.accountId,
-          account_ID: item.accountData!.accountId,
-          accountNumber: item.accountData!.accountNumber,
-          name: item.accountData!.name,
+      const submitAccounts = items.map(item => {
+        const ad = item.accountData!;
+        const orig = ad.originalData || {};
+        return {
+          capturerID: userId,
+          accountID: ad.accountId,
+          account_ID: ad.accountId,
+          oldAccountCode: orig.oldAccountCode || '',
+          name: ad.name || '',
+          sgNumber: orig.erfNumber || orig.sgNo || '',
+          address: ad.address || orig.deliveryAddress || '',
           outstandingAmount: item.amountDue,
           outStandingAmt: item.amountDue,
+          accountStatus: orig.statusDesc || '-',
+          accountType: orig.accountDesc || '',
           paymentAmount: item.amountToPay,
-          billId: item.accountData!.billId,
-          cutOffID: item.accountData!.cutOffID,
-          cutOffAmount: item.accountData!.cutOffAmount,
-          debtAmount: item.accountData!.debtAmount,
-          debtArrangementId: item.accountData!.debtArrangementId,
-          sundryDebtorsId: item.accountData!.sundryDebtorsId,
-          billingCycleId: item.accountData!.billingCycleId,
-        })),
+          accountNumber: ad.accountNumber || '',
+          receiptID: 0,
+          billId: orig.billId ?? 0,
+          clearanceId: orig.clearance_ID ?? 0,
+        };
+      });
+      const totalPaymentAmount = items.reduce((s, i) => s + i.amountToPay, 0);
+      const totalOutstanding = items.reduce((s, i) => s + i.amountDue, 0);
+      const payload = {
+        accounts: submitAccounts,
         requestModel: {
           finYear,
           receiptDate,
-          totalAmount: items.reduce((s, i) => s + i.amountToPay, 0),
-          tenderAmount: totalAmount,
-          changeAmount: this.changeAmount(),
+          totalAmount: totalPaymentAmount,
+          tenderAmount: isCardPayment ? 0 : totalAmount,
+          changeAmount: isCardPayment ? 0 : this.changeAmount(),
           paymentType: paymentTypeId,
           paymentOption: this.getPaymentOptionId(),
-          outStandingAmount: items.reduce((s, i) => s + i.amountDue, 0),
-          cardNumber: cardNum,
-          apiTransactionID: 0,
-          isReconciled: 0,
-          isCancelled: 0,
+          outStandingAmount: totalOutstanding,
+          cardNumber: isCardPayment ? cardNum : '',
+          expiryDate: isCardPayment ? this.formatCardExpiry(this.cardExpiry()) : '',
+          processingMonth: 0,
+          chequeNumber: '',
+          chequeDate: receiptDate,
+          accountHolderName: submitAccounts[0]?.name || '',
+          bankName: '',
+          bankBranchCode: '',
+          cutOffID: 0,
+          debtArrangementId: 0,
+          cutOffAmount: 0,
+          debtAmount: 0,
+          sundryDebtorsId: '',
+          cashierId: sessionCashierId,
+          cashOfficeId: sessionOfficeId,
         },
       };
       return await firstValueFrom(
@@ -1185,32 +1252,70 @@ export class PosComponent implements OnInit, OnDestroy {
 
   private async submitClearancePaymentItem(item: BasketItem, userId: number, ci: any, finYear: string, cardNum: string): Promise<any> {
     const cd = item.clearanceData!;
+    const sessionCashierId = ci?.id || ci?.cashier_ID || userId;
+    const sessionOfficeId = ci?.cashOffice_ID || 0;
+    const paymentTypeId = this.getPaymentTypeId();
+    const isCardPayment = paymentTypeId === 3;
+    const now = new Date();
+    const receiptDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T00:00:00`;
+    const paidItems = (cd.accounts || []).map((a: any) => ({
+      account_ID: a.accountId || a.account_ID || null,
+      debT_TYPE: a.debtType || a.debT_TYPE || null,
+      amount: a.paymentAmount || a.amount || 0,
+    }));
     return await firstValueFrom(
       this.api.post('/api/platinum/billing-payment-clearance/submit-payment', {
-        clearanceId: cd.clearanceId,
-        clearance_ID: cd.clearanceId,
         userId,
-        cashierId: ci?.id || ci?.cashier_ID || userId,
-        cashOfficeId: ci?.cashOffice_ID,
+        paymentTypeId,
+        cashierId: sessionCashierId,
+        cashOfficeId: sessionOfficeId,
+        receiptDate,
+        tenderAmount: item.amountToPay,
+        changeAmount: 0,
         paidAmount: item.amountToPay,
-        totalAmount: item.amountToPay,
-        paymentTypeId: this.getPaymentTypeId(),
-        cardNumber: cardNum,
-        chequeNo: this.chequeNumber(),
-        bankBranchCode: this.banks().find(b => b.bankID === this.chequeBankId())?.branchCode || '',
+        outstandingAmount: item.amountDue || item.amountToPay,
+        clearance_ID: String(cd.clearanceId),
         finYear,
+        accountHolderName: cd.ownerName || 'Walk-in',
+        chequeNo: this.chequeNumber() || null,
+        bankId: null,
+        branchId: null,
+        cardNo: isCardPayment ? cardNum : null,
+        cardExpiryDate: isCardPayment ? this.formatCardExpiry(this.cardExpiry()) : null,
+        paySection1181Only: false,
+        section1181Amount: 0,
+        paidItems,
       })
     );
   }
 
   private async submitPrepaidPaymentItem(item: BasketItem): Promise<any> {
     const pd = item.prepaidData!;
+    const ci = this.cashierInfo();
+    const userId = this.user()?.user_ID;
+    const sessionCashierId = ci?.id || ci?.cashier_ID || userId;
+    const sessionOfficeId = ci?.cashOffice_ID || 0;
+    const paymentTypeId = this.getPaymentTypeId();
+    const isCardPayment = paymentTypeId === 3;
+    const now = new Date();
+    const receiptDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T00:00:00`;
     return await firstValueFrom(
-      this.api.post('/api/platinum/receipt-prepaid/utilipay-token-request', {
+      this.api.post('/api/platinum/receipt-prepaid/submit-prepaid-payment', {
+        userId,
+        cashierId: sessionCashierId,
+        cashOfficeId: sessionOfficeId,
+        accountId: pd.accountId || 0,
+        accountNumber: pd.accountNumber || '',
         meterNumber: pd.meterNumber,
         amount: item.amountToPay,
-        serviceType: pd.serviceType,
-        ...(pd.breakdown || {}),
+        tenderAmount: item.amountToPay,
+        changeAmount: 0,
+        paymentTypeId,
+        receiptDate,
+        finYear: ci?.finYear || '',
+        prepaidType: pd.serviceType || 'Electricity',
+        cardNo: isCardPayment ? this.cardNumber().replace(/\s/g, '') : null,
+        cardExpiryDate: isCardPayment ? this.formatCardExpiry(this.cardExpiry()) : null,
       })
     );
   }
@@ -1277,6 +1382,7 @@ export class PosComponent implements OnInit, OnDestroy {
         amount: Number(a.amount || a.outstandingAmount || 0),
         paymentAmount: Number(a.paymentAmount || a.amount || 0),
         serviceType: a.serviceType || a.description || '',
+        debtType: a.debT_TYPE || a.debtType || null,
       }));
       const totalDue = clearanceAccounts.reduce((s: number, a: any) => s + a.paymentAmount, 0);
 
