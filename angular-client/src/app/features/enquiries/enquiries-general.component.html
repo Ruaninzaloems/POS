@@ -2,47 +2,43 @@
   <!-- ACCOUNT DETAIL VIEW -->
   <div class="enquiry-detail-view">
     <!-- Unified Header Card -->
-    <div class="gs-unified-top">
-      <button class="gs-back-btn" (click)="backToResults()" data-testid="button-back-to-results">
-        ← <span class="back-text">Back</span>
-      </button>
-
-      <div class="global-snapshot-card" data-testid="global-snapshot">
-        <div class="global-snapshot-header">
-          <div class="global-snapshot-title-row">
-            <div class="global-snapshot-identity">
-              <div class="gs-avatar">{{ getAccountName(selectedAccount())!.charAt(0).toUpperCase() }}</div>
-              <div>
-                <div class="global-snapshot-owner" data-testid="text-selected-account-name">{{ globalSnapshot()?.['ownerName'] || getAccountName(selectedAccount()) }}</div>
-                <div class="global-snapshot-address">📍 {{ globalSnapshot()?.['address'] || selectedAccount()!['fullAddress'] || selectedAccount()!['address'] || '-' }}</div>
-              </div>
-            </div>
-            <div class="gs-header-right">
-              <div class="global-snapshot-status-pill"
-                [class.gs-status-active]="(globalSnapshot()?.['status'] || selectedAccount()!.accountStatus || '').toLowerCase().includes('active')"
-                [class.gs-status-inactive]="!(globalSnapshot()?.['status'] || selectedAccount()!.accountStatus || '').toLowerCase().includes('active')">
-                {{ globalSnapshot()?.['status'] || selectedAccount()!.accountStatus || selectedAccount()!.statusDesc || 'Unknown' }}
-              </div>
-              <div class="gs-balance-block" data-testid="header-balance-section">
-                <div class="gs-balance-label">Balance</div>
-                @if (headerBalance() !== null) {
-                  <div class="gs-balance-value" [class.positive]="headerBalance()! > 0" [class.negative]="headerBalance()! < 0" data-testid="text-header-balance">
-                    R {{ formatCurrency(headerBalance()) }}
-                  </div>
-                } @else {
-                  <div class="gs-balance-skeleton"></div>
-                }
-              </div>
+    <div class="global-snapshot-card" data-testid="global-snapshot">
+      <div class="global-snapshot-header">
+        <div class="global-snapshot-title-row">
+          <div class="global-snapshot-identity">
+            <button class="gs-back-btn" (click)="backToResults()" data-testid="button-back-to-results">←</button>
+            <div class="gs-avatar">{{ getAccountName(selectedAccount())!.charAt(0).toUpperCase() }}</div>
+            <div class="gs-identity-text">
+              <div class="global-snapshot-owner" data-testid="text-selected-account-name">{{ globalSnapshot()?.['ownerName'] || getAccountName(selectedAccount()) }}</div>
+              <div class="global-snapshot-address">📍 {{ globalSnapshot()?.['address'] || selectedAccount()!['fullAddress'] || selectedAccount()!['address'] || '-' }}</div>
             </div>
           </div>
-          <div class="gs-account-numbers">
-            <span class="gs-acc-num">Acc: <strong class="mono">{{ getAccountNum(selectedAccount()) }}</strong></span>
-            @if (selectedAccount()!.oldAccountCode) {
-              <span class="gs-acc-divider">|</span>
-              <span class="gs-acc-num">Old: <strong class="mono">{{ selectedAccount()!.oldAccountCode }}</strong></span>
-            }
+          <div class="gs-header-right">
+            <div class="global-snapshot-status-pill"
+              [class.gs-status-active]="(globalSnapshot()?.['status'] || selectedAccount()!.accountStatus || '').toLowerCase().includes('active')"
+              [class.gs-status-inactive]="!(globalSnapshot()?.['status'] || selectedAccount()!.accountStatus || '').toLowerCase().includes('active')">
+              {{ globalSnapshot()?.['status'] || selectedAccount()!.accountStatus || selectedAccount()!.statusDesc || 'Unknown' }}
+            </div>
+            <div class="gs-balance-block" data-testid="header-balance-section">
+              <div class="gs-balance-label">Balance</div>
+              @if (headerBalance() !== null) {
+                <div class="gs-balance-value" [class.positive]="headerBalance()! > 0" [class.negative]="headerBalance()! < 0" data-testid="text-header-balance">
+                  R {{ formatCurrency(headerBalance()) }}
+                </div>
+              } @else {
+                <div class="gs-balance-skeleton"></div>
+              }
+            </div>
           </div>
         </div>
+        <div class="gs-account-numbers">
+          <span class="gs-acc-num">Acc: <strong class="mono">{{ getAccountNum(selectedAccount()) }}</strong></span>
+          @if (selectedAccount()!.oldAccountCode) {
+            <span class="gs-acc-divider">|</span>
+            <span class="gs-acc-num">Old: <strong class="mono">{{ selectedAccount()!.oldAccountCode }}</strong></span>
+          }
+        </div>
+      </div>
 
         @if (globalSnapshotLoading()) {
           <div class="gs-grid-loading">
@@ -108,7 +104,6 @@
             </div>
           </div>
         }
-      </div>
     </div>
 
     <!-- Risk Flags Banner -->

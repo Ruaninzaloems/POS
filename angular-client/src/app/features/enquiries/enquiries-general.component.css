@@ -2679,36 +2679,34 @@
 .snap-badge-label { color: rgba(255,255,255,0.6); white-space: nowrap; }
 .snap-badge-value { color: white; white-space: nowrap; }
 
-.gs-unified-top {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem 0;
-}
 .gs-back-btn {
-  background: white;
-  border: 1px solid var(--platinum-border, #e2e8f0);
-  border-radius: 0.5rem;
-  padding: 0.5rem 0.875rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--platinum-primary, #0f2b46);
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 700;
   cursor: pointer;
-  white-space: nowrap;
-  margin-top: 0.75rem;
-  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  transition: all 0.15s;
+  padding: 0;
+  line-height: 1;
 }
-.gs-back-btn:hover { background: var(--platinum-bg, #f8fafc); border-color: var(--platinum-primary, #0f2b46); }
+.gs-back-btn:hover { background: rgba(255,255,255,0.22); border-color: rgba(255,255,255,0.4); }
+.gs-identity-text { min-width: 0; }
 .global-snapshot-loading { padding: 0 1rem; margin-bottom: 0.5rem; }
 .global-snapshot-card {
   background: linear-gradient(135deg, var(--platinum-primary, #0f2b46) 0%, #1a3a5c 100%);
   border-radius: 0.75rem;
   padding: 1rem 1.25rem;
+  margin: 0.75rem 1rem 0;
   color: white;
   box-shadow: 0 4px 16px rgba(15, 43, 70, 0.18);
-  flex: 1;
-  min-width: 0;
 }
 .global-snapshot-header { margin-bottom: 0.625rem; }
 .global-snapshot-title-row {
@@ -2819,9 +2817,8 @@
   margin-bottom: 0.75rem;
 }
 @media (max-width: 640px) {
-  .gs-unified-top { flex-direction: column; gap: 0.5rem; }
-  .gs-back-btn { margin-top: 0; }
   .gs-header-right { flex-direction: row; align-items: center; }
+  .global-snapshot-card { margin: 0.5rem 0.5rem 0; padding: 0.75rem 1rem; }
 }
 .global-snapshot-grid {
   display: grid;
