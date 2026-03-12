@@ -681,7 +681,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           if (basic.propertyID) (item as any).propertyID = basic.propertyID;
           if (basic.unitPartitionID) (item as any).unitPartitionID = basic.unitPartitionID;
           if (basic.oldAccountCode) item.oldAccountCode = basic.oldAccountCode;
-          if (basic.creditStatusDesc) item.creditStatusDesc = basic.creditStatusDesc;
+          if (basic.creditStatusDesc) item['creditStatusDesc'] = basic.creditStatusDesc;
           delete (item as any)._fromAutocomplete;
         }
       } catch {}
