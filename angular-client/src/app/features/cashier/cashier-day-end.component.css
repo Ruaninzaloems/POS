@@ -602,3 +602,66 @@
   color: var(--pos-text-muted);
   font-size: 0.875rem;
 }
+
+@media (max-width: 640px) {
+  .dayend-header {
+    padding: 0.75rem 1rem;
+  }
+  .header-icon {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+  .header-title { font-size: 1rem; }
+  .header-subtitle { font-size: 0.75rem; }
+  .dayend-content {
+    padding: 0.75rem;
+    gap: 0.75rem;
+  }
+  .dayend-container {
+    overflow: visible;
+    height: auto;
+  }
+  .section-tabs {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding: 0.25rem;
+  }
+  .section-tab {
+    padding: 0.5rem 0.625rem;
+    font-size: 0.75rem;
+    gap: 0.25rem;
+  }
+  .section-tab svg {
+    width: 14px;
+    height: 14px;
+  }
+  .tab-count { font-size: 0.625rem; }
+  .denomination-row {
+    grid-template-columns: 3.5rem 4.5rem 1fr;
+    gap: 0.5rem;
+  }
+  .denom-label { font-size: 0.8125rem; }
+  .denom-input { font-size: 0.8125rem; padding: 0.3rem; }
+  .summary-value {
+    min-width: 5.5rem;
+    padding: 0.25rem 0.625rem;
+    font-size: 0.8125rem;
+  }
+  .cancel-form { max-width: 100%; }
+  .table-container {
+    max-height: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .session-loading-card,
+  .no-session-card {
+    padding: 2rem 1rem;
+  }
+  .cashier-info-card { padding: 0.75rem 1rem; }
+  .session-badge {
+    position: static;
+    align-self: flex-start;
+    margin-bottom: 0.5rem;
+  }
+  .cash-card { padding: 1rem; }
+  .receipt-card { padding: 0.75rem; }
+}

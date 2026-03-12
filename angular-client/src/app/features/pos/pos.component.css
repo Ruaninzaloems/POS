@@ -1113,10 +1113,15 @@
 @media (max-width: 900px) {
   .pos-split {
     grid-template-columns: 1fr;
+    height: auto;
+    min-height: 0;
   }
   .pos-right {
     border-left: none;
     border-top: 1px solid #e2e8f0;
+  }
+  .pos-body {
+    overflow-y: auto;
   }
   .header-actions {
     gap: 2px;
@@ -1130,6 +1135,12 @@
   .payment-panel, .receipt-panel, .dialog-panel {
     width: calc(100% - 32px);
     max-width: 480px;
+  }
+  .breakdown-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .mode-panel {
+    padding: 16px;
   }
 }
 
@@ -1659,22 +1670,236 @@
 }
 
 @media (max-width: 640px) {
-  .pos-header {
-    padding: 0 12px;
-    height: 48px;
+  .pos-workstation {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow: visible;
   }
-  .header-title { font-size: 14px; }
-  .pos-toolbar { padding: 6px 12px; flex-wrap: wrap; }
-  .pos-toolbar .pos-tabs { margin-left: 0; }
-  .pos-tab { padding: 10px 12px; font-size: 12px; }
-  .pos-left { padding: 12px; }
+  .pos-header {
+    padding: 0 10px;
+    height: 48px;
+    gap: 8px;
+  }
+  .header-icon {
+    width: 30px;
+    height: 30px;
+  }
+  .header-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+  .header-title { font-size: 13px; }
+  .header-subtitle { font-size: 10px; }
+  .header-actions { gap: 2px; }
+  .header-btn {
+    padding: 6px 7px;
+    border-radius: 5px;
+  }
+  .header-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+  .pos-toolbar {
+    padding: 6px 10px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .search-mode-toggle {
+    width: 100%;
+  }
+  .mode-toggle-btn {
+    flex: 1;
+    justify-content: center;
+    padding: 7px 8px;
+    font-size: 12px;
+  }
+  .pos-toolbar .pos-tabs {
+    margin-left: 0;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .pos-tab {
+    padding: 8px 10px;
+    font-size: 11px;
+    gap: 4px;
+  }
+  .pos-tab svg {
+    width: 12px;
+    height: 12px;
+  }
+  .pos-body {
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .pos-split {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .pos-left {
+    padding: 10px;
+    overflow-y: visible;
+  }
+  .pos-right {
+    border-left: none;
+    border-top: 1px solid #e2e8f0;
+  }
+  .search-box {
+    padding: 3px 6px;
+  }
+  .search-input {
+    font-size: 14px;
+    padding: 8px 4px;
+  }
+  .search-go-btn {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+  .search-results-panel {
+    max-height: 50vh;
+  }
+  .result-name {
+    font-size: 13px;
+    white-space: normal;
+    word-break: break-word;
+  }
+  .result-address {
+    white-space: normal;
+    word-break: break-word;
+  }
+  .result-top-row {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .result-balance { font-size: 13px; }
+  .result-add-hint { opacity: 1; }
+  .cart-item {
+    padding: 10px 12px;
+  }
+  .cart-item-amounts { grid-template-columns: 1fr; }
   .form-row { flex-direction: column; }
   .detail-banner { grid-template-columns: 1fr; }
   .denomination-grid { grid-template-columns: repeat(3, 1fr); }
-  .cart-item-amounts { grid-template-columns: 1fr; }
   .delivery-buttons { flex-direction: column; }
   .misc-inline-fields { flex-direction: column; }
-  .csv-dialog-panel { width: 95vw; max-height: 90vh; }
+  .mode-panel { padding: 12px; }
+  .section-title { font-size: 16px; }
+  .section-desc { font-size: 12px; }
+  .breakdown-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .summary-header {
+    padding: 12px 14px;
+    font-size: 13px;
+  }
+  .summary-body {
+    padding: 12px 14px;
+  }
+  .summary-row { font-size: 12px; }
+  .process-btn {
+    width: calc(100% - 28px);
+    margin: auto 14px 14px;
+    padding: 12px;
+    font-size: 14px;
+  }
+  .payment-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .payment-panel {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 14px 14px 0 0;
+    max-height: 95vh;
+    max-height: 95dvh;
+  }
+  .payment-panel-header {
+    padding: 14px 16px;
+    border-radius: 14px 14px 0 0;
+  }
+  .payment-panel-header h2 { font-size: 15px; }
+  .payment-amount-banner { padding: 12px 16px; }
+  .payment-due { font-size: 18px; }
+  .tender-tabs {
+    padding: 0 10px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tender-tab {
+    padding: 8px 10px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  .tender-body { padding: 12px 16px; }
+  .tender-amount-input { font-size: 18px; }
+  .payment-totals { padding: 10px 16px 14px; }
+  .complete-btn {
+    width: calc(100% - 32px);
+    margin: 0 16px 16px;
+    padding: 12px;
+    font-size: 14px;
+  }
+  .receipt-panel {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 14px 14px 0 0;
+  }
+  .receipt-header {
+    padding: 14px 16px;
+    border-radius: 14px 14px 0 0;
+  }
+  .receipt-body { padding: 24px 16px; }
+  .receipt-actions { flex-direction: column; }
+  .dialog-panel {
+    width: calc(100% - 20px);
+    max-width: 100%;
+  }
+  .dialog-body { padding: 16px; }
+  .csv-dialog-panel {
+    width: 100%;
+    max-width: 100%;
+    max-height: 95vh;
+    max-height: 95dvh;
+    border-radius: 14px 14px 0 0;
+  }
+  .csv-dialog-body { padding: 14px; }
+  .csv-upload-zone { padding: 24px 14px; }
+  .csv-done-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+  .session-banner { padding: 10px 12px; }
+  .session-banner-content {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .session-setup-btn {
+    width: 100%;
+    justify-content: center;
+    margin-top: 4px;
+  }
+  .empty-cart-state { padding: 30px 16px; }
+  .empty-title { font-size: 15px; }
+  .prepaid-form, .misc-form {
+    padding: 14px;
+  }
+  .data-table th,
+  .data-table td {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  .group-accounts-panel { padding: 6px 0; }
+  .group-account-row {
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 8px 12px;
+  }
+  .token-display {
+    font-size: 16px;
+    padding: 10px;
+    letter-spacing: 1px;
+  }
 }
 
 .csv-dialog-panel {

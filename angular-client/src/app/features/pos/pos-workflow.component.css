@@ -145,21 +145,50 @@
   color: #d97706;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .workflow-tabs {
-    padding: 12px 12px 0;
+    padding: 12px 16px 0;
+    justify-content: center;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
-
   .workflow-tab {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+  .tab-connector {
+    width: 20px;
+  }
+  .tab-label {
+    display: none;
+  }
+  .tab-number {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+  .workflow-content {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .reconcile-banner {
+    margin: 8px 10px 0;
     padding: 10px 14px;
     font-size: 13px;
   }
+}
 
+@media (max-width: 640px) {
+  .workflow-tabs {
+    padding: 10px 12px 0;
+  }
+  .workflow-tab {
+    padding: 8px 14px;
+  }
   .tab-connector {
     width: 16px;
   }
-
-  .tab-label {
-    display: none;
+  .checking-session {
+    padding: 40px 16px;
   }
 }

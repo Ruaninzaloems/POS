@@ -415,4 +415,15 @@
   .toolbar-center { display: none; }
   .user-name-toolbar { display: none; }
   .content-area { padding: 16px; }
+  .app-toolbar { height: 48px; padding: 0 10px; }
+  .breadcrumb-bar { padding: 8px 12px; }
+  .breadcrumb-trail { font-size: 12px; }
+}
+
+@media (max-width: 480px) {
+  .content-area { padding: 8px; }
+  .breadcrumb-bar { padding: 6px 10px; }
+  .app-toolbar { height: 44px; }
+  .user-avatar { width: 28px; height: 28px; font-size: 11px; }
+  .toolbar-icon-btn { width: 32px; height: 32px; }
 }
