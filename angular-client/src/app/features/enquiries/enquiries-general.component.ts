@@ -580,79 +580,96 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const seen = new Set<number>();
     const merged: SearchResult[] = [];
 
+    const body: Record<string, any> = {};
+    if (field === 'accountNo') body['accountID'] = num;
+    else if (field === 'name') body['companyName'] = num;
+    else if (field === 'idNo') body['idRegistrationNumber'] = num;
+    else if (field === 'emailAddress') body['emailAddress'] = num;
+    else if (field === 'mobileNumber') body['mobileNumber'] = num;
+    else if (field === 'sgNumber') body['sgNumber'] = num;
+    else body[field] = num;
+
+    const acType = this.getAutocompleteType(field);
+
+    const processAutocompleteSuggestions = (data: any) => {
+      const suggestions = this.normalizeArray(data);
+      for (const s of suggestions) {
+        if (s.accountId && s.accountId > 0 && !seen.has(s.accountId)) {
+          seen.add(s.accountId);
+          const display = s.displayItem || '';
+          const parts = display.split(' - ');
+          const acctNum = parts[0]?.trim() || '';
+          const rest = parts.slice(1).join(' - ').trim();
+          const nameParts = rest.split(',');
+          const name = nameParts[0]?.trim() || '';
+          const address = nameParts.slice(1).join(',').trim() || '';
+          merged.push({
+            account_ID: s.accountId,
+            accountID: s.accountId,
+            accountNumber: acctNum || String(s.accountId).padStart(12, '0'),
+            name: name,
+            surname_Company: name,
+            locationAddress: address,
+            _fromAutocomplete: true,
+          } as unknown as SearchResult);
+        }
+      }
+    };
+
+    const processResults = (data: any) => {
+      const arr = this.normalizeArray(data);
+      for (const item of arr) {
+        const id = item.account_ID || item.accountID;
+        if (id && !seen.has(id)) { seen.add(id); merged.push(item); }
+      }
+    };
+
     try {
-      const body: Record<string, any> = {};
-      if (field === 'accountNo') body['accountID'] = num;
-      else if (field === 'name') body['companyName'] = num;
-      else if (field === 'idNo') body['idRegistrationNumber'] = num;
-      else if (field === 'emailAddress') body['emailAddress'] = num;
-      else if (field === 'mobileNumber') body['mobileNumber'] = num;
-      else if (field === 'sgNumber') body['sgNumber'] = num;
-      else body[field] = num;
-
-      const acType = this.getAutocompleteType(field);
-      const requests: Promise<any>[] = [
-        this.withTimeout(firstValueFrom(this.api.post<any>('/api/platinum/billing-enquiry/enquiry-results', body)), 15000),
-        this.withTimeout(firstValueFrom(this.api.get<any>('/api/platinum/billing-enquiry/autocomplete', { search: num, type: acType })), 10000),
-      ];
-
+      const acPromise = this.withTimeout(firstValueFrom(this.api.get<any>('/api/platinum/billing-enquiry/autocomplete', { search: num, type: acType })), 5000);
+      let acPromise2: Promise<any> | null = null;
       if (/^\d{4,}$/.test(num) && field === 'accountNo') {
-        requests.push(
-          this.withTimeout(firstValueFrom(this.api.post<any>('/api/platinum/billing-enquiry/enquiry-results', { oldAccount: num })), 10000),
-          this.withTimeout(firstValueFrom(this.api.get<any>('/api/platinum/billing-enquiry/autocomplete', { search: num, type: 'erfNumber' })), 8000),
-        );
+        acPromise2 = this.withTimeout(firstValueFrom(this.api.get<any>('/api/platinum/billing-enquiry/autocomplete', { search: num, type: 'erfNumber' })), 5000);
       }
 
-      const results = await Promise.allSettled(requests);
+      const acResults = await Promise.allSettled(acPromise2 ? [acPromise, acPromise2] : [acPromise]);
       if (this.quickSearchToken !== token) return;
 
-      const processResults = (data: any) => {
-        const arr = this.normalizeArray(data);
-        for (const item of arr) {
-          const id = item.account_ID || item.accountID;
-          if (id && !seen.has(id)) { seen.add(id); merged.push(item); }
+      for (const r of acResults) {
+        if (r.status === 'fulfilled') processAutocompleteSuggestions(r.value);
+      }
+
+      if (merged.length > 0) {
+        this.dropdownResults.set([...merged]);
+        this.showDropdown.set(true);
+        this.dropdownSearching.set(false);
+        this.enrichAutocompleteResults(merged, token);
+      }
+
+      const enquiryPromise = this.withTimeout(firstValueFrom(this.api.post<any>('/api/platinum/billing-enquiry/enquiry-results', body)), 10000);
+      let enquiryPromise2: Promise<any> | null = null;
+      if (/^\d{4,}$/.test(num) && field === 'accountNo') {
+        enquiryPromise2 = this.withTimeout(firstValueFrom(this.api.post<any>('/api/platinum/billing-enquiry/enquiry-results', { oldAccount: num })), 10000);
+      }
+
+      const enquiryResults = await Promise.allSettled(enquiryPromise2 ? [enquiryPromise, enquiryPromise2] : [enquiryPromise]);
+      if (this.quickSearchToken !== token) return;
+
+      let addedFromEnquiry = false;
+      for (const r of enquiryResults) {
+        if (r.status === 'fulfilled') {
+          const before = merged.length;
+          processResults(r.value);
+          if (merged.length > before) addedFromEnquiry = true;
         }
-      };
+      }
 
-      if (results[0].status === 'fulfilled') processResults(results[0].value);
-
-      const processAutocomplete = (result: PromiseSettledResult<any>) => {
-        if (result.status !== 'fulfilled') return;
-        const suggestions = this.normalizeArray(result.value);
-        for (const s of suggestions) {
-          if (s.accountId && s.accountId > 0 && !seen.has(s.accountId)) {
-            seen.add(s.accountId);
-            const display = s.displayItem || '';
-            const parts = display.split(' - ');
-            const acctNum = parts[0]?.trim() || '';
-            const rest = parts.slice(1).join(' - ').trim();
-            const nameParts = rest.split(',');
-            const name = nameParts[0]?.trim() || '';
-            const address = nameParts.slice(1).join(',').trim() || '';
-            merged.push({
-              account_ID: s.accountId,
-              accountID: s.accountId,
-              accountNumber: acctNum || String(s.accountId).padStart(12, '0'),
-              name: name,
-              surname_Company: name,
-              locationAddress: address,
-              _fromAutocomplete: true,
-            } as unknown as SearchResult);
-          }
-        }
-      };
-
-      processAutocomplete(results[1]);
-
-      if (results.length > 2 && results[2].status === 'fulfilled') processResults(results[2].value);
-      if (results.length > 3) processAutocomplete(results[3]);
-
-      this.dropdownResults.set([...merged]);
-      if (merged.length > 0) this.showDropdown.set(true);
-
-      this.enrichAutocompleteResults(merged, token);
+      if (addedFromEnquiry || merged.length > 0) {
+        this.dropdownResults.set([...merged]);
+        this.showDropdown.set(true);
+        this.enrichAutocompleteResults(merged, token);
+      }
     } catch (e: any) {
-      if (this.quickSearchToken === token) this.dropdownResults.set([]);
+      if (this.quickSearchToken === token && merged.length === 0) this.dropdownResults.set([]);
     } finally {
       if (this.quickSearchToken === token) this.dropdownSearching.set(false);
     }
