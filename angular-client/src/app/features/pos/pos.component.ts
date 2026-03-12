@@ -1118,6 +1118,7 @@ export class PosComponent implements OnInit, OnDestroy {
         const clearItem = clearanceItems[ci2];
         if (clearItem.amountToPay <= 0 || !clearItem.clearanceData) continue;
         const result = await this.submitClearancePaymentItem(clearItem, userId!, ci, finYear, cardNum, `${paymentToken}-clr${ci2}`);
+        console.log(`[processPayment] Clearance result:`, JSON.stringify(result).substring(0, 500));
         allResults.push({ receiptNumber: this.getReceiptNo(result), tenderType: this.activeTender(), amount: clearItem.amountToPay, items: [clearItem], rawResponse: result });
       }
 
@@ -1125,6 +1126,7 @@ export class PosComponent implements OnInit, OnDestroy {
         const prepItem = prepaidItems[pi];
         if (prepItem.amountToPay <= 0 || !prepItem.prepaidData) continue;
         const result = await this.submitPrepaidPaymentItem(prepItem, `${paymentToken}-prep${pi}`);
+        console.log(`[processPayment] Prepaid result:`, JSON.stringify(result).substring(0, 500));
         allResults.push({ receiptNumber: this.getReceiptNo(result), tenderType: this.activeTender(), amount: prepItem.amountToPay, items: [prepItem], rawResponse: result });
       }
 
@@ -1132,6 +1134,7 @@ export class PosComponent implements OnInit, OnDestroy {
         const miscItem = miscItems[mi];
         if (miscItem.amountToPay <= 0 || !miscItem.miscData) continue;
         const result = await this.submitMiscPaymentItem(miscItem, userId!, ci, finYear, cardNum, `${paymentToken}-misc${mi}`);
+        console.log(`[processPayment] Misc result:`, JSON.stringify(result).substring(0, 500));
         allResults.push({ receiptNumber: this.getReceiptNo(result), tenderType: this.activeTender(), amount: miscItem.amountToPay, items: [miscItem], rawResponse: result });
       }
 
@@ -1593,13 +1596,21 @@ export class PosComponent implements OnInit, OnDestroy {
     const extract = (obj: any): number => {
       if (!obj || typeof obj !== 'object') return 0;
       return Number(obj.receiptSerialNo || obj.receipt_serial_no || obj.ReceiptSerialNo
-        || obj.receiptId || obj.receipt_ID || obj.receiptID || 0);
+        || obj.receiptId || obj.receipt_ID || obj.receiptID
+        || obj.id || obj.ID
+        || obj.prepaidReceiptId || obj.prepaid_receipt_id || obj.tokenReceiptId
+        || 0);
     };
     let val = extract(data);
     if (val > 0) return val;
     if (data.objData) { val = extract(data.objData); if (val > 0) return val; }
     if (data.result) { val = extract(data.result); if (val > 0) return val; }
     if (data.data) { val = extract(data.data); if (val > 0) return val; }
+    if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+      val = extract(data.items[0]);
+      if (val > 0) return val;
+    }
+    console.warn('[POS] getReceiptSerialNo: could not extract ID from:', JSON.stringify(data).substring(0, 500));
     return 0;
   }
 
@@ -1608,13 +1619,20 @@ export class PosComponent implements OnInit, OnDestroy {
     if (!results.length) return;
     this.printingReceipt.set(true);
     let printed = 0;
+    const errors: string[] = [];
     try {
       const miscResults = results.filter(r => r.items.every(i => i.type === 'misc'));
       const nonMiscResults = results.filter(r => r.items.some(i => i.type !== 'misc'));
 
+      console.log(`[printReceipt] ${results.length} result(s): ${miscResults.length} misc, ${nonMiscResults.length} non-misc`);
+
       for (const mr of miscResults) {
         const serialNo = this.getReceiptSerialNo(mr.rawResponse);
-        if (serialNo <= 0) continue;
+        console.log(`[printReceipt] Misc receipt serialNo=${serialNo}, receiptNumber=${mr.receiptNumber}`, JSON.stringify(mr.rawResponse).substring(0, 300));
+        if (serialNo <= 0) {
+          errors.push(`Misc receipt ${mr.receiptNumber}: no serial number found in response`);
+          continue;
+        }
         try {
           const blob = await firstValueFrom(
             this.api.postBlob(`/api/platinum/billing-payment/print-miscellaneous-receipt?id=${serialNo}`, {})
@@ -1623,36 +1641,63 @@ export class PosComponent implements OnInit, OnDestroy {
             const url = URL.createObjectURL(blob);
             window.open(url, '_blank');
             printed++;
+          } else {
+            errors.push(`Misc receipt ${mr.receiptNumber}: empty PDF returned`);
           }
-        } catch { }
+        } catch (miscErr: any) {
+          console.error(`[printReceipt] Misc receipt ${serialNo} print error:`, miscErr);
+          errors.push(`Misc receipt ${mr.receiptNumber}: ${miscErr?.error?.message || miscErr?.message || 'print failed'}`);
+        }
       }
 
       if (nonMiscResults.length > 0) {
+        for (const nr of nonMiscResults) {
+          const sid = this.getReceiptSerialNo(nr.rawResponse);
+          const type = nr.items[0]?.type || 'unknown';
+          console.log(`[printReceipt] ${type} receipt serialNo=${sid}, receiptNumber=${nr.receiptNumber}`, JSON.stringify(nr.rawResponse).substring(0, 300));
+        }
+
         const receiptIds = nonMiscResults.map(r => this.getReceiptSerialNo(r.rawResponse)).filter(id => id > 0);
         const receiptNos = nonMiscResults.map(r => r.receiptNumber).filter(n => n && n !== 'N/A');
 
+        console.log(`[printReceipt] Non-misc print: ids=[${receiptIds.join(',')}], nos=[${receiptNos.join(',')}]`);
+
         if (receiptIds.length > 0 || receiptNos.length > 0) {
-          const blob = await firstValueFrom(
-            this.api.postBlob('/api/platinum/billing-payment/print-receipt', {
-              ids: receiptIds.length > 0 ? receiptIds : [0],
-              receiptNos,
-              isReprint: false,
-            })
-          );
-          if (blob && blob.size > 0) {
-            const url = URL.createObjectURL(blob);
-            window.open(url, '_blank');
-            printed++;
+          try {
+            const blob = await firstValueFrom(
+              this.api.postBlob('/api/platinum/billing-payment/print-receipt', {
+                ids: receiptIds.length > 0 ? receiptIds : [0],
+                receiptNos,
+                isReprint: false,
+              })
+            );
+            if (blob && blob.size > 0) {
+              const url = URL.createObjectURL(blob);
+              window.open(url, '_blank');
+              printed++;
+            } else {
+              errors.push('Standard receipt: empty PDF returned');
+            }
+          } catch (printErr: any) {
+            console.error(`[printReceipt] Standard print error:`, printErr);
+            errors.push(`Standard receipt print: ${printErr?.error?.message || printErr?.message || 'failed'}`);
           }
+        } else {
+          const failedTypes = nonMiscResults.map(r => r.items[0]?.type || 'unknown').join(', ');
+          errors.push(`No receipt IDs extracted for ${failedTypes} payment(s) — receipt may not be printable yet`);
         }
       }
 
       if (printed > 0) {
         this.toast.success('Receipt(s) sent to printer.');
+      } else if (errors.length > 0) {
+        console.error('[printReceipt] Errors:', errors);
+        this.toast.error(errors[0]);
       } else {
         this.toast.error('No printable receipts found.');
       }
-    } catch {
+    } catch (e: any) {
+      console.error('[printReceipt] Unexpected error:', e);
       this.toast.error('Failed to print receipt(s).');
     } finally {
       this.printingReceipt.set(false);
@@ -1813,14 +1858,26 @@ export class PosComponent implements OnInit, OnDestroy {
         || obj.receiptSerialNo || obj.receipt_serial_no || obj.ReceiptSerialNo
         || null;
     };
+    const extractId = (obj: any): string | null => {
+      if (!obj || typeof obj !== 'object') return null;
+      const id = obj.receiptID || obj.receipt_ID || obj.receiptId || obj.id || obj.ID
+        || obj.prepaidReceiptId || obj.prepaid_receipt_id || obj.tokenReceiptId;
+      return id ? String(id) : null;
+    };
     let val = extract(data);
     if (val) return String(val);
     if (data.objData) { val = extract(data.objData); if (val) return String(val); }
     if (data.result) { val = extract(data.result); if (val) return String(val); }
     if (data.data) { val = extract(data.data); if (val) return String(val); }
-    if (data.receiptID || data.receipt_ID || data.id) {
-      return String(data.receiptID || data.receipt_ID || data.id);
+    if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+      val = extract(data.items[0]);
+      if (val) return String(val);
     }
+    let idVal = extractId(data);
+    if (idVal) return idVal;
+    if (data.objData) { idVal = extractId(data.objData); if (idVal) return idVal; }
+    if (data.result) { idVal = extractId(data.result); if (idVal) return idVal; }
+    if (data.data) { idVal = extractId(data.data); if (idVal) return idVal; }
     console.warn('[POS] Could not extract receipt number from API response:', JSON.stringify(data).substring(0, 500));
     return 'N/A';
   }

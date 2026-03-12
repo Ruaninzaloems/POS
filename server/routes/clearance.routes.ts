@@ -352,6 +352,7 @@ export function registerClearanceRoutes(app: Express, httpServer: Server): void 
         console.log(`[clearance-submit] Raw status: ${rawRes.status}, Raw response:`, rawText.substring(0, 2000));
 
         if (!rawRes.ok) {
+          releasePaymentSlot(clrDedupKey, clrIdempotencyToken);
           console.error(`[clearance-submit] API error ${rawRes.status}: ${rawText}`);
           return res.status(rawRes.status).json({ message: rawRes.statusText, detail: rawText.substring(0, 1000) });
         }
