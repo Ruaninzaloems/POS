@@ -486,6 +486,14 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     return String(v).trim() || '-';
   }
 
+  isStatusActive(val: any): boolean {
+    if (!val) return false;
+    const s = String(val).trim().toLowerCase();
+    if (!s || s === 'none' || s === '-' || s === 'n/a') return false;
+    if (s.includes('no ') || s.includes('not ') || s === 'inactive' || s === 'none') return false;
+    return true;
+  }
+
   formatYesNo(v: any): string {
     if (v === null || v === undefined || v === '') return '-';
     if (typeof v === 'boolean') return v ? 'Yes' : 'No';
@@ -1074,13 +1082,18 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.globalSnapshot.set(null);
     try {
       const sa: any = this.selectedAccount();
-      const [gsBasic, gsConsDetails, gsAcctMgmt, gsConsUnitById, gsPropDetails, gsDeposit] = await Promise.allSettled([
+      const [gsBasic, gsConsDetails, gsAcctMgmt, gsConsUnitById, gsPropDetails, gsDeposit, gsHandover, gsAttp, gsRppStatus, gsRates, gsAcctMgmtDetails] = await Promise.allSettled([
         firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/basic-account-details/${accountId}`)),
         firstValueFrom(this.api.get<any>(`/api/platinum/receipt-prepaid/cons-account-details`, { accountId: String(accountId) })),
         firstValueFrom(this.api.get<any>(`/api/platinum/billing-account-management/account-information`, { accountId: String(accountId) })),
         firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/cons-unit-by-account`, { AccountId: String(accountId) })),
         firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
         firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/deposit-amount`, { accountId: String(accountId) })),
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/handover-info/${accountId}`)),
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/attp-application-history/${accountId}`)),
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/repayment-plan-status/${accountId}`)),
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-rates-details/${accountId}`)),
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-account-management/account-details`, { accountId: String(accountId) })),
       ]);
       const basicVal = gsBasic.status === 'fulfilled' ? (Array.isArray(gsBasic.value) ? gsBasic.value[0] : gsBasic.value) : null;
       const consVal = gsConsDetails.status === 'fulfilled' ? (Array.isArray(gsConsDetails.value) ? gsConsDetails.value[0] : gsConsDetails.value) : null;
@@ -1110,17 +1123,60 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       snap['billingCycle'] = mgmtVal?.cycleDescription || consVal?.cycleDescription || propVal?.cycleDescription || cuVal?.billingCycleID || '';
       snap['marketValue'] = gsValuation?.marketValue || gsValuation?.standMarketValue || cuVal?.marketValue || propVal?.marketValue || null;
       snap['status'] = basicVal?.accountStatus || consVal?.statusDesc || mgmtVal?.accountStatus || propVal?.propertyStatus || sa?.accountStatus || '';
-      snap['indigentSubsidy'] = consVal?.indigentSubsidyStatus || consVal?.indigentSubsidy || consVal?.indigentStatus || consVal?.attpStatus || '';
-      snap['consumerRpp'] = consVal?.consumerRppStatus || consVal?.consumerRPPStatus || consVal?.consumerRpp || '';
-      snap['rebateStatus'] = consVal?.rebateStatus || consVal?.rebateStatusDesc || consVal?.rebate || '';
-      snap['handoverStatus'] = consVal?.handoverStatus || consVal?.handoverStatusDesc || consVal?.handover || '';
-      snap['interestWaiver'] = consVal?.interestWaiverStatus || consVal?.interestWaiverDesc || consVal?.interestWaiver || '';
       if (gsDeposit.status === 'fulfilled' && gsDeposit.value != null) {
         const depRaw = gsDeposit.value;
         snap['depositValue'] = typeof depRaw === 'number' ? depRaw : Number(depRaw?.totalDeposit ?? depRaw?.amount ?? depRaw?.depositAmount ?? depRaw) || 0;
       } else {
         snap['depositValue'] = null;
       }
+
+      const gsHoArr: any[] = [];
+      if (gsHandover.status === 'fulfilled' && gsHandover.value && !gsHandover.value._error) {
+        const hoRaw = gsHandover.value;
+        if (Array.isArray(hoRaw)) gsHoArr.push(...hoRaw); else gsHoArr.push(hoRaw);
+      }
+      const gsActiveHo = gsHoArr.find((h: any) => {
+        const st = (h.handoverStatus || h.status || '').toLowerCase();
+        return st.includes('active') || st.includes('handed') || st.includes('legal') || st.includes('pending');
+      });
+      snap['handoverStatus'] = gsActiveHo
+        ? (gsActiveHo.handoverStatus || gsActiveHo.handoverStatusDesc || gsActiveHo.status || 'Handed Over')
+        : (gsHoArr.length > 0 ? (gsHoArr[0].handoverStatus || gsHoArr[0].handoverStatusDesc || 'N/A') : 'N/A');
+
+      const gsAttpArr: any[] = [];
+      if (gsAttp.status === 'fulfilled') {
+        const attpRaw = gsAttp.value;
+        if (Array.isArray(attpRaw)) gsAttpArr.push(...attpRaw); else if (attpRaw && !attpRaw._error) gsAttpArr.push(attpRaw);
+      }
+      const gsActiveIndigent = gsAttpArr.find((r: any) => {
+        const st = (r.attpStatus || r.status || '').toLowerCase();
+        return st.includes('active') || st.includes('approved') || st.includes('registered');
+      });
+      snap['indigentSubsidy'] = gsActiveIndigent
+        ? (gsActiveIndigent.attpStatus || gsActiveIndigent.status || 'Active')
+        : (gsAttpArr.length > 0 ? (gsAttpArr[0].attpStatus || gsAttpArr[0].status || '') : '');
+
+      if (gsRppStatus.status === 'fulfilled') {
+        const rppRaw = gsRppStatus.value;
+        if (typeof rppRaw === 'string') {
+          snap['consumerRpp'] = rppRaw || 'N/A';
+        } else if (Array.isArray(rppRaw) && rppRaw.length > 0) {
+          const gsConsumerRpp = rppRaw.find((r: any) => {
+            const t = (r.planType || r.repaymentPlanType || r.type || '').toLowerCase();
+            return t.includes('consumer') || t.includes('cons');
+          });
+          snap['consumerRpp'] = gsConsumerRpp
+            ? (gsConsumerRpp.statusDesc || gsConsumerRpp.status || 'Active')
+            : 'N/A';
+        } else {
+          snap['consumerRpp'] = 'N/A';
+        }
+      } else {
+        snap['consumerRpp'] = 'N/A';
+      }
+
+      snap['rebateStatus'] = 'No Rebate on Account';
+      snap['interestWaiver'] = 'No Interest Waiver on Account';
       console.log('[globalSnapshot]', JSON.stringify(snap).substring(0, 500));
       this.globalSnapshot.set(snap);
     } catch (e) {
@@ -1239,7 +1295,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           const acctFyParam: Record<string, string> = acctFinYear ? { finYear: acctFinYear } : {};
           const acctForPRS: any = this.selectedAccount();
           const acctUnitPartForSearch = acctForPRS?.unitPartitionID || acctForPRS?.unitPartition_ID;
-          const [basic, accountInfo, acctPropDetails, acctContactInfo, acctConsUnit, acctConsUnitById, acctRates, acctDepositAmt, acctMgmt, acctSectTitle, acctConsDetails, acctPropRatesSearch, acctMgmtDetails, acctHandover, acctAttpHistory] = await Promise.allSettled([
+          const [basic, accountInfo, acctPropDetails, acctContactInfo, acctConsUnit, acctConsUnitById, acctRates, acctDepositAmt, acctMgmt, acctSectTitle, acctConsDetails, acctPropRatesSearch, acctMgmtDetails, acctHandover, acctAttpHistory, acctRppStatus] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/basic-account-details/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-info-result/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
@@ -1260,6 +1316,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-account-management/account-details`, { accountId: String(accountId) })),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/handover-info/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/attp-application-history/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/repayment-plan-status/${accountId}`)),
           ]);
           const basicVal = basic.status === 'fulfilled' ? (Array.isArray(basic.value) ? basic.value[0] : basic.value) : null;
           const airVal = accountInfo.status === 'fulfilled' ? (Array.isArray(accountInfo.value) ? accountInfo.value[0] : accountInfo.value) : null;
@@ -1513,6 +1570,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           }
 
           const derivedStatuses: Record<string, string> = {};
+
           const acctHoArr = Array.isArray(acctHandoverVal) ? acctHandoverVal : acctHandoverVal ? [acctHandoverVal] : [];
           const acctActiveHo = acctHoArr.find((h: any) => {
             const st = (h.handoverStatus || h.status || h.handoverStatusDesc || '').toLowerCase();
@@ -1527,10 +1585,48 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           });
           derivedStatuses['indigentSubsidyStatus'] = acctActiveIndigent
             ? (acctActiveIndigent.attpStatus || acctActiveIndigent.status || 'Active')
-            : (acctAttpVal.length > 0 ? (acctAttpVal[0].attpStatus || acctAttpVal[0].status || '-') : '-');
+            : (acctAttpVal.length > 0 ? (acctAttpVal[0].attpStatus || acctAttpVal[0].status || '') : '');
           if (acctMgmtDetailsVal && !acctMgmtDetailsVal._error) {
-            derivedStatuses['departmentalAccount'] = acctMgmtDetailsVal.departmentID != null ? 'Active' : 'Inactive';
+            derivedStatuses['departmentalAccount'] = acctMgmtDetailsVal.departmentID != null && acctMgmtDetailsVal.departmentID !== 0 ? 'Active' : 'Inactive';
           }
+
+          let acctRppStatusVal: any = null;
+          if (acctRppStatus.status === 'fulfilled') {
+            const rppRaw = acctRppStatus.value;
+            if (typeof rppRaw === 'string') {
+              acctRppStatusVal = rppRaw;
+            } else if (Array.isArray(rppRaw)) {
+              acctRppStatusVal = rppRaw;
+            } else if (rppRaw && !rppRaw._error) {
+              acctRppStatusVal = rppRaw;
+            }
+            console.log('[account] rppStatus raw:', JSON.stringify(acctRppStatusVal)?.substring(0, 300));
+          }
+          if (typeof acctRppStatusVal === 'string') {
+            derivedStatuses['consumerRppStatus'] = acctRppStatusVal || 'N/A';
+            derivedStatuses['loanRppStatus'] = acctRppStatusVal || 'N/A';
+          } else if (Array.isArray(acctRppStatusVal) && acctRppStatusVal.length > 0) {
+            const activeConsumerRpp = acctRppStatusVal.find((r: any) => {
+              const t = (r.planType || r.repaymentPlanType || r.type || '').toLowerCase();
+              return t.includes('consumer') || t.includes('cons');
+            });
+            const activeLoanRpp = acctRppStatusVal.find((r: any) => {
+              const t = (r.planType || r.repaymentPlanType || r.type || '').toLowerCase();
+              return t.includes('loan');
+            });
+            derivedStatuses['consumerRppStatus'] = activeConsumerRpp
+              ? (activeConsumerRpp.statusDesc || activeConsumerRpp.status || activeConsumerRpp.repaymentPlanStatus || 'Active')
+              : 'N/A';
+            derivedStatuses['loanRppStatus'] = activeLoanRpp
+              ? (activeLoanRpp.statusDesc || activeLoanRpp.status || activeLoanRpp.repaymentPlanStatus || 'Active')
+              : 'N/A';
+          } else {
+            derivedStatuses['consumerRppStatus'] = 'N/A';
+            derivedStatuses['loanRppStatus'] = 'N/A';
+          }
+
+          derivedStatuses['interestWaiverStatus'] = 'No Interest Waiver on Account';
+          derivedStatuses['rebateStatus'] = 'No Rebate on Account';
 
           data = {
             basic: mergedBasic,

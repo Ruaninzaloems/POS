@@ -81,27 +81,27 @@
           </div>
 
           <div class="global-snapshot-badges">
-            <div class="gs-badge" [class.gs-badge-active]="globalSnapshot()!['indigentSubsidy']" [class.gs-badge-none]="!globalSnapshot()!['indigentSubsidy']">
+            <div class="gs-badge" [class.gs-badge-active]="isStatusActive(globalSnapshot()!['indigentSubsidy'])" [class.gs-badge-none]="!isStatusActive(globalSnapshot()!['indigentSubsidy'])">
               <span class="gs-badge-icon">🛡️</span>
               <span class="gs-badge-lbl">Indigent Subsidy</span>
               <span class="gs-badge-val">{{ globalSnapshot()!['indigentSubsidy'] || 'None' }}</span>
             </div>
-            <div class="gs-badge" [class.gs-badge-active]="globalSnapshot()!['consumerRpp']" [class.gs-badge-none]="!globalSnapshot()!['consumerRpp']">
+            <div class="gs-badge" [class.gs-badge-active]="isStatusActive(globalSnapshot()!['consumerRpp'])" [class.gs-badge-none]="!isStatusActive(globalSnapshot()!['consumerRpp'])">
               <span class="gs-badge-icon">🔄</span>
               <span class="gs-badge-lbl">Consumer RPP</span>
               <span class="gs-badge-val">{{ globalSnapshot()!['consumerRpp'] || 'None' }}</span>
             </div>
-            <div class="gs-badge" [class.gs-badge-active]="globalSnapshot()!['rebateStatus']" [class.gs-badge-none]="!globalSnapshot()!['rebateStatus']">
+            <div class="gs-badge" [class.gs-badge-active]="isStatusActive(globalSnapshot()!['rebateStatus'])" [class.gs-badge-none]="!isStatusActive(globalSnapshot()!['rebateStatus'])">
               <span class="gs-badge-icon">🏷️</span>
               <span class="gs-badge-lbl">Rebate Status</span>
               <span class="gs-badge-val">{{ globalSnapshot()!['rebateStatus'] || 'None' }}</span>
             </div>
-            <div class="gs-badge" [class.gs-badge-warn]="globalSnapshot()!['handoverStatus']" [class.gs-badge-none]="!globalSnapshot()!['handoverStatus']">
+            <div class="gs-badge" [class.gs-badge-warn]="isStatusActive(globalSnapshot()!['handoverStatus'])" [class.gs-badge-none]="!isStatusActive(globalSnapshot()!['handoverStatus'])">
               <span class="gs-badge-icon">⚠️</span>
               <span class="gs-badge-lbl">Handover Status</span>
               <span class="gs-badge-val">{{ globalSnapshot()!['handoverStatus'] || 'None' }}</span>
             </div>
-            <div class="gs-badge" [class.gs-badge-active]="globalSnapshot()!['interestWaiver']" [class.gs-badge-none]="!globalSnapshot()!['interestWaiver']">
+            <div class="gs-badge" [class.gs-badge-active]="isStatusActive(globalSnapshot()!['interestWaiver'])" [class.gs-badge-none]="!isStatusActive(globalSnapshot()!['interestWaiver'])">
               <span class="gs-badge-icon">💳</span>
               <span class="gs-badge-lbl">Interest Waiver</span>
               <span class="gs-badge-val">{{ globalSnapshot()!['interestWaiver'] || 'None' }}</span>
