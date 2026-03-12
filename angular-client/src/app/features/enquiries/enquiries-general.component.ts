@@ -1500,14 +1500,57 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
               console.log('[property] supplementary valuations fetch failed:', e);
             }
           }
+          let propRebatesLevies: any[] = [];
+          const propTabFinYear = this.ratesFinYear() || this.getCurrentFinYear();
+          const propTabUnitPartId = propUnitPartId || propConsUnitVal?.unitPartitionID || propConsUnitVal?.unitPartition_ID;
+          if (propTabUnitPartId || accountId) {
+            try {
+              const prParams: Record<string, string> = { finYear: propTabFinYear, pageSize: '50' };
+              if (accountId) prParams['accountId'] = String(accountId);
+              if (propTabUnitPartId) prParams['unitPartitionId'] = String(propTabUnitPartId);
+              const prResult = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-rates-search`, prParams));
+              propRebatesLevies = this.normalizeArray(prResult?.data || prResult);
+              if (propRebatesLevies.length === 0 && propTabUnitPartId) {
+                const partResult = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-rates-by-partition/${propTabUnitPartId}`, { finYear: propTabFinYear }));
+                propRebatesLevies = this.normalizeArray(partResult?.data || partResult);
+              }
+            } catch (e) {
+              console.log('[property] rebates/levies fetch failed:', e);
+            }
+          }
+          let propLinkedMeters: any[] = [];
+          try {
+            const lmResult = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/unit-linked-meters`, { accountId: String(accountId) }));
+            propLinkedMeters = this.normalizeArray(lmResult);
+          } catch (e) {
+            console.log('[property] linked meters fetch failed:', e);
+          }
+          const propMetersRaw = meters.status === 'fulfilled' ? this.normalizeArray(meters.value) : [];
+          const meterKey = (m: any) => (m.physicalMeterNo || m.physicalMeterNumber || m.meterNo || m.meterNumber || '').toString().trim();
+          const propMetersMerged = propMetersRaw.map((m: any) => {
+            const mk = meterKey(m);
+            if (!mk) return m;
+            const linked = propLinkedMeters.find((lm: any) => {
+              const lk = meterKey(lm);
+              return lk && lk === mk;
+            });
+            return linked ? { ...linked, ...m } : m;
+          });
+          for (const lm of propLinkedMeters) {
+            const lk = meterKey(lm);
+            if (!lk) continue;
+            const exists = propMetersMerged.find((m: any) => meterKey(m) === lk);
+            if (!exists) propMetersMerged.push(lm);
+          }
           data = {
             property: propVal,
             consUnit: propConsUnitVal,
             partitionOwner: propPartOwnerResult,
             rates: rates.status === 'fulfilled' ? rates.value : null,
-            meters: meters.status === 'fulfilled' ? this.normalizeArray(meters.value) : [],
+            meters: propMetersMerged,
             transfers: transfers.status === 'fulfilled' ? this.normalizeArray(transfers.value) : [],
             valuations: propValuations,
+            rebatesLevies: propRebatesLevies,
           };
           break;
 

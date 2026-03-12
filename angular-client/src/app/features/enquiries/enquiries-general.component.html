@@ -879,7 +879,7 @@
         <!-- Property Tab -->
         @if (activeTab() === 'property') {
           <div class="tab-panel" data-testid="property-details-tab">
-            @if (tabData()?.property || tabData()?.consUnit) {
+            @if (tabData()?.property || tabData()?.consUnit || (tabData()?.transfers || []).length > 0 || (tabData()?.meters || []).length > 0 || (tabData()?.valuations || []).length > 0 || (tabData()?.rebatesLevies || []).length > 0) {
               <div class="acct-section-card">
                 <div class="acct-section-header">Property</div>
                 <div class="acct-two-col">
@@ -979,83 +979,28 @@
 
               <div class="acct-section-card">
                 <div class="acct-section-header">📊 General Valuations <span class="section-count-badge">{{ (tabData()?.valuations || []).length }}</span></div>
-                @if ((tabData()?.valuations || []).length === 0) {
-                  <div class="empty-inline">No valuation records found</div>
-                } @else {
-                  <div class="data-table-wrapper">
-                    <table class="data-table" data-testid="table-valuations">
-                      <thead>
-                        <tr>
-                          <th>Type</th>
-                          <th>Status</th>
-                          <th>Fin Year</th>
-                          <th class="text-right">Market Value</th>
-                          <th class="text-right">Improvement</th>
-                          <th class="text-right">Stand Size (m²)</th>
-                          <th>Roll Number</th>
-                          <th>Roll Date</th>
-                          <th>Tariff</th>
-                          <th>Zoning / Use</th>
-                          <th>Reason</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        @for (v of tabData()?.valuations || []; track $index) {
-                          <tr [attr.data-testid]="'row-valuation-' + $index">
-                            <td>{{ v.type || '-' }}</td>
-                            <td><span class="inline-badge" [class.active]="v.valuationStatus === 'Active'">{{ v.valuationStatus || '-' }}</span></td>
-                            <td>{{ v.financialYear || '-' }}</td>
-                            <td class="text-right mono accent">{{ formatCurrency(v.standMarketValue) }}</td>
-                            <td class="text-right mono">{{ formatCurrency(v.improvementValue) }}</td>
-                            <td class="text-right mono">{{ formatIntValue(v.standSize) }}</td>
-                            <td>{{ v.rollNumber || '-' }}</td>
-                            <td>{{ formatDate(v.rollDate) }}</td>
-                            <td>{{ v.ratesTariffCode || '-' }}</td>
-                            <td>{{ v.zoneDesc || v.typeOfUseDesc || '-' }}</td>
-                            <td>{{ v.reason || '-' }}</td>
-                          </tr>
-                        }
-                      </tbody>
-                    </table>
+                @if ((tabData()?.valuations || []).length > 0) {
+                  <div class="acct-two-col" style="margin-bottom: 0.75rem;">
+                    <div class="acct-col">
+                      <div class="acct-field"><span class="acct-field-label">Market Value</span><span class="acct-field-value mono acct-highlight">R {{ formatCurrency(tabData()?.valuations?.[0]?.standMarketValue || tabData()?.valuations?.[0]?.marketValue || 0) }}</span></div>
+                      <div class="acct-field"><span class="acct-field-label">Stand Size (m²)</span><span class="acct-field-value">{{ tabData()?.valuations?.[0]?.standSize || tabData()?.valuations?.[0]?.extentM2 || '-' }}</span></div>
+                      <div class="acct-field"><span class="acct-field-label">Land Size (ha)</span><span class="acct-field-value">{{ tabData()?.valuations?.[0]?.landSize || tabData()?.valuations?.[0]?.landSizeHa || '-' }}</span></div>
+                      <div class="acct-field"><span class="acct-field-label">Roll Number</span><span class="acct-field-value">{{ tabData()?.valuations?.[0]?.rollNumber || '-' }}</span></div>
+                      <div class="acct-field"><span class="acct-field-label">Roll Start Date</span><span class="acct-field-value">{{ formatDate(tabData()?.valuations?.[0]?.rollDate || tabData()?.valuations?.[0]?.rollStartDate) }}</span></div>
+                      <div class="acct-field"><span class="acct-field-label">Phase in Commencement Date</span><span class="acct-field-value">{{ formatDate(tabData()?.valuations?.[0]?.phaseInCommencementDate) || '-' }}</span></div>
+                    </div>
+                    <div class="acct-col">
+                      <div class="acct-field"><span class="acct-field-label">Type of Use</span><span class="acct-field-value">{{ tabData()?.valuations?.[0]?.typeOfUseDesc || tabData()?.valuations?.[0]?.zoneDesc || tabData()?.valuations?.[0]?.propertyCategory || '-' }}</span></div>
+                      <div class="acct-field"><span class="acct-field-label">Property Category</span><span class="acct-field-value">{{ tabData()?.valuations?.[0]?.propertyCategory || tabData()?.valuations?.[0]?.category || '-' }}</span></div>
+                      <div class="acct-field"><span class="acct-field-label">Rates Tariff Code</span><span class="acct-field-value">{{ tabData()?.valuations?.[0]?.ratesTariffCode || '-' }}</span></div>
+                      <div class="acct-field"><span class="acct-field-label">Reason for Valuation Change</span><span class="acct-field-value">{{ tabData()?.valuations?.[0]?.reason || tabData()?.valuations?.[0]?.reasonForValuationChange || '-' }}</span></div>
+                      <div class="acct-field"><span class="acct-field-label">Expected Expiry Date</span><span class="acct-field-value">{{ formatDate(tabData()?.valuations?.[0]?.expectedExpiryDate || tabData()?.valuations?.[0]?.valuationExpiryDate) || '-' }}</span></div>
+                      <div class="acct-field"><span class="acct-field-label">Land Reform / RDP</span><span class="acct-field-value">{{ tabData()?.valuations?.[0]?.landReformRDP || tabData()?.valuations?.[0]?.rdpOrReform || '-' }}</span></div>
+                    </div>
                   </div>
                 }
-              </div>
 
-              @if ((tabData()?.meters || []).length > 0) {
-                <div class="acct-section-card">
-                  <div class="acct-section-header">⏱️ Meters on Property <span class="section-count-badge">{{ (tabData()?.meters || []).length }}</span></div>
-                  <div class="data-table-wrapper">
-                    <table class="data-table" data-testid="table-property-meters">
-                      <thead>
-                        <tr>
-                          <th>Meter Number</th>
-                          <th>Service</th>
-                          <th>Status</th>
-                          <th>Type</th>
-                          <th class="text-right">Last Reading</th>
-                          <th>Read Date</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        @for (m of tabData()?.meters || []; track $index) {
-                          <tr [attr.data-testid]="'row-meter-' + $index">
-                            <td class="mono">{{ m.physicalMeterNo || m.physicalMeterNumber || m.meterNo || m.meterNumber || '-' }}</td>
-                            <td>{{ m.serviceDesc || m.serviceType || m.serviceDescription || '-' }}</td>
-                            <td><span class="inline-badge" [class.active]="(m.serviceStatus || m.status || '').toLowerCase() === 'active' || m.serviceStatusID === 1 || m.isActive">{{ m.serviceStatus || m.status || (m.isActive ? 'Active' : (m.serviceStatusID === 1 ? 'Active' : 'Inactive')) || '-' }}</span></td>
-                            <td>{{ m.meterConnectionSize || m.meterType || '-' }}</td>
-                            <td class="text-right mono">{{ m.lastReading || m.currentReading || '-' }}</td>
-                            <td>{{ formatDate(m.readDate || m.lastReadDate) }}</td>
-                          </tr>
-                        }
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              }
-
-              <div class="acct-section-card">
-                <div class="acct-section-header">📄 Property Letters &amp; Certificates</div>
-                <div class="prop-letters-row">
+                <div class="prop-letters-row" style="margin-bottom: 0.75rem;">
                   <button class="prop-letter-btn" (click)="generatePropertyLetter('section49')" [disabled]="generatingPropertyLetter() !== null" data-testid="btn-section49">
                     @if (generatingPropertyLetter() === 'section49') { <span class="stmt-spinner"></span> Generating... } @else { 📋 Section 49 Letter }
                   </button>
@@ -1066,11 +1011,158 @@
                     @if (generatingPropertyLetter() === 'valuation') { <span class="stmt-spinner"></span> Generating... } @else { 📜 Valuation Certificate }
                   </button>
                 </div>
+
+                @if ((tabData()?.valuations || []).length === 0) {
+                  <div class="empty-inline">No valuation records found</div>
+                } @else {
+                  <div class="data-table-wrapper">
+                    <table class="data-table" data-testid="table-valuations">
+                      <thead>
+                        <tr>
+                          <th>Fin Year</th>
+                          <th>Status</th>
+                          <th>Type</th>
+                          <th class="text-right">Stand Size</th>
+                          <th class="text-right">Land Size</th>
+                          <th class="text-right">Market Value</th>
+                          <th>Roll Number</th>
+                          <th>Roll Date</th>
+                          <th>Property Category</th>
+                          <th>Type of Use</th>
+                          <th>Rates Tariff Code</th>
+                          <th>Phase in Commencement</th>
+                          <th>Valuation Expiry Date</th>
+                          <th>Reason</th>
+                          <th>Captured Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (v of tabData()?.valuations || []; track $index) {
+                          <tr [attr.data-testid]="'row-valuation-' + $index">
+                            <td>{{ v.financialYear || '-' }}</td>
+                            <td><span class="inline-badge" [class.active]="v.valuationStatus === 'Active'">{{ v.valuationStatus || '-' }}</span></td>
+                            <td>{{ v.type || v.valuationType || '-' }}</td>
+                            <td class="text-right mono">{{ formatIntValue(v.standSize || v.extentM2) }}</td>
+                            <td class="text-right mono">{{ v.landSize || v.landSizeHa || '-' }}</td>
+                            <td class="text-right mono accent">R {{ formatCurrency(v.standMarketValue || v.marketValue || 0) }}</td>
+                            <td>{{ v.rollNumber || '-' }}</td>
+                            <td>{{ formatDate(v.rollDate || v.rollStartDate) }}</td>
+                            <td>{{ v.propertyCategory || v.category || '-' }}</td>
+                            <td>{{ v.typeOfUseDesc || v.zoneDesc || '-' }}</td>
+                            <td style="font-size: 0.75rem;">{{ v.ratesTariffCode || '-' }}</td>
+                            <td>{{ formatDate(v.phaseInCommencementDate) || '-' }}</td>
+                            <td>{{ formatDate(v.valuationExpiryDate || v.expectedExpiryDate) || '-' }}</td>
+                            <td>{{ v.reason || v.reasonForValuationChange || '-' }}</td>
+                            <td>{{ formatDate(v.capturedDate || v.dateCreated) || '-' }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
               </div>
 
-              @if ((tabData()?.transfers || []).length > 0) {
-                <div class="acct-section-card">
-                  <div class="acct-section-header">📋 Transfer of Ownership History <span class="section-count-badge">{{ (tabData()?.transfers || []).length }}</span></div>
+              <div class="acct-section-card">
+                <div class="acct-section-header">💰 Rebates and Levies <span class="section-count-badge">{{ (tabData()?.rebatesLevies || []).length }}</span></div>
+                @if ((tabData()?.rebatesLevies || []).length === 0) {
+                  <div class="empty-inline">No records to display</div>
+                } @else {
+                  <div class="data-table-wrapper">
+                    <table class="data-table" data-testid="table-rebates-levies">
+                      <thead>
+                        <tr>
+                          <th>Financial Year</th>
+                          <th>Partition ID</th>
+                          <th>Partition Description</th>
+                          <th>Rates Tariff</th>
+                          <th class="text-right">Stand Size</th>
+                          <th class="text-right">Market Value</th>
+                          <th class="text-right">Rateable Market Value</th>
+                          <th class="text-right">Legislative Rebate</th>
+                          <th class="text-right">Additional Rebate</th>
+                          <th class="text-right">New Erven Rebate</th>
+                          <th class="text-right">Rebate Application</th>
+                          <th class="text-right">General Rebate</th>
+                          <th class="text-right">Tariff Rebate</th>
+                          <th class="text-right">Total Rebate</th>
+                          <th class="text-right">Annual Rates</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (rl of tabData()?.rebatesLevies || []; track $index) {
+                          <tr [attr.data-testid]="'row-rebate-' + $index">
+                            <td>{{ rl.financialYear || '-' }}</td>
+                            <td class="mono">{{ rl.unitPartitionId || rl.unitPartition_ID || '-' }}</td>
+                            <td>{{ rl.unitPartitionDescription || rl.partitionDescription || '-' }}</td>
+                            <td style="font-size: 0.75rem;">{{ rl.tariffDescription || '-' }}</td>
+                            <td class="text-right mono">{{ formatIntValue(rl.unitPartitionSize || rl.standSize) }}</td>
+                            <td class="text-right mono">R {{ formatCurrency(rl.marketValue || 0) }}</td>
+                            <td class="text-right mono">R {{ formatCurrency(rl.rateableMarketValue || 0) }}</td>
+                            <td class="text-right mono">R {{ formatCurrency(rl.legislativeRebate || 0) }}</td>
+                            <td class="text-right mono">R {{ formatCurrency(rl.legislativeAdditionalRebate || 0) }}</td>
+                            <td class="text-right mono">R {{ formatCurrency(rl.newErvenRebateAmount || 0) }}</td>
+                            <td class="text-right mono">R {{ formatCurrency(rl.rebateApplicationAmount || 0) }}</td>
+                            <td class="text-right mono">R {{ formatCurrency(rl.generalRebateAmount || 0) }}</td>
+                            <td class="text-right mono">R {{ formatCurrency(rl.tariffRebate || 0) }}</td>
+                            <td class="text-right mono" style="color: var(--platinum-accent);">R {{ formatCurrency(rl.totalRebate || 0) }}</td>
+                            <td class="text-right mono" style="font-weight: 700;">R {{ formatCurrency(rl.calculatedAnnualRatesAmount || rl.propertyRatesAmount || 0) }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
+              </div>
+
+              <div class="acct-section-card">
+                <div class="acct-section-header">⏱️ Meters <span class="section-count-badge">{{ (tabData()?.meters || []).length }}</span></div>
+                @if ((tabData()?.meters || []).length === 0) {
+                  <div class="empty-inline">No meters found for this property</div>
+                } @else {
+                  <div class="data-table-wrapper">
+                    <table class="data-table" data-testid="table-property-meters">
+                      <thead>
+                        <tr>
+                          <th>Service Type</th>
+                          <th>Classification</th>
+                          <th>Physical Meter No</th>
+                          <th>Meter No</th>
+                          <th>Install Date</th>
+                          <th>Tariff Code</th>
+                          <th>Main Meter</th>
+                          <th>Billable</th>
+                          <th>Status</th>
+                          <th>Service Status</th>
+                          <th>Account Number</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (m of tabData()?.meters || []; track $index) {
+                          <tr [attr.data-testid]="'row-meter-' + $index">
+                            <td>{{ m.serviceDesc || m.serviceType || m.serviceDescription || '-' }}</td>
+                            <td>{{ m.meterClassification || m.classificationDesc || m.meterConnectionSize || m.meterType || '-' }}</td>
+                            <td class="mono">{{ m.physicalMeterNo || m.physicalMeterNumber || '-' }}</td>
+                            <td class="mono">{{ m.meterNo || m.meterNumber || '-' }}</td>
+                            <td>{{ formatDate(m.installDate || m.dateInstalled) || '-' }}</td>
+                            <td style="font-size: 0.75rem;">{{ m.tariffCode || m.tariffDesc || '-' }}</td>
+                            <td>{{ m.isMainMeter === true || m.isMainMeter === 1 ? 'Yes' : m.isMainMeter === false || m.isMainMeter === 0 ? 'No' : (m.mainMeter ?? '-') }}</td>
+                            <td>{{ m.isBillable === true || m.isBillable === 1 ? 'Yes' : m.isBillable === false || m.isBillable === 0 ? 'No' : (m.billable ?? '-') }}</td>
+                            <td><span class="inline-badge" [class.active]="(m.meterStatus || m.status || '').toLowerCase() === 'active'">{{ m.meterStatus || m.status || '-' }}</span></td>
+                            <td><span class="inline-badge" [class.active]="(m.serviceStatus || '').toLowerCase() === 'active' || m.serviceStatusID === 1 || m.isActive">{{ m.serviceStatus || (m.isActive ? 'Active' : (m.serviceStatusID === 1 ? 'Active' : '-')) }}</span></td>
+                            <td class="mono">{{ m.accountNumber || m.accountNo || '-' }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
+              </div>
+
+              <div class="acct-section-card">
+                <div class="acct-section-header">📋 Transfer of Ownership History <span class="section-count-badge">{{ (tabData()?.transfers || []).length }}</span></div>
+                @if ((tabData()?.transfers || []).length === 0) {
+                  <div class="empty-inline">No records to display</div>
+                } @else {
                   <div class="data-table-wrapper">
                     <table class="data-table" data-testid="table-transfer-ownership">
                       <thead>
@@ -1082,6 +1174,9 @@
                           <th>Old Account</th>
                           <th>Title Deed</th>
                           <th>Registration Date</th>
+                          <th>RDP / Land Reform Date</th>
+                          <th class="text-right">Journal Amount - Services</th>
+                          <th class="text-right">Journal Amount - Additional</th>
                           <th class="text-right">Purchase Price</th>
                           <th>Purchase Date</th>
                         </tr>
@@ -1096,6 +1191,9 @@
                             <td class="mono">{{ t.oldAccountNumber || t.oldAccount || '-' }}</td>
                             <td class="mono">{{ t.titleDeedNumber || t.titleDeed || '-' }}</td>
                             <td>{{ formatDate(t.registrationDate || t.registerDate) }}</td>
+                            <td>{{ formatDate(t.rdpLandReformDate || t.rdpDate) || '-' }}</td>
+                            <td class="text-right mono">R {{ formatCurrency(t.journalAmountServices || t.journalAmount_Services || 0) }}</td>
+                            <td class="text-right mono">R {{ formatCurrency(t.journalAmountAdditionalBilling || t.journalAmount_AdditionalBilling || 0) }}</td>
                             <td class="text-right mono">R {{ formatCurrency(t.purchasePrice || t.purchase_Price || 0) }}</td>
                             <td>{{ formatDate(t.purchaseDate || t.purchase_Date) }}</td>
                           </tr>
@@ -1103,8 +1201,8 @@
                       </tbody>
                     </table>
                   </div>
-                </div>
-              }
+                }
+              </div>
             } @else {
               <div class="empty-state">
                 <div class="empty-icon">🏠</div>
