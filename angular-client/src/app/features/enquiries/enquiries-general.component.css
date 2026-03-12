@@ -2746,6 +2746,56 @@
   }
 }
 
+.acct-property-info-card {
+  background: linear-gradient(135deg, var(--platinum-primary, #0f2b46) 0%, #1a3d5c 100%);
+  border-radius: 0.625rem;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1rem;
+  color: white;
+}
+.acct-prop-info-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1.5fr 1fr;
+  gap: 1rem 1.5rem;
+  align-items: start;
+}
+.acct-prop-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.acct-prop-info-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255,255,255,0.5);
+}
+.acct-prop-info-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: white;
+  word-break: break-word;
+}
+.acct-prop-desc {
+  font-size: 1rem;
+  font-weight: 700;
+}
+.acct-prop-market-value {
+  color: var(--platinum-accent, #c9a84c);
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 1rem;
+  font-weight: 700;
+}
+@media (max-width: 900px) {
+  .acct-prop-info-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .acct-prop-desc {
+    grid-column: 1 / -1;
+  }
+}
+
 .export-toolbar {
   display: flex;
   justify-content: flex-end;

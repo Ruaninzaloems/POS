@@ -1160,12 +1160,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       let data: any = null;
       switch (tab) {
         case 'account':
-          const [basic, accountInfo, acctPropDetails, acctContactInfo, acctConsUnit, acctRates, acctDepositAmt, acctMgmt, acctSectTitle, acctConsDetails] = await Promise.allSettled([
+          const [basic, accountInfo, acctPropDetails, acctContactInfo, acctConsUnit, acctConsUnitById, acctRates, acctDepositAmt, acctMgmt, acctSectTitle, acctConsDetails] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/basic-account-details/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-info-result/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/get-contact-details/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/consumption-units/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/cons-unit-by-account`, { AccountId: String(accountId) })),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-rates-details/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/deposit-amount`, { accountId: String(accountId) })),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-account-management/account-information`, { accountId: String(accountId) })),
@@ -1176,7 +1177,14 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           const airVal = accountInfo.status === 'fulfilled' ? (Array.isArray(accountInfo.value) ? accountInfo.value[0] : accountInfo.value) : null;
           const acctPropVal = acctPropDetails.status === 'fulfilled' ? (Array.isArray(acctPropDetails.value) ? acctPropDetails.value[0] : acctPropDetails.value) : null;
           const acctContactVal = acctContactInfo.status === 'fulfilled' ? (Array.isArray(acctContactInfo.value) ? acctContactInfo.value[0] : acctContactInfo.value) : null;
-          const acctConsUnitVal = acctConsUnit.status === 'fulfilled' ? (Array.isArray(acctConsUnit.value) ? acctConsUnit.value[0] : acctConsUnit.value) : null;
+          let acctConsUnitVal = acctConsUnit.status === 'fulfilled' ? (Array.isArray(acctConsUnit.value) ? acctConsUnit.value[0] : acctConsUnit.value) : null;
+          if (acctConsUnitVal && acctConsUnitVal._error) acctConsUnitVal = null;
+          const acctConsUnitByIdVal = acctConsUnitById.status === 'fulfilled' ? (Array.isArray(acctConsUnitById.value) ? acctConsUnitById.value[0] : acctConsUnitById.value) : null;
+          if (acctConsUnitByIdVal && !acctConsUnitByIdVal._error) {
+            console.log('[account] ConsUnitByAccountId keys:', Object.keys(acctConsUnitByIdVal));
+            console.log('[account] ConsUnitByAccountId sample:', JSON.stringify(acctConsUnitByIdVal).substring(0, 1500));
+            if (!acctConsUnitVal) acctConsUnitVal = acctConsUnitByIdVal;
+          }
           const acctRatesVal = acctRates.status === 'fulfilled' ? (Array.isArray(acctRates.value) ? acctRates.value[0] : acctRates.value) : null;
           const acctMgmtVal = acctMgmt.status === 'fulfilled' ? (Array.isArray(acctMgmt.value) ? acctMgmt.value[0] : acctMgmt.value) : null;
           const acctSectTitleVal = acctSectTitle.status === 'fulfilled' ? (Array.isArray(acctSectTitle.value) ? acctSectTitle.value[0] : acctSectTitle.value) : null;
@@ -1234,6 +1242,47 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
               }
             }
             acctPropFinal['_fallback'] = true;
+          }
+          if (acctConsUnitByIdVal && !acctConsUnitByIdVal._error) {
+            const cuByIdFieldMap: Record<string, string[]> = {
+              'propertyStatus': ['propertyStatus', 'PropertyStatus', 'statusDesc', 'StatusDesc'],
+              'marketValue': ['marketValue', 'MarketValue', 'propertyMarketValue', 'PropertyMarketValue'],
+              'valuationCategory': ['valuationCategory', 'ValuationCategory', 'valuationCat', 'ValuationCat'],
+              'partitionDescription': ['partitionDescription', 'PartitionDescription', 'partitionDesc', 'PartitionDesc', 'description', 'Description'],
+              'partitionMarketValue': ['partitionMarketValue', 'PartitionMarketValue', 'partMarketValue', 'PartMarketValue'],
+              'billingCycleID': ['billingCycleID', 'BillingCycleID', 'billingCycleId'],
+              'cycleDescription': ['cycleDescription', 'CycleDescription', 'billingCycleDesc', 'billingCycle'],
+              'allotmentArea': ['allotmentArea', 'AllotmentArea', 'allotment', 'Allotment'],
+              'town': ['town', 'Town'],
+              'suburb': ['suburb', 'Suburb', 'subSuburb', 'nonStandAddSuburb'],
+              'farmName': ['farmName', 'FarmName', 'farm', 'Farm'],
+              'magisterialDistrict': ['magisterialDistrict', 'MagisterialDistrict', 'magisterialID', 'magDistrict'],
+              'ward': ['ward', 'Ward'],
+              'registrationStatus': ['registrationStatus', 'RegistrationStatus', 'regStatus'],
+              'oldPropertyCode': ['oldPropertyCode', 'OldPropertyCode', 'oldPropCode', 'oldAccountCode'],
+              'sectionalTitleScheme': ['sectionalTitleScheme', 'SectionalTitleScheme', 'sectionalTitleSchemeName', 'sectionalTitle'],
+              'sectionNumber': ['sectionNumber', 'SectionNumber', 'unitNumber', 'UnitNumber'],
+              'propertyCategory': ['propertyCategory', 'PropertyCategory', 'category', 'Category'],
+              'propertyType': ['propertyType', 'PropertyType', 'typeOfUse', 'TypeOfUse', 'typeofUse'],
+              'typeOfUseDesc': ['typeOfUseDesc', 'TypeOfUseDesc'],
+              'accountableOwnerName': ['accountableOwnerName', 'AccountableOwnerName', 'ownerName', 'OwnerName'],
+              'rollNumber': ['rollNumber', 'RollNumber'],
+              'longitude': ['longitude', 'Longitude', 'gpsLong'],
+              'latitude': ['latitude', 'Latitude', 'gpsLat'],
+              'erfNumber': ['erfNumber', 'ErfNumber', 'erf'],
+              'portion': ['portion', 'Portion'],
+              'standSize': ['standSize', 'StandSize'],
+              'unitPartitionID': ['unitPartitionID', 'unitPartition_ID'],
+            };
+            for (const [target, sources] of Object.entries(cuByIdFieldMap)) {
+              if (acctPropFinal[target] != null && acctPropFinal[target] !== '') continue;
+              for (const src of sources) {
+                if (acctConsUnitByIdVal[src] != null && acctConsUnitByIdVal[src] !== '') {
+                  acctPropFinal[target] = acctConsUnitByIdVal[src];
+                  break;
+                }
+              }
+            }
           }
           if (acctConsUnitVal && !acctConsUnitVal._error) {
             console.log('[account] consUnit ALL keys:', Object.keys(acctConsUnitVal));
@@ -1338,11 +1387,27 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           if (airVal && !acctPropFinal['town'] && airVal.town) {
             acctPropFinal['town'] = airVal.town;
           }
+          const acctUnitPartId = basicVal?.unitPartitionID || acctPropFinal?.unitPartitionID || acctConsUnitByIdVal?.unitPartitionID || acctConsUnitVal?.unitPartitionID;
+          let acctValuationData: any = null;
+          if (acctUnitPartId) {
+            try {
+              const valByUnit = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/valuation-by-unit`, { unitPartitionID: String(acctUnitPartId) }));
+              if (valByUnit && !valByUnit._error) {
+                acctValuationData = Array.isArray(valByUnit) ? valByUnit[0] : valByUnit;
+                console.log('[account] valuation-by-unit keys:', acctValuationData ? Object.keys(acctValuationData) : 'null');
+                if (acctValuationData?.marketValue && !acctPropFinal['marketValue']) acctPropFinal['marketValue'] = acctValuationData.marketValue;
+                if (acctValuationData?.standMarketValue && !acctPropFinal['marketValue']) acctPropFinal['marketValue'] = acctValuationData.standMarketValue;
+              }
+            } catch (e) { console.log('[account] valuation-by-unit failed:', e); }
+          }
 
           data = {
             basic: mergedBasic,
             accountInfo: airVal,
             property: acctPropFinal,
+            consUnit: acctConsUnitByIdVal && !acctConsUnitByIdVal._error ? acctConsUnitByIdVal : acctConsUnitVal,
+            ratesDetails: acctRatesVal && !acctRatesVal._error ? acctRatesVal : null,
+            valuationData: acctValuationData,
           };
           this.loadLinkedAccounts(accountId);
           break;
@@ -2591,6 +2656,80 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   getRatesTotalRebate(): number {
     const items = this.tabData()?.ratesBillingHistory || [];
     return items.reduce((sum: number, item: any) => sum + (item.rebate || 0), 0);
+  }
+
+  getAccountPropertyDescription(): string {
+    const td = this.tabData();
+    const cu = td?.consUnit;
+    const p = td?.property;
+    const sg = cu?.sgNumber || p?.sgNumber || '';
+    const erfNum = cu?.erfNumber || p?.erfNumber || '';
+    const portion = cu?.portion || p?.portion || '';
+    const farmName = cu?.farmName || p?.farmName || '';
+    const sectionalTitle = cu?.sectionalTitleScheme || cu?.sectionalTitleSchemeName || p?.sectionalTitleScheme || '';
+    const sectionNumber = cu?.sectionNumber || cu?.unitNumber || p?.sectionNumber || '';
+    const town = cu?.town || cu?.nonStandAddTown || p?.town || '';
+    const propType = (cu?.propertyType || cu?.typeOfUse || cu?.typeofUse || p?.propertyType || p?.typeOfUse || p?.typeOfUseDesc || '').toString().toUpperCase();
+    if (sectionalTitle || sectionNumber) {
+      const parts: string[] = [];
+      if (sectionNumber) parts.push(`Section ${sectionNumber}`);
+      if (sectionalTitle) parts.push(sectionalTitle);
+      if (town && !sectionalTitle.toLowerCase().includes(town.toLowerCase())) parts.push(town);
+      return parts.join(', ') || '-';
+    }
+    if (farmName && (propType.includes('FARM') || propType.includes('AGR'))) {
+      const parts: string[] = [];
+      if (portion && portion !== '0') parts.push(`Portion ${portion} of`);
+      parts.push(`Farm ${farmName}`);
+      if (town) parts.push(town);
+      return parts.join(' ') || '-';
+    }
+    if (erfNum || sg) {
+      const erf = erfNum || (sg ? sg.split('/')[2]?.replace(/^0+/, '') : '');
+      if (erf) {
+        const parts: string[] = [];
+        if (portion && portion !== '0') {
+          parts.push(`Portion ${portion} of Erf ${erf}`);
+        } else {
+          parts.push(`Erf ${erf}`);
+        }
+        if (town) parts.push(town);
+        return parts.join(', ') || '-';
+      }
+    }
+    return cu?.unitDescription || cu?.description || p?.description || '-';
+  }
+
+  getAccountPropertyCategory(): string {
+    const td = this.tabData();
+    return td?.consUnit?.propertyCategory || td?.consUnit?.category ||
+      td?.property?.propertyCategory || td?.property?.category ||
+      td?.property?.zoneDesc || '-';
+  }
+
+  getAccountTypeOfUse(): string {
+    const td = this.tabData();
+    return td?.consUnit?.typeOfUseDesc || td?.consUnit?.typeOfUse || td?.consUnit?.typeofUse ||
+      td?.property?.typeOfUseDesc || td?.property?.typeOfUse || td?.property?.typeofUse ||
+      td?.property?.zoneDesc || '-';
+  }
+
+  getAccountActiveTariff(): string {
+    const td = this.tabData();
+    const rd = td?.ratesDetails;
+    return rd?.tariffDescription || rd?.tariffDesc || rd?.ratesTariffDescription ||
+      rd?.levyDescription || '-';
+  }
+
+  getAccountMarketValue(): number | null {
+    const td = this.tabData();
+    const vd = td?.valuationData;
+    const cu = td?.consUnit;
+    const p = td?.property;
+    const v = vd?.marketValue ?? vd?.standMarketValue ?? vd?.totalMarketValue ??
+      cu?.marketValue ?? cu?.propertyMarketValue ??
+      p?.marketValue ?? p?.propertyMarketValue ?? null;
+    return (v != null && v !== '' && v !== 0) ? v : null;
   }
 
   getPropertyRegistrationStatus(): string {
