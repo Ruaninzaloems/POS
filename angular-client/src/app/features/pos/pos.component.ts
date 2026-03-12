@@ -978,6 +978,24 @@ export class PosComponent implements OnInit, OnDestroy {
   getPaymentTypeId(tenderType?: TenderType): number {
     const types = this.paymentTypes();
     const tt = tenderType || this.activeTender();
+    if (tenderType) {
+      if (tt === 'cash') {
+        const cashType = types.find((t: any) => (t.posPaymentTypeDesc || t.name || '').toLowerCase().includes('cash'));
+        return cashType?.posPaymentType_ID || cashType?.paymentTypeId || 1;
+      }
+      if (tt === 'card') {
+        const cardType = types.find((t: any) => (t.posPaymentTypeDesc || t.name || '').toLowerCase().includes('card'));
+        return cardType?.posPaymentType_ID || cardType?.paymentTypeId || 3;
+      }
+      if (tt === 'cheque') {
+        const chequeType = types.find((t: any) => (t.posPaymentTypeDesc || t.name || '').toLowerCase().includes('cheque'));
+        return chequeType?.posPaymentType_ID || chequeType?.paymentTypeId || 2;
+      }
+      if (tt === 'eft') {
+        const eftType = types.find((t: any) => (t.posPaymentTypeDesc || t.name || '').toLowerCase().includes('eft'));
+        return eftType?.posPaymentType_ID || eftType?.paymentTypeId || 5;
+      }
+    }
     if (tt === 'card' || this.cardAmount() > 0) {
       const cardType = types.find((t: any) => (t.posPaymentTypeDesc || t.name || '').toLowerCase().includes('card'));
       return cardType?.posPaymentType_ID || cardType?.paymentTypeId || 3;
@@ -1092,7 +1110,7 @@ export class PosComponent implements OnInit, OnDestroy {
                 statusDesc: orig.statusDesc || '-',
                 accountDesc: orig.accountDesc || '',
                 erfNumber: orig.erfNumber || '',
-                billId: orig.billId ?? null,
+                billId: orig.billId ?? orig.bill_ID ?? null,
               };
             });
             await firstValueFrom(
@@ -1182,7 +1200,7 @@ export class PosComponent implements OnInit, OnDestroy {
         accountNumber: ad.accountNumber,
         name: ad.name,
         outStandingAmt: item.amountToPay,
-        billId: null,
+        billId: orig.billId ?? orig.bill_ID ?? null,
         cutOffID: ad.cutOffID ?? 0,
         cutOffAmount: ad.cutOffAmount ?? 0,
         debtAmount: ad.debtAmount ?? 0,
@@ -1244,7 +1262,7 @@ export class PosComponent implements OnInit, OnDestroy {
           paymentAmount: item.amountToPay,
           accountNumber: ad.accountNumber || '',
           receiptID: 0,
-          billId: orig.billId ?? 0,
+          billId: orig.billId ?? orig.bill_ID ?? 0,
           clearanceId: orig.clearance_ID ?? 0,
         };
       });

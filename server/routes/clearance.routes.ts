@@ -200,12 +200,9 @@ export function registerClearanceRoutes(app: Express, httpServer: Server): void 
     }
   });
 
-  let clearanceScanSession: UserSession | null = null;
-
   app.get("/api/platinum/billing-payment-clearance/debug-batch-test", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      clearanceScanSession = session;
       const idsParam = req.query.ids as string || '';
       const ids = idsParam.split(',').filter(Boolean);
       if (ids.length === 0) return res.json({ error: 'Pass ?ids=1,2,3,...' });
