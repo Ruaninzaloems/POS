@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
@@ -22,6 +22,11 @@ export class ApiService {
     return this.http.post<T>(url, body || {}, { withCredentials: true });
   }
 
+  postWithIdempotency<T = any>(url: string, body?: any, idempotencyToken?: string): Observable<T> {
+    const headers = new HttpHeaders().set('X-Idempotency-Token', idempotencyToken || this.generateToken());
+    return this.http.post<T>(url, body || {}, { withCredentials: true, headers });
+  }
+
   postBlob(url: string, body?: any): Observable<Blob> {
     return this.http.post(url, body || {}, { withCredentials: true, responseType: 'blob' });
   }
@@ -40,5 +45,11 @@ export class ApiService {
       });
     }
     return this.http.delete<T>(url, { params: httpParams, withCredentials: true });
+  }
+
+  private generateToken(): string {
+    const arr = new Uint8Array(16);
+    crypto.getRandomValues(arr);
+    return Array.from(arr, b => b.toString(16).padStart(2, '0')).join('');
   }
 }

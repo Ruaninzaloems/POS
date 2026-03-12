@@ -1002,7 +1002,24 @@ export class PosComponent implements OnInit, OnDestroy {
     return 1;
   }
 
+  private lastPaymentTimestamp = 0;
+  private readonly MIN_PAYMENT_INTERVAL_MS = 3000;
+
+  private generateIdempotencyToken(): string {
+    const arr = new Uint8Array(16);
+    crypto.getRandomValues(arr);
+    return Array.from(arr, b => b.toString(16).padStart(2, '0')).join('');
+  }
+
   async processPayment(): Promise<void> {
+    if (this.processingPayment()) return;
+
+    const now = Date.now();
+    if (now - this.lastPaymentTimestamp < this.MIN_PAYMENT_INTERVAL_MS) {
+      this.toast.error('Please wait before submitting another payment.');
+      return;
+    }
+
     if (!this.sessionActive()) {
       this.toast.error('No active cashier session. Cannot process payments.');
       return;
@@ -1029,11 +1046,13 @@ export class PosComponent implements OnInit, OnDestroy {
     }
 
     this.processingPayment.set(true);
+    this.lastPaymentTimestamp = Date.now();
+    const paymentToken = this.generateIdempotencyToken();
     const userId = this.user()?.user_ID;
     const ci = this.cashierInfo();
     const finYear = ci?.finYear || '';
-    const now = new Date();
-    const receiptDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T00:00:00`;
+    const dateNow = new Date();
+    const receiptDate = `${dateNow.getFullYear()}-${String(dateNow.getMonth() + 1).padStart(2, '0')}-${String(dateNow.getDate()).padStart(2, '0')}T00:00:00`;
     const cardNum = this.cardNumber().replace(/\s/g, '');
     const allResults: ReceiptResult[] = [];
 
@@ -1080,36 +1099,39 @@ export class PosComponent implements OnInit, OnDestroy {
             const cardAcctItems = allocation.cardItems.filter(i => i.type === 'account');
 
             if (cashAcctItems.length > 0) {
-              const cashResult = await this.submitAccountPayment(cashAcctItems, userId!, finYear, receiptDate, cashPaymentTypeId, '', allocation.cashTotal);
+              const cashResult = await this.submitAccountPayment(cashAcctItems, userId!, finYear, receiptDate, cashPaymentTypeId, '', allocation.cashTotal, `${paymentToken}-cash`);
               allResults.push({ receiptNumber: this.getReceiptNo(cashResult), tenderType: 'cash', amount: allocation.cashTotal, items: cashAcctItems, rawResponse: cashResult });
             }
             if (cardAcctItems.length > 0) {
-              const cardResult = await this.submitAccountPayment(cardAcctItems, userId!, finYear, receiptDate, cardPaymentTypeId, cardNum, allocation.cardTotal);
+              const cardResult = await this.submitAccountPayment(cardAcctItems, userId!, finYear, receiptDate, cardPaymentTypeId, cardNum, allocation.cardTotal, `${paymentToken}-card`);
               allResults.push({ receiptNumber: this.getReceiptNo(cardResult), tenderType: 'card', amount: allocation.cardTotal, items: cardAcctItems, rawResponse: cardResult });
             }
           } else {
             const paymentTypeId = this.getPaymentTypeId();
-            const result = await this.submitAccountPayment(accountItemsWithPay, userId!, finYear, receiptDate, paymentTypeId, cardNum, this.basket.totalToPay());
+            const result = await this.submitAccountPayment(accountItemsWithPay, userId!, finYear, receiptDate, paymentTypeId, cardNum, this.basket.totalToPay(), paymentToken);
             allResults.push({ receiptNumber: this.getReceiptNo(result), tenderType: this.activeTender(), amount: accountItemsWithPay.reduce((s, i) => s + i.amountToPay, 0), items: accountItemsWithPay, rawResponse: result });
           }
         }
       }
 
-      for (const clearItem of clearanceItems) {
+      for (let ci2 = 0; ci2 < clearanceItems.length; ci2++) {
+        const clearItem = clearanceItems[ci2];
         if (clearItem.amountToPay <= 0 || !clearItem.clearanceData) continue;
-        const result = await this.submitClearancePaymentItem(clearItem, userId!, ci, finYear, cardNum);
+        const result = await this.submitClearancePaymentItem(clearItem, userId!, ci, finYear, cardNum, `${paymentToken}-clr${ci2}`);
         allResults.push({ receiptNumber: this.getReceiptNo(result), tenderType: this.activeTender(), amount: clearItem.amountToPay, items: [clearItem], rawResponse: result });
       }
 
-      for (const prepItem of prepaidItems) {
+      for (let pi = 0; pi < prepaidItems.length; pi++) {
+        const prepItem = prepaidItems[pi];
         if (prepItem.amountToPay <= 0 || !prepItem.prepaidData) continue;
-        const result = await this.submitPrepaidPaymentItem(prepItem);
+        const result = await this.submitPrepaidPaymentItem(prepItem, `${paymentToken}-prep${pi}`);
         allResults.push({ receiptNumber: this.getReceiptNo(result), tenderType: this.activeTender(), amount: prepItem.amountToPay, items: [prepItem], rawResponse: result });
       }
 
-      for (const miscItem of miscItems) {
+      for (let mi = 0; mi < miscItems.length; mi++) {
+        const miscItem = miscItems[mi];
         if (miscItem.amountToPay <= 0 || !miscItem.miscData) continue;
-        const result = await this.submitMiscPaymentItem(miscItem, userId!, ci, finYear, cardNum);
+        const result = await this.submitMiscPaymentItem(miscItem, userId!, ci, finYear, cardNum, `${paymentToken}-misc${mi}`);
         allResults.push({ receiptNumber: this.getReceiptNo(result), tenderType: this.activeTender(), amount: miscItem.amountToPay, items: [miscItem], rawResponse: result });
       }
 
@@ -1132,7 +1154,7 @@ export class PosComponent implements OnInit, OnDestroy {
     return raw;
   }
 
-  private async submitAccountPayment(items: BasketItem[], userId: number, finYear: string, receiptDate: string, paymentTypeId: number, cardNum: string, totalAmount: number): Promise<any> {
+  private async submitAccountPayment(items: BasketItem[], userId: number, finYear: string, receiptDate: string, paymentTypeId: number, cardNum: string, totalAmount: number, idempotencyToken?: string): Promise<any> {
     const ci = this.cashierInfo();
     const sessionCashierId = ci?.id || ci?.cashier_ID || userId;
     const sessionOfficeId = ci?.cashOffice_ID || 0;
@@ -1189,7 +1211,7 @@ export class PosComponent implements OnInit, OnDestroy {
         },
       };
       return await firstValueFrom(
-        this.api.post(`/api/platinum/billing-payment/submit-consumer-payment/${userId}`, payload)
+        this.api.postWithIdempotency(`/api/platinum/billing-payment/submit-consumer-payment/${userId}`, payload, idempotencyToken)
       );
     } else {
       const submitAccounts = items.map(item => {
@@ -1245,12 +1267,12 @@ export class PosComponent implements OnInit, OnDestroy {
         },
       };
       return await firstValueFrom(
-        this.api.post(`/api/platinum/billing-payment/submit-multiple-payment/${userId}`, payload)
+        this.api.postWithIdempotency(`/api/platinum/billing-payment/submit-multiple-payment/${userId}`, payload, idempotencyToken)
       );
     }
   }
 
-  private async submitClearancePaymentItem(item: BasketItem, userId: number, ci: any, finYear: string, cardNum: string): Promise<any> {
+  private async submitClearancePaymentItem(item: BasketItem, userId: number, ci: any, finYear: string, cardNum: string, idempotencyToken?: string): Promise<any> {
     const cd = item.clearanceData!;
     const sessionCashierId = ci?.id || ci?.cashier_ID || userId;
     const sessionOfficeId = ci?.cashOffice_ID || 0;
@@ -1264,7 +1286,7 @@ export class PosComponent implements OnInit, OnDestroy {
       amount: a.paymentAmount || a.amount || 0,
     }));
     return await firstValueFrom(
-      this.api.post('/api/platinum/billing-payment-clearance/submit-payment', {
+      this.api.postWithIdempotency('/api/platinum/billing-payment-clearance/submit-payment', {
         userId,
         paymentTypeId,
         cashierId: sessionCashierId,
@@ -1285,11 +1307,11 @@ export class PosComponent implements OnInit, OnDestroy {
         paySection1181Only: false,
         section1181Amount: 0,
         paidItems,
-      })
+      }, idempotencyToken)
     );
   }
 
-  private async submitPrepaidPaymentItem(item: BasketItem): Promise<any> {
+  private async submitPrepaidPaymentItem(item: BasketItem, idempotencyToken?: string): Promise<any> {
     const pd = item.prepaidData!;
     const ci = this.cashierInfo();
     const userId = this.user()?.user_ID;
@@ -1300,7 +1322,7 @@ export class PosComponent implements OnInit, OnDestroy {
     const now = new Date();
     const receiptDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T00:00:00`;
     return await firstValueFrom(
-      this.api.post('/api/platinum/receipt-prepaid/submit-prepaid-payment', {
+      this.api.postWithIdempotency('/api/platinum/receipt-prepaid/submit-prepaid-payment', {
         userId,
         cashierId: sessionCashierId,
         cashOfficeId: sessionOfficeId,
@@ -1316,15 +1338,15 @@ export class PosComponent implements OnInit, OnDestroy {
         prepaidType: pd.serviceType || 'Electricity',
         cardNo: isCardPayment ? this.cardNumber().replace(/\s/g, '') : null,
         cardExpiryDate: isCardPayment ? this.formatCardExpiry(this.cardExpiry()) : null,
-      })
+      }, idempotencyToken)
     );
   }
 
-  private async submitMiscPaymentItem(item: BasketItem, userId: number, ci: any, finYear: string, cardNum: string): Promise<any> {
+  private async submitMiscPaymentItem(item: BasketItem, userId: number, ci: any, finYear: string, cardNum: string, idempotencyToken?: string): Promise<any> {
     const md = item.miscData!;
     const vatAmount = md.isVatable ? Math.round(item.amountToPay * md.vatPercentage / (100 + md.vatPercentage) * 100) / 100 : 0;
     return await firstValueFrom(
-      this.api.post('/api/platinum/billing-payment-miscellaneous/submit', {
+      this.api.postWithIdempotency('/api/platinum/billing-payment-miscellaneous/submit', {
         userId,
         cashierId: ci?.id || ci?.cashier_ID || userId,
         cashOfficeId: ci?.cashOffice_ID,
@@ -1349,7 +1371,7 @@ export class PosComponent implements OnInit, OnDestroy {
         bankBranch: this.banks().find(b => b.bankID === this.chequeBankId())?.bankName || '',
         bankBranchCode: this.banks().find(b => b.bankID === this.chequeBankId())?.branchCode || '',
         accHolderName: this.chequeName(),
-      })
+      }, idempotencyToken)
     );
   }
 

@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import type { Server } from "http";
-import { requireAuth, handlePlatinumResult } from "./middleware";
+import { requireAuth, handlePlatinumResult, checkPaymentDedup, recordPaymentSubmission, reservePaymentSlot, releasePaymentSlot } from "./middleware";
 import { platinumGet, platinumPost, platinumPut, refreshSessionToken, getPlatinumApiUrl, getPlatinumDbName } from "../platinum-auth";
 
 export function registerPosRoutes(app: Express, httpServer: Server): void {
@@ -369,8 +369,28 @@ export function registerPosRoutes(app: Express, httpServer: Server): void {
   app.post("/api/platinum/receipt-prepaid/submit-prepaid-payment", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const data = await platinumPost(session, "/api/ReceiptPrepaid/SubmitPrepaidPayment", req.body);
-      handlePlatinumResult(res, data);
+      const b = req.body;
+      const prepaidIdempotencyToken = req.headers['x-idempotency-token'] as string | undefined;
+      const prepaidDedupKey = `prepaid|${b.userId || 'u'}|${b.meterNumber || 'm'}|${b.amount || 0}|${b.paymentTypeId || 0}`;
+      const prepaidDedupCheck = checkPaymentDedup(prepaidDedupKey, prepaidIdempotencyToken);
+      if (prepaidDedupCheck.isDuplicate) {
+        console.warn(`[prepaid-submit] DUPLICATE BLOCKED — key: ${prepaidDedupKey}`);
+        if (prepaidDedupCheck.inFlight) {
+          res.status(409).json({ message: "Payment already in progress. Please wait." });
+        } else {
+          res.json(prepaidDedupCheck.cachedResponse);
+        }
+        return;
+      }
+      reservePaymentSlot(prepaidDedupKey, prepaidIdempotencyToken);
+      try {
+        const data = await platinumPost(session, "/api/ReceiptPrepaid/SubmitPrepaidPayment", req.body);
+        recordPaymentSubmission(prepaidDedupKey, data, prepaidIdempotencyToken);
+        handlePlatinumResult(res, data);
+      } catch (submitErr: any) {
+        releasePaymentSlot(prepaidDedupKey, prepaidIdempotencyToken);
+        throw submitErr;
+      }
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }

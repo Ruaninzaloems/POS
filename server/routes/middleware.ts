@@ -19,7 +19,33 @@ export function requireAuth(req: Request, res: any): UserSession | null {
 
 
 export const recentPaymentSubmissions = new Map<string, { timestamp: number; response: any }>();
-export const PAYMENT_DEDUP_WINDOW_MS = 15000;
+export const PAYMENT_DEDUP_WINDOW_MS = 30000;
+const DEDUP_CLEANUP_INTERVAL_MS = 60000;
+const DEDUP_MAX_ENTRIES = 5000;
+const processedIdempotencyTokens = new Map<string, { timestamp: number; response: any }>();
+const IDEMPOTENCY_TOKEN_TTL_MS = 120000;
+const inFlightPayments = new Map<string, Promise<any>>();
+
+let lastDedupCleanup = Date.now();
+function cleanupDedupCache(): void {
+  const now = Date.now();
+  if (now - lastDedupCleanup < DEDUP_CLEANUP_INTERVAL_MS) return;
+  lastDedupCleanup = now;
+  let cleaned = 0;
+  for (const [k, v] of recentPaymentSubmissions.entries()) {
+    if (now - v.timestamp > PAYMENT_DEDUP_WINDOW_MS) {
+      recentPaymentSubmissions.delete(k);
+      cleaned++;
+    }
+  }
+  for (const [k, v] of processedIdempotencyTokens.entries()) {
+    if (now - v.timestamp > IDEMPOTENCY_TOKEN_TTL_MS) {
+      processedIdempotencyTokens.delete(k);
+      cleaned++;
+    }
+  }
+  if (cleaned > 0) console.log(`[dedup-cleanup] Removed ${cleaned} expired entries`);
+}
 
 export function getPaymentDeduplicationKey(userId: string, body: any): string {
   const rm = body?.requestModel || {};
@@ -27,16 +53,38 @@ export function getPaymentDeduplicationKey(userId: string, body: any): string {
   const acct = body?.account || {};
   const accountKey = acct.account_ID ? `single:${acct.account_ID}` :
     accounts.length > 0 ? `multi:${accounts.map((a: any) => a.accountID).sort().join(',')}` : 'unknown';
-  return `${userId}|${accountKey}|${rm.totalAmount}|${rm.paymentType}`;
+  const cashierId = rm.cashierId || rm.cashier_ID || '';
+  return `${userId}|${cashierId}|${accountKey}|${rm.totalAmount}|${rm.paymentType}`;
 }
 
-export function checkPaymentDedup(key: string): { isDuplicate: boolean; cachedResponse?: any } {
+export function checkPaymentDedup(key: string, idempotencyToken?: string): { isDuplicate: boolean; cachedResponse?: any; inFlight?: boolean } {
+  cleanupDedupCache();
   const now = Date.now();
-  for (const [k, v] of recentPaymentSubmissions.entries()) {
-    if (now - v.timestamp > PAYMENT_DEDUP_WINDOW_MS) {
-      recentPaymentSubmissions.delete(k);
+
+  if (idempotencyToken) {
+    const tokenEntry = processedIdempotencyTokens.get(idempotencyToken);
+    if (tokenEntry && (now - tokenEntry.timestamp) < IDEMPOTENCY_TOKEN_TTL_MS) {
+      console.warn(`[dedup] BLOCKED by idempotency token: ${idempotencyToken}`);
+      return { isDuplicate: true, cachedResponse: tokenEntry.response };
+    }
+    if (inFlightPayments.has(idempotencyToken)) {
+      console.warn(`[dedup] BLOCKED — payment in flight for token: ${idempotencyToken}`);
+      return { isDuplicate: true, inFlight: true };
     }
   }
+
+  if (inFlightPayments.has(key)) {
+    console.warn(`[dedup] BLOCKED — payment in flight for key: ${key}`);
+    return { isDuplicate: true, inFlight: true };
+  }
+
+  if (recentPaymentSubmissions.size > DEDUP_MAX_ENTRIES) {
+    const entries = Array.from(recentPaymentSubmissions.entries());
+    entries.sort((a, b) => a[1].timestamp - b[1].timestamp);
+    const toRemove = entries.slice(0, entries.length - DEDUP_MAX_ENTRIES + 100);
+    for (const [k] of toRemove) recentPaymentSubmissions.delete(k);
+  }
+
   const cached = recentPaymentSubmissions.get(key);
   if (cached && (now - cached.timestamp) < PAYMENT_DEDUP_WINDOW_MS) {
     return { isDuplicate: true, cachedResponse: cached.response };
@@ -44,8 +92,25 @@ export function checkPaymentDedup(key: string): { isDuplicate: boolean; cachedRe
   return { isDuplicate: false };
 }
 
-export function recordPaymentSubmission(key: string, response: any): void {
-  recentPaymentSubmissions.set(key, { timestamp: Date.now(), response });
+export function reservePaymentSlot(key: string, idempotencyToken?: string): void {
+  const placeholder = Promise.resolve();
+  inFlightPayments.set(key, placeholder);
+  if (idempotencyToken) inFlightPayments.set(idempotencyToken, placeholder);
+}
+
+export function recordPaymentSubmission(key: string, response: any, idempotencyToken?: string): void {
+  const now = Date.now();
+  inFlightPayments.delete(key);
+  if (idempotencyToken) inFlightPayments.delete(idempotencyToken);
+  recentPaymentSubmissions.set(key, { timestamp: now, response });
+  if (idempotencyToken) {
+    processedIdempotencyTokens.set(idempotencyToken, { timestamp: now, response });
+  }
+}
+
+export function releasePaymentSlot(key: string, idempotencyToken?: string): void {
+  inFlightPayments.delete(key);
+  if (idempotencyToken) inFlightPayments.delete(idempotencyToken);
 }
 
 export interface ReceiptAllocation {

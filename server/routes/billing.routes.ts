@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import type { Server } from "http";
-import { requireAuth, handlePlatinumResult, getPaymentDeduplicationKey, checkPaymentDedup, recordPaymentSubmission, PAYMENT_DEDUP_WINDOW_MS, parseReceiptAllocations } from "./middleware";
+import { requireAuth, handlePlatinumResult, getPaymentDeduplicationKey, checkPaymentDedup, recordPaymentSubmission, reservePaymentSlot, releasePaymentSlot, PAYMENT_DEDUP_WINDOW_MS, parseReceiptAllocations } from "./middleware";
 import { platinumGet, platinumPost, refreshSessionToken, getPlatinumApiUrl } from "../platinum-auth";
 import { execSync } from "child_process";
 import { writeFileSync, unlinkSync, existsSync } from "fs";
@@ -15,6 +15,7 @@ export function registerBillingRoutes(app: Express, httpServer: Server): void {
       const body = req.body;
       const acct = body?.account || {};
       const rm = body?.requestModel || {};
+      const idempotencyToken = req.headers['x-idempotency-token'] as string | undefined;
 
       const isCard = rm.paymentType === 'CreditCard' || rm.paymentType === 3;
       if (rm.apiTransactionID === undefined) rm.apiTransactionID = 0;
@@ -25,21 +26,28 @@ export function registerBillingRoutes(app: Express, httpServer: Server): void {
         console.warn(`[submit-consumer-payment] WARNING: Card payment but cardNumber is empty!`);
       }
 
-      console.log(`[submit-consumer-payment] userId=${userId}, paymentType=${rm.paymentType}`);
-      console.log(`[submit-consumer-payment] account: account_ID=${acct.account_ID}, accountNumber=${acct.accountNumber}, name=${acct.name}, outStandingAmt=${acct.outStandingAmt}, billId=${acct.billId}, cutOffID=${acct.cutOffID}, cutOffAmount=${acct.cutOffAmount}, debtAmount=${acct.debtAmount}, debtArrangementId=${acct.debtArrangementId}, sundryDebtorsId=${acct.sundryDebtorsId}, billingCycleId=${acct.billingCycleId}`);
-      console.log(`[submit-consumer-payment] requestModel: finYear=${rm.finYear}, receiptDate=${rm.receiptDate}, totalAmount=${rm.totalAmount}, tenderAmount=${rm.tenderAmount}, changeAmount=${rm.changeAmount}, paymentType=${rm.paymentType}, paymentOption=${rm.paymentOption}, outStandingAmount=${rm.outStandingAmount}, cutOffID=${rm.cutOffID}, cutOffAmount=${rm.cutOffAmount}, debtAmount=${rm.debtAmount}, debtArrangementId=${rm.debtArrangementId}, sundryDebtorsId=${rm.sundryDebtorsId}, cardNumber=${rm.cardNumber ? '***' + rm.cardNumber.slice(-4) : '(empty)'}, apiTransactionID=${rm.apiTransactionID}, isReconciled=${rm.isReconciled}, isCancelled=${rm.isCancelled}`);
-      console.log(`[submit-consumer-payment] account_ID=${body.account?.account_ID}, accountNumber=${body.account?.accountNumber}`);
+      console.log(`[submit-consumer-payment] userId=${userId}, acct=${acct.accountNumber}, amt=${rm.totalAmount}, type=${rm.paymentType}, token=${idempotencyToken || 'none'}`);
       const dedupKey = getPaymentDeduplicationKey(userId, body);
-      const dedupCheck = checkPaymentDedup(dedupKey);
+      const dedupCheck = checkPaymentDedup(dedupKey, idempotencyToken);
       if (dedupCheck.isDuplicate) {
-        console.warn(`[submit-consumer-payment] DUPLICATE BLOCKED — same payment within ${PAYMENT_DEDUP_WINDOW_MS/1000}s window. Key: ${dedupKey}`);
-        res.json(dedupCheck.cachedResponse);
+        console.warn(`[submit-consumer-payment] DUPLICATE BLOCKED — key: ${dedupKey}`);
+        if (dedupCheck.inFlight) {
+          res.status(409).json({ message: "Payment already in progress. Please wait." });
+        } else {
+          res.json(dedupCheck.cachedResponse);
+        }
         return;
       }
-      const data = await platinumPost(session, `/api/billing-payment/submit-consumer-payment/${userId}`, body);
-      console.log(`[submit-consumer-payment] response (full):`, JSON.stringify(data));
-      recordPaymentSubmission(dedupKey, data);
-      handlePlatinumResult(res, data);
+      reservePaymentSlot(dedupKey, idempotencyToken);
+      try {
+        const data = await platinumPost(session, `/api/billing-payment/submit-consumer-payment/${userId}`, body);
+        console.log(`[submit-consumer-payment] response:`, JSON.stringify(data).substring(0, 500));
+        recordPaymentSubmission(dedupKey, data, idempotencyToken);
+        handlePlatinumResult(res, data);
+      } catch (submitErr: any) {
+        releasePaymentSlot(dedupKey, idempotencyToken);
+        throw submitErr;
+      }
     } catch (e: any) {
       console.error(`[submit-consumer-payment] Error:`, e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -53,31 +61,37 @@ export function registerBillingRoutes(app: Express, httpServer: Server): void {
       const body = req.body;
       const accounts = Array.isArray(body?.accounts) ? body.accounts : [];
       const rm = body?.requestModel || {};
+      const idempotencyToken = req.headers['x-idempotency-token'] as string | undefined;
 
-      console.log(`[submit-multiple-payment] userId=${userId}, ${accounts.length} account(s), paymentType=${rm.paymentType}`);
-      for (const acct of accounts) {
-        console.log(`[submit-multiple-payment] account: accountID=${acct.accountID}, accountNumber=${acct.accountNumber}, name=${acct.name}, outstandingAmount=${acct.outstandingAmount}, paymentAmount=${acct.paymentAmount}, billId=${acct.billId}`);
-      }
-      console.log(`[submit-multiple-payment] requestModel: finYear=${rm.finYear}, receiptDate=${rm.receiptDate}, totalAmount=${rm.totalAmount}, tenderAmount=${rm.tenderAmount}, changeAmount=${rm.changeAmount}, paymentType=${rm.paymentType}, paymentOption=${rm.paymentOption}, outStandingAmount=${rm.outStandingAmount}, cardNumber=${rm.cardNumber ? '***' + rm.cardNumber.slice(-4) : '(empty)'}`);
+      console.log(`[submit-multiple-payment] userId=${userId}, ${accounts.length} acct(s), amt=${rm.totalAmount}, type=${rm.paymentType}, token=${idempotencyToken || 'none'}`);
       const invalidAccounts = accounts.filter((a: any) => !a.accountID || a.accountID === 0);
       if (invalidAccounts.length > 0) {
-        console.error(`[submit-multiple-payment] BLOCKED: ${invalidAccounts.length} account(s) have accountID=0 or missing`, invalidAccounts.map((a: any) => a.name || a.accountNumber));
+        console.error(`[submit-multiple-payment] BLOCKED: ${invalidAccounts.length} account(s) have accountID=0 or missing`);
         res.status(400).json({ isSuccess: false, message: `${invalidAccounts.length} account(s) have invalid Account IDs (0 or missing): ${invalidAccounts.map((a: any) => a.name || a.accountNumber || 'unknown').join(', ')}. Remove them from the cart and retry.` });
         return;
       }
-      console.log(`[submit-multiple-payment] ${body.accounts?.length || 0} account(s), totalAmount=${rm.totalAmount}`);
       const dedupKey = getPaymentDeduplicationKey(userId, body);
-      const dedupCheck = checkPaymentDedup(dedupKey);
+      const dedupCheck = checkPaymentDedup(dedupKey, idempotencyToken);
       if (dedupCheck.isDuplicate) {
-        console.warn(`[submit-multiple-payment] DUPLICATE BLOCKED — same payment within ${PAYMENT_DEDUP_WINDOW_MS/1000}s window. Key: ${dedupKey}`);
-        res.json(dedupCheck.cachedResponse);
+        console.warn(`[submit-multiple-payment] DUPLICATE BLOCKED — key: ${dedupKey}`);
+        if (dedupCheck.inFlight) {
+          res.status(409).json({ message: "Payment already in progress. Please wait." });
+        } else {
+          res.json(dedupCheck.cachedResponse);
+        }
         return;
       }
-      const timeoutMs = Math.max(60000, accounts.length * 8000);
-      const data = await platinumPost(session, `/api/billing-payment/submit-multiple-payment/${userId}`, body, undefined, { timeout: timeoutMs });
-      console.log(`[submit-multiple-payment] response (full):`, JSON.stringify(data).substring(0, 2000));
-      recordPaymentSubmission(dedupKey, data);
-      handlePlatinumResult(res, data);
+      reservePaymentSlot(dedupKey, idempotencyToken);
+      try {
+        const timeoutMs = Math.max(60000, accounts.length * 8000);
+        const data = await platinumPost(session, `/api/billing-payment/submit-multiple-payment/${userId}`, body, undefined, { timeout: timeoutMs });
+        console.log(`[submit-multiple-payment] response:`, JSON.stringify(data).substring(0, 500));
+        recordPaymentSubmission(dedupKey, data, idempotencyToken);
+        handlePlatinumResult(res, data);
+      } catch (submitErr: any) {
+        releasePaymentSlot(dedupKey, idempotencyToken);
+        throw submitErr;
+      }
     } catch (e: any) {
       console.error(`[submit-multiple-payment] Error:`, e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });

@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import type { Server } from "http";
-import { requireAuth, handlePlatinumResult, checkPaymentDedup, recordPaymentSubmission, PAYMENT_DEDUP_WINDOW_MS, getPaymentDeduplicationKey } from "./middleware";
+import { requireAuth, handlePlatinumResult, checkPaymentDedup, recordPaymentSubmission, reservePaymentSlot, releasePaymentSlot, PAYMENT_DEDUP_WINDOW_MS, getPaymentDeduplicationKey } from "./middleware";
 import { platinumGet, platinumPost, refreshSessionToken, getPlatinumApiUrl, type UserSession } from "../platinum-auth";
 
 export function registerClearanceRoutes(app: Express, httpServer: Server): void {
@@ -312,18 +312,23 @@ export function registerClearanceRoutes(app: Express, httpServer: Server): void 
   });
 
   app.post("/api/platinum/billing-payment-clearance/submit-payment", async (req, res) => {
+    const clrBody = req.body;
+    const clrIdempotencyToken = req.headers['x-idempotency-token'] as string | undefined;
+    const clrDedupKey = `clearance|${clrBody.userId || 'u'}|${clrBody.clearance_ID || clrBody.clearanceId || 'c'}|${clrBody.paidAmount || clrBody.totalAmount || 0}|${clrBody.paymentTypeId || 0}`;
     try {
       const session = requireAuth(req, res); if (!session) return;
       console.log(`[clearance-submit] Request payload:`, JSON.stringify(req.body));
-
-      const clrBody = req.body;
-      const clrDedupKey = `clearance|${clrBody.userId || 'u'}|${clrBody.clearance_ID || clrBody.clearanceId || 'c'}|${clrBody.paidAmount || clrBody.totalAmount || 0}|${clrBody.paymentTypeId || 0}`;
-      const clrDedupCheck = checkPaymentDedup(clrDedupKey);
+      const clrDedupCheck = checkPaymentDedup(clrDedupKey, clrIdempotencyToken);
       if (clrDedupCheck.isDuplicate) {
-        console.warn(`[clearance-submit] DUPLICATE BLOCKED — same clearance payment within ${PAYMENT_DEDUP_WINDOW_MS/1000}s window. Key: ${clrDedupKey}`);
-        res.json(clrDedupCheck.cachedResponse);
+        console.warn(`[clearance-submit] DUPLICATE BLOCKED — key: ${clrDedupKey}`);
+        if (clrDedupCheck.inFlight) {
+          res.status(409).json({ message: "Payment already in progress. Please wait." });
+        } else {
+          res.json(clrDedupCheck.cachedResponse);
+        }
         return;
       }
+      reservePaymentSlot(clrDedupKey, clrIdempotencyToken);
 
       const token = await refreshSessionToken(session);
       const apiUrl = getPlatinumApiUrl();
@@ -358,12 +363,13 @@ export function registerClearanceRoutes(app: Express, httpServer: Server): void 
           data = rawText;
         }
         console.log(`[clearance-submit] Parsed response:`, JSON.stringify(data).substring(0, 500));
-        recordPaymentSubmission(clrDedupKey, data);
+        recordPaymentSubmission(clrDedupKey, data, clrIdempotencyToken);
         res.json(data);
       } finally {
         clearTimeout(timeoutId);
       }
     } catch (e: any) {
+      releasePaymentSlot(clrDedupKey, clrIdempotencyToken);
       console.error(`[clearance-submit] Error:`, e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
@@ -406,6 +412,8 @@ export function registerClearanceRoutes(app: Express, httpServer: Server): void 
   });
 
   app.post("/api/platinum/billing-payment-miscellaneous/submit", async (req, res) => {
+    let miscDedupKey = '';
+    let miscIdempotencyToken: string | undefined;
     try {
       const session = requireAuth(req, res); if (!session) return;
       const miscBody = req.body;
@@ -452,13 +460,19 @@ export function registerClearanceRoutes(app: Express, httpServer: Server): void 
 
       console.log(`[misc-submit] Sanitized payload:`, JSON.stringify(sanitizedPayload));
 
-      const miscDedupKey = `misc|${sanitizedPayload.userId}|${sanitizedPayload.scoaItem}|${sanitizedPayload.totalAmount}|${sanitizedPayload.paymentType}`;
-      const miscDedupCheck = checkPaymentDedup(miscDedupKey);
+      miscIdempotencyToken = req.headers['x-idempotency-token'] as string | undefined;
+      miscDedupKey = `misc|${sanitizedPayload.userId}|${sanitizedPayload.scoaItem}|${sanitizedPayload.totalAmount}|${sanitizedPayload.paymentType}`;
+      const miscDedupCheck = checkPaymentDedup(miscDedupKey, miscIdempotencyToken);
       if (miscDedupCheck.isDuplicate) {
-        console.warn(`[misc-submit] DUPLICATE BLOCKED — same misc payment within ${PAYMENT_DEDUP_WINDOW_MS/1000}s window. Key: ${miscDedupKey}`);
-        res.json(miscDedupCheck.cachedResponse);
+        console.warn(`[misc-submit] DUPLICATE BLOCKED — key: ${miscDedupKey}`);
+        if (miscDedupCheck.inFlight) {
+          res.status(409).json({ message: "Payment already in progress. Please wait." });
+        } else {
+          res.json(miscDedupCheck.cachedResponse);
+        }
         return;
       }
+      reservePaymentSlot(miscDedupKey, miscIdempotencyToken);
       const pascalPayload = {
         LastName: sanitizedPayload.lastName,
         Initials: sanitizedPayload.initials,
@@ -505,9 +519,10 @@ export function registerClearanceRoutes(app: Express, httpServer: Server): void 
         console.warn(`[misc-submit] ${lbl} (${ep}) returned error (${data?.status}):`, JSON.stringify(data)?.substring(0, 500));
       }
 
-      recordPaymentSubmission(miscDedupKey, data);
+      recordPaymentSubmission(miscDedupKey, data, miscIdempotencyToken);
       handlePlatinumResult(res, data);
     } catch (e: any) {
+      releasePaymentSlot(miscDedupKey, miscIdempotencyToken);
       console.error(`[misc-submit] Error:`, e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }

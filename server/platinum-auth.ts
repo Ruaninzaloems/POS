@@ -147,25 +147,40 @@ function isUserSpecificPath(path: string): boolean {
 }
 
 let activeRequests = 0;
-const MAX_CONCURRENT_REQUESTS = 20;
-const requestQueue: Array<{ resolve: () => void }> = [];
+const MAX_CONCURRENT_REQUESTS = 50;
+const SLOT_TIMEOUT_MS = 45000;
+const requestQueue: Array<{ resolve: () => void; reject: (err: Error) => void; enqueuedAt: number }> = [];
 
 async function acquireSlot(): Promise<void> {
   if (activeRequests < MAX_CONCURRENT_REQUESTS) {
     activeRequests++;
     return;
   }
-  return new Promise<void>((resolve) => {
-    requestQueue.push({ resolve });
+  return new Promise<void>((resolve, reject) => {
+    const entry = { resolve, reject, enqueuedAt: Date.now() };
+    requestQueue.push(entry);
+    const timer = setTimeout(() => {
+      const idx = requestQueue.indexOf(entry);
+      if (idx !== -1) {
+        requestQueue.splice(idx, 1);
+        reject(new Error(`Request queue timeout after ${SLOT_TIMEOUT_MS / 1000}s — server under heavy load`));
+      }
+    }, SLOT_TIMEOUT_MS);
+    const origResolve = entry.resolve;
+    entry.resolve = () => { clearTimeout(timer); origResolve(); };
   });
 }
 
 function releaseSlot(): void {
   activeRequests--;
-  if (requestQueue.length > 0 && activeRequests < MAX_CONCURRENT_REQUESTS) {
-    activeRequests++;
+  while (requestQueue.length > 0 && activeRequests < MAX_CONCURRENT_REQUESTS) {
     const next = requestQueue.shift()!;
+    if (Date.now() - next.enqueuedAt > SLOT_TIMEOUT_MS) {
+      continue;
+    }
+    activeRequests++;
     next.resolve();
+    break;
   }
 }
 
