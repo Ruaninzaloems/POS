@@ -198,6 +198,7 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
   canSubmit = computed(() => {
     const tx = this.transaction();
     if (!tx) return false;
+    if (this.posting()) return false;
     return this.lines().length > 0 && Math.abs(this.remaining()) < 0.01;
   });
 
@@ -242,11 +243,15 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
         this.api.get('/api/platinum/billing-payment-miscellaneous/get-groups')
       );
       const groups = Array.isArray(result) ? result : [];
-      this.miscGroups.set(groups.map((g: any) => ({
-        id: g.miscPaymentGroup_ID || g.id || 0,
-        name: g.description || g.name || '',
-        ...g,
-      })));
+      this.miscGroups.set(groups.map((g: any) => {
+        const groupId = g.miscPaymentGroup_ID || g.id || 0;
+        return {
+          ...g,
+          id: groupId,
+          miscPaymentGroup_ID: groupId,
+          name: g.description || g.name || '',
+        };
+      }));
       this.miscGroupsLoaded.set(true);
     } catch (e: any) {
       console.error('[AllocateTransaction] Failed to fetch misc payment groups:', e);
@@ -1063,6 +1068,30 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
 
     try {
       const tx = this.transaction()!;
+
+      if (tx.billingAllocated) {
+        this.toast.error('This deposit has already been allocated. It cannot be allocated again.');
+        this.posting.set(false);
+        this.postingStatus.set('');
+        return;
+      }
+
+      this.postingStatus.set('Verifying deposit is still available...');
+      try {
+        const freshItem: any = await firstValueFrom(
+          this.api.get('/api/platinum/direct-deposit-allocation/get-pos-item-details', { posItemId: String(tx.posItem_ID) })
+        );
+        const item = freshItem?.posItem || freshItem || {};
+        if (item.billingAllocated || item.dateAllocated) {
+          this.toast.error('This deposit was just allocated by another user. Please go back and select a different deposit.');
+          this.posting.set(false);
+          this.postingStatus.set('');
+          return;
+        }
+      } catch (e: any) {
+        console.warn('[AllocateTransaction] Pre-submit freshness check failed (proceeding):', e?.message);
+      }
+
       const user = this.auth.user();
 
       this.postingStatus.set('Creating virtual session...');
@@ -1147,7 +1176,12 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
         this.toast.success(`Allocation submitted successfully`);
       }
     } catch (e: any) {
-      this.toast.error(e?.error?.message || e?.message || 'Allocation failed');
+      const status = e?.status || e?.error?.status;
+      if (status === 409) {
+        this.toast.error('This deposit is already being allocated by another user. Please wait and try again.');
+      } else {
+        this.toast.error(e?.error?.message || e?.message || 'Allocation failed');
+      }
     } finally {
       if (virtualCashierId) {
         try {
@@ -1310,7 +1344,7 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
     }));
     this.csvLookupResults.set([...results]);
 
-    const BATCH_SIZE = 50;
+    const BATCH_SIZE = 10;
     for (let batchStart = 0; batchStart < results.length; batchStart += BATCH_SIZE) {
       if (this.csvCancelRequested) break;
 

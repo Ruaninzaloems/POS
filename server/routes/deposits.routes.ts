@@ -37,8 +37,17 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
 
   app.post("/api/platinum/direct-deposit-allocation/invalidate-bank-recon-cache", (req, res) => {
     const session = requireAuth(req, res); if (!session) return;
-    bankReconCache.clear();
-    res.json({ cleared: true });
+    const siteId = (session as any).siteId || (session as any).site?.id || 'default';
+    const userId = (session as any).userId || (session as any).user?.id || 'anon';
+    const prefix = `${siteId}:${userId}:`;
+    let cleared = 0;
+    for (const key of Array.from(bankReconCache.keys())) {
+      if (key.startsWith(prefix)) {
+        bankReconCache.delete(key);
+        cleared++;
+      }
+    }
+    res.json({ cleared: cleared > 0, count: cleared });
   });
 
   app.get("/api/platinum/direct-deposit-allocation/check-selected-item-processed", async (req, res) => {
@@ -440,6 +449,8 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
   }
 
   const ddBatchJobs = new Map<string, DDBatchJob>();
+  const ddPosItemLocks = new Set<number>();
+  let ddJobCounter = 0;
 
   setInterval(() => {
     const ONE_HOUR = 60 * 60 * 1000;
@@ -450,7 +461,8 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
         job.status = 'FAILED';
         job.currentLine = 'Job timed out (stale processing)';
         job.errors.push('Server-side processing exceeded maximum time limit');
-        console.warn(`[DD Batch] Marked stale job ${jobId} as FAILED`);
+        ddPosItemLocks.delete(job.posItemId);
+        console.warn(`[DD Batch] Marked stale job ${jobId} as FAILED, released posItemId lock ${job.posItemId}`);
       }
       if (now - job.createdAt > ONE_HOUR && job.status !== 'PROCESSING') {
         ddBatchJobs.delete(jobId);
@@ -472,20 +484,25 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
         return res.status(400).json({ message: "Could not determine user ID from session." });
       }
 
-      const jobId = `dd-${posItemId}-${Date.now()}`;
-
-      for (const [, existingJob] of ddBatchJobs.entries()) {
-        if (existingJob.posItemId === posItemId && existingJob.status === 'PROCESSING') {
-          return res.status(409).json({
-            message: "A batch job for this POS item is already being processed.",
-            jobId: existingJob.jobId,
-          });
-        }
+      const numericPosItemId = Number(posItemId);
+      if (!Number.isFinite(numericPosItemId) || numericPosItemId <= 0) {
+        return res.status(400).json({ message: "posItemId must be a positive number" });
       }
+      if (ddPosItemLocks.has(numericPosItemId)) {
+        const existingJob = Array.from(ddBatchJobs.values()).find(j => j.posItemId === numericPosItemId && j.status === 'PROCESSING');
+        return res.status(409).json({
+          message: "This deposit is already being allocated by another user. Please wait for the current allocation to complete.",
+          jobId: existingJob?.jobId || null,
+        });
+      }
+      ddPosItemLocks.add(numericPosItemId);
+
+      ddJobCounter++;
+      const jobId = `dd-${numericPosItemId}-${Date.now()}-${ddJobCounter}`;
 
       const job: DDBatchJob = {
         jobId,
-        posItemId,
+        posItemId: numericPosItemId,
         status: 'PROCESSING',
         totalLines: lines.filter((l: any) => l.allocationType !== 'CASHBOOK' && l.accountNo !== 'CASHBOOK-RTN').length,
         completedLines: 0,
@@ -506,6 +523,7 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
         job.status = 'FAILED';
         job.currentLine = 'Failed to initialize session';
         job.errors.push(`Session error: ${e.message}`);
+        ddPosItemLocks.delete(numericPosItemId);
         return res.status(500).json({ message: "Failed to initialize session for batch processing", detail: e.message });
       }
 
@@ -672,8 +690,9 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
           } else {
             job.status = 'FAILED';
           }
+          ddPosItemLocks.delete(numericPosItemId);
           job.currentLine = job.status === 'COMPLETED' ? 'All lines processed successfully' : `Done: ${job.completedLines} succeeded, ${job.failedLines} failed`;
-          console.log(`[DD Batch ${jobId}] Finished: ${job.status} (${job.completedLines}/${job.totalLines} succeeded)`);
+          console.log(`[DD Batch ${jobId}] Finished: ${job.status} (${job.completedLines}/${job.totalLines} succeeded), released posItemId lock ${numericPosItemId}`);
         }
       };
 
@@ -681,6 +700,7 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
         job.status = 'FAILED';
         job.currentLine = 'Unexpected error during processing';
         job.errors.push(`Batch processing error: ${e?.message || 'Unknown'}`);
+        ddPosItemLocks.delete(numericPosItemId);
         console.error(`[DD Batch ${jobId}] Unhandled error:`, e?.message);
       });
     } catch (e: any) {
