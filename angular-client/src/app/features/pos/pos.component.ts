@@ -283,23 +283,9 @@ export class PosComponent implements OnInit, OnDestroy {
     });
   });
 
-  canTenderCheque = computed(() => {
-    const types = this.paymentTypes();
-    if (!types || types.length === 0) return true;
-    return types.some((t: any) => {
-      const desc = (t.posPaymentTypeDesc || t.description || t.name || '').toLowerCase();
-      return (t.isTicked || t.enabled) && desc.includes('cheque');
-    });
-  });
+  canTenderCheque = computed(() => false);
 
-  canTenderEft = computed(() => {
-    const types = this.paymentTypes();
-    if (!types || types.length === 0) return true;
-    return types.some((t: any) => {
-      const desc = (t.posPaymentTypeDesc || t.description || t.name || '').toLowerCase();
-      return (t.isTicked || t.enabled) && desc.includes('eft');
-    });
-  });
+  canTenderEft = computed(() => false);
 
   canTenderCashCard = computed(() => this.canTenderCash() && this.canTenderCard());
 
