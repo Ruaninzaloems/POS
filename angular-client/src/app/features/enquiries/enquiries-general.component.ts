@@ -1094,7 +1094,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         cuVal?.nonStandAddLine1 || sa?.fullAddress || sa?.address || '';
       snap['accountType'] = consVal?.accountDesc || propVal?.accountDesc || mgmtVal?.accountDesc || basicVal?.accountDesc || sa?.accountDesc || '';
       snap['sgNumber'] = propVal?.sgNumber || cuVal?.sgNumber || sa?.sgNumber || '';
-      snap['propertyType'] = propVal?.propertyType || consVal?.typeOfUseDesc || propVal?.typeOfUseDesc || propVal?.typeOfUse || '';
+      snap['propertyType'] = propVal?.propertyTypeDesc || propVal?.propertyType || this.resolvePropertyType(cuVal?.propertyTypeID, propVal?.sgNumber || cuVal?.sgNumber, cuVal?.sectionNumber, cuVal?.farmID) || '';
       snap['propertyCategory'] = propVal?.propertyCategory || consVal?.zoneDesc || propVal?.zoneDesc || propVal?.category || '';
       snap['propertyTypeOfUse'] = consVal?.typeOfUseDesc || propVal?.typeOfUse || propVal?.typeofUse || propVal?.typeOfUseDesc || '';
       snap['billingCycle'] = mgmtVal?.cycleDescription || consVal?.cycleDescription || propVal?.cycleDescription || cuVal?.billingCycleID || '';
@@ -1729,7 +1729,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             (propVal?.streetNumber ? propVal.streetNumber + ' ' + propVal.streetName + ', ' + propVal.town : propVal?.streetName ? propVal.streetName + ', ' + (propVal?.town || '') : '') ||
             propConsUnitVal?.nonStandAddLine1 || sa?.locationAddress || sa?.address || '';
           acctSnapshot['propertyStatus'] = propVal?.propertyStatus || propVal?.statusDesc || propConsAcctVal?.statusDesc || propVal?.accountStatus || sa?.accountStatus || '';
-          acctSnapshot['propertyType'] = propVal?.propertyType || propVal?.typeOfUse || propVal?.typeofUse || propVal?.typeOfUseDesc || propConsAcctVal?.typeOfUseDesc || propConsUnitVal?.typeOfUseDesc || '';
+          acctSnapshot['propertyType'] = propVal?.propertyTypeDesc || propVal?.propertyType || this.resolvePropertyType(propConsUnitVal?.propertyTypeID || propConsUnitByIdVal?.propertyTypeID, propVal?.sgNumber || propConsUnitVal?.sgNumber || propConsUnitByIdVal?.sgNumber, propConsUnitVal?.sectionNumber || propConsUnitByIdVal?.sectionNumber, propConsUnitVal?.farmID || propConsUnitByIdVal?.farmID) || '';
           acctSnapshot['propertyCategory'] = propVal?.propertyCategory || propVal?.category || propVal?.zoneDesc || propConsAcctVal?.zoneDesc || propConsUnitVal?.zoneDesc || '';
           acctSnapshot['propertyTypeOfUse'] = propVal?.propertyTypeOfUse || propVal?.typeOfUse || propVal?.typeofUse || propVal?.typeOfUseDesc || propConsAcctVal?.typeOfUseDesc || '';
           acctSnapshot['accountableOwnerName'] = propVal?.accountableOwnerName || propVal?.ownerName || propPartOwnerResult?.ownerName || propPartOwnerResult?.name ||
@@ -2789,6 +2789,21 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     return td?.consUnit?.typeOfUseDesc || td?.consUnit?.typeOfUse || td?.consUnit?.typeofUse ||
       td?.property?.typeOfUseDesc || td?.property?.typeOfUse || td?.property?.typeofUse ||
       td?.property?.zoneDesc || '-';
+  }
+
+  resolvePropertyType(propertyTypeID: number | null | undefined, sgNumber: string | null | undefined, sectionNumber: any, farmID: any): string {
+    if (propertyTypeID) {
+      const map: Record<number, string> = { 1: 'Erf', 2: 'Farm', 3: 'Sectional Title', 4: 'Agricultural Holding' };
+      if (map[propertyTypeID]) return map[propertyTypeID];
+    }
+    if (sectionNumber && sectionNumber !== '0' && sectionNumber !== 0) return 'Sectional Title';
+    if (farmID && farmID !== '0' && farmID !== 0) return 'Farm';
+    const sg = (sgNumber || '').toString();
+    if (sg) {
+      if (/^[A-Z]\d{3,}/i.test(sg)) return 'Erf';
+      if (/^T\d/i.test(sg)) return 'Farm';
+    }
+    return '';
   }
 
   getAccountActiveTariff(): string {
