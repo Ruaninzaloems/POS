@@ -182,7 +182,7 @@
                 <button class="link-btn" (click)="clearUnifiedSearch()">Clear</button>
               </div>
               @for (result of unifiedSearchResults(); track result.id + '-' + result.resultType) {
-                <div class="search-result-card unified-result" [attr.data-testid]="'result-' + result.resultType + '-' + result.id">
+                <div class="search-result-card unified-result clickable-result" (click)="addUnifiedResult(result)" [class.result-loading]="accountDetailLoading()" [attr.data-testid]="'result-' + result.resultType + '-' + result.id">
                   @if (result.resultType === 'account') {
                     <div class="account-result-detail">
                       <div class="account-result-header">
@@ -210,25 +210,23 @@
                           </div>
                         }
                       </div>
-                      <div class="account-result-actions">
-                        <button class="add-to-basket-btn" (click)="addUnifiedResult(result)" [disabled]="accountDetailLoading()" [attr.data-testid]="'button-add-account-' + result.id">
-                          @if (accountDetailLoading()) {
-                            <div class="spinner-sm"></div> Loading...
-                          } @else {
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-                            Add to Basket
-                          }
-                        </button>
-                        @if (result.rawData?.hasPrepaidMeter) {
-                          <button class="add-prepaid-btn" (click)="addPrepaidPlaceholder(result.rawData.prepaidMeterNo); $event.stopPropagation()">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                            Add Prepaid {{ result.rawData.prepaidType || 'Electricity' }}
-                          </button>
+                      <div class="result-click-hint">
+                        @if (accountDetailLoading()) {
+                          <div class="spinner-sm"></div> <span>Adding...</span>
+                        } @else {
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                          <span>Click to add</span>
                         }
                       </div>
+                      @if (result.rawData?.hasPrepaidMeter) {
+                        <button class="add-prepaid-inline" (click)="addPrepaidPlaceholder(result.rawData.prepaidMeterNo); $event.stopPropagation()" [attr.data-testid]="'button-prepaid-' + result.id">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                          Add Prepaid {{ result.rawData.prepaidType || 'Electricity' }}
+                        </button>
+                      }
                     </div>
                   } @else {
-                    <div class="result-top-row" (click)="addUnifiedResult(result)">
+                    <div class="result-top-row">
                       <div class="result-type-badge" [style.background]="getTypeColor(result.resultType === 'group' ? 'account' : result.resultType)">
                         {{ result.resultType === 'group' ? 'GROUP' : result.resultType.toUpperCase() }}
                       </div>
@@ -241,11 +239,11 @@
                           <span class="result-balance" [class.owing]="result.balance > 0">R {{ formatCurrency(result.balance) }}</span>
                         </div>
                       }
-                      <span class="result-add-hint">
+                      <span class="result-click-hint" style="opacity:0.5; padding:0; margin-left:auto;">
                         @if (result.resultType === 'group') {
-                          Expand
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg> Expand
                         } @else {
-                          Add
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Add
                         }
                       </span>
                     </div>
