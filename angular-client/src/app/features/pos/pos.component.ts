@@ -1175,16 +1175,19 @@ export class PosComponent implements OnInit, OnDestroy {
 
             if (cashAcctItems.length > 0) {
               const cashResult = await this.submitAccountPayment(cashAcctItems, userId!, finYear, receiptDate, cashPaymentTypeId, '', allocation.cashTotal, `${paymentToken}-cash`);
-              allResults.push({ receiptNumber: this.getReceiptNo(cashResult), tenderType: 'cash', amount: allocation.cashTotal, items: cashAcctItems, rawResponse: cashResult });
+              const cashReceiptNo = await this.resolveReceiptNo(cashResult);
+              allResults.push({ receiptNumber: cashReceiptNo, tenderType: 'cash', amount: allocation.cashTotal, items: cashAcctItems, rawResponse: cashResult });
             }
             if (cardAcctItems.length > 0) {
               const cardResult = await this.submitAccountPayment(cardAcctItems, userId!, finYear, receiptDate, cardPaymentTypeId, cardNum, allocation.cardTotal, `${paymentToken}-card`);
-              allResults.push({ receiptNumber: this.getReceiptNo(cardResult), tenderType: 'card', amount: allocation.cardTotal, items: cardAcctItems, rawResponse: cardResult });
+              const cardReceiptNo = await this.resolveReceiptNo(cardResult);
+              allResults.push({ receiptNumber: cardReceiptNo, tenderType: 'card', amount: allocation.cardTotal, items: cardAcctItems, rawResponse: cardResult });
             }
           } else {
             const paymentTypeId = this.getPaymentTypeId();
             const result = await this.submitAccountPayment(accountItemsWithPay, userId!, finYear, receiptDate, paymentTypeId, cardNum, this.basket.totalToPay(), paymentToken);
-            allResults.push({ receiptNumber: this.getReceiptNo(result), tenderType: this.activeTender(), amount: accountItemsWithPay.reduce((s, i) => s + i.amountToPay, 0), items: accountItemsWithPay, rawResponse: result });
+            const acctReceiptNo = await this.resolveReceiptNo(result);
+            allResults.push({ receiptNumber: acctReceiptNo, tenderType: this.activeTender(), amount: accountItemsWithPay.reduce((s, i) => s + i.amountToPay, 0), items: accountItemsWithPay, rawResponse: result });
           }
         }
       }
@@ -1194,7 +1197,8 @@ export class PosComponent implements OnInit, OnDestroy {
         if (clearItem.amountToPay <= 0 || !clearItem.clearanceData) continue;
         const result = await this.submitClearancePaymentItem(clearItem, userId!, ci, finYear, cardNum, `${paymentToken}-clr${ci2}`);
         console.log(`[processPayment] Clearance result:`, JSON.stringify(result).substring(0, 500));
-        allResults.push({ receiptNumber: this.getReceiptNo(result), tenderType: this.activeTender(), amount: clearItem.amountToPay, items: [clearItem], rawResponse: result });
+        const clrReceiptNo = await this.resolveReceiptNo(result);
+        allResults.push({ receiptNumber: clrReceiptNo, tenderType: this.activeTender(), amount: clearItem.amountToPay, items: [clearItem], rawResponse: result });
       }
 
       for (let pi = 0; pi < prepaidItems.length; pi++) {
@@ -1202,7 +1206,8 @@ export class PosComponent implements OnInit, OnDestroy {
         if (prepItem.amountToPay <= 0 || !prepItem.prepaidData) continue;
         const result = await this.submitPrepaidPaymentItem(prepItem, `${paymentToken}-prep${pi}`);
         console.log(`[processPayment] Prepaid result:`, JSON.stringify(result).substring(0, 500));
-        allResults.push({ receiptNumber: this.getReceiptNo(result), tenderType: this.activeTender(), amount: prepItem.amountToPay, items: [prepItem], rawResponse: result });
+        const prepReceiptNo = await this.resolveReceiptNo(result);
+        allResults.push({ receiptNumber: prepReceiptNo, tenderType: this.activeTender(), amount: prepItem.amountToPay, items: [prepItem], rawResponse: result });
       }
 
       for (let mi = 0; mi < miscItems.length; mi++) {
@@ -1210,7 +1215,8 @@ export class PosComponent implements OnInit, OnDestroy {
         if (miscItem.amountToPay <= 0 || !miscItem.miscData) continue;
         const result = await this.submitMiscPaymentItem(miscItem, userId!, ci, finYear, cardNum, `${paymentToken}-misc${mi}`);
         console.log(`[processPayment] Misc result:`, JSON.stringify(result).substring(0, 500));
-        allResults.push({ receiptNumber: this.getReceiptNo(result), tenderType: this.activeTender(), amount: miscItem.amountToPay, items: [miscItem], rawResponse: result });
+        const miscReceiptNo = await this.resolveReceiptNo(result);
+        allResults.push({ receiptNumber: miscReceiptNo, tenderType: this.activeTender(), amount: miscItem.amountToPay, items: [miscItem], rawResponse: result });
       }
 
       this.receiptResults.set(allResults);
@@ -1248,12 +1254,13 @@ export class PosComponent implements OnInit, OnDestroy {
         accountNumber: ad.accountNumber,
         name: ad.name,
         outStandingAmt: item.amountToPay,
-        billId: orig.billId ?? orig.bill_ID ?? null,
+        billId: null,
         cutOffID: ad.cutOffID ?? 0,
         cutOffAmount: ad.cutOffAmount ?? 0,
         debtAmount: ad.debtAmount ?? 0,
         debtArrangementId: ad.debtArrangementId ?? 0,
-        billingCycleId: ad.billingCycleId ?? 0,
+        billingCycleId: ad.billingCycleId ?? 1,
+        oldAccountCode: orig.oldAccountCode || '',
       };
       if (isCardPayment) {
         delete submitAccountBase.sundryDebtorsId;
@@ -1286,11 +1293,21 @@ export class PosComponent implements OnInit, OnDestroy {
           bankBranchCode: '',
           cashierId: sessionCashierId,
           cashOfficeId: sessionOfficeId,
+          apiTransactionID: 0,
+          isReconciled: 0,
+          isCancelled: 0,
         },
       };
-      return await firstValueFrom(
+      console.log(`[submitAccountPayment] Single consumer payload for account ${ad.accountNumber}:`, JSON.stringify(payload).substring(0, 1000));
+      const result: any = await firstValueFrom(
         this.api.postWithIdempotency(`/api/platinum/billing-payment/submit-consumer-payment/${userId}`, payload, idempotencyToken)
       );
+      console.log(`[submitAccountPayment] Single consumer response:`, JSON.stringify(result).substring(0, 1000));
+      if (result && result.isSuccess === false) {
+        const detail = result.message || result.detail || result.error || result.statusText || '';
+        throw new Error(detail || `API rejected payment for ${ad.accountNumber}`);
+      }
+      return result;
     } else {
       const submitAccounts = items.map(item => {
         const ad = item.accountData!;
@@ -1342,11 +1359,21 @@ export class PosComponent implements OnInit, OnDestroy {
           sundryDebtorsId: '',
           cashierId: sessionCashierId,
           cashOfficeId: sessionOfficeId,
+          apiTransactionID: 0,
+          isReconciled: 0,
+          isCancelled: 0,
         },
       };
-      return await firstValueFrom(
+      console.log(`[submitAccountPayment] Multi payment for ${submitAccounts.length} accounts:`, JSON.stringify(payload).substring(0, 1000));
+      const result: any = await firstValueFrom(
         this.api.postWithIdempotency(`/api/platinum/billing-payment/submit-multiple-payment/${userId}`, payload, idempotencyToken)
       );
+      console.log(`[submitAccountPayment] Multi payment response:`, JSON.stringify(result).substring(0, 1000));
+      if (result && result.isSuccess === false) {
+        const detail = result.message || result.detail || result.error || result.statusText || '';
+        throw new Error(detail || `API rejected multi-account payment`);
+      }
+      return result;
     }
   }
 
@@ -2002,35 +2029,97 @@ export class PosComponent implements OnInit, OnDestroy {
     return amount.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
+  private extractReceiptIds(result: any): number[] {
+    if (result?.ids && Array.isArray(result.ids) && result.ids.length > 0) {
+      return result.ids.map(Number);
+    } else if (Array.isArray(result)) {
+      return result
+        .map((r: any) => r.receiptID || r.receiptId || r.id)
+        .filter((id: any) => id != null)
+        .map(Number);
+    } else if (result && typeof result === 'object') {
+      const rid = result.receiptID || result.receiptId || result.receipt_ID || result.id;
+      if (rid != null && Number(rid) > 0) return [Number(rid)];
+      if (result.objData) {
+        const orid = result.objData.receiptID || result.objData.receiptId || result.objData.id;
+        if (orid != null && Number(orid) > 0) return [Number(orid)];
+      }
+      if (result.result) {
+        const rrid = result.result.receiptID || result.result.receiptId || result.result.id;
+        if (rrid != null && Number(rrid) > 0) return [Number(rrid)];
+      }
+      if (result.data) {
+        const drid = result.data.receiptID || result.data.receiptId || result.data.id;
+        if (drid != null && Number(drid) > 0) return [Number(drid)];
+      }
+    }
+    return [];
+  }
+
+  private async resolveReceiptNo(result: any): Promise<string> {
+    if (!result) return 'N/A';
+
+    const directNo = result?.receiptNo || result?.receiptNumber || result?.receipt_no || result?.ReceiptNo
+      || result?.objData?.receiptNo || result?.result?.receiptNo || result?.data?.receiptNo;
+    if (directNo && String(directNo) !== '0') {
+      console.log(`[resolveReceiptNo] Found direct receiptNo: ${directNo}`);
+      return String(directNo);
+    }
+
+    const receiptIds = this.extractReceiptIds(result);
+    console.log(`[resolveReceiptNo] Extracted receipt IDs: [${receiptIds.join(',')}] from response:`, JSON.stringify(result).substring(0, 500));
+
+    if (receiptIds.length > 0) {
+      for (const rid of receiptIds) {
+        try {
+          const detailData: any = await firstValueFrom(
+            this.api.get('/api/platinum/pos-multi-receipt-print', { receiptId: String(rid) })
+          );
+          const items = Array.isArray(detailData) ? detailData : (detailData?.value || []);
+          if (items.length > 0 && items[0].receiptNo) {
+            console.log(`[resolveReceiptNo] Resolved receiptNo "${items[0].receiptNo}" via pos-multi-receipt-print for ID ${rid}`);
+            return String(items[0].receiptNo);
+          }
+        } catch (e: any) {
+          console.warn(`[resolveReceiptNo] pos-multi-receipt-print lookup failed for ID ${rid}:`, e?.message);
+        }
+      }
+
+      try {
+        const cashierId = this.cashierInfo()?.id || this.cashierInfo()?.cashier_ID || this.user()?.user_ID;
+        if (cashierId) {
+          const unreconciledList: any = await firstValueFrom(
+            this.api.get('/api/platinum/billing-payment-day-end/get-unreconciled-receipt-list', { id: String(cashierId) })
+          );
+          const list = Array.isArray(unreconciledList) ? unreconciledList : (unreconciledList?.data || unreconciledList?.items || []);
+          for (const rid of receiptIds) {
+            const match = list.find((r: any) => r.id === rid || r.receiptId === rid);
+            if (match?.receiptNo) {
+              console.log(`[resolveReceiptNo] Found receiptNo "${match.receiptNo}" from unreconciled list for ID ${rid}`);
+              return String(match.receiptNo);
+            }
+          }
+        }
+      } catch (e: any) {
+        console.warn(`[resolveReceiptNo] Unreconciled list lookup failed:`, e?.message);
+      }
+
+      return `REC-${receiptIds[0]}`;
+    }
+
+    console.warn('[resolveReceiptNo] Could not extract receipt number from API response:', JSON.stringify(result).substring(0, 500));
+    return 'N/A';
+  }
+
   getReceiptNo(data: any): string {
     if (!data) return 'N/A';
-    const extract = (obj: any): string | null => {
-      if (!obj || typeof obj !== 'object') return null;
-      return obj.receiptNo || obj.receiptNumber || obj.receipt_no || obj.ReceiptNo
-        || obj.receiptSerialNo || obj.receipt_serial_no || obj.ReceiptSerialNo
-        || null;
-    };
-    const extractId = (obj: any): string | null => {
-      if (!obj || typeof obj !== 'object') return null;
-      const id = obj.receiptID || obj.receipt_ID || obj.receiptId || obj.id || obj.ID
-        || obj.prepaidReceiptId || obj.prepaid_receipt_id || obj.tokenReceiptId;
-      return id ? String(id) : null;
-    };
-    let val = extract(data);
-    if (val) return String(val);
-    if (data.objData) { val = extract(data.objData); if (val) return String(val); }
-    if (data.result) { val = extract(data.result); if (val) return String(val); }
-    if (data.data) { val = extract(data.data); if (val) return String(val); }
-    if (data.items && Array.isArray(data.items) && data.items.length > 0) {
-      val = extract(data.items[0]);
-      if (val) return String(val);
-    }
-    let idVal = extractId(data);
-    if (idVal) return idVal;
-    if (data.objData) { idVal = extractId(data.objData); if (idVal) return idVal; }
-    if (data.result) { idVal = extractId(data.result); if (idVal) return idVal; }
-    if (data.data) { idVal = extractId(data.data); if (idVal) return idVal; }
-    console.warn('[POS] Could not extract receipt number from API response:', JSON.stringify(data).substring(0, 500));
+    const directNo = data?.receiptNo || data?.receiptNumber || data?.receipt_no || data?.ReceiptNo
+      || data?.objData?.receiptNo || data?.result?.receiptNo || data?.data?.receiptNo;
+    if (directNo && String(directNo) !== '0') return String(directNo);
+
+    const ids = this.extractReceiptIds(data);
+    if (ids.length > 0) return `REC-${ids[0]}`;
+
     return 'N/A';
   }
 
