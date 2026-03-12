@@ -696,54 +696,45 @@
               <div class="svc-overview-bar">
                 <div class="svc-overview-cards">
                   <div class="svc-ov-card svc-ov-total">
-                    <div class="svc-ov-icon">📊</div>
+                    <div class="svc-ov-icon">✅</div>
                     <div class="svc-ov-info">
-                      <span class="svc-ov-value">{{ getServicesList().length }}</span>
-                      <span class="svc-ov-label">Total Services</span>
+                      <span class="svc-ov-value">{{ getSvcActiveCount() }}</span>
+                      <span class="svc-ov-label">Active Services</span>
                     </div>
                   </div>
-                  @if (getFilteredServices('metered').length > 0) {
+                  @if (getActiveFilteredServices('metered').length > 0) {
                     <div class="svc-ov-card svc-ov-metered">
                       <div class="svc-ov-icon">🔧</div>
                       <div class="svc-ov-info">
-                        <span class="svc-ov-value">{{ getFilteredServices('metered').length }}</span>
+                        <span class="svc-ov-value">{{ getActiveFilteredServices('metered').length }}</span>
                         <span class="svc-ov-label">Metered</span>
                       </div>
                     </div>
                   }
-                  @if (getFilteredServices('prepaid').length > 0) {
+                  @if (getActiveFilteredServices('prepaid').length > 0) {
                     <div class="svc-ov-card svc-ov-prepaid">
                       <div class="svc-ov-icon">⚡</div>
                       <div class="svc-ov-info">
-                        <span class="svc-ov-value">{{ getFilteredServices('prepaid').length }}</span>
+                        <span class="svc-ov-value">{{ getActiveFilteredServices('prepaid').length }}</span>
                         <span class="svc-ov-label">Pre-Paid</span>
                       </div>
                     </div>
                   }
-                  @if (getFilteredServices('basic').length > 0) {
+                  @if (getActiveFilteredServices('basic').length > 0) {
                     <div class="svc-ov-card svc-ov-basic">
                       <div class="svc-ov-icon">🏠</div>
                       <div class="svc-ov-info">
-                        <span class="svc-ov-value">{{ getFilteredServices('basic').length }}</span>
+                        <span class="svc-ov-value">{{ getActiveFilteredServices('basic').length }}</span>
                         <span class="svc-ov-label">Basic</span>
                       </div>
                     </div>
                   }
-                  @if (getFilteredServices('rates').length > 0) {
+                  @if (getActiveFilteredServices('rates').length > 0) {
                     <div class="svc-ov-card svc-ov-rates">
                       <div class="svc-ov-icon">🏛️</div>
                       <div class="svc-ov-info">
-                        <span class="svc-ov-value">{{ getFilteredServices('rates').length }}</span>
+                        <span class="svc-ov-value">{{ getActiveFilteredServices('rates').length }}</span>
                         <span class="svc-ov-label">Property Rates</span>
-                      </div>
-                    </div>
-                  }
-                  @if (getSvcActiveCount() > 0) {
-                    <div class="svc-ov-card svc-ov-active">
-                      <div class="svc-ov-icon">✅</div>
-                      <div class="svc-ov-info">
-                        <span class="svc-ov-value">{{ getSvcActiveCount() }}</span>
-                        <span class="svc-ov-label">Active</span>
                       </div>
                     </div>
                   }

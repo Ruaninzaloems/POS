@@ -4789,6 +4789,10 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     return all.filter((svc: any) => this.getSvcCategory(svc) === category);
   }
 
+  getActiveFilteredServices(category: string): any[] {
+    return this.getFilteredServices(category).filter((svc: any) => this.isSvcActive(svc));
+  }
+
   getSvcCategory(svc: any): string {
     const type = (svc.serviceType || svc.serviceTypeDesc || svc.serviceDesc || svc.serviceDescription || svc.tariffType || '').toLowerCase();
     const tariff = (svc.tariff || svc.tariffDesc || '').toLowerCase();
