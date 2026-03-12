@@ -330,7 +330,13 @@ export class PosComponent implements OnInit, OnDestroy {
     this.unifiedSearchQuery.set(value);
     if (this.searchDebounceTimer) clearTimeout(this.searchDebounceTimer);
     const trimmed = value.trim();
-    if (!trimmed || trimmed.length < 3 || !this.sessionActive()) {
+    if (!trimmed) {
+      this.unifiedSearchResults.set([]);
+      this.unifiedSearchActive.set(false);
+      this.expandedGroupId.set(null);
+      return;
+    }
+    if (trimmed.length < 3 || !this.sessionActive()) {
       return;
     }
     this.searchDebounceTimer = setTimeout(() => {
@@ -644,12 +650,15 @@ export class PosComponent implements OnInit, OnDestroy {
   async addUnifiedResult(result: UnifiedSearchResult): Promise<void> {
     if (result.resultType === 'account') {
       await this.addAccountToBasket(result.rawData);
+      this.clearUnifiedSearch();
     } else if (result.resultType === 'group') {
       await this.loadGroupAccounts(result);
     } else if (result.resultType === 'misc') {
       await this.addMiscToBasket(result.rawData);
+      this.clearUnifiedSearch();
     } else if (result.resultType === 'prepaid') {
       this.addPrepaidPlaceholder(result.rawData.meterNumber);
+      this.clearUnifiedSearch();
     }
   }
 
@@ -786,6 +795,12 @@ export class PosComponent implements OnInit, OnDestroy {
       addedCount++;
     }
     this.toast.success(`Added ${addedCount} account(s) to basket.`);
+    this.clearUnifiedSearch();
+  }
+
+  async addGroupAccountAndClear(acctData: any): Promise<void> {
+    await this.addAccountToBasket(acctData);
+    this.clearUnifiedSearch();
   }
 
   async addMiscToBasket(groupData: any): Promise<void> {
@@ -906,6 +921,14 @@ export class PosComponent implements OnInit, OnDestroy {
       this.toast.error('Search failed. Please try again.');
     } finally {
       this.tabSearchLoading.set(false);
+    }
+  }
+
+  onTabSearchInput(value: string): void {
+    this.tabSearchQuery.set(value);
+    if (!value.trim()) {
+      this.tabSearchResults.set([]);
+      this.tabSearchActive.set(false);
     }
   }
 

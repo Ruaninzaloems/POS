@@ -167,8 +167,11 @@
             <div class="search-results-panel" data-testid="unified-loading">
               <div class="search-loading-bar">
                 <div class="spinner-sm"></div>
-                <span>Searching Platinum...</span>
+                <span>Searching accounts...</span>
               </div>
+              <div class="skeleton-row"></div>
+              <div class="skeleton-row skeleton-short"></div>
+              <div class="skeleton-row"></div>
             </div>
           }
 
@@ -258,7 +261,7 @@
                           <button class="link-btn accent" (click)="addAllGroupAccounts(result.groupAccounts); $event.stopPropagation()" data-testid="button-add-all-group">Add All to Basket</button>
                         </div>
                         @for (ga of result.groupAccounts; track getAccountId(ga) || $index) {
-                          <div class="group-account-row" (click)="addAccountToBasket(ga); $event.stopPropagation()">
+                          <div class="group-account-row" (click)="addGroupAccountAndClear(ga); $event.stopPropagation()">
                             <span class="ga-name">{{ getAccountName(ga) }}</span>
                             <span class="ga-acct">{{ getAccountNo(ga) }}</span>
                             <span class="ga-bal" [class.owing]="getAccountBalance(ga) > 0">R {{ formatCurrency(getAccountBalance(ga)) }}</span>
@@ -290,7 +293,7 @@
                 type="text"
                 [placeholder]="sessionActive() ? 'Search account number, name, address...' : 'Start cashier session to search'"
                 [ngModel]="tabSearchQuery()"
-                (ngModelChange)="tabSearchQuery.set($event)"
+                (ngModelChange)="onTabSearchInput($event)"
                 (keydown)="onTabSearchKeydown($event)"
                 [disabled]="!sessionActive()"
                 data-testid="input-tab-search"
