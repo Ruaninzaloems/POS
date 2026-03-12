@@ -1,41 +1,113 @@
 @if (selectedAccount()) {
   <!-- ACCOUNT DETAIL VIEW -->
   <div class="enquiry-detail-view">
-    <!-- Header -->
-    <div class="detail-header">
-      <div class="detail-header-inner">
-        <button class="back-btn" (click)="backToResults()" data-testid="button-back-to-results">
-          ← <span class="back-text">Back</span>
-        </button>
-        <div class="header-divider"></div>
-        <div class="account-avatar">
-          {{ getAccountName(selectedAccount())!.charAt(0).toUpperCase() }}
-        </div>
-        <div class="account-header-info">
-          <div class="account-header-top">
-            <h2 class="account-name" data-testid="text-selected-account-name">{{ getAccountName(selectedAccount()) }}</h2>
-            <span class="status-badge" [class.active]="isAccountActive(selectedAccount())" [class.inactive]="!isAccountActive(selectedAccount())">
-              <span class="status-dot"></span>
-              {{ selectedAccount()!.accountStatus || selectedAccount()!.statusDesc || 'Unknown' }}
-            </span>
+    <!-- Unified Header Card -->
+    <div class="gs-unified-top">
+      <button class="gs-back-btn" (click)="backToResults()" data-testid="button-back-to-results">
+        ← <span class="back-text">Back</span>
+      </button>
+
+      <div class="global-snapshot-card" data-testid="global-snapshot">
+        <div class="global-snapshot-header">
+          <div class="global-snapshot-title-row">
+            <div class="global-snapshot-identity">
+              <div class="gs-avatar">{{ getAccountName(selectedAccount())!.charAt(0).toUpperCase() }}</div>
+              <div>
+                <div class="global-snapshot-owner" data-testid="text-selected-account-name">{{ globalSnapshot()?.['ownerName'] || getAccountName(selectedAccount()) }}</div>
+                <div class="global-snapshot-address">📍 {{ globalSnapshot()?.['address'] || selectedAccount()!['fullAddress'] || selectedAccount()!['address'] || '-' }}</div>
+              </div>
+            </div>
+            <div class="gs-header-right">
+              <div class="global-snapshot-status-pill"
+                [class.gs-status-active]="(globalSnapshot()?.['status'] || selectedAccount()!.accountStatus || '').toLowerCase().includes('active')"
+                [class.gs-status-inactive]="!(globalSnapshot()?.['status'] || selectedAccount()!.accountStatus || '').toLowerCase().includes('active')">
+                {{ globalSnapshot()?.['status'] || selectedAccount()!.accountStatus || selectedAccount()!.statusDesc || 'Unknown' }}
+              </div>
+              <div class="gs-balance-block" data-testid="header-balance-section">
+                <div class="gs-balance-label">Balance</div>
+                @if (headerBalance() !== null) {
+                  <div class="gs-balance-value" [class.positive]="headerBalance()! > 0" [class.negative]="headerBalance()! < 0" data-testid="text-header-balance">
+                    R {{ formatCurrency(headerBalance()) }}
+                  </div>
+                } @else {
+                  <div class="gs-balance-skeleton"></div>
+                }
+              </div>
+            </div>
           </div>
-          <div class="account-header-sub">
-            Acc: {{ getAccountNum(selectedAccount()) }}
+          <div class="gs-account-numbers">
+            <span class="gs-acc-num">Acc: <strong class="mono">{{ getAccountNum(selectedAccount()) }}</strong></span>
             @if (selectedAccount()!.oldAccountCode) {
-              <span class="old-code"> | Old: {{ selectedAccount()!.oldAccountCode }}</span>
+              <span class="gs-acc-divider">|</span>
+              <span class="gs-acc-num">Old: <strong class="mono">{{ selectedAccount()!.oldAccountCode }}</strong></span>
             }
           </div>
         </div>
-        <div class="header-balance" data-testid="header-balance-section">
-          <div class="balance-label">Balance</div>
-          @if (headerBalance() !== null) {
-            <div class="balance-value" [class.positive]="headerBalance()! > 0" [class.negative]="headerBalance()! < 0" data-testid="text-header-balance">
-              R {{ formatCurrency(headerBalance()) }}
+
+        @if (globalSnapshotLoading()) {
+          <div class="gs-grid-loading">
+            <div class="skeleton-bar" style="height: 40px; border-radius: 0.375rem;"></div>
+          </div>
+        } @else if (globalSnapshot()) {
+          <div class="global-snapshot-grid">
+            <div class="global-snapshot-field">
+              <div class="global-snapshot-label">Account Type</div>
+              <div class="global-snapshot-value">{{ globalSnapshot()!['accountType'] || '-' }}</div>
             </div>
-          } @else {
-            <div class="balance-skeleton"></div>
-          }
-        </div>
+            <div class="global-snapshot-field">
+              <div class="global-snapshot-label">SG Number</div>
+              <div class="global-snapshot-value mono">{{ globalSnapshot()!['sgNumber'] || '-' }}</div>
+            </div>
+            <div class="global-snapshot-field">
+              <div class="global-snapshot-label">Property Type</div>
+              <div class="global-snapshot-value">{{ globalSnapshot()!['propertyType'] || '-' }}</div>
+            </div>
+            <div class="global-snapshot-field">
+              <div class="global-snapshot-label">Property Category</div>
+              <div class="global-snapshot-value">{{ globalSnapshot()!['propertyCategory'] || '-' }}</div>
+            </div>
+            <div class="global-snapshot-field">
+              <div class="global-snapshot-label">Property Type of Use</div>
+              <div class="global-snapshot-value">{{ globalSnapshot()!['propertyTypeOfUse'] || '-' }}</div>
+            </div>
+            <div class="global-snapshot-field">
+              <div class="global-snapshot-label">Billing Cycle</div>
+              <div class="global-snapshot-value">{{ globalSnapshot()!['billingCycle'] || '-' }}</div>
+            </div>
+            <div class="global-snapshot-field">
+              <div class="global-snapshot-label">Market Value</div>
+              <div class="global-snapshot-value gs-market-value">{{ globalSnapshot()!['marketValue'] ? 'R ' + formatCurrency(globalSnapshot()!['marketValue']) : '-' }}</div>
+            </div>
+          </div>
+
+          <div class="global-snapshot-badges">
+            <div class="gs-badge" [class.gs-badge-active]="globalSnapshot()!['indigentSubsidy']" [class.gs-badge-none]="!globalSnapshot()!['indigentSubsidy']">
+              <span class="gs-badge-icon">🛡️</span>
+              <span class="gs-badge-lbl">Indigent Subsidy</span>
+              <span class="gs-badge-val">{{ globalSnapshot()!['indigentSubsidy'] || 'None' }}</span>
+            </div>
+            <div class="gs-badge" [class.gs-badge-active]="globalSnapshot()!['consumerRpp']" [class.gs-badge-none]="!globalSnapshot()!['consumerRpp']">
+              <span class="gs-badge-icon">🔄</span>
+              <span class="gs-badge-lbl">Consumer RPP</span>
+              <span class="gs-badge-val">{{ globalSnapshot()!['consumerRpp'] || 'None' }}</span>
+            </div>
+            <div class="gs-badge" [class.gs-badge-active]="globalSnapshot()!['rebateStatus']" [class.gs-badge-none]="!globalSnapshot()!['rebateStatus']">
+              <span class="gs-badge-icon">🏷️</span>
+              <span class="gs-badge-lbl">Rebate Status</span>
+              <span class="gs-badge-val">{{ globalSnapshot()!['rebateStatus'] || 'None' }}</span>
+            </div>
+            <div class="gs-badge" [class.gs-badge-warn]="globalSnapshot()!['handoverStatus']" [class.gs-badge-none]="!globalSnapshot()!['handoverStatus']">
+              <span class="gs-badge-icon">⚠️</span>
+              <span class="gs-badge-lbl">Handover Status</span>
+              <span class="gs-badge-val">{{ globalSnapshot()!['handoverStatus'] || 'None' }}</span>
+            </div>
+            <div class="gs-badge" [class.gs-badge-active]="globalSnapshot()!['interestWaiver']" [class.gs-badge-none]="!globalSnapshot()!['interestWaiver']">
+              <span class="gs-badge-icon">💳</span>
+              <span class="gs-badge-lbl">Interest Waiver</span>
+              <span class="gs-badge-val">{{ globalSnapshot()!['interestWaiver'] || 'None' }}</span>
+            </div>
+          </div>
+        }
       </div>
     </div>
 
@@ -65,91 +137,6 @@
               <span class="flag-detail">— {{ flag.detail }}</span>
             </div>
           }
-        </div>
-      </div>
-    }
-
-    <!-- Global Property Snapshot -->
-    @if (globalSnapshotLoading()) {
-      <div class="global-snapshot-loading">
-        <div class="skeleton-bar" style="height: 120px; border-radius: 0.75rem;"></div>
-      </div>
-    } @else if (globalSnapshot()) {
-      <div class="global-snapshot-card" data-testid="global-snapshot">
-        <div class="global-snapshot-header">
-          <div class="global-snapshot-title-row">
-            <div class="global-snapshot-identity">
-              <span class="global-snapshot-icon">🏠</span>
-              <div>
-                <div class="global-snapshot-owner">{{ globalSnapshot()!['ownerName'] || '-' }}</div>
-                <div class="global-snapshot-address">📍 {{ globalSnapshot()!['address'] || '-' }}</div>
-              </div>
-            </div>
-            <div class="global-snapshot-status-pill"
-              [class.gs-status-active]="(globalSnapshot()!['status'] || '').toLowerCase().includes('active')"
-              [class.gs-status-inactive]="!(globalSnapshot()!['status'] || '').toLowerCase().includes('active') && globalSnapshot()!['status']">
-              {{ globalSnapshot()!['status'] || '-' }}
-            </div>
-          </div>
-        </div>
-        <div class="global-snapshot-grid">
-          <div class="global-snapshot-field">
-            <div class="global-snapshot-label">Account Type</div>
-            <div class="global-snapshot-value">{{ globalSnapshot()!['accountType'] || '-' }}</div>
-          </div>
-          <div class="global-snapshot-field">
-            <div class="global-snapshot-label">SG Number</div>
-            <div class="global-snapshot-value mono">{{ globalSnapshot()!['sgNumber'] || '-' }}</div>
-          </div>
-          <div class="global-snapshot-field">
-            <div class="global-snapshot-label">Property Type</div>
-            <div class="global-snapshot-value">{{ globalSnapshot()!['propertyType'] || '-' }}</div>
-          </div>
-          <div class="global-snapshot-field">
-            <div class="global-snapshot-label">Property Category</div>
-            <div class="global-snapshot-value">{{ globalSnapshot()!['propertyCategory'] || '-' }}</div>
-          </div>
-          <div class="global-snapshot-field">
-            <div class="global-snapshot-label">Property Type of Use</div>
-            <div class="global-snapshot-value">{{ globalSnapshot()!['propertyTypeOfUse'] || '-' }}</div>
-          </div>
-          <div class="global-snapshot-field">
-            <div class="global-snapshot-label">Billing Cycle</div>
-            <div class="global-snapshot-value">{{ globalSnapshot()!['billingCycle'] || '-' }}</div>
-          </div>
-          @if (globalSnapshot()!['marketValue']) {
-            <div class="global-snapshot-field">
-              <div class="global-snapshot-label">Market Value</div>
-              <div class="global-snapshot-value gs-market-value">R {{ formatCurrency(globalSnapshot()!['marketValue']) }}</div>
-            </div>
-          }
-        </div>
-        <div class="global-snapshot-badges">
-          <div class="gs-badge" [class.gs-badge-active]="globalSnapshot()!['indigentSubsidy']" [class.gs-badge-none]="!globalSnapshot()!['indigentSubsidy']">
-            <span class="gs-badge-icon">🛡️</span>
-            <span class="gs-badge-lbl">Indigent Subsidy</span>
-            <span class="gs-badge-val">{{ globalSnapshot()!['indigentSubsidy'] || 'None' }}</span>
-          </div>
-          <div class="gs-badge" [class.gs-badge-active]="globalSnapshot()!['consumerRpp']" [class.gs-badge-none]="!globalSnapshot()!['consumerRpp']">
-            <span class="gs-badge-icon">🔄</span>
-            <span class="gs-badge-lbl">Consumer RPP</span>
-            <span class="gs-badge-val">{{ globalSnapshot()!['consumerRpp'] || 'None' }}</span>
-          </div>
-          <div class="gs-badge" [class.gs-badge-active]="globalSnapshot()!['rebateStatus']" [class.gs-badge-none]="!globalSnapshot()!['rebateStatus']">
-            <span class="gs-badge-icon">🏷️</span>
-            <span class="gs-badge-lbl">Rebate Status</span>
-            <span class="gs-badge-val">{{ globalSnapshot()!['rebateStatus'] || 'None' }}</span>
-          </div>
-          <div class="gs-badge" [class.gs-badge-warn]="globalSnapshot()!['handoverStatus']" [class.gs-badge-none]="!globalSnapshot()!['handoverStatus']">
-            <span class="gs-badge-icon">⚠️</span>
-            <span class="gs-badge-lbl">Handover Status</span>
-            <span class="gs-badge-val">{{ globalSnapshot()!['handoverStatus'] || 'None' }}</span>
-          </div>
-          <div class="gs-badge" [class.gs-badge-active]="globalSnapshot()!['interestWaiver']" [class.gs-badge-none]="!globalSnapshot()!['interestWaiver']">
-            <span class="gs-badge-icon">💳</span>
-            <span class="gs-badge-lbl">Interest Waiver</span>
-            <span class="gs-badge-val">{{ globalSnapshot()!['interestWaiver'] || 'None' }}</span>
-          </div>
         </div>
       </div>
     }
@@ -223,40 +210,14 @@
         <!-- Account Info Tab -->
         @if (activeTab() === 'account') {
           <div class="tab-panel" data-testid="account-info-panel">
-            <div class="account-hero">
-              <div class="hero-content">
-                <div class="hero-avatar">👤</div>
-                <div class="hero-info">
-                  <h2 class="hero-name" data-testid="text-account-name">{{ safeStr(getAccountBasic()['fullNAME'] || getAccountAir()['name'] || getAccountName(selectedAccount())) }}</h2>
-                  <div class="hero-meta">
-                    <span class="hero-meta-item">💳 <strong data-testid="text-account-number">{{ safeStr(getAccountBasic()['accountNumber'] || selectedAccount()!.accountNumber) }}</strong></span>
-                    @if (safeStr(getAccountBasic()['accountDesc'] || getAccountAir()['accountDesc']) !== '-') {
-                      <span class="hero-meta-item">📋 {{ safeStr(getAccountBasic()['accountDesc'] || getAccountAir()['accountDesc']) }}</span>
-                    }
-                    @if (safeStr(getAccountBasic()['accountStatus'] || selectedAccount()!['accountStatus']) !== '-') {
-                      <span class="hero-meta-item acct-status-pill" [class.acct-status-active]="(getAccountBasic()['accountStatus'] || '').toLowerCase().includes('active')">{{ safeStr(getAccountBasic()['accountStatus'] || selectedAccount()!['accountStatus'] || selectedAccount()!['statusDesc']) }}</span>
-                    }
-                  </div>
-                </div>
-              </div>
-              <div class="hero-footer">
-                @if (safeStr(getAccountBasic()['contactNo'] || getAccountBasic()['contactNumber']) !== '-') {
-                  <span class="hero-footer-item">📞 {{ safeStr(getAccountBasic()['contactNo'] || getAccountBasic()['contactNumber']) }}</span>
+            <div class="acct-tab-toolbar">
+              <button class="rebuild-account-btn" (click)="rebuildFullAccount()" [disabled]="rebuildingAccount()" data-testid="button-rebuild-account">
+                @if (rebuildingAccount()) {
+                  <span class="rebuild-spinner"></span> Rebuilding...
+                } @else {
+                  🔄 Rebuild Account
                 }
-                @if (safeStr(getAccountBasic()['emailId'] || getAccountBasic()['email']) !== '-') {
-                  <span class="hero-footer-item">✉️ {{ safeStr(getAccountBasic()['emailId'] || getAccountBasic()['email']) }}</span>
-                }
-                @if (safeStr(getAccountBasic()['deliveryAddress'] || getAccountAir()['deliverAddress'] || getAccountBasic()['fullAddress']) !== '-') {
-                  <span class="hero-footer-item">📍 {{ safeStr(getAccountBasic()['deliveryAddress'] || getAccountAir()['deliverAddress'] || getAccountBasic()['fullAddress']) }}</span>
-                }
-                <button class="rebuild-account-btn" (click)="rebuildFullAccount()" [disabled]="rebuildingAccount()" data-testid="button-rebuild-account">
-                  @if (rebuildingAccount()) {
-                    <span class="rebuild-spinner"></span> Rebuilding...
-                  } @else {
-                    🔄 Rebuild Account
-                  }
-                </button>
-              </div>
+              </button>
             </div>
 
             <div class="acct-section-card">
