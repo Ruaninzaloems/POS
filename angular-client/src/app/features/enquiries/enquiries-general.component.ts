@@ -1160,18 +1160,28 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       let data: any = null;
       switch (tab) {
         case 'account':
-          const [basic, accountInfo, acctPropDetails, acctContactInfo, acctConsUnit, acctConsUnitById, acctRates, acctDepositAmt, acctMgmt, acctSectTitle, acctConsDetails] = await Promise.allSettled([
+          const acctFinYear = this.userFinYear() || this.getCurrentFinYear();
+          const acctFyParam: Record<string, string> = acctFinYear ? { finYear: acctFinYear } : {};
+          const acctForPRS: any = this.selectedAccount();
+          const acctUnitPartForSearch = acctForPRS?.unitPartitionID || acctForPRS?.unitPartition_ID;
+          const [basic, accountInfo, acctPropDetails, acctContactInfo, acctConsUnit, acctConsUnitById, acctRates, acctDepositAmt, acctMgmt, acctSectTitle, acctConsDetails, acctPropRatesSearch] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/basic-account-details/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-info-result/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/get-contact-details/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/consumption-units/${accountId}`)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/cons-unit-by-account`, { AccountId: String(accountId) })),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-rates-details/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-rates-details/${accountId}`, acctFyParam)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/deposit-amount`, { accountId: String(accountId) })),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-account-management/account-information`, { accountId: String(accountId) })),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/sectional-title-scheme`, { accountId: String(accountId) })),
             firstValueFrom(this.api.get<any>(`/api/platinum/receipt-prepaid/cons-account-details`, { accountId: String(accountId) })),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-rates-search`, {
+              finYear: acctFinYear || this.getCurrentFinYear(),
+              accountId: String(Number(accountId) || accountId),
+              ...(acctUnitPartForSearch ? { unitPartitionId: String(Number(acctUnitPartForSearch) || acctUnitPartForSearch) } : {}),
+              pageSize: '50'
+            })),
           ]);
           const basicVal = basic.status === 'fulfilled' ? (Array.isArray(basic.value) ? basic.value[0] : basic.value) : null;
           const airVal = accountInfo.status === 'fulfilled' ? (Array.isArray(accountInfo.value) ? accountInfo.value[0] : accountInfo.value) : null;
@@ -1401,6 +1411,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             } catch (e) { console.log('[account] valuation-by-unit failed:', e); }
           }
 
+          const acctPropRatesSearchVal = acctPropRatesSearch.status === 'fulfilled' ? acctPropRatesSearch.value : null;
+          let acctPropRatesData: any[] = acctPropRatesSearchVal?.data ? (Array.isArray(acctPropRatesSearchVal.data) ? acctPropRatesSearchVal.data : [acctPropRatesSearchVal.data]) : (Array.isArray(acctPropRatesSearchVal) ? acctPropRatesSearchVal : acctPropRatesSearchVal && !acctPropRatesSearchVal._error ? [acctPropRatesSearchVal] : []);
+          if (acctPropRatesData.length > 0) {
+            console.log('[account] property-rates-search keys:', Object.keys(acctPropRatesData[0]));
+            console.log('[account] property-rates-search sample:', JSON.stringify(acctPropRatesData[0]).substring(0, 800));
+          }
+
           data = {
             basic: mergedBasic,
             accountInfo: airVal,
@@ -1408,6 +1425,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             consUnit: acctConsUnitByIdVal && !acctConsUnitByIdVal._error ? acctConsUnitByIdVal : acctConsUnitVal,
             ratesDetails: acctRatesVal && !acctRatesVal._error ? acctRatesVal : null,
             valuationData: acctValuationData,
+            propertyRatesData: acctPropRatesData,
           };
           this.loadLinkedAccounts(accountId);
           break;
@@ -2717,8 +2735,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   getAccountActiveTariff(): string {
     const td = this.tabData();
     const rd = td?.ratesDetails;
-    return rd?.tariffDescription || rd?.tariffDesc || rd?.ratesTariffDescription ||
-      rd?.levyDescription || '-';
+    const pr = (td?.propertyRatesData || [])[0];
+    return rd?.tariffDescription || rd?.tariffDesc || rd?.ratesTariffDescription || rd?.levyDescription ||
+      pr?.tariffDescription || pr?.tariffDesc || pr?.ratesTariffDescription || pr?.levyDescription || '-';
   }
 
   getAccountMarketValue(): number | null {
