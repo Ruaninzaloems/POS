@@ -545,10 +545,12 @@
                         <input
                           type="number"
                           step="0.01"
-                          min="0"
+                          min="0.01"
+                          placeholder="Enter amount"
                           class="pay-input"
-                          [value]="item.amountToPay"
+                          [value]="item.amountToPay > 0 ? item.amountToPay : null"
                           (input)="basket.updateAmount(item.id, $any($event.target).valueAsNumber || 0)"
+                          (focus)="$event.target.select()"
                           [attr.data-testid]="'input-amount-' + item.id"
                           [disabled]="item.amountDue <= 0 && item.type === 'account'"
                         />
@@ -627,7 +629,7 @@
           <button
             class="process-btn"
             (click)="openPaymentPanel()"
-            [disabled]="!basket.hasItems() || basket.totalToPay() <= 0 || !sessionActive()"
+            [disabled]="!basket.hasItems() || basket.totalToPay() <= 0 || !sessionActive() || basket.hasZeroAmountItems()"
             data-testid="button-open-payment"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>

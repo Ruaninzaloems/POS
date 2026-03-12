@@ -1011,6 +1011,11 @@ export class PosComponent implements OnInit, OnDestroy {
       this.toast.error('Add items and enter amounts first.');
       return;
     }
+    const zeroItems = this.basket.orderedItems().filter(i => i.amountToPay <= 0);
+    if (zeroItems.length > 0) {
+      this.toast.error('Every item needs a positive amount before you can proceed.');
+      return;
+    }
     this.resetTenderFields();
     const total = this.basket.totalToPay();
     if (this.canTenderCash()) {
@@ -1222,6 +1227,11 @@ export class PosComponent implements OnInit, OnDestroy {
     }
     if (this.basket.orderedItems().length === 0) {
       this.toast.error('Basket is empty. Add items before processing.');
+      return;
+    }
+    const zeroItems = this.basket.orderedItems().filter(i => i.amountToPay <= 0);
+    if (zeroItems.length > 0) {
+      this.toast.error('All items must have a positive amount. Please enter an amount for each item.');
       return;
     }
     if (!this.user()?.user_ID) {

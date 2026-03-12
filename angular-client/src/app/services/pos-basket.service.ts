@@ -28,6 +28,8 @@ export class PosBasketService {
 
   hasItems = computed(() => this.items().length > 0);
 
+  hasZeroAmountItems = computed(() => this.items().some(i => i.amountToPay <= 0));
+
   itemsByType = computed(() => {
     const grouped: Record<BasketItemType, BasketItem[]> = {
       account: [],
