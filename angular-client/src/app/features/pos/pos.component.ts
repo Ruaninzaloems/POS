@@ -228,9 +228,78 @@ export class PosComponent implements OnInit, OnDestroy {
 
   changeExceedsLimit = computed(() => this.changeAmount() > this.MAX_CHANGE);
 
+  cardOverpay = computed(() => {
+    const tender = this.activeTender();
+    if (tender === 'card') {
+      const diff = this.cardAmount() - this.basket.totalToPay();
+      return diff > 0.005 ? Math.round(diff * 100) / 100 : 0;
+    }
+    if (tender === 'cash+card') {
+      const diff = this.cardAmount() - this.basket.totalToPay();
+      return diff > 0.005 ? Math.round(diff * 100) / 100 : 0;
+    }
+    return 0;
+  });
+
   shortfall = computed(() => {
-    const diff = this.basket.totalToPay() - this.effectiveTotalTendered();
+    const totalDue = this.basket.totalToPay();
+    const tender = this.activeTender();
+    if (tender === 'card') {
+      const diff = totalDue - this.cardAmount();
+      return diff > 0.005 ? diff : 0;
+    }
+    if (tender === 'cash+card') {
+      const combined = this.cashRoundedAmount() + this.cardAmount();
+      const diff = totalDue - combined;
+      return diff > 0.005 ? diff : 0;
+    }
+    const diff = totalDue - this.effectiveTotalTendered();
     return diff > 0.005 ? diff : 0;
+  });
+
+  tenderValidationErrors = computed((): string[] => {
+    const errors: string[] = [];
+    const tender = this.activeTender();
+    const totalDue = this.basket.totalToPay();
+
+    if (totalDue <= 0) return errors;
+
+    if (tender === 'cash') {
+      if (this.cashAmount() <= 0) errors.push('Enter cash amount');
+      if (this.changeAmount() > this.MAX_CHANGE)
+        errors.push(`Change cannot exceed R${this.MAX_CHANGE.toFixed(2)}`);
+    }
+
+    if (tender === 'card') {
+      if (this.cardAmount() <= 0) errors.push('Enter card amount');
+      if (this.cardOverpay() > 0)
+        errors.push('Card amount cannot exceed amount due — no change on card');
+      if (this.cardAmount() > 0 && Math.abs(this.cardAmount() - totalDue) > 0.005 && this.cardAmount() < totalDue)
+        errors.push(`Card underpayment: R${(totalDue - this.cardAmount()).toFixed(2)} short`);
+    }
+
+    if (tender === 'cash+card') {
+      if (this.cashAmount() <= 0 && this.cardAmount() <= 0) errors.push('Enter both cash and card amounts');
+      if (this.cardOverpay() > 0)
+        errors.push('Card portion cannot exceed total due');
+      if (this.shortfall() > 0)
+        errors.push(`Combined tender is R${this.shortfall().toFixed(2)} short`);
+      if (this.changeAmount() > this.MAX_CHANGE)
+        errors.push(`Cash change cannot exceed R${this.MAX_CHANGE.toFixed(2)}`);
+    }
+
+    return errors;
+  });
+
+  canCompletePayment = computed(() => {
+    if (this.processingPayment()) return false;
+    if (this.basket.orderedItems().length === 0) return false;
+    if (this.basket.totalToPay() <= 0) return false;
+    if (this.tenderValidationErrors().length > 0) return false;
+    if (this.shortfall() > 0) return false;
+    if (this.changeExceedsLimit()) return false;
+    if (this.cardOverpay() > 0) return false;
+    return true;
   });
 
   isSplitTender = computed(() => {
@@ -1249,12 +1318,21 @@ export class PosComponent implements OnInit, OnDestroy {
       this.toast.error('User session not found. Please log in again.');
       return;
     }
+    const validationErrors = this.tenderValidationErrors();
+    if (validationErrors.length > 0) {
+      this.toast.error(validationErrors[0]);
+      return;
+    }
     if (this.shortfall() > 0) {
-      this.toast.error('Total tendered is less than the amount due.');
+      this.toast.error(`Tendered amount is R${this.shortfall().toFixed(2)} short of amount due.`);
+      return;
+    }
+    if (this.cardOverpay() > 0) {
+      this.toast.error('Card amount cannot exceed amount due. No change can be given on card payments.');
       return;
     }
     if (this.changeExceedsLimit()) {
-      this.toast.error(`Change cannot exceed R${this.MAX_CHANGE.toFixed(2)}. Please reduce the tendered amount.`);
+      this.toast.error(`Cash change cannot exceed R${this.MAX_CHANGE.toFixed(2)}. Reduce the cash tendered amount.`);
       return;
     }
     if (this.cardAmount() > 0 && !this.cardNumber().replace(/\s/g, '')) {
@@ -1264,6 +1342,18 @@ export class PosComponent implements OnInit, OnDestroy {
     if (this.chequeAmount() > 0 && !this.chequeNumber()) {
       this.toast.error('Please enter the cheque number.');
       return;
+    }
+    const tender = this.activeTender();
+    if (tender === 'card' && Math.abs(this.cardAmount() - this.basket.totalToPay()) > 0.005) {
+      this.toast.error('Card amount must exactly match the amount due. No change on card.');
+      return;
+    }
+    if (tender === 'cash+card') {
+      const combined = this.cashRoundedAmount() + this.cardAmount();
+      if (combined < this.basket.totalToPay() - 0.005) {
+        this.toast.error(`Cash + Card combined is R${(this.basket.totalToPay() - combined).toFixed(2)} short.`);
+        return;
+      }
     }
 
     if (this.cashAmount() > 0) {

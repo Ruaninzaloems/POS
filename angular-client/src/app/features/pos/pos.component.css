@@ -1039,6 +1039,27 @@
   color: #dc2626;
   font-weight: 700;
 }
+.total-line.overpay-line {
+  color: #dc2626;
+  font-weight: 700;
+}
+.tender-validation-errors {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-top: 6px;
+}
+.tender-error-msg {
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 0;
+}
+.tender-error-msg::before {
+  content: '\26A0';
+  margin-right: 6px;
+}
 
 .complete-btn {
   display: flex;

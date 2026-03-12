@@ -876,19 +876,27 @@
           </div>
           @if (changeAmount() > 0) {
             <div class="total-line change-line" [class.change-exceeded]="changeExceedsLimit()">
-              <span>Change</span>
+              <span>Change (Cash)</span>
               <span class="mono" data-testid="text-change">R {{ formatCurrency(changeAmount()) }}</span>
             </div>
-            @if (changeExceedsLimit()) {
-              <div class="change-warning" data-testid="text-change-warning">
-                Change cannot exceed R200.00 — reduce tendered amount
-              </div>
-            }
+          }
+          @if (cardOverpay() > 0) {
+            <div class="total-line overpay-line">
+              <span>Card Overpay</span>
+              <span class="mono" data-testid="text-card-overpay">R {{ formatCurrency(cardOverpay()) }}</span>
+            </div>
           }
           @if (shortfall() > 0) {
             <div class="total-line shortfall-line">
               <span>Shortfall</span>
               <span class="mono" data-testid="text-shortfall">R {{ formatCurrency(shortfall()) }}</span>
+            </div>
+          }
+          @if (tenderValidationErrors().length > 0) {
+            <div class="tender-validation-errors" data-testid="tender-validation-errors">
+              @for (err of tenderValidationErrors(); track $index) {
+                <div class="tender-error-msg">{{ err }}</div>
+              }
             </div>
           }
         </div>
@@ -907,7 +915,7 @@
         <button
           class="complete-btn"
           (click)="processPayment()"
-          [disabled]="processingPayment() || shortfall() > 0 || changeExceedsLimit()"
+          [disabled]="!canCompletePayment()"
           data-testid="button-complete-payment"
         >
           @if (processingPayment()) {
