@@ -2853,7 +2853,7 @@
   word-break: break-word;
 }
 .gs-market-value { color: var(--platinum-accent, #c9a84c); }
-.gs-deposit-value { color: var(--platinum-primary, #0f2b46); font-weight: 700; }
+.gs-deposit-value { color: #fff; font-weight: 700; }
 .global-snapshot-badges {
   display: flex;
   flex-wrap: wrap;
