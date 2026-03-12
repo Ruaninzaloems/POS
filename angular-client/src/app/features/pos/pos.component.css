@@ -507,6 +507,27 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+.account-status-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-left: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  vertical-align: middle;
+}
+.account-status-badge.status-active {
+  color: #16a34a;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+.account-status-badge.status-inactive {
+  color: #dc2626;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
 .full-btn-disabled {
   opacity: 0.4;
   cursor: not-allowed;

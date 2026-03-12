@@ -506,7 +506,11 @@
                     </button>
                   </div>
                   <div class="cart-item-info">
-                    <span class="cart-item-name">{{ item.label }}</span>
+                    <span class="cart-item-name">{{ item.label }}
+                      @if (item.type === 'account' && item.accountData?.accountStatus) {
+                        <span class="account-status-badge" [class.status-active]="item.accountData?.accountStatus === 'Active'" [class.status-inactive]="item.accountData?.accountStatus !== 'Active'">{{ item.accountData?.accountStatus }}</span>
+                      }
+                    </span>
                     <span class="cart-item-desc">{{ item.description }}</span>
                     @if (item.type === 'account' && item.accountData?.hasPrepaidMeter) {
                       <button class="prepaid-chip" (click)="addPrepaidFromAccount(item)" [attr.data-testid]="'button-prepaid-' + item.id">
@@ -550,12 +554,9 @@
                           (input)="basket.updateAmount(item.id, $any($event.target).valueAsNumber || 0)"
                           (focus)="$event.target.select()"
                           [attr.data-testid]="'input-amount-' + item.id"
-                          [disabled]="item.amountDue <= 0 && item.type === 'account'"
                         />
                         @if (item.amountDue > 0) {
                           <button class="full-btn" (click)="basket.payFullAmount(item.id)" title="Pay full amount" [attr.data-testid]="'button-full-' + item.id">FULL</button>
-                        } @else {
-                          <span class="full-btn full-btn-disabled" title="Nothing outstanding — account is in credit">R 0.00</span>
                         }
                       </div>
                     </div>

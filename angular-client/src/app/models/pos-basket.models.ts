@@ -22,6 +22,7 @@ export interface AccountItemData {
   accountNumber: string;
   name: string;
   address: string;
+  accountStatus: string;
   billId: number;
   cutOffID: number;
   cutOffAmount: number;
