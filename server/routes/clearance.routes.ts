@@ -470,7 +470,8 @@ export function registerClearanceRoutes(app: Express, httpServer: Server): void 
         accHolderName: miscBody.accHolderName || '',
       };
 
-      console.log(`[misc-submit] Sanitized payload:`, JSON.stringify(sanitizedPayload));
+      const logSafe = {...sanitizedPayload, cardNo: sanitizedPayload.cardNo ? '****' : '', expiryDate: sanitizedPayload.expiryDate ? '**/**' : ''};
+      console.log(`[misc-submit] Sanitized payload:`, JSON.stringify(logSafe));
 
       miscIdempotencyToken = req.headers['x-idempotency-token'] as string | undefined;
       miscDedupKey = `misc|${sanitizedPayload.userId}|${sanitizedPayload.scoaItem}|${sanitizedPayload.totalAmount}|${sanitizedPayload.paymentType}`;
@@ -529,6 +530,19 @@ export function registerClearanceRoutes(app: Express, httpServer: Server): void 
           break;
         }
         console.warn(`[misc-submit] ${lbl} (${ep}) returned error (${data?.status}):`, JSON.stringify(data)?.substring(0, 500));
+      }
+
+      if (data && !data._error) {
+        if (!data.ids) {
+          const rid = data.receiptID || data.receiptId || data.receipt_ID || data.id;
+          if (rid && Number(rid) > 0) {
+            data.ids = [Number(rid)];
+            console.log(`[misc-submit] Normalized ids from receiptID: [${data.ids}]`);
+          }
+        }
+        if (data.isSuccess === undefined && !data._error && (data.ids?.length > 0 || data.receiptNo)) {
+          data.isSuccess = true;
+        }
       }
 
       recordPaymentSubmission(miscDedupKey, data, miscIdempotencyToken);

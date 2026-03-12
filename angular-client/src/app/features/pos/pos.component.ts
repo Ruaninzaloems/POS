@@ -1845,70 +1845,36 @@ export class PosComponent implements OnInit, OnDestroy {
     const now = new Date();
     const receiptDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-    const miscAccount = {
-      capturerID: userId,
-      accountID: 0,
-      account_ID: 0,
-      oldAccountCode: '',
-      name: [md.lastName, md.initials].filter(Boolean).join(' ') || 'Walk-in',
-      sgNumber: '',
-      address: '',
-      outstandingAmount: item.amountToPay,
-      outStandingAmt: item.amountToPay,
-      accountStatus: 'Active',
-      accountType: 'Miscellaneous',
-      paymentAmount: item.amountToPay,
-      accountNumber: '',
-      receiptID: 0,
-      billId: 0,
-      clearanceId: 0,
+    const payload = {
+      userId,
+      cashierId: sessionCashierId,
+      cashOfficeId: sessionOfficeId,
+      finYear,
+      lastName: md.lastName || '',
+      initials: md.initials || '',
       miscellaneousPaymentGroup: md.groupId,
       scoaItem: md.scoaItemId,
       description: md.description || md.scoaItemName,
-      lastName: md.lastName || '',
-      initials: md.initials || '',
+      receiptDate,
       totalAmount: item.amountToPay,
-      amount: item.amountToPay - vatAmount,
       vatAmount,
+      amount: item.amountToPay - vatAmount,
+      tenderAmount: tenderAmt,
+      changeAmount: isCardPayment ? 0 : Math.max(0, changeAmt),
+      paymentType: paymentTypeId,
       vatPercentage: md.vatPercentage || 0,
       isVatable: md.isVatable || false,
+      cardNo: isCardPayment ? cardNum : '',
+      expiryDate: isCardPayment ? this.formatCardExpiry(this.cardExpiry()) : '',
+      chequeNo: '',
+      bankBranch: '',
+      bankBranchCode: '',
+      accHolderName: [md.lastName, md.initials].filter(Boolean).join(' ') || 'Walk-in',
     };
-
-    const payload = {
-      accounts: [miscAccount],
-      requestModel: {
-        finYear,
-        receiptDate,
-        totalAmount: item.amountToPay,
-        tenderAmount: tenderAmt,
-        changeAmount: isCardPayment ? 0 : Math.max(0, changeAmt),
-        paymentType: paymentTypeId,
-        paymentOption: this.getPaymentOptionId(),
-        outStandingAmount: item.amountToPay,
-        cardNumber: isCardPayment ? cardNum : '',
-        expiryDate: isCardPayment ? this.formatCardExpiry(this.cardExpiry()) : '',
-        processingMonth: 0,
-        chequeNumber: '',
-        chequeDate: receiptDate,
-        accountHolderName: [md.lastName, md.initials].filter(Boolean).join(' ') || 'Walk-in',
-        bankName: '',
-        bankBranchCode: '',
-        cutOffID: 0,
-        debtArrangementId: 0,
-        cutOffAmount: 0,
-        debtAmount: 0,
-        sundryDebtorsId: '',
-        cashierId: sessionCashierId,
-        cashOfficeId: sessionOfficeId,
-        apiTransactionID: 0,
-        isReconciled: 0,
-        isCancelled: 0,
-      },
-    };
-    const logSafe = {...payload, requestModel: {...payload.requestModel, cardNumber: payload.requestModel.cardNumber ? '****' + payload.requestModel.cardNumber.slice(-4) : '', expiryDate: payload.requestModel.expiryDate ? '**/**' : ''}};
-    console.log(`[submitMiscPayment] Payload via submit-multiple-payment:`, JSON.stringify(logSafe).substring(0, 1500));
+    const logSafe = {...payload, cardNo: payload.cardNo ? '****' + payload.cardNo.slice(-4) : ''};
+    console.log(`[submitMiscPayment] Payload via billing-payment-miscellaneous/submit:`, JSON.stringify(logSafe).substring(0, 1500));
     const result: any = await firstValueFrom(
-      this.api.postWithIdempotency(`/api/platinum/billing-payment/submit-multiple-payment/${userId}`, payload, idempotencyToken)
+      this.api.postWithIdempotency('/api/platinum/billing-payment-miscellaneous/submit', payload, idempotencyToken)
     );
     console.log(`[submitMiscPayment] Response:`, JSON.stringify(result).substring(0, 500));
     if (result && result.isSuccess === false) {

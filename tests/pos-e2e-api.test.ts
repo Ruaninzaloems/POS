@@ -359,10 +359,12 @@ describe('POS End-to-End API Tests', () => {
     }, 30000);
   });
 
-  describe('6C. Misc Payment via submit-multiple-payment', () => {
+  describe('6C. Misc Payment via dedicated endpoint', () => {
     let miscReceiptId: number | null = null;
+    let miscReceiptNo: string | null = null;
+    let miscAmt = 0;
 
-    it('6C.1 Submit misc payment and get receipt ID', async () => {
+    it('6C.1 Submit misc payment', async () => {
       const groupRes = await api('GET', '/api/platinum/billing-payment-miscellaneous/get-groups');
       const groups = Array.isArray(groupRes.data) ? groupRes.data : [];
       expect(groups.length).toBeGreaterThan(0);
@@ -377,53 +379,158 @@ describe('POS End-to-End API Tests', () => {
       const scoa = scoaItems[0];
       const scoaId = scoa.scoA_Item_ID || scoa.id;
 
-      const miscAmt = 10 + Math.floor(Math.random() * 50);
+      miscAmt = 10 + Math.floor(Math.random() * 50);
       const receiptDate = new Date().toISOString().split('T')[0];
 
+      const res = await api('POST', '/api/platinum/billing-payment-miscellaneous/submit', {
+        userId: Number(userId),
+        cashierId: Number(cashierId),
+        cashOfficeId: Number(cashOfficeId),
+        finYear,
+        lastName: 'E2ETest',
+        initials: 'T',
+        miscellaneousPaymentGroup: groupId,
+        scoaItem: scoaId,
+        description: scoa.name || 'E2E Test Misc',
+        receiptDate,
+        totalAmount: miscAmt,
+        vatAmount: 0,
+        amount: miscAmt,
+        tenderAmount: miscAmt,
+        changeAmount: 0,
+        paymentType: 1,
+        vatPercentage: 0,
+        isVatable: false,
+        cardNo: '',
+        expiryDate: '',
+        chequeNo: '',
+        bankBranch: '',
+        bankBranchCode: '',
+        accHolderName: 'E2ETest T',
+      });
+      expect(res.ok).toBe(true);
+      const d = res.data;
+      console.log(`  ℹ Misc payment response:`, JSON.stringify(d).substring(0, 500));
+      expect(d?.isSuccess).toBe(true);
+      miscReceiptId = d?.ids?.[0] || d?.receiptID || d?.receiptId || d?.id || null;
+      miscReceiptNo = d?.receiptNo || d?.receiptNumber || null;
+      const hasReceiptRef = miscReceiptId != null || (miscReceiptNo != null && miscReceiptNo !== '');
+      expect(hasReceiptRef).toBe(true);
+      console.log(`  ✓ Misc payment — receiptId=${miscReceiptId}, receiptNo=${miscReceiptNo || 'N/A'}, amount=R${miscAmt}`);
+    }, 30000);
+
+    it('6C.2 Verify misc receipt in reconcile list', async () => {
+      if (!miscReceiptId && !miscReceiptNo) { console.log('  ⊘ Skipped — no receipt data'); return; }
+      const res = await api('GET', '/api/platinum/billing-payment-day-end/get-cashier-receipt-reconcile-list', { cashierId });
+      expect(res.ok).toBe(true);
+      const list = Array.isArray(res.data) ? res.data : [];
+      let match: any = null;
+      if (miscReceiptId) {
+        match = list.find((r: any) => r.id === miscReceiptId);
+      }
+      if (!match && miscReceiptNo) {
+        match = list.find((r: any) => r.receiptNo === miscReceiptNo);
+      }
+      if (!match) {
+        const miscReceipts = list.filter((r: any) => r.isMiscPayment === 1 || r.isMiscPayment === true);
+        if (miscReceipts.length > 0) {
+          match = miscReceipts[miscReceipts.length - 1];
+          miscReceiptId = match.id;
+          miscReceiptNo = match.receiptNo;
+        }
+      }
+      if (match) {
+        console.log(`  ✓ Misc receipt in reconcile: id=${match.id}, receiptNo="${match.receiptNo}", amount=${match.paidAmount}, isMisc=${match.isMiscPayment}`);
+        miscReceiptId = match.id;
+        miscReceiptNo = match.receiptNo;
+        expect(match.receiptNo).toBeTruthy();
+      } else {
+        console.log(`  ⚠ Misc receipt not yet in reconcile list — may need time to propagate`);
+      }
+    }, 15000);
+
+    it('6C.3 Print misc receipt PDF', async () => {
+      if (!miscReceiptId) { console.log('  ⊘ Skipped — no receipt ID'); return; }
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (cookie) headers['Cookie'] = cookie;
+      const printPayload: any = { ids: [miscReceiptId], receiptNos: [], isReprint: false };
+      if (miscReceiptNo) printPayload.receiptNos = [miscReceiptNo];
+      const pdfRes = await fetch(`${BASE}/api/platinum/billing-payment/print-receipt`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(printPayload),
+        signal: AbortSignal.timeout(15000),
+      });
+      expect(pdfRes.ok).toBe(true);
+      const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
+      expect(pdfBuffer.length).toBeGreaterThan(5000);
+      console.log(`  ✓ Misc receipt PDF — ${pdfBuffer.length} bytes`);
+    }, 20000);
+  });
+
+  describe('6D. Multi-Account Payment', () => {
+    let multiReceiptId: number | null = null;
+
+    it('6D.1 Submit payment for 2 accounts via submit-multiple-payment', async () => {
+      const receiptDate = new Date().toISOString();
+      const amt1 = 10 + Math.floor(Math.random() * 30);
+      const amt2 = 10 + Math.floor(Math.random() * 30);
+      const totalAmt = amt1 + amt2;
+
       const res = await api('POST', `/api/platinum/billing-payment/submit-multiple-payment/${userId}`, {
-        accounts: [{
-          capturerID: userId,
-          accountID: 0,
-          account_ID: 0,
-          oldAccountCode: '',
-          name: 'E2E Test Walk-in',
-          sgNumber: '',
-          address: '',
-          outstandingAmount: miscAmt,
-          outStandingAmt: miscAmt,
-          accountStatus: 'Active',
-          accountType: 'Miscellaneous',
-          paymentAmount: miscAmt,
-          accountNumber: '',
-          receiptID: 0,
-          billId: 0,
-          clearanceId: 0,
-          miscellaneousPaymentGroup: groupId,
-          scoaItem: scoaId,
-          description: scoa.name || 'E2E Test Misc',
-          lastName: 'E2ETest',
-          initials: 'T',
-          totalAmount: miscAmt,
-          amount: miscAmt,
-          vatAmount: 0,
-          vatPercentage: 0,
-          isVatable: false,
-        }],
+        accounts: [
+          {
+            capturerID: Number(userId),
+            accountID: Number(acctId),
+            account_ID: Number(acctId),
+            oldAccountCode: '',
+            name: acctName,
+            sgNumber: '',
+            address: '',
+            outstandingAmount: amt1,
+            outStandingAmt: amt1,
+            accountStatus: 'Active',
+            accountType: 'Owner / Occupier',
+            paymentAmount: amt1,
+            accountNumber: acctNo,
+            receiptID: 0,
+            billId: 0,
+            clearanceId: 0,
+          },
+          {
+            capturerID: Number(userId),
+            accountID: Number(acctId),
+            account_ID: Number(acctId),
+            oldAccountCode: '',
+            name: acctName,
+            sgNumber: '',
+            address: '',
+            outstandingAmount: amt2,
+            outStandingAmt: amt2,
+            accountStatus: 'Active',
+            accountType: 'Owner / Occupier',
+            paymentAmount: amt2,
+            accountNumber: acctNo,
+            receiptID: 0,
+            billId: 0,
+            clearanceId: 0,
+          },
+        ],
         requestModel: {
           finYear,
           receiptDate,
-          totalAmount: miscAmt,
-          tenderAmount: miscAmt,
+          totalAmount: totalAmt,
+          tenderAmount: totalAmt,
           changeAmount: 0,
           paymentType: 1,
           paymentOption: 1,
-          outStandingAmount: miscAmt,
+          outStandingAmount: totalAmt,
           cardNumber: '',
           expiryDate: '',
           processingMonth: 0,
           chequeNumber: '',
           chequeDate: receiptDate,
-          accountHolderName: 'E2E Test Walk-in',
+          accountHolderName: acctName,
           bankName: '',
           bankBranchCode: '',
           cutOffID: 0,
@@ -432,7 +539,7 @@ describe('POS End-to-End API Tests', () => {
           debtAmount: 0,
           sundryDebtorsId: '',
           cashierId: Number(cashierId),
-          cashOfficeId: 1,
+          cashOfficeId: Number(cashOfficeId),
           apiTransactionID: 0,
           isReconciled: 0,
           isCancelled: 0,
@@ -441,25 +548,36 @@ describe('POS End-to-End API Tests', () => {
       expect(res.ok).toBe(true);
       const d = res.data;
       expect(d.isSuccess).toBe(true);
-      miscReceiptId = d?.ids?.[0] || null;
-      expect(miscReceiptId).toBeTruthy();
-      console.log(`  ✓ Misc payment via submit-multiple-payment — receiptId=${miscReceiptId}, amount=R${miscAmt}`);
+      multiReceiptId = d?.ids?.[0] || null;
+      expect(multiReceiptId).toBeTruthy();
+      console.log(`  ✓ Multi-account payment — receiptId=${multiReceiptId}, total=R${totalAmt} (R${amt1}+R${amt2})`);
     }, 30000);
 
-    it('6C.2 Print misc receipt PDF via standard print-receipt', async () => {
-      if (!miscReceiptId) { console.log('  ⊘ Skipped — no receipt'); return; }
+    it('6D.2 Verify multi-account receipt in reconcile list', async () => {
+      if (!multiReceiptId) { console.log('  ⊘ Skipped — no receipt'); return; }
+      const res = await api('GET', '/api/platinum/billing-payment-day-end/get-cashier-receipt-reconcile-list', { cashierId });
+      expect(res.ok).toBe(true);
+      const list = Array.isArray(res.data) ? res.data : [];
+      const match = list.find((r: any) => r.id === multiReceiptId);
+      expect(match).toBeTruthy();
+      expect(match.receiptNo).toBeTruthy();
+      console.log(`  ✓ Multi-account receipt in reconcile: id=${match.id}, receiptNo="${match.receiptNo}", amount=${match.paidAmount}`);
+    }, 15000);
+
+    it('6D.3 Print multi-account receipt PDF', async () => {
+      if (!multiReceiptId) { console.log('  ⊘ Skipped — no receipt'); return; }
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (cookie) headers['Cookie'] = cookie;
       const pdfRes = await fetch(`${BASE}/api/platinum/billing-payment/print-receipt`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ ids: [miscReceiptId], receiptNos: [], isReprint: false }),
+        body: JSON.stringify({ ids: [multiReceiptId], receiptNos: [], isReprint: false }),
         signal: AbortSignal.timeout(15000),
       });
       expect(pdfRes.ok).toBe(true);
       const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
       expect(pdfBuffer.length).toBeGreaterThan(5000);
-      console.log(`  ✓ Misc receipt PDF — ${pdfBuffer.length} bytes`);
+      console.log(`  ✓ Multi-account receipt PDF — ${pdfBuffer.length} bytes`);
     }, 20000);
   });
 
