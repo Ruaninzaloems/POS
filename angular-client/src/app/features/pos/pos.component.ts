@@ -1024,6 +1024,14 @@ export class PosComponent implements OnInit, OnDestroy {
       this.toast.error('No active cashier session. Cannot process payments.');
       return;
     }
+    if (this.basket.orderedItems().length === 0) {
+      this.toast.error('Basket is empty. Add items before processing.');
+      return;
+    }
+    if (!this.user()?.user_ID) {
+      this.toast.error('User session not found. Please log in again.');
+      return;
+    }
     if (this.shortfall() > 0) {
       this.toast.error('Total tendered is less than the amount due.');
       return;
@@ -1090,7 +1098,8 @@ export class PosComponent implements OnInit, OnDestroy {
             await firstValueFrom(
               this.api.post(`/api/platinum/billing-payment/save-multiple-account-payment?userId=${userId}`, stagingPayload)
             );
-          } catch {
+          } catch (stageErr: any) {
+            console.warn('[processPayment] Staging save failed (non-blocking):', stageErr?.message);
           }
 
           if (isSplit && this.cashAmount() > 0 && this.cardAmount() > 0) {
