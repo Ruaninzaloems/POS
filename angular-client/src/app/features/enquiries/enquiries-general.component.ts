@@ -1505,6 +1505,10 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
               cuVal?.nonStandAddLine1 || snapSa?.fullAddress || snapSa?.address || '';
             snap['accountType'] = acctConsDetailsVal?.accountDesc || propV?.accountDesc || acctMgmtVal?.accountDesc || basicVal?.accountDesc || snapSa?.accountDesc || '';
             snap['sgNumber'] = propV?.sgNumber || cuVal?.sgNumber || snapSa?.sgNumber || '';
+            const sgParts = (snap['sgNumber'] || '').split('/');
+            snap['erfNumber'] = sgParts.length >= 3 ? sgParts[2].replace(/^0+/, '') || '0' : (cuVal?.erfNumber || propV?.erfNumber || '');
+            snap['portionNumber'] = sgParts.length >= 4 ? sgParts[3].replace(/^0+/, '') || '0' : '';
+            snap['town'] = acctConsDetailsVal?.town || propV?.town || cuVal?.nonStandAddSuburb || snapSa?.town || '';
             snap['propertyType'] = propV?.propertyTypeDesc || propV?.propertyType || this.resolvePropertyType(cuVal?.propertyTypeID, propV?.sgNumber || cuVal?.sgNumber, cuVal?.sectionNumber, cuVal?.farmID) || '';
             snap['propertyCategory'] = propV?.propertyCategory || acctConsDetailsVal?.zoneDesc || propV?.zoneDesc || propV?.category || '';
             snap['propertyTypeOfUse'] = acctConsDetailsVal?.typeOfUseDesc || propV?.typeOfUse || propV?.typeofUse || propV?.typeOfUseDesc || '';
