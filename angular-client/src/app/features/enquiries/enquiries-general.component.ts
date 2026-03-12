@@ -1587,7 +1587,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             this.cachedGet(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`),
             this.cachedGet(`/api/platinum/billing-enquiry/consumption-units/${accountId}`),
             this.cachedGet(`/api/platinum/billing-enquiry/cons-unit-by-account`, { AccountId: String(accountId) }),
-            this.cachedGet(`/api/platinum/billing-enquiry/account-rates-details/${accountId}`),
+            this.cachedGet(`/api/platinum/billing-enquiry/account-rates-details/${accountId}`, { finYear: this.ratesFinYear() || this.getCurrentFinYear() }),
             this.cachedGet(`/api/platinum/billing-enquiry/metered-services-on-account/${accountId}`),
             this.cachedGet(`/api/platinum/billing-enquiry/transfer-ownership/${accountId}`),
             this.cachedGet(`/api/platinum/billing-enquiry/account-info-result/${accountId}`),
@@ -1659,6 +1659,55 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
                 'propertyCategory', 'category', 'billingCycle', 'accountableOwnerName', 'ownerName'];
               for (const k of ratesEnrichKeys) {
                 if (propRatesVal[k] != null && propRatesVal[k] !== '' && !propVal[k]) propVal[k] = propRatesVal[k];
+              }
+            }
+
+            const earlyConsAcct = propConsAcctDetails.status === 'fulfilled' ? (Array.isArray(propConsAcctDetails.value) ? propConsAcctDetails.value[0] : propConsAcctDetails.value) : null;
+            if (earlyConsAcct && !earlyConsAcct._error) {
+              if (!propVal['town'] && earlyConsAcct.town) propVal['town'] = earlyConsAcct.town;
+              if (!propVal['allotmentArea'] && earlyConsAcct.town) propVal['allotmentArea'] = earlyConsAcct.town;
+              if (!propVal['typeOfUseDesc'] && earlyConsAcct.typeOfUseDesc) propVal['typeOfUseDesc'] = earlyConsAcct.typeOfUseDesc;
+              if (!propVal['zoneDesc'] && earlyConsAcct.zoneDesc) propVal['zoneDesc'] = earlyConsAcct.zoneDesc;
+              if (!propVal['propertyCategory'] && earlyConsAcct.zoneDesc) propVal['propertyCategory'] = earlyConsAcct.zoneDesc;
+            }
+
+            const earlyAcctMgmt = propAcctMgmt.status === 'fulfilled' ? (Array.isArray(propAcctMgmt.value) ? propAcctMgmt.value[0] : propAcctMgmt.value) : null;
+            if (earlyAcctMgmt && !earlyAcctMgmt._error) {
+              if (!propVal['cycleDescription'] && !propVal['billingCycle']) {
+                const acctMgmtInfoVal = await this.cachedGet(`/api/platinum/billing-account-management/account-information`, { accountId: String(accountId) });
+                const mgmtInfo = acctMgmtInfoVal && !acctMgmtInfoVal._error ? acctMgmtInfoVal : null;
+                if (mgmtInfo?.cycleDescription) {
+                  propVal['cycleDescription'] = mgmtInfo.cycleDescription;
+                } else if (earlyAcctMgmt.billingCycleID) {
+                  propVal['billingCycleID'] = earlyAcctMgmt.billingCycleID;
+                }
+              }
+            }
+
+            const cuForStatus = propConsUnitByIdVal || propConsUnitVal;
+            if (cuForStatus && !cuForStatus._error) {
+              if (!propVal['propertyStatus'] || typeof propVal['propertyStatus'] === 'number') {
+                const statusId = cuForStatus.unitStatusID;
+                const statusMap: Record<number, string> = { 1: 'Active', 2: 'Inactive', 3: 'Suspended', 4: 'Closed' };
+                propVal['propertyStatus'] = statusMap[statusId] || (statusId != null ? `Status ${statusId}` : '-');
+              }
+              if (typeof propVal['registrationStatus'] === 'number') {
+                const regId = propVal['registrationStatus'];
+                propVal['registrationStatus'] = regId === 186 ? 'Registered' : (regId > 0 ? `Status ${regId}` : '-');
+              }
+              if ((!propVal['allotmentArea'] || typeof propVal['allotmentArea'] === 'number') && earlyConsAcct?.town) {
+                propVal['allotmentArea'] = earlyConsAcct.town;
+              }
+              if (typeof propVal['magisterialID'] === 'number' && !propVal['magisterialDistrict']) {
+                propVal['magisterialDistrict'] = `District ${propVal['magisterialID']}`;
+              }
+            }
+
+            const basicAcct = await this.cachedGet(`/api/platinum/billing-enquiry/basic-account-details/${accountId}`);
+            if (basicAcct && !basicAcct._error) {
+              if (!propVal['accountableOwnerName'] && !propVal['ownerName']) {
+                const fn = (basicAcct.fullNAME || '').trim();
+                if (fn) propVal['accountableOwnerName'] = fn;
               }
             }
           }
@@ -1738,6 +1787,23 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
               } catch (e) {
                 console.log('[property] supplementary valuations fetch failed:', e);
               }
+            }
+          }
+          if (propValuations.length > 0 && propVal) {
+            const sv = propValuations[0];
+            if (!propVal['valuationCategory'] && !propVal['valuationCat']) {
+              const tariff = sv.ratesTariffCode || '';
+              if (tariff) {
+                const tariffParts = tariff.split(' - ');
+                propVal['valuationCategory'] = tariffParts.length > 1 ? tariffParts.slice(1).join(' - ').trim() : tariff;
+              }
+            }
+            if (!propVal['partitionDescription']) {
+              propVal['partitionDescription'] = sv.address || sv.description || '';
+            }
+            if (!propVal['partitionMarketValue'] && !propVal['partMarketValue']) {
+              const smv = sv.standMarketValue || sv.marketValue;
+              if (smv != null && smv !== '') propVal['partitionMarketValue'] = smv;
             }
           }
           let propRebatesLevies: any[] = [];
@@ -2971,6 +3037,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const regStatus = p.registrationStatus || p.regStatus;
     if (regStatus === true || regStatus === 'true' || regStatus === 1 || regStatus === '1') return 'Registered';
     if (typeof regStatus === 'string' && regStatus.length > 0) return regStatus;
+    if (typeof regStatus === 'number' && regStatus > 0) return 'Registered';
     if (p.rollNumber) return 'Registered';
     return '-';
   }
