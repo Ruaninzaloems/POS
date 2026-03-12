@@ -128,6 +128,19 @@ export class PosComponent implements OnInit, OnDestroy {
   dropBoxAmount = signal(0);
   dropBoxReference = signal('');
   submittingDropBox = signal(false);
+  dropBoxStep = signal<'input' | 'confirm' | 'submitting' | 'success' | 'error'>('input');
+  dropBoxError = signal('');
+  dropBoxReceiptNo = signal<string | null>(null);
+  dropBoxHistory = signal<any[]>([]);
+  dropBoxHistoryLoading = signal(false);
+  showDropBoxHistory = signal(false);
+  dropBoxDenominations = [
+    { label: 'R200', value: 200 },
+    { label: 'R100', value: 100 },
+    { label: 'R50', value: 50 },
+    { label: 'R20', value: 20 },
+    { label: 'R10', value: 10 },
+  ];
 
   clearanceSearchId = signal('');
   clearanceSearching = signal(false);
@@ -1867,11 +1880,33 @@ export class PosComponent implements OnInit, OnDestroy {
     }
     this.dropBoxAmount.set(0);
     this.dropBoxReference.set('');
+    this.dropBoxStep.set('input');
+    this.dropBoxError.set('');
+    this.dropBoxReceiptNo.set(null);
+    this.showDropBoxHistory.set(false);
+    this.dropBoxHistory.set([]);
     this.showDropBoxDialog.set(true);
   }
 
   closeDropBoxDialog(): void {
+    if (this.dropBoxStep() === 'submitting') return;
     this.showDropBoxDialog.set(false);
+  }
+
+  addDropBoxDenom(value: number): void {
+    this.dropBoxAmount.update(v => Math.round((v + value) * 100) / 100);
+  }
+
+  clearDropBoxAmount(): void {
+    this.dropBoxAmount.set(0);
+  }
+
+  reviewDropBox(): void {
+    if (this.dropBoxAmount() <= 0) {
+      this.toast.error('Please enter a valid drop amount greater than zero.');
+      return;
+    }
+    this.dropBoxStep.set('confirm');
   }
 
   async submitDropBox(): Promise<void> {
@@ -1883,23 +1918,64 @@ export class PosComponent implements OnInit, OnDestroy {
       this.toast.error('Enter an amount for the drop box.');
       return;
     }
+
+    const finYear = this.user()?.finYear || this.cashierInfo()?.finYear;
+    if (!finYear) {
+      this.toast.error('Financial year missing from your session. Please log in again.');
+      this.dropBoxStep.set('input');
+      return;
+    }
+
+    this.dropBoxStep.set('submitting');
     this.submittingDropBox.set(true);
     try {
-      await firstValueFrom(
+      const result: any = await firstValueFrom(
         this.api.post('/api/platinum/drop-box/submit', {
           amount: this.dropBoxAmount(),
-          description: this.dropBoxReference() || 'Cash Drop',
-          userId: this.user()?.user_ID,
-          finYear: this.cashierInfo()?.finYear || this.user()?.finYear || '',
+          description: this.dropBoxReference()?.trim() || 'Cash Drop to Drop Box',
+          userId: Number(this.user()?.user_ID || 0),
+          finYear,
           paymentType: 1,
         })
       );
-      this.toast.success('Cash drop recorded successfully.');
-      this.showDropBoxDialog.set(false);
+
+      if (result?.success === false || result?.error) {
+        this.dropBoxError.set(result?.message || result?.error || 'Failed to submit drop box payment.');
+        this.dropBoxStep.set('error');
+        return;
+      }
+
+      this.dropBoxReceiptNo.set(result?.receiptNo || null);
+      this.dropBoxStep.set('success');
+      this.toast.success(`R ${this.dropBoxAmount().toFixed(2)} has been dropped to the drop box.`);
     } catch (e: any) {
-      this.toast.error(e?.error?.message || 'Drop box submission failed.');
+      this.dropBoxError.set(e?.error?.message || e?.message || 'Failed to submit drop box payment.');
+      this.dropBoxStep.set('error');
     } finally {
       this.submittingDropBox.set(false);
+    }
+  }
+
+  async toggleDropBoxHistory(): Promise<void> {
+    this.showDropBoxHistory.update(v => !v);
+    if (this.showDropBoxHistory() && this.dropBoxHistory().length === 0) {
+      await this.loadDropBoxHistory();
+    }
+  }
+
+  async loadDropBoxHistory(): Promise<void> {
+    const cashierId = this.cashierInfo()?.id || this.cashierInfo()?.cashier_ID;
+    if (!cashierId) return;
+    this.dropBoxHistoryLoading.set(true);
+    try {
+      const result: any = await firstValueFrom(
+        this.api.get('/api/platinum/drop-box/list', { cashierId: String(cashierId) })
+      );
+      this.dropBoxHistory.set(result?.items || []);
+    } catch {
+      this.dropBoxHistory.set([]);
+    } finally {
+      this.dropBoxHistoryLoading.set(false);
     }
   }
 

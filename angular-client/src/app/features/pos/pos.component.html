@@ -1122,21 +1122,155 @@
   <!-- DROP BOX DIALOG -->
   @if (showDropBoxDialog()) {
     <div class="payment-overlay" (click)="closeDropBoxDialog()">
-      <div class="dialog-panel" (click)="$event.stopPropagation()" data-testid="dropbox-dialog">
-        <div class="dialog-header">
-          <h3>Cash Drop Box</h3>
-          <button class="close-btn" (click)="closeDropBoxDialog()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+      <div class="dropbox-dialog" (click)="$event.stopPropagation()" data-testid="dropbox-dialog">
+        <div class="dropbox-dialog-header">
+          <div class="dropbox-header-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+          </div>
+          <div>
+            <h3 class="dropbox-title">Drop Box — Cash Drop</h3>
+            <p class="dropbox-subtitle">Remove cash from your drawer and place it in the drop box/safe.</p>
+          </div>
+          @if (dropBoxStep() !== 'submitting') {
+            <button class="close-btn dropbox-close" (click)="closeDropBoxDialog()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+          }
         </div>
-        <div class="dialog-body">
-          <p class="dialog-desc">Record cash being placed in the safe drop box.</p>
-          <label class="form-label">Amount (R)</label>
-          <input class="form-input" type="number" min="0" step="0.01" placeholder="Enter amount" [ngModel]="dropBoxAmount() || null" (ngModelChange)="dropBoxAmount.set(+$event || 0)" (focus)="$event.target.select()" data-testid="input-dropbox-amount" />
-          <label class="form-label">Reference / Note</label>
-          <input class="form-input" type="text" placeholder="Optional reference" [ngModel]="dropBoxReference()" (ngModelChange)="dropBoxReference.set($event)" data-testid="input-dropbox-ref" />
-          <button class="process-btn" (click)="submitDropBox()" [disabled]="submittingDropBox()" data-testid="button-submit-dropbox">
-            @if (submittingDropBox()) { <div class="spinner-sm"></div> Submitting... } @else { Record Cash Drop }
-          </button>
-        </div>
+
+        @if (dropBoxStep() === 'input') {
+          <div class="dropbox-body">
+            <div class="dropbox-field">
+              <label class="form-label">Drop Amount</label>
+              <div class="dropbox-amount-wrap">
+                <span class="dropbox-currency-prefix">R</span>
+                <input class="form-input dropbox-amount-input" type="number" min="0" step="0.01" placeholder="0.00" [ngModel]="dropBoxAmount() || null" (ngModelChange)="dropBoxAmount.set(+$event || 0)" (focus)="$event.target.select()" data-testid="input-dropbox-amount" />
+              </div>
+            </div>
+
+            <div class="dropbox-denom-row">
+              @for (d of dropBoxDenominations; track d.value) {
+                <button class="dropbox-denom-btn" (click)="addDropBoxDenom(d.value)" [attr.data-testid]="'btn-drop-add-' + d.value">
+                  +{{ d.label }}
+                </button>
+              }
+              <button class="dropbox-denom-btn dropbox-clear-btn" (click)="clearDropBoxAmount()" data-testid="btn-drop-clear">Clear</button>
+            </div>
+
+            <div class="dropbox-field">
+              <label class="form-label dropbox-label-muted">Description (optional)</label>
+              <input class="form-input" type="text" placeholder="e.g. Midday cash drop, Shift change drop..." [ngModel]="dropBoxReference()" (ngModelChange)="dropBoxReference.set($event)" data-testid="input-dropbox-ref" />
+            </div>
+
+            <button class="dropbox-history-toggle" (click)="toggleDropBoxHistory()" data-testid="btn-toggle-drop-history">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              {{ showDropBoxHistory() ? 'Hide' : 'Show' }} Today's Drops
+            </button>
+
+            @if (showDropBoxHistory()) {
+              <div class="dropbox-history-panel">
+                @if (dropBoxHistoryLoading()) {
+                  <div class="dropbox-history-loading"><div class="spinner-sm"></div> Loading...</div>
+                } @else if (dropBoxHistory().length === 0) {
+                  <div class="dropbox-history-empty">No drop box entries found for today</div>
+                } @else {
+                  <table class="dropbox-history-table">
+                    <thead>
+                      <tr>
+                        <th>Description</th>
+                        <th>Reference</th>
+                        <th class="text-right">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (item of dropBoxHistory(); track $index) {
+                        <tr>
+                          <td>{{ item.description || item.accountNumber || '-' }}</td>
+                          <td class="font-mono">{{ item.referenceNumber || item.receiptNo || '-' }}</td>
+                          <td class="text-right font-mono font-bold">R {{ (item.amount || item.paidAmount || 0).toFixed(2) }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                }
+              </div>
+            }
+          </div>
+          <div class="dropbox-footer">
+            <button class="btn-outline" (click)="closeDropBoxDialog()">Cancel</button>
+            <button class="dropbox-review-btn" (click)="reviewDropBox()" [disabled]="dropBoxAmount() <= 0" data-testid="button-review-drop">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
+              Review Drop
+            </button>
+          </div>
+        }
+
+        @if (dropBoxStep() === 'confirm') {
+          <div class="dropbox-body">
+            <div class="dropbox-confirm-card">
+              <div class="dropbox-confirm-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+              </div>
+              <p class="dropbox-confirm-label">Confirm Cash Drop</p>
+              <p class="dropbox-confirm-hint">This amount will be removed from your cash-on-hand.</p>
+              <div class="dropbox-confirm-amount-box">
+                <span class="dropbox-confirm-amount-label">Drop Amount</span>
+                <span class="dropbox-confirm-amount-value">R {{ formatCurrency(dropBoxAmount()) }}</span>
+              </div>
+              @if (dropBoxReference()) {
+                <p class="dropbox-confirm-note">Note: <em>{{ dropBoxReference() }}</em></p>
+              }
+            </div>
+          </div>
+          <div class="dropbox-footer">
+            <button class="btn-outline" (click)="dropBoxStep.set('input')">Back</button>
+            <button class="dropbox-confirm-btn" (click)="submitDropBox()" data-testid="button-confirm-drop">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+              Confirm Drop
+            </button>
+          </div>
+        }
+
+        @if (dropBoxStep() === 'submitting') {
+          <div class="dropbox-body dropbox-center-state">
+            <div class="spinner"></div>
+            <p class="dropbox-state-title">Processing Drop Box</p>
+            <p class="dropbox-state-subtitle">Recording your cash drop...</p>
+          </div>
+        }
+
+        @if (dropBoxStep() === 'success') {
+          <div class="dropbox-body dropbox-center-state">
+            <div class="dropbox-success-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <p class="dropbox-state-title" style="color:#166534">Cash Drop Recorded</p>
+            <p class="dropbox-success-amount">R {{ formatCurrency(dropBoxAmount()) }}</p>
+            <p class="dropbox-state-subtitle">has been moved to the drop box.</p>
+            @if (dropBoxReceiptNo()) {
+              <span class="dropbox-receipt-badge">Receipt: {{ dropBoxReceiptNo() }}</span>
+            }
+          </div>
+          <div class="dropbox-footer">
+            <button class="dropbox-done-btn" (click)="closeDropBoxDialog()" data-testid="button-drop-done">Done</button>
+          </div>
+        }
+
+        @if (dropBoxStep() === 'error') {
+          <div class="dropbox-body">
+            <div class="dropbox-error-card">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <div>
+                <p class="dropbox-error-title">Drop Box Failed</p>
+                <p class="dropbox-error-msg">{{ dropBoxError() }}</p>
+              </div>
+            </div>
+          </div>
+          <div class="dropbox-footer">
+            <button class="btn-outline" (click)="dropBoxStep.set('input')">Back to Edit</button>
+            <button class="dropbox-review-btn" (click)="submitDropBox()">Retry</button>
+          </div>
+        }
       </div>
     </div>
   }
