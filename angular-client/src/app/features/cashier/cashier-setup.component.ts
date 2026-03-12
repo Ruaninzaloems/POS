@@ -76,6 +76,8 @@ export class CashierSetupComponent implements OnInit {
   resumingSession = signal(false);
   dayEndPending = signal(false);
   dayEndPendingMessage = signal('');
+  dayEndStatusDesc = signal('');
+  dayEndReconcileData = signal<any>(null);
   dayEndCompleted = signal(false);
   setupComplete = signal(false);
   existingCashierId = signal<number | null>(null);
@@ -148,12 +150,17 @@ export class CashierSetupComponent implements OnInit {
           this.dayEndPending.set(true);
           this.resumingSession.set(false);
           this.step2Status.set('success');
+          this.dayEndReconcileData.set(data.cashierReconcile || null);
           const statusId = data.reconcileStatusId;
+          const statusLabel = data.reconcileStatusDesc || (statusId === 174 ? 'Pending Approval' : 'Pending');
+          this.dayEndStatusDesc.set(statusLabel);
           if (statusId === 174) {
-            this.dayEndPendingMessage.set('Your previous day-end reconciliation has been submitted and is pending supervisor approval (Status: Pending). You cannot start a new session until a supervisor has authorised or returned your day-end.');
+            this.dayEndPendingMessage.set('Your previous day-end reconciliation has been submitted and is awaiting supervisor authorisation. You cannot start a new session until a supervisor has approved or returned your day-end.');
           } else {
             this.dayEndPendingMessage.set('Your previous day-end reconciliation is pending supervisor approval. You cannot start a new session until it has been authorised.');
           }
+          this.sessionLoading.set(false);
+          return;
         } else if (data.isActive === true && data.officeId) {
           this.resumingSession.set(true);
           this.step2Status.set('success');
@@ -198,9 +205,13 @@ export class CashierSetupComponent implements OnInit {
         if (statusId === 174 || (statusDesc && !statusDesc.includes('complet') && !statusDesc.includes('return') && !statusDesc.includes('approved') && !statusDesc.includes('not yet submitted') && !statusDesc.includes('not submitted') && statusDesc !== '')) {
           this.dayEndPending.set(true);
           this.resumingSession.set(false);
+          this.dayEndReconcileData.set(reconcileData);
+          this.dayEndStatusDesc.set(reconcileData?.status || reconcileData?.reconcileStatus || (statusId === 174 ? 'Pending Approval' : 'Pending'));
           this.dayEndPendingMessage.set(statusId === 174
-            ? 'Your previous day-end reconciliation has been submitted and is pending supervisor approval (Status: Pending). You cannot start a new session until a supervisor has authorised or returned your day-end.'
+            ? 'Your previous day-end reconciliation has been submitted and is awaiting supervisor authorisation. You cannot start a new session until a supervisor has approved or returned your day-end.'
             : `Your day-end reconciliation is currently in status "${reconcileData?.status || reconcileData?.reconcileStatus || 'Pending'}". You cannot start a new session until it has been resolved.`);
+          this.sessionLoading.set(false);
+          return;
         }
       } catch (reconcileErr: any) {
         console.log('[cashier-setup] Direct reconcile check failed (non-blocking):', reconcileErr?.message);
@@ -435,6 +446,20 @@ export class CashierSetupComponent implements OnInit {
 
   goBack(): void {
     this.router.navigate(['/']);
+  }
+
+  formatReconcileDate(dateStr: string): string {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      const hours = String(d.getHours()).padStart(2, '0');
+      const mins = String(d.getMinutes()).padStart(2, '0');
+      return `${day}/${month}/${year} ${hours}:${mins}`;
+    } catch { return dateStr; }
   }
 
   getStepClass(status: StepStatus): string {

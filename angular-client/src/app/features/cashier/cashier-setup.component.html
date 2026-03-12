@@ -12,29 +12,73 @@
       <p>Session ready — loading POS...</p>
     </div>
   </div>
-} @else if (dayEndPending() && !isCashierRegistered()) {
-  <div class="setup-loading" data-testid="cashier-setup-pending">
-    <div class="card pending-card">
-      <div class="pending-icon">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2">
-          <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>
-        </svg>
+} @else if (dayEndPending()) {
+  <div class="setup-loading" data-testid="cashier-setup-pending-dayend">
+    <div class="card dayend-block-card">
+      <div class="dayend-block-header">
+        <div class="dayend-block-icon-circle">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+          </svg>
+        </div>
+        <h2 class="dayend-block-heading">Day-End Awaiting Authorisation</h2>
+        <p class="dayend-block-subtext">Your previous day-end reconciliation has been submitted and is pending supervisor review. A new session cannot be started until the supervisor has approved or returned it.</p>
       </div>
-      <h2>Day-End Pending Supervisor Approval</h2>
-      <p class="pending-text">Your day-end reconciliation has been submitted and is waiting for supervisor review. You cannot start or resume a session until the supervisor approves or returns your submission.</p>
-      <div class="pending-info">
-        <div class="info-row">
-          <span class="info-label">Cashier:</span>
-          <span class="info-value">{{ firstName() }} {{ lastName() }}</span>
+
+      <div class="dayend-block-details">
+        <div class="dayend-detail-row">
+          <span class="dayend-detail-label">Cashier</span>
+          <span class="dayend-detail-value">{{ firstName() }} {{ lastName() }}</span>
         </div>
         @if (cashierId()) {
-          <div class="info-row">
-            <span class="info-label">Cashier ID:</span>
-            <span class="info-value">{{ cashierId() }}</span>
+          <div class="dayend-detail-row">
+            <span class="dayend-detail-label">Cashier ID</span>
+            <span class="dayend-detail-value font-mono">{{ cashierId() }}</span>
+          </div>
+        }
+        @if (userId()) {
+          <div class="dayend-detail-row">
+            <span class="dayend-detail-label">User ID</span>
+            <span class="dayend-detail-value font-mono">{{ userId() }}</span>
+          </div>
+        }
+        @if (dayEndStatusDesc()) {
+          <div class="dayend-detail-row">
+            <span class="dayend-detail-label">Reconcile Status</span>
+            <span class="dayend-detail-value">
+              <span class="dayend-status-badge">{{ dayEndStatusDesc() }}</span>
+            </span>
+          </div>
+        }
+        @if (dayEndReconcileData()?.dateCaptured || dayEndReconcileData()?.dateSubmitted || dayEndReconcileData()?.date) {
+          <div class="dayend-detail-row">
+            <span class="dayend-detail-label">Submitted</span>
+            <span class="dayend-detail-value">{{ formatReconcileDate(dayEndReconcileData()?.dateCaptured || dayEndReconcileData()?.dateSubmitted || dayEndReconcileData()?.date) }}</span>
+          </div>
+        }
+        @if (cashierDetails()?.const_CashOffice?.cashOfficeDesc || selectedOffice()?.cashOfficeDesc) {
+          <div class="dayend-detail-row">
+            <span class="dayend-detail-label">Cash Office</span>
+            <span class="dayend-detail-value">{{ cashierDetails()?.const_CashOffice?.cashOfficeDesc || selectedOffice()?.cashOfficeDesc }}</span>
           </div>
         }
       </div>
-      <button class="btn-outline" (click)="goBack()" data-testid="button-back-dashboard">Back to Dashboard</button>
+
+      <div class="dayend-block-action-hint">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>
+        <span>Please ask your supervisor to authorise or return your day-end reconciliation before starting a new session.</span>
+      </div>
+
+      <div class="dayend-block-actions">
+        <button class="btn-outline dayend-back-btn" (click)="goBack()" data-testid="button-back-dashboard">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+          Back to Dashboard
+        </button>
+        <button class="btn-outline dayend-retry-btn" (click)="runSetupFlow()" data-testid="button-retry-check">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+          Check Again
+        </button>
+      </div>
     </div>
   </div>
 } @else {
@@ -132,19 +176,7 @@
           </div>
         }
 
-        @if (dayEndPending()) {
-          <div class="alert alert-warning-bg" data-testid="day-end-pending-section">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="2">
-              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>
-            </svg>
-            <div>
-              <p class="alert-title">Day-End Pending Supervisor Approval</p>
-              <p class="alert-text">Your day-end reconciliation has been submitted and is waiting for supervisor review.</p>
-            </div>
-          </div>
-        }
-
-        @if (resumingSession() && !dayEndCompleted() && !dayEndPending()) {
+        @if (resumingSession() && !dayEndCompleted()) {
           <div class="resume-section" data-testid="resume-session-section">
             <div class="resume-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2">
@@ -367,30 +399,14 @@
           <div class="form-divider"></div>
 
           <div class="form-actions">
-            @if (dayEndPending()) {
-              <div class="day-end-block-banner" data-testid="day-end-block-message">
-                <div class="day-end-block-icon-wrap">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>
-                  </svg>
-                </div>
-                <div class="day-end-block-content">
-                  <div class="day-end-block-title">Session Blocked — Day-End Pending</div>
-                  <div class="day-end-block-desc">{{ dayEndPendingMessage() || 'Your previous day-end reconciliation is pending supervisor approval. You cannot start a new session until it has been authorised.' }}</div>
-                  <div class="day-end-block-hint">Please contact your supervisor to authorise or return your day-end reconciliation.</div>
-                </div>
-              </div>
-            }
             <button
               type="submit"
               class="btn-primary btn-submit"
-              [disabled]="!selectedOffice() || submitting() || isCashierRegistered() !== true || dayEndPending() || resumingSession()"
+              [disabled]="!selectedOffice() || submitting() || isCashierRegistered() !== true || resumingSession()"
               data-testid="button-submit"
             >
               @if (submitting()) {
                 <div class="spinner spinner-sm"></div> Starting Session...
-              } @else if (dayEndPending()) {
-                Session Blocked — Awaiting Approval
               } @else {
                 Start Session
               }
