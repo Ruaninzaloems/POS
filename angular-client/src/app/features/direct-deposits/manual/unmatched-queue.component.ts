@@ -1589,7 +1589,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
             for (const r of allocatedItems) {
               const accId = Number(r.accountId);
               if (!accId) continue;
-              const existing = accountMap.get(accId) || { count: 0, receipts: [], dates: [], amounts: [], note: r.bankStatementNote || '' };
+              const existing = accountMap.get(accId) || { count: 0, receipts: [] as any[], dates: [] as any[], amounts: [] as any[], note: r.bankStatementNote || '' };
               existing.count++;
               if (r.receiptNo && !existing.receipts.includes(r.receiptNo)) existing.receipts.push(r.receiptNo);
               if (r.billingAllocationDate) existing.dates.push(r.billingAllocationDate);

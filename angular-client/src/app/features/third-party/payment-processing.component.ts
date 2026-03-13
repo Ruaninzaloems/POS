@@ -402,15 +402,16 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
       const batch = unique.slice(i, i + batchSize);
       const lookups = batch.map(async (accNo) => {
         try {
-          const results: any = await firstValueFrom(this.api.get('/api/platinum/third-party-payments/account-search', { accountNo: accNo }));
-          if (Array.isArray(results) && results.length > 0) {
-            const result = results[0];
+          const results: any = await firstValueFrom(this.api.post('/api/platinum/billing-enquiry/enquiry-results', { accountID: accNo }));
+          const arr = Array.isArray(results) ? results : [];
+          if (arr.length > 0) {
+            const r = arr[0];
             mapping.set(accNo, {
-              accountNumber: result.accountNumber || '',
-              accountId: result.accountId || '',
-              ownerName: result.ownerName || '',
-              propertyAddress: result.propertyAddress || '',
-              matchCount: results.length,
+              accountNumber: r.accountNumber || '',
+              accountId: r.accountID || r.accountId || '',
+              ownerName: r.name || r.ownerName || '',
+              propertyAddress: r.locationAddress || r.address || r.propertyAddress || '',
+              matchCount: arr.length,
             });
           }
         } catch {
@@ -481,12 +482,19 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
   async handleAccountSearch(): Promise<void> {
     this.searching.set(true);
     try {
-      const params: Record<string, string> = {};
-      if (this.searchAccountNo()) params['accountNo'] = this.searchAccountNo();
-      if (this.searchName()) params['name'] = this.searchName();
-      if (this.searchStreet()) params['street'] = this.searchStreet();
-      const results: any = await firstValueFrom(this.api.get('/api/platinum/third-party-payments/account-search', params));
-      this.searchResults.set(Array.isArray(results) ? results : []);
+      const body: Record<string, string> = {};
+      if (this.searchAccountNo()) body['accountID'] = this.searchAccountNo();
+      if (this.searchName()) body['name'] = this.searchName();
+      if (this.searchStreet()) body['locationAddress'] = this.searchStreet();
+      const results: any = await firstValueFrom(this.api.post('/api/platinum/billing-enquiry/enquiry-results', body));
+      const arr = Array.isArray(results) ? results : [];
+      this.searchResults.set(arr.slice(0, 50).map((r: any) => ({
+        accountNumber: r.accountNumber || '',
+        accountId: r.accountID || r.accountId || '',
+        ownerName: r.name || r.ownerName || '',
+        propertyAddress: r.locationAddress || r.address || r.propertyAddress || '',
+        accountStatus: r.accountStatus || '',
+      })));
     } catch (e) {
       void e;
       this.searchResults.set([]);
@@ -495,28 +503,38 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
     }
   }
 
-  selectSearchResult(result: any): void {
+  async selectSearchResult(result: any): Promise<void> {
     const idx = this.searchIdx();
     if (idx === null) return;
     const accNo = result.accountNumber || result.accountNo || result.accountId || '';
-    this.transactions.update(prev => prev.map(t => {
-      if (t.index !== idx) return t;
-      return {
-        ...t,
-        resolvedAccountId: accNo, resolvedAccountNumber: accNo,
-        matchStatus: 'Manually Matched' as MatchStatus, validated: true,
-        validationMessage: 'Manually linked via search',
-        ownerName: result.ownerName || result.name || t.ownerName,
-        propertyAddress: result.propertyAddress || result.address || t.propertyAddress,
-        comment: `Manually matched to ${accNo}`,
-      };
-    }));
-    if (this.importId()) {
-      firstValueFrom(this.api.put(`/api/platinum/third-party-payments/${this.importId()}/transactions/${idx}`, {
-        newAccountNumber: accNo, comment: `Manually matched to ${accNo}`
-      })).catch(() => {});
-    }
+    const accId = result.accountId || accNo;
+    const ownerName = result.ownerName || result.name || '';
+    const propertyAddress = result.propertyAddress || result.address || '';
     this.searchOpen.set(false);
+    if (this.importId()) {
+      this.savingEdit.set(true);
+      try {
+        await firstValueFrom(this.api.put(`/api/platinum/third-party-payments/${this.importId()}/transactions/${idx}`, {
+          newAccountNumber: accId, comment: `Manually linked to account ${accId} (${ownerName})`
+        }));
+        this.transactions.update(prev => prev.map(t => {
+          if (t.index !== idx) return t;
+          return {
+            ...t,
+            resolvedAccountId: accId, resolvedAccountNumber: accNo,
+            matchStatus: 'Manually Matched' as MatchStatus, validated: true,
+            validationMessage: 'Manually linked by user', status: 'Account Updated',
+            ownerName: ownerName || t.ownerName,
+            propertyAddress: propertyAddress || t.propertyAddress,
+            comment: `Manually linked to account ${accNo}`,
+          };
+        }));
+      } catch (e: any) {
+        console.error('Failed to update transaction after search:', e);
+      } finally {
+        this.savingEdit.set(false);
+      }
+    }
   }
 
   async handleValidate(): Promise<void> {
@@ -529,6 +547,7 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
       } else {
         this.toast.error('Validation failed: ' + (result?.message || 'Some transactions have issues.'));
       }
+      await this.loadTransactions();
     } catch (e: any) {
       this.toast.error('Validation failed: ' + (e?.message || ''));
     } finally {
@@ -537,12 +556,34 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
   }
 
   async handleCommit(): Promise<void> {
+    const unvalidatedCount = this.transactions().filter(t => !t.validated).length;
+    if (unvalidatedCount > 0) {
+      this.commitResult.set({ error: true, message: `Cannot commit: ${unvalidatedCount} transaction(s) are not validated. Please resolve all Unmatched and Needs Review items first.` });
+      return;
+    }
+    const user = this.auth.user();
+    if (!user?.finYear) {
+      this.toast.error('Financial year missing from your session. Please log in again.');
+      return;
+    }
     this.committing.set(true);
     try {
-      const result: any = await firstValueFrom(this.api.post(`/api/platinum/third-party-payments/${this.importId()}/commit`, {}));
+      const selectedType = this.thirdPartyTypes().find(t => String(t.id) === this.selectedTypeId());
+      const result: any = await firstValueFrom(this.api.post(`/api/platinum/third-party-payments/${this.importId()}/commit`, {
+        groupId: selectedType?.id || Number(this.selectedTypeId()) || 0,
+        cashBookId: Number(this.cashBookId()),
+        paymentReference: this.paymentRef(),
+        fileName: this.file()?.name || '',
+        userId: user.user_ID,
+        finYear: user.finYear,
+      }));
       this.commitResult.set(result);
-      this.step.set('committed');
-      this.toast.success('Payments committed successfully.');
+      if (result && !result._error && !result.error) {
+        this.step.set('committed');
+        this.toast.success('Payments committed successfully.');
+      } else {
+        this.toast.error('Commit failed: ' + (result?.message || result?.detail || 'Unknown error'));
+      }
     } catch (e: any) {
       this.toast.error('Commit failed: ' + (e?.message || ''));
     } finally {
@@ -613,6 +654,41 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
 
   giPreviewTotal = computed(() => this.giPreviewRows().reduce((s, r) => s + (r.amount || 0), 0));
 
+  giValidationProgress = signal<{ phase: string; percent: number; detail: string; validatedCount: number; totalCount: number; validCount: number; invalidCount: number } | null>(null);
+  giCsvHasPaymentType = signal(false);
+  giCsvHasReceiptDate = signal(false);
+  giPreviewSkipped = signal<string[]>([]);
+
+  private parseCsvLine(line: string): string[] {
+    const fields: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQuotes) {
+        if (ch === '"' && i + 1 < line.length && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else if (ch === '"') {
+          inQuotes = false;
+        } else {
+          current += ch;
+        }
+      } else {
+        if (ch === '"') {
+          inQuotes = true;
+        } else if (ch === ',') {
+          fields.push(current.trim());
+          current = '';
+        } else {
+          current += ch;
+        }
+      }
+    }
+    fields.push(current.trim());
+    return fields;
+  }
+
   async handleGiPreview(): Promise<void> {
     if (!this.giFile()) {
       this.giError.set('Please select a CSV file.');
@@ -621,125 +697,246 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
     this.giPreviewLoading.set(true);
     this.giError.set('');
     this.giPreviewRows.set([]);
+    this.giPreviewSkipped.set([]);
+    this.giValidationProgress.set({ phase: 'parsing', percent: 0, detail: 'Reading CSV file...', validatedCount: 0, totalCount: 0, validCount: 0, invalidCount: 0 });
+
     try {
       const text = await this.giFile()!.text();
-      const lines = text.split(/\r?\n/).filter(l => l.trim());
-      const rows: GenericPreviewRow[] = [];
-      const receiptDate = this.giReceiptDate() || new Date().toISOString().split('T')[0];
-      const paymentTypeId = Number(this.giPaymentTypeId()) || 5;
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
 
-      for (let i = 0; i < lines.length; i++) {
-        const parts = lines[i].split(',').map(p => p.trim().replace(/^["']|["']$/g, ''));
-        if (parts.length < 2) continue;
-        const accountNumber = parts[0];
-        const amount = parseFloat(parts[1]);
-        if (!accountNumber || isNaN(amount)) continue;
-        rows.push({
-          rowNum: i + 1,
-          accountNumber,
-          amount,
-          receiptDate,
-          paymentTypeId,
-          isValid: true,
-          validationStatus: 'unverified',
-          validationMsg: '',
-        });
-      }
+      this.giValidationProgress.update(p => p ? { ...p, percent: 5, detail: `Read ${lines.length - 1} data rows from file` } : p);
 
-      if (rows.length === 0) {
-        this.giError.set('No valid rows found in CSV. Expected format: AccountNumber, Amount');
+      if (lines.length < 2) {
+        this.giError.set('CSV must have a header row and at least one data row.');
         this.giPreviewLoading.set(false);
+        this.giValidationProgress.set(null);
         return;
       }
 
-      const batchSize = 10;
-      for (let i = 0; i < rows.length; i += batchSize) {
-        const batch = rows.slice(i, i + batchSize);
-        const lookups = batch.map(async (row) => {
-          try {
-            const result: any = await firstValueFrom(
-              this.api.post('/api/platinum/direct-deposit-allocation/validate-generic-import', {
-                accountNumber: row.accountNumber,
-                amount: row.amount,
-              })
-            );
-            if (result?.isValid === false || result?.error) {
-              row.isValid = false;
-              row.validationStatus = 'invalid';
-              row.validationMsg = result.message || result.error || 'Account not found';
-            } else {
-              row.isValid = true;
-              row.validationStatus = 'valid';
-              row.validationMsg = result?.message || 'Account verified';
-              if (result?.ownerName) row.ownerName = result.ownerName;
-              if (result?.address) row.address = result.address;
-            }
-          } catch {
-            row.validationStatus = 'unverified';
-            row.validationMsg = 'Could not validate';
-          }
+      const header = this.parseCsvLine(lines[0]).map(h => h.toLowerCase().replace(/[^a-z0-9]/g, ''));
+      const accIdx = header.findIndex(h => h === 'accountnumber' || h === 'accountno' || h === 'account');
+      const amtIdx = header.findIndex(h => h === 'amount' || h === 'amt');
+      const dateIdx = header.findIndex(h => h === 'receiptdate' || h === 'date');
+      const ptIdx = header.findIndex(h => h === 'paymenttypeid' || h === 'paymenttype' || h === 'paytype');
+      this.giCsvHasPaymentType.set(ptIdx !== -1);
+      this.giCsvHasReceiptDate.set(dateIdx !== -1);
+
+      if (accIdx === -1) { this.giError.set('CSV missing required column: AccountNumber'); this.giPreviewLoading.set(false); this.giValidationProgress.set(null); return; }
+      if (amtIdx === -1) { this.giError.set('CSV missing required column: Amount'); this.giPreviewLoading.set(false); this.giValidationProgress.set(null); return; }
+
+      this.giValidationProgress.update(p => p ? { ...p, percent: 10, detail: 'Parsing rows and formatting data...' } : p);
+
+      const rawReceiptDate = this.giReceiptDate() || new Date().toISOString().split('T')[0];
+      const defaultDateParts = rawReceiptDate.split('-');
+      const defaultReceiptDate = defaultDateParts.length === 3
+        ? `${defaultDateParts[2]}/${defaultDateParts[1]}/${defaultDateParts[0]}`
+        : (() => { const d = new Date(); return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`; })();
+      const defaultPaymentTypeId = Number(this.giPaymentTypeId()) || 5;
+
+      const formatDateDDMMYYYY = (dateStr: string): string => {
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) return dateStr;
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return defaultReceiptDate;
+        return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+      };
+
+      const parsedRows: Array<{ rowNum: number; accountNumber: string; amount: number; receiptDate: string; paymentTypeId: number }> = [];
+      const skipped: string[] = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const cols = this.parseCsvLine(lines[i]);
+        const rawAcc = cols[accIdx] || '';
+        const rawAmt = cols[amtIdx] || '';
+        if (!rawAcc && !rawAmt) { skipped.push(`Row ${i + 1}: completely empty row`); continue; }
+
+        const digits = rawAcc.replace(/\D/g, '');
+        if (digits.length === 0 || digits.length > 12) { skipped.push(`Row ${i + 1}: invalid account number "${rawAcc}"`); continue; }
+
+        const amount = parseFloat((rawAmt || '0').replace(/[^0-9.\-]/g, ''));
+        if (isNaN(amount) || amount <= 0) { skipped.push(`Row ${i + 1}: invalid amount "${rawAmt}"`); continue; }
+
+        const receiptDate = dateIdx !== -1 && cols[dateIdx] ? formatDateDDMMYYYY(cols[dateIdx]) : defaultReceiptDate;
+        const paymentTypeId = ptIdx !== -1 && cols[ptIdx] ? (parseInt(cols[ptIdx]) || defaultPaymentTypeId) : defaultPaymentTypeId;
+
+        parsedRows.push({
+          rowNum: i + 1,
+          accountNumber: digits.padStart(12, '0'),
+          amount,
+          receiptDate,
+          paymentTypeId,
         });
-        await Promise.all(lookups);
       }
 
-      this.giPreviewRows.set(rows);
+      this.giPreviewSkipped.set(skipped);
+      if (parsedRows.length === 0) {
+        this.giError.set('No data rows found in CSV. Check the file format.');
+        this.giPreviewLoading.set(false);
+        this.giValidationProgress.set(null);
+        return;
+      }
+
+      const BATCH_SIZE = 50;
+      const allResults: any[] = [];
+      const allDuplicates: string[] = [];
+
+      for (let batchStart = 0; batchStart < parsedRows.length; batchStart += BATCH_SIZE) {
+        const batch = parsedRows.slice(batchStart, batchStart + BATCH_SIZE);
+        const batchNum = Math.floor(batchStart / BATCH_SIZE) + 1;
+        const totalBatches = Math.ceil(parsedRows.length / BATCH_SIZE);
+        const batchEnd = Math.min(batchStart + BATCH_SIZE, parsedRows.length);
+
+        this.giValidationProgress.update(p => p ? {
+          ...p, phase: 'validating',
+          percent: 15 + Math.round((batchStart / parsedRows.length) * 70),
+          detail: `Batch ${batchNum}/${totalBatches} — Validating rows ${batchStart + 1}–${batchEnd} against Platinum API...`,
+          validatedCount: batchStart,
+        } : p);
+
+        const validation: any = await firstValueFrom(
+          this.api.post('/api/platinum/direct-deposit-allocation/validate-generic-import', { payments: batch })
+        );
+
+        if (validation?._error || !validation?.results) {
+          this.giError.set(validation?.detail || validation?.message || `API validation failed on batch ${batchNum}. Please try again.`);
+          this.giPreviewLoading.set(false);
+          this.giValidationProgress.set(null);
+          return;
+        }
+
+        allResults.push(...validation.results);
+        if (validation.duplicates) allDuplicates.push(...validation.duplicates);
+
+        const batchValid = validation.results.filter((r: any) => r.isValid).length;
+        const batchInvalid = validation.results.filter((r: any) => !r.isValid).length;
+
+        this.giValidationProgress.update(p => p ? {
+          ...p,
+          percent: 15 + Math.round((batchEnd / parsedRows.length) * 70),
+          detail: `Batch ${batchNum}/${totalBatches} complete — ${batchValid} matched, ${batchInvalid} invalid`,
+          validatedCount: batchEnd,
+          validCount: (p.validCount || 0) + batchValid,
+          invalidCount: (p.invalidCount || 0) + batchInvalid,
+        } : p);
+
+        if (batchStart + BATCH_SIZE < parsedRows.length) {
+          await new Promise(r => setTimeout(r, 100));
+        }
+      }
+
+      this.giValidationProgress.update(p => p ? { ...p, phase: 'building', percent: 90, detail: 'Building preview table...' } : p);
+
+      const globalDuplicateCheck: Record<string, number[]> = {};
+      allResults.forEach((r: any, idx: number) => {
+        const acc = r.accountNumber;
+        if (!globalDuplicateCheck[acc]) globalDuplicateCheck[acc] = [];
+        globalDuplicateCheck[acc].push(idx);
+      });
+
+      const previewRows: GenericPreviewRow[] = allResults.map((r: any) => {
+        const isDup = r.isDuplicate || (globalDuplicateCheck[r.accountNumber]?.length > 1);
+        return {
+          rowNum: r.rowNum,
+          accountNumber: r.accountNumber,
+          amount: r.amount,
+          receiptDate: r.receiptDate,
+          paymentTypeId: r.paymentTypeId,
+          ownerName: r.ownerName || '',
+          address: r.address || '',
+          isValid: r.isValid,
+          validationStatus: r.validationStatus || (r.isValid ? 'valid' : 'invalid'),
+          validationMsg: isDup && r.isValid ? (r.validationMsg ? r.validationMsg + '; Duplicate account' : 'Duplicate account in file') : (r.validationMsg || ''),
+          isDuplicate: isDup,
+        };
+      });
+
+      const validCount = previewRows.filter(r => r.isValid).length;
+      const invalidCount = previewRows.filter(r => !r.isValid).length;
+      const dupCount = previewRows.filter(r => r.isDuplicate).length;
+
+      this.giValidationProgress.set({
+        phase: 'done', percent: 100,
+        detail: `Complete — ${validCount} matched, ${invalidCount} invalid${dupCount > 0 ? `, ${dupCount} duplicates` : ''}`,
+        validatedCount: parsedRows.length, totalCount: parsedRows.length,
+        validCount, invalidCount,
+      });
+
+      await new Promise(r => setTimeout(r, 600));
+
+      this.giPreviewRows.set(previewRows);
       this.giStep.set('preview');
     } catch (e: any) {
-      this.giError.set('Failed to parse CSV: ' + (e?.message || 'Unknown error'));
+      console.error('[GenericImport] Preview failed:', e);
+      this.giError.set(e?.message || 'Failed to validate CSV file.');
     } finally {
       this.giPreviewLoading.set(false);
+      this.giValidationProgress.set(null);
     }
   }
 
   async handleGiSubmit(): Promise<void> {
     const validRows = this.giPreviewRows().filter(r => r.isValid);
     if (validRows.length === 0) {
-      this.toast.error('No valid rows to submit.');
+      this.toast.error('No valid payment rows to submit. All rows failed account validation.');
+      return;
+    }
+    const user = this.auth.user();
+    if (!user?.finYear) {
+      this.toast.error('Financial year missing from your session. Please log in again.');
+      return;
+    }
+    if (!user?.user_ID) {
+      this.toast.error('User ID not available. Please log in again.');
+      return;
+    }
+    const cashierInfo = this.cashierInfo();
+    const cashOfficeId = Number(this.giSelectedCashOfficeId()) || Number(cashierInfo?.cashOfficeId) || 0;
+    const cashierId = Number(cashierInfo?.cashierId) || 0;
+    if (!cashOfficeId || !cashierId) {
+      this.toast.error('Cashier session details not available. Please start a session first.');
       return;
     }
     this.giSubmitting.set(true);
     this.giError.set('');
     try {
-      const user = this.auth.user();
-      const cashierInfo = this.cashierInfo();
-      const receiptDate = this.giReceiptDate() || new Date().toISOString().split('T')[0];
-      const dateParts = receiptDate.split('-');
-      const formattedDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : receiptDate;
+      const payments = validRows.map(r => ({
+        receiptDate: r.receiptDate,
+        accountNumber: r.accountNumber,
+        amount: r.amount,
+        paymentTypeId: r.paymentTypeId,
+      }));
+
       const payload = {
-        cashOfficeId: Number(this.giSelectedCashOfficeId()) || Number(cashierInfo?.cashOfficeId) || 0,
-        cashierId: Number(cashierInfo?.cashierId) || Number(user?.user_ID) || 0,
-        finYear: user?.finYear || '',
+        cashOfficeId,
+        cashierId,
+        userId: user.user_ID,
+        finYear: user.finYear,
         postToCashbook: this.giPostToCashbook(),
-        payments: validRows.map(r => ({
-          accountNumber: r.accountNumber,
-          amount: r.amount,
-          receiptDate: formattedDate,
-          paymentTypeId: Number(this.giPaymentTypeId()) || 5,
-        })),
+        payments,
       };
 
       const result: any = await firstValueFrom(
         this.api.post('/api/platinum/direct-deposit-allocation/submit-generic-import', payload)
       );
 
-      if (result?.jobId || result?.id) {
-        this.giJobId.set(String(result.jobId || result.id));
-        this.giStep.set('processing');
-        this.startGiPolling();
-      } else {
-        const items = result?.results || result?.items || (Array.isArray(result) ? result : []);
-        if (items.length > 0) {
-          this.giResults.set(items.filter((r: any) => !r.errorMessage));
-          this.giErrors.set(items.filter((r: any) => !!r.errorMessage));
-          this.giStep.set('results');
-          this.toast.success(`Processed ${items.length} allocation(s).`);
+      if (result && !result._error && result.isSuccess !== false) {
+        const jobId = result.jobId || result.job_ID || result.directDepositJob_ID || result.id;
+        const totalCount = result.totalCount || payments.length;
+        if (jobId) {
+          this.giJobId.set(String(jobId));
+          this.giStep.set('processing');
+          this.toast.success(result.message || `${totalCount} payment(s) submitted for processing.`);
+          this.startGiPolling();
         } else {
-          this.toast.success('Import submitted successfully.');
+          this.toast.success(result.message || `${totalCount} payment(s) submitted. Check allocation progress for results.`);
           this.giStep.set('results');
         }
+      } else {
+        const detail = result?.detail || result?.message || 'Import submission failed.';
+        this.giError.set(typeof detail === 'string' ? detail : JSON.stringify(detail));
       }
     } catch (e: any) {
-      this.toast.error('Submit failed: ' + (e?.message || 'Unknown error'));
+      console.error('[GenericImport] Submit failed:', e);
+      this.giError.set(e?.message || 'Failed to submit generic import.');
     } finally {
       this.giSubmitting.set(false);
     }
@@ -754,18 +951,21 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
           this.api.get(`/api/platinum/direct-deposit-allocation/generic-import-status/${this.giJobId()}`)
         );
         this.giStatus.set(status);
-        if (status?.isComplete || status?.status === 'Complete' || status?.status === 'Completed') {
+        const statusStr = (status?.status || status?.job_Status || status?.jobStatus || '').toLowerCase();
+        const isComplete = statusStr.includes('complete') || statusStr.includes('done') || statusStr.includes('finished');
+        const isFailed = statusStr.includes('fail') || statusStr.includes('error');
+        if (isComplete || isFailed) {
           clearInterval(this.giPollRef);
           this.giPollRef = null;
           this.giPolling.set(false);
           await this.loadGiResults();
         }
-      } catch {
+      } catch (e: any) {
+        console.error('[GenericImport] Status poll failed:', e);
         clearInterval(this.giPollRef);
         this.giPollRef = null;
         this.giPolling.set(false);
-        this.toast.error('Lost connection to job status. Check results manually.');
-        this.giStep.set('results');
+        this.giError.set(`Failed to check job status: ${e?.message || 'Unknown error'}`);
       }
     }, 3000);
   }
@@ -773,17 +973,77 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
   private async loadGiResults(): Promise<void> {
     this.giLoadingResults.set(true);
     try {
-      const [results, errors] = await Promise.all([
-        firstValueFrom(this.api.get(`/api/platinum/direct-deposit-allocation/generic-import-results/${this.giJobId()}`)).catch(() => []),
-        firstValueFrom(this.api.get(`/api/platinum/direct-deposit-allocation/generic-import-errors/${this.giJobId()}`)).catch(() => []),
+      const [resultsSettled, errorsSettled] = await Promise.allSettled([
+        firstValueFrom(this.api.get(`/api/platinum/direct-deposit-allocation/generic-import-results/${this.giJobId()}`)),
+        firstValueFrom(this.api.get(`/api/platinum/direct-deposit-allocation/generic-import-errors/${this.giJobId()}`)),
       ]);
-      this.giResults.set(Array.isArray(results) ? results : []);
-      this.giErrors.set(Array.isArray(errors) ? errors : []);
+
+      let successRows: any[] = [];
+      let errorRows: any[] = [];
+
+      if (resultsSettled.status === 'fulfilled' && Array.isArray(resultsSettled.value)) {
+        successRows = resultsSettled.value;
+      }
+
+      if (errorsSettled.status === 'fulfilled') {
+        const errData = errorsSettled.value as any;
+        if (Array.isArray(errData)) {
+          errorRows = errData;
+        } else if (errData?.errors && Array.isArray(errData.errors)) {
+          errorRows = errData.errors.map((e: any) => ({
+            accountNo: e.accountNumber,
+            allocatedAmount: e.amount,
+            status: 'Error',
+            errorMessage: e.message || e.errorMessage || 'Allocation failed',
+          }));
+        }
+      }
+
+      const status = this.giStatus();
+      if (successRows.length === 0 && status?.rows) {
+        const statusRows = status.rows as any[];
+        successRows = statusRows
+          .filter((r: any) => r.isAllocated === true)
+          .map((r: any) => ({
+            accountNo: r.accountNumber,
+            allocatedAmount: r.amount,
+            status: 'Allocated',
+            receiptNumber: String(r.receiptNumber ?? r.receiptNo ?? '').trim(),
+          }));
+        if (errorRows.length === 0) {
+          errorRows = statusRows
+            .filter((r: any) => r.isAllocated === false)
+            .map((r: any) => ({
+              accountNo: r.accountNumber,
+              allocatedAmount: r.amount,
+              status: 'Error',
+              errorMessage: r.errorMessage || 'Allocation failed — error details not available from API',
+            }));
+        }
+      }
+
+      const normalizeAccNo = (v: string) => String(v || '').trim().replace(/^0+/, '');
+      const previewNameMap = new Map<string, string>();
+      this.giPreviewRows().forEach(pr => {
+        if (pr.accountNumber && pr.ownerName) {
+          previewNameMap.set(normalizeAccNo(pr.accountNumber), pr.ownerName);
+        }
+      });
+      const enrichWithName = (row: any) => {
+        if (row.accountName || row.name || row.ownerName) return row;
+        const accNo = normalizeAccNo(row.accountNo || row.accountNumber || row.account_Number || '');
+        const name = previewNameMap.get(accNo);
+        return name ? { ...row, accountName: name } : row;
+      };
+      successRows = successRows.map(enrichWithName);
+      errorRows = errorRows.map(enrichWithName);
+
+      this.giResults.set(successRows);
+      this.giErrors.set(errorRows);
       this.giStep.set('results');
-      const successCount = this.giResults().length;
-      const errorCount = this.giErrors().length;
-      this.toast.success(`Import complete: ${successCount} successful, ${errorCount} failed.`);
+      this.toast.success(`Import complete: ${successRows.length} successful, ${errorRows.length} failed.`);
     } catch (e: any) {
+      console.error('[GenericImport] Failed to load results:', e);
       this.toast.error('Failed to load results: ' + (e?.message || ''));
       this.giStep.set('results');
     } finally {
@@ -796,11 +1056,15 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
     this.giFile.set(null);
     this.giPaymentRef.set('');
     this.giPreviewRows.set([]);
+    this.giPreviewSkipped.set([]);
     this.giResults.set([]);
     this.giErrors.set([]);
     this.giJobId.set('');
     this.giStatus.set(null);
     this.giError.set('');
+    this.giCsvHasPaymentType.set(false);
+    this.giCsvHasReceiptDate.set(false);
+    this.giValidationProgress.set(null);
     if (this.giPollRef) {
       clearInterval(this.giPollRef);
       this.giPollRef = null;

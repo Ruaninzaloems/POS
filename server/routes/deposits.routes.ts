@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import type { Server } from "http";
 import { requireAuth, handlePlatinumResult } from "./middleware";
-import { platinumGet, platinumPost, refreshSessionToken, getPlatinumApiUrl } from "../platinum-auth";
+import { platinumGet, platinumPost, platinumPut, refreshSessionToken, getPlatinumApiUrl } from "../platinum-auth";
 
 export function registerDepositsRoutes(app: Express, httpServer: Server): void {
   // --- Direct Deposit Allocation endpoints ---
@@ -1754,33 +1754,8 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
   app.put("/api/platinum/third-party-payments/:importId/transactions/:index", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const token = await refreshSessionToken(session);
-      const apiUrl = getPlatinumApiUrl();
-      const url = `${apiUrl}/api/billing/pos/third-party-payments/${req.params.importId}/transactions/${req.params.index}`;
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
-      try {
-        const rawRes = await fetch(url, {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(req.body),
-          signal: controller.signal,
-        });
-        const rawText = await rawRes.text();
-        if (!rawRes.ok) {
-          return res.status(rawRes.status).json({ message: rawRes.statusText, detail: rawText.substring(0, 1000) });
-        }
-        let data;
-        try { data = rawText ? JSON.parse(rawText) : null; } catch { data = rawText; }
-        res.json(data);
-      } finally {
-        clearTimeout(timeoutId);
-      }
+      const data = await platinumPut(session, `/api/billing/pos/third-party-payments/${req.params.importId}/transactions/${req.params.index}`, req.body);
+      handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
