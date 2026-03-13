@@ -531,6 +531,71 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
 
       const submitUrl = `${apiUrl}/api/billing-direct-deposit-allocation/submit-details-data`;
 
+      const MAX_RETRIES = 4;
+      const INITIAL_BACKOFF_MS = 1500;
+
+      const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+      const isRetryable = (status: number, err?: any): boolean => {
+        if (err?.name === 'AbortError') return true;
+        if (err?.code === 'ECONNRESET' || err?.code === 'ECONNREFUSED' || err?.code === 'ETIMEDOUT' || err?.code === 'EPIPE') return true;
+        if (status === 429 || status === 502 || status === 503 || status === 504 || status === 408) return true;
+        if (status >= 500 && status < 600) return true;
+        return false;
+      };
+
+      const submitLineWithRetry = async (submitData: any, lineLabel: string): Promise<{ rawRes: any; responseText: string; attempts: number }> => {
+        let lastErr: any;
+        for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+          if (attempt > 0) {
+            const backoff = INITIAL_BACKOFF_MS * Math.pow(2, attempt - 1) + Math.random() * 500;
+            job.currentLine = `${lineLabel} — retry ${attempt}/${MAX_RETRIES} in ${Math.round(backoff / 1000)}s...`;
+            console.log(`[DD Batch ${jobId}] Retry ${attempt}/${MAX_RETRIES} for ${lineLabel}, backoff ${Math.round(backoff)}ms`);
+            await sleep(backoff);
+          }
+
+          try {
+            const timeoutMs = attempt === 0 ? 60_000 : 90_000;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+            const rawRes = await fetch(submitUrl, {
+              method: "POST",
+              headers: { "Authorization": `Bearer ${token}`, "Accept": "*/*", "Content-Type": "application/json" },
+              body: JSON.stringify(submitData),
+              signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
+            const responseText = await rawRes.text();
+
+            if (rawRes.status === 401) {
+              console.warn(`[DD Batch ${jobId}] Got 401, refreshing token`);
+              try {
+                token = await refreshSessionToken(session);
+              } catch (refreshErr: any) {
+                console.error(`[DD Batch ${jobId}] Token refresh failed:`, refreshErr?.message);
+              }
+              if (attempt < MAX_RETRIES) continue;
+              return { rawRes, responseText, attempts: attempt + 1 };
+            }
+
+            if (isRetryable(rawRes.status) && attempt < MAX_RETRIES) {
+              console.warn(`[DD Batch ${jobId}] ${lineLabel} got HTTP ${rawRes.status}, will retry`);
+              lastErr = new Error(`HTTP ${rawRes.status}: ${responseText.substring(0, 200)}`);
+              continue;
+            }
+
+            return { rawRes, responseText, attempts: attempt + 1 };
+          } catch (fetchErr: any) {
+            lastErr = fetchErr;
+            if (!isRetryable(0, fetchErr) || attempt >= MAX_RETRIES) {
+              throw fetchErr;
+            }
+            console.warn(`[DD Batch ${jobId}] ${lineLabel} fetch error (attempt ${attempt + 1}): ${fetchErr?.message}`);
+          }
+        }
+        throw lastErr || new Error('Exhausted retries');
+      };
+
       const processBatch = async () => {
         try {
           const ALLOC_TYPE_ORDER: Record<string, number> = {
@@ -539,20 +604,6 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
           const sortedLines = [...lines].sort((a: any, b: any) => {
             return (ALLOC_TYPE_ORDER[a.allocationType || 'ACCOUNT'] || 99) - (ALLOC_TYPE_ORDER[b.allocationType || 'ACCOUNT'] || 99);
           });
-
-          const submitLine = async (submitData: any, authToken: string): Promise<{ rawRes: any; responseText: string }> => {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 55000);
-            const rawRes = await fetch(submitUrl, {
-              method: "POST",
-              headers: { "Authorization": `Bearer ${authToken}`, "Accept": "*/*", "Content-Type": "application/json" },
-              body: JSON.stringify(submitData),
-              signal: controller.signal,
-            });
-            clearTimeout(timeoutId);
-            const responseText = await rawRes.text();
-            return { rawRes, responseText };
-          };
 
           let lineIdx = 0;
           for (const line of sortedLines) {
@@ -640,22 +691,12 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
 
             try {
               console.log(`[DD Batch ${jobId}] Submitting line ${lineIdx}/${job.totalLines}: ${lineLabel}`);
-              console.log(`[DD Batch ${jobId}] Payload:`, JSON.stringify(submitData));
-              let { rawRes, responseText } = await submitLine(submitData, token);
+              const { rawRes, responseText, attempts } = await submitLineWithRetry(submitData, lineLabel);
 
-              if (rawRes.status === 401) {
-                console.warn(`[DD Batch ${jobId}] Got 401, refreshing token and retrying line ${lineIdx}`);
-                try {
-                  token = await refreshSessionToken(session);
-                  const retry = await submitLine(submitData, token);
-                  rawRes = retry.rawRes;
-                  responseText = retry.responseText;
-                } catch (retryErr: any) {
-                  console.error(`[DD Batch ${jobId}] Token refresh failed:`, retryErr?.message);
-                }
+              if (attempts > 1) {
+                console.log(`[DD Batch ${jobId}] Line ${lineIdx} succeeded after ${attempts} attempts`);
               }
-
-              console.log(`[DD Batch ${jobId}] Line ${lineIdx} HTTP ${rawRes.status}: ${responseText}`);
+              console.log(`[DD Batch ${jobId}] Line ${lineIdx} HTTP ${rawRes.status}: ${responseText.substring(0, 500)}`);
 
               let parsed: any;
               try { parsed = JSON.parse(responseText); } catch { parsed = responseText; }
@@ -676,10 +717,12 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
               }
             } catch (submitErr: any) {
               job.failedLines++;
-              const errMsg = submitErr?.name === 'AbortError' ? 'Request timed out (55s)' : (submitErr?.message || 'Unknown error');
-              job.errors.push(`${lineLabel}: ${errMsg}`);
+              const errMsg = submitErr?.name === 'AbortError'
+                ? `Request timed out after ${MAX_RETRIES + 1} attempts`
+                : (submitErr?.message || 'Unknown error');
+              job.errors.push(`${lineLabel}: ${errMsg} (all retries exhausted)`);
               job.results.push({ lineIndex: lineIdx, accountNo: line.accountNo, allocationType: allocType, amount: line.amount, status: 'FAILED', error: errMsg });
-              console.error(`[DD Batch ${jobId}] Line ${lineIdx} exception:`, submitErr?.message);
+              console.error(`[DD Batch ${jobId}] Line ${lineIdx} FAILED after all retries:`, submitErr?.message);
             }
           }
         } finally {
@@ -732,6 +775,34 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
       });
     } catch (e: any) {
       res.status(500).json({ message: "Failed to fetch job status", detail: e.message });
+    }
+  });
+
+  app.get("/api/dd-allocation/active-job", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const posItemId = Number(req.query.posItemId);
+      if (!posItemId) {
+        return res.status(400).json({ message: "posItemId required" });
+      }
+      for (const [, job] of ddBatchJobs) {
+        if (job.posItemId === posItemId && (job.status === 'PROCESSING' || Date.now() - job.createdAt < 120_000)) {
+          return res.json({
+            jobId: job.jobId,
+            posItemId: job.posItemId,
+            status: job.status,
+            totalLines: job.totalLines,
+            completedLines: job.completedLines,
+            failedLines: job.failedLines,
+            currentLine: job.currentLine,
+            results: job.results,
+            errors: job.errors,
+          });
+        }
+      }
+      res.json({ active: false });
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to check active jobs", detail: e.message });
     }
   });
 

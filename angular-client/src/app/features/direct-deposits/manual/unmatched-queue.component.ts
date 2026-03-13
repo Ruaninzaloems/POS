@@ -1928,22 +1928,42 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
     }
   }
 
-  private async pollQuickAllocJob(jobId: string, maxAttempts = 30, intervalMs = 2000): Promise<any> {
-    for (let i = 0; i < maxAttempts; i++) {
-      await new Promise(resolve => setTimeout(resolve, intervalMs));
+  private async pollQuickAllocJob(jobId: string): Promise<any> {
+    const MAX_DURATION_MS = 5 * 60 * 1000;
+    const BASE_INTERVAL = 1500;
+    const MAX_INTERVAL = 8000;
+    const MAX_CONSECUTIVE_ERRORS = 5;
+    const started = Date.now();
+    let consecutiveErrors = 0;
+    let pollCount = 0;
+
+    while (Date.now() - started < MAX_DURATION_MS) {
+      const interval = Math.min(BASE_INTERVAL + pollCount * 300, MAX_INTERVAL);
+      await new Promise(resolve => setTimeout(resolve, interval));
+      pollCount++;
+
       try {
         const status: any = await firstValueFrom(
           this.api.get(`/api/dd-allocation/job/${jobId}`)
         );
-        this.quickAllocStatus.set(`Processing: ${status.completedLines || 0} of ${status.totalLines || '?'} lines...`);
+        consecutiveErrors = 0;
+        const elapsed = Math.round((Date.now() - started) / 1000);
+        const retryInfo = (status.currentLine || '').includes('retry') ? ` (${status.currentLine})` : '';
+        this.quickAllocStatus.set(
+          `Processing: ${status.completedLines || 0} of ${status.totalLines || '?'} lines... (${elapsed}s)${retryInfo}`
+        );
         if (status.status === 'COMPLETED' || status.status === 'PARTIAL_FAILURE' || status.status === 'PARTIAL' || status.status === 'FAILED') {
           return status;
         }
       } catch {
-        break;
+        consecutiveErrors++;
+        this.quickAllocStatus.set(`Connection interrupted — reconnecting (attempt ${consecutiveErrors})...`);
+        if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+          return { status: 'FAILED', errors: [`Lost connection to server after ${MAX_CONSECUTIVE_ERRORS} attempts. The allocation may still be processing — check the allocation history.`] };
+        }
       }
     }
-    return { status: 'FAILED', errors: ['Job polling timed out'] };
+    return { status: 'FAILED', errors: ['Processing exceeded 5 minutes. The allocation may still complete — check allocation history.'] };
   }
 
   isItemAllocated(item: BankReconPosItem): boolean {

@@ -18,6 +18,8 @@ const SILENT_URL_PATTERNS = [
   '/api/platinum/direct-deposit-allocation/get-clearance-autocomplete',
   '/api/platinum/direct-deposit-allocation/get-pos-item-details',
   '/api/platinum/direct-deposit-allocation/create-virtual-session',
+  '/api/dd-allocation/active-job',
+  '/api/dd-allocation/job/',
 ];
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
