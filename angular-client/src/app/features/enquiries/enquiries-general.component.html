@@ -614,93 +614,175 @@
             @if (svcSelectedService()) {
               <div class="svc-balance-drilldown" data-testid="service-balance-detail">
                 <div class="svc-bal-header">
-                  <button class="svc-bal-back" (click)="svcSelectedService.set(null)" data-testid="button-back-services">← Back</button>
-                  <h3 class="svc-bal-title">{{ getSvcCategory(svcSelectedService()) === 'basic' ? 'Billing History' : 'Service Type Balance' }}</h3>
+                  <button class="svc-bal-back" (click)="svcSelectedService.set(null); svcPurchaseHistory.set([]); svcPurchaseStats.set(null)" data-testid="button-back-services">← Back</button>
+                  <h3 class="svc-bal-title">{{ svcDrilldownMode() === 'purchase-history' ? 'Purchase History' : (getSvcCategory(svcSelectedService()) === 'basic' ? 'Billing History' : 'Service Type Balance') }}</h3>
                   <span class="svc-bal-subtitle">{{ svcSelectedService()?.serviceDesc || svcSelectedService()?.serviceDescription || svcSelectedService()?.tariffType || '' }}</span>
-                  <select class="svc-bal-fy-select" [ngModel]="svcBalanceFinYear()" (ngModelChange)="changeSvcBalanceFinYear($event)" data-testid="select-fin-year-detail">
-                    @for (fy of getSvcBalanceFinYearOptions(); track fy) {
-                      <option [value]="fy">{{ fy }}</option>
-                    }
-                  </select>
+                  @if (svcDrilldownMode() === 'balance') {
+                    <select class="svc-bal-fy-select" [ngModel]="svcBalanceFinYear()" (ngModelChange)="changeSvcBalanceFinYear($event)" data-testid="select-fin-year-detail">
+                      @for (fy of getSvcBalanceFinYearOptions(); track fy) {
+                        <option [value]="fy">{{ fy }}</option>
+                      }
+                    </select>
+                  }
                 </div>
 
-                @if (svcBalanceLoading()) {
-                  <div class="loading-row"><span class="loading-spinner"></span> Loading balance data...</div>
-                } @else if (svcBalanceError()) {
-                  <div class="empty-state">
-                    <p class="empty-text" style="color: #dc2626;">{{ svcBalanceError() }}</p>
-                    <button class="btn-outline btn-sm" (click)="viewServiceBalance(svcSelectedService())" style="margin-top: 0.5rem;">Retry</button>
-                  </div>
-                } @else if (getSvcBalanceFiltered().length === 0) {
-                  <div class="empty-state"><p class="empty-text">No billing data for this service in {{ svcBalanceFinYear() }}</p></div>
-                } @else {
-                  <div class="debt-table-wrapper">
-                    <table class="debt-table svc-modern-table" data-testid="table-service-detail">
-                      <thead>
-                        <tr>
-                          <th class="debt-th-desc">Service Description</th>
-                          <th class="debt-th-amt">Opening Balance</th>
-                          <th class="debt-th-amt">Amount</th>
-                          <th class="debt-th-amt">VAT</th>
-                          <th class="debt-th-amt">Interest</th>
-                          <th class="debt-th-amt">Total Amount</th>
-                          <th class="debt-th-amt">Closing Balance</th>
-                          <th class="debt-th-amt">Current Interest</th>
-                          <th class="debt-th-amt">Current Charge</th>
-                          <th class="debt-th-desc">Month</th>
-                          <th class="debt-th-desc">Fin Year</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        @for (r of getSvcBalanceFiltered(); track $index) {
-                          <tr>
-                            <td class="debt-td-desc">{{ r.serviceDescription || (svcSelectedService()?.serviceDesc || '') }}</td>
-                            <td class="debt-td-amt mono">{{ formatDebtAmt(r.openingBalance || 0) }}</td>
-                            <td class="debt-td-amt mono">{{ formatDebtAmt(r.amount || 0) }}</td>
-                            <td class="debt-td-amt mono">{{ formatDebtAmt(r.vat || 0) }}</td>
-                            <td class="debt-td-amt mono">{{ formatDebtAmt(r.interestAmount ?? r.interest ?? 0) }}</td>
-                            <td class="debt-td-amt mono bold accent-text">{{ formatDebtAmt(r.totalAmount ?? r.total ?? 0) }}</td>
-                            <td class="debt-td-amt mono">{{ formatDebtAmt(r.closingBalance ?? r.closingBal ?? 0) }}</td>
-                            <td class="debt-td-amt mono">{{ formatDebtAmt(r.currentInterestAmount || 0) }}</td>
-                            <td class="debt-td-amt mono">{{ formatDebtAmt(r.currentCharge || 0) }}</td>
-                            <td class="debt-td-desc">{{ r.month || '-' }}</td>
-                            <td class="debt-td-desc">{{ r.financialYear || '-' }}</td>
-                          </tr>
+                @if (svcDrilldownMode() === 'purchase-history') {
+                  @if (svcPurchaseLoading()) {
+                    <div class="loading-row"><span class="loading-spinner"></span> Loading purchase history...</div>
+                  } @else if (svcPurchaseHistory().length === 0) {
+                    <div class="empty-state"><div class="empty-icon">🔌</div><p class="empty-text">No purchase history found for this meter</p></div>
+                  } @else {
+                    @if (svcPurchaseStats()) {
+                      <div class="cons-insights-grid" style="margin-bottom: 1rem;">
+                        <div class="cons-insight-card">
+                          <div class="cons-insight-label">Total Purchases</div>
+                          <div class="cons-insight-value">{{ svcPurchaseStats().totalSales }}</div>
+                        </div>
+                        <div class="cons-insight-card">
+                          <div class="cons-insight-label">Total Spend</div>
+                          <div class="cons-insight-value pp-amount">R {{ formatCurrency(svcPurchaseStats().totalSpend) }}</div>
+                        </div>
+                        <div class="cons-insight-card">
+                          <div class="cons-insight-label">Avg Spend</div>
+                          <div class="cons-insight-value">R {{ formatCurrency(svcPurchaseStats().avgSpend) }}</div>
+                        </div>
+                        <div class="cons-insight-card">
+                          <div class="cons-insight-label">Total Units</div>
+                          <div class="cons-insight-value">{{ svcPurchaseStats().totalUnits | number:'1.1-1' }}</div>
+                        </div>
+                        @if (svcPurchaseStats().lastPurchase) {
+                          <div class="cons-insight-card">
+                            <div class="cons-insight-label">Last Purchase</div>
+                            <div class="cons-insight-value pp-date">{{ formatDate(svcPurchaseStats().lastPurchase) }}</div>
+                            <div class="cons-insight-sub">R {{ formatCurrency(svcPurchaseStats().lastAmount) }}</div>
+                          </div>
                         }
-                        <tr class="debt-total-row">
-                          <td class="debt-td-desc bold">Total</td>
-                          <td class="debt-td-amt mono bold">{{ formatDebtAmt(getSvcBalanceTotals().openingBalance || 0) }}</td>
-                          <td class="debt-td-amt mono bold">{{ formatDebtAmt(getSvcBalanceTotals().amount || 0) }}</td>
-                          <td class="debt-td-amt mono bold">{{ formatDebtAmt(getSvcBalanceTotals().vat || 0) }}</td>
-                          <td class="debt-td-amt mono bold">{{ formatDebtAmt(getSvcBalanceTotals().interestAmount || 0) }}</td>
-                          <td class="debt-td-amt mono bold accent-text">{{ formatDebtAmt(getSvcBalanceTotals().totalAmount || 0) }}</td>
-                          <td class="debt-td-amt mono bold">{{ formatDebtAmt(getSvcBalanceTotals().closingBalance || 0) }}</td>
-                          <td class="debt-td-amt mono bold">{{ formatDebtAmt(getSvcBalanceTotals().currentInterestAmount || 0) }}</td>
-                          <td class="debt-td-amt mono bold">{{ formatDebtAmt(getSvcBalanceTotals().currentCharge || 0) }}</td>
-                          <td class="debt-td-desc" colspan="2"></td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-
-                  @if (getSvcBalanceChartData().length > 0) {
-                    <div class="svc-bal-chart-section">
-                      <div class="svc-bal-chart-title">Monthly Billing Amount</div>
-                      <div class="svc-bal-chart-legend">
-                        <span class="svc-bal-legend-item"><span class="svc-bal-legend-swatch accent-bg"></span> Billing Amount</span>
+                        @if (svcPurchaseStats().cancelled > 0) {
+                          <div class="cons-insight-card">
+                            <div class="cons-insight-label">Cancelled</div>
+                            <div class="cons-insight-value" style="color: #dc2626;">{{ svcPurchaseStats().cancelled }}</div>
+                          </div>
+                        }
                       </div>
-                      <div class="svc-bal-chart">
-                        <div class="svc-bal-chart-bars">
-                          @for (d of getSvcBalanceChartData(); track $index) {
-                            <div class="svc-bal-bar-col">
-                              <span class="svc-bal-bar-val mono">{{ formatDebtAmt(d.amount) }}</span>
-                              <div class="svc-bal-bar accent-bg" [style.height.%]="getSvcBalanceBarHeight(d.amount)"></div>
-                              <span class="svc-bal-bar-label">{{ d.month }}</span>
-                            </div>
+                    }
+                    <div class="debt-table-wrapper">
+                      <div class="debt-table-header svc-header-prepaid">
+                        <span class="debt-table-title">Prepaid Sales History</span>
+                        <span class="debt-table-count">{{ svcPurchaseHistory().length }} sale{{ svcPurchaseHistory().length !== 1 ? 's' : '' }}</span>
+                      </div>
+                      <table class="debt-table" data-testid="table-svc-purchase-history">
+                        <thead>
+                          <tr>
+                            <th class="debt-th-desc">Date</th>
+                            <th class="debt-th-amt">Receipt No</th>
+                            <th class="debt-th-amt">Amount (R)</th>
+                            <th class="debt-th-amt">Prepaid Unit</th>
+                            <th class="debt-th-desc">Type</th>
+                            <th class="debt-th-desc">Prepaid Token No</th>
+                            <th class="debt-th-desc">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (s of svcPurchaseHistory(); track $index) {
+                            <tr [class.pp-cancelled]="(s.canceledStatus || s.cancelledStatus || '').toLowerCase() === 'yes'">
+                              <td class="debt-td-desc">{{ formatDate(s.receiptDate || s.date || s.transactionDate) }}</td>
+                              <td class="debt-td-amt mono">{{ s.receiptNo || s.receiptNumber || '-' }}</td>
+                              <td class="debt-td-amt mono bold accent-text">{{ formatDebtAmt(s.total || s.amount || s.receiptAmount || 0) }}</td>
+                              <td class="debt-td-amt mono">{{ s.prepaidUnit || s.units || s.prepaidUnits || '-' }}</td>
+                              <td class="debt-td-desc">{{ s.type || s.prepaidType || s.paymentType || '-' }}</td>
+                              <td class="debt-td-desc mono pp-token">{{ s.prepaidTokenNo || s.tokenNo || s.token || '-' }}</td>
+                              <td class="debt-td-desc">
+                                @if ((s.canceledStatus || s.cancelledStatus || '').toLowerCase() === 'yes') {
+                                  <span class="svc-status-badge" style="background: #fef2f2; color: #dc2626;">Cancelled</span>
+                                } @else {
+                                  <span class="svc-status-badge svc-active">Active</span>
+                                }
+                              </td>
+                            </tr>
                           }
+                        </tbody>
+                      </table>
+                    </div>
+                  }
+                } @else {
+                  @if (svcBalanceLoading()) {
+                    <div class="loading-row"><span class="loading-spinner"></span> Loading balance data...</div>
+                  } @else if (svcBalanceError()) {
+                    <div class="empty-state">
+                      <p class="empty-text" style="color: #dc2626;">{{ svcBalanceError() }}</p>
+                      <button class="btn-outline btn-sm" (click)="viewServiceBalance(svcSelectedService())" style="margin-top: 0.5rem;">Retry</button>
+                    </div>
+                  } @else if (getSvcBalanceFiltered().length === 0) {
+                    <div class="empty-state"><p class="empty-text">No billing data for this service in {{ svcBalanceFinYear() }}</p></div>
+                  } @else {
+                    <div class="debt-table-wrapper">
+                      <table class="debt-table svc-modern-table" data-testid="table-service-detail">
+                        <thead>
+                          <tr>
+                            <th class="debt-th-desc">Service Description</th>
+                            <th class="debt-th-amt">Opening Balance</th>
+                            <th class="debt-th-amt">Amount</th>
+                            <th class="debt-th-amt">VAT</th>
+                            <th class="debt-th-amt">Interest</th>
+                            <th class="debt-th-amt">Total Amount</th>
+                            <th class="debt-th-amt">Closing Balance</th>
+                            <th class="debt-th-amt">Current Interest</th>
+                            <th class="debt-th-amt">Current Charge</th>
+                            <th class="debt-th-desc">Month</th>
+                            <th class="debt-th-desc">Fin Year</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (r of getSvcBalanceFiltered(); track $index) {
+                            <tr>
+                              <td class="debt-td-desc">{{ r.serviceDescription || (svcSelectedService()?.serviceDesc || '') }}</td>
+                              <td class="debt-td-amt mono">{{ formatDebtAmt(r.openingBalance || 0) }}</td>
+                              <td class="debt-td-amt mono">{{ formatDebtAmt(r.amount || 0) }}</td>
+                              <td class="debt-td-amt mono">{{ formatDebtAmt(r.vat || 0) }}</td>
+                              <td class="debt-td-amt mono">{{ formatDebtAmt(r.interestAmount ?? r.interest ?? 0) }}</td>
+                              <td class="debt-td-amt mono bold accent-text">{{ formatDebtAmt(r.totalAmount ?? r.total ?? 0) }}</td>
+                              <td class="debt-td-amt mono">{{ formatDebtAmt(r.closingBalance ?? r.closingBal ?? 0) }}</td>
+                              <td class="debt-td-amt mono">{{ formatDebtAmt(r.currentInterestAmount || 0) }}</td>
+                              <td class="debt-td-amt mono">{{ formatDebtAmt(r.currentCharge || 0) }}</td>
+                              <td class="debt-td-desc">{{ r.month || '-' }}</td>
+                              <td class="debt-td-desc">{{ r.financialYear || '-' }}</td>
+                            </tr>
+                          }
+                          <tr class="debt-total-row">
+                            <td class="debt-td-desc bold">Total</td>
+                            <td class="debt-td-amt mono bold">{{ formatDebtAmt(getSvcBalanceTotals().openingBalance || 0) }}</td>
+                            <td class="debt-td-amt mono bold">{{ formatDebtAmt(getSvcBalanceTotals().amount || 0) }}</td>
+                            <td class="debt-td-amt mono bold">{{ formatDebtAmt(getSvcBalanceTotals().vat || 0) }}</td>
+                            <td class="debt-td-amt mono bold">{{ formatDebtAmt(getSvcBalanceTotals().interestAmount || 0) }}</td>
+                            <td class="debt-td-amt mono bold accent-text">{{ formatDebtAmt(getSvcBalanceTotals().totalAmount || 0) }}</td>
+                            <td class="debt-td-amt mono bold">{{ formatDebtAmt(getSvcBalanceTotals().closingBalance || 0) }}</td>
+                            <td class="debt-td-amt mono bold">{{ formatDebtAmt(getSvcBalanceTotals().currentInterestAmount || 0) }}</td>
+                            <td class="debt-td-amt mono bold">{{ formatDebtAmt(getSvcBalanceTotals().currentCharge || 0) }}</td>
+                            <td class="debt-td-desc" colspan="2"></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    @if (getSvcBalanceChartData().length > 0) {
+                      <div class="svc-bal-chart-section">
+                        <div class="svc-bal-chart-title">Monthly Billing Amount</div>
+                        <div class="svc-bal-chart-legend">
+                          <span class="svc-bal-legend-item"><span class="svc-bal-legend-swatch accent-bg"></span> Billing Amount</span>
+                        </div>
+                        <div class="svc-bal-chart">
+                          <div class="svc-bal-chart-bars">
+                            @for (d of getSvcBalanceChartData(); track $index) {
+                              <div class="svc-bal-bar-col">
+                                <span class="svc-bal-bar-val mono">{{ formatDebtAmt(d.amount) }}</span>
+                                <div class="svc-bal-bar accent-bg" [style.height.%]="getSvcBalanceBarHeight(d.amount)"></div>
+                                <span class="svc-bal-bar-label">{{ d.month }}</span>
+                              </div>
+                            }
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    }
                   }
                 }
               </div>

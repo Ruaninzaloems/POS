@@ -188,6 +188,10 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   svcBalanceLoading = signal(false);
   svcBalanceError = signal('');
   svcSelectedService = signal<any>(null);
+  svcDrilldownMode = signal<'balance' | 'purchase-history'>('balance');
+  svcPurchaseHistory = signal<any[]>([]);
+  svcPurchaseStats = signal<any>(null);
+  svcPurchaseLoading = signal(false);
   svcBalanceFinYear = signal((() => {
     const now = new Date();
     const y = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
@@ -5104,6 +5108,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
   async viewServiceBalance(svc: any) {
     this.svcSelectedService.set(svc);
+    this.svcDrilldownMode.set('balance');
     this.svcBalanceLoading.set(true);
     this.svcBalanceData.set([]);
     this.svcBalanceError.set('');
@@ -5120,19 +5125,25 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   }
 
   async viewPrepaidPurchaseHistory(svc: any) {
-    const meterNo = (svc.physicalMeterMeterCode || svc.physicalMeterNo || svc.meterNo || svc.meterNumber || '').toLowerCase();
-    this.setActiveTab('consumption');
-    await new Promise(r => setTimeout(r, 800));
-    const prepaidMeters = this.tabData()?.prepaidMeters || [];
-    const match = prepaidMeters.find((m: any) => {
-      const mn = (m.prepaidMeterNo || m.meterNumber || m.physicalMeterNo || m.meterNo || m.meter_ID || '').toLowerCase();
-      return mn && meterNo && mn === meterNo;
-    });
-    if (match) {
-      this.selectPrepaidMeter(match);
-    } else if (prepaidMeters.length > 0) {
-      this.selectPrepaidMeter(prepaidMeters[0]);
+    this.svcSelectedService.set(svc);
+    this.svcDrilldownMode.set('purchase-history');
+    this.svcPurchaseLoading.set(true);
+    this.svcPurchaseHistory.set([]);
+    this.svcPurchaseStats.set(null);
+    const meterId = svc.meterId || svc.meter_id || svc.id || svc.prepaidMeterId || svc.meterID || svc.meter_ID || svc.serviceId || svc.service_ID || svc.physicalMeterMeterCode || svc.physicalMeterNo || svc.meterNo || svc.meterNumber || '';
+    if (!meterId) {
+      this.svcPurchaseLoading.set(false);
+      return;
     }
+    try {
+      const res = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/prepaid-recharge-details-for-meter`, { meterId: String(meterId) }));
+      const sales = this.normalizeArray(res);
+      this.svcPurchaseHistory.set(sales);
+      this.svcPurchaseStats.set(this.computePrepaidStats(sales));
+    } catch (err: any) {
+      this.svcPurchaseHistory.set([]);
+    }
+    this.svcPurchaseLoading.set(false);
   }
 
   async changeSvcBalanceFinYear(fy: string) {
