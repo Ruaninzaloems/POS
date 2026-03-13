@@ -241,6 +241,11 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   stmtAvailableYears = signal<string[]>([]);
   stmtMonths: string[] = ['', 'July', 'August', 'September', 'October', 'November', 'December', 'January', 'February', 'March', 'April', 'May', 'June'];
   stmtSendPanelOpen = signal(false);
+  stmtReportOpening = signal(false);
+  stmtFileStorageBaseUrl = signal('');
+  stmtBiEmbeddedUrl = signal('');
+  stmtBiReportUsername = signal('');
+  stmtBaseWebUrl = signal('');
   stmtAttachment = signal<{type: string; finYear: string; monthFrom: string; monthTo: string; fileUrl?: string} | null>(null);
   stmtAvailableEmails = signal<{email: string; label: string; selected: boolean}[]>([]);
   stmtAvailablePhones = signal<{phone: string; label: string; selected: boolean}[]>([]);
@@ -4718,23 +4723,166 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     };
   }
 
-  async generateStatement() {
-    const payload = this.getStmtPayload();
-    if (!payload) return;
-    this.stmtGenerating.set(true);
-    this.stmtGenerated.set(null);
-    this.stmtGeneratedLink.set('');
+  getMonthPeriodId(monthName: string): number {
+    const monthMap: Record<string, number> = {
+      'July': 1, 'August': 2, 'September': 3, 'October': 4, 'November': 5, 'December': 6,
+      'January': 7, 'February': 8, 'March': 9, 'April': 10, 'May': 11, 'June': 12
+    };
+    return monthMap[monthName] || 0;
+  }
+
+  async fetchConfigSetting(keyName: string): Promise<string> {
     try {
       const result = await firstValueFrom(
-        this.api.post<any>('/api/platinum/billing-enquiry/generate-statement', payload)
+        this.api.get<any>('/api/platinum/billing-enquiry/get-config-setting', { strKeyName: keyName })
       );
-      this.stmtGenerated.set(result);
-      this.toast.show('Statement PDF generated successfully', 'success');
+      if (typeof result === 'string') return result;
+      if (result?.value) return String(result.value);
+      if (result?.settingValue) return String(result.settingValue);
+      return String(result || '');
+    } catch {
+      return '';
+    }
+  }
+
+  async generateStatement() {
+    const stType = this.stmtType();
+    const finYear = this.stmtFinYear();
+    const monthFrom = this.stmtMonthFrom() || this.stmtMonth();
+
+    if (!finYear) {
+      this.toast.show('Please select a financial year', 'error');
+      return;
+    }
+    if (!monthFrom) {
+      this.toast.show('Please select a billing month', 'error');
+      return;
+    }
+
+    const account = this.selectedAccount();
+    if (!account) {
+      this.toast.show('No account selected', 'error');
+      return;
+    }
+    const accountId = this.getAccountId(account);
+    if (!accountId) return;
+
+    const periodId = this.getMonthPeriodId(monthFrom);
+    if (!periodId) {
+      this.toast.show('Invalid billing month selected', 'error');
+      return;
+    }
+
+    const reportName = stType === 'detailed' ? 'BillingTrailrun' : 'BillingAccountStatement';
+    this.stmtGenerating.set(true);
+    this.stmtReportOpening.set(true);
+    this.stmtGenerated.set(null);
+    this.stmtGeneratedLink.set('');
+
+    try {
+      await this.runStatementReport(periodId, Number(accountId), reportName);
     } catch (e: any) {
-      this.toast.show(e?.error?.message || 'Failed to generate statement', 'error');
+      this.toast.show(e?.message || 'Failed to generate statement', 'error');
     } finally {
       this.stmtGenerating.set(false);
+      this.stmtReportOpening.set(false);
     }
+  }
+
+  async runStatementReport(periodId: number, accountId: number, reportName: string) {
+    let reportFilename = '';
+    const templateEndpoint = reportName.toLowerCase() === 'billingaccountstatement'
+      ? '/api/platinum/billing-enquiry/get-billing-template'
+      : '/api/platinum/billing-enquiry/get-detail-billing-template';
+
+    try {
+      const result = await firstValueFrom(this.api.get<any>(templateEndpoint, { accountId: String(accountId), periodId: String(periodId) }));
+      reportFilename = result?.reportFileName || result?.reportfileName || '';
+      console.log('[statement] Template result:', result, 'reportFilename:', reportFilename);
+    } catch (e: any) {
+      console.log('[statement] Template fetch failed, falling back to V1:', e?.message);
+    }
+
+    let opened = false;
+    if (reportName.toLowerCase() === 'billingaccountstatement') {
+      if (reportFilename === 'GeorgeAccountStatement') {
+        const qs = `AccountID=${accountId}&BillPeriodID=${periodId}`;
+        opened = await this.openBIReport(qs, 'EMS/Embedded/Billing/GeorgeStatement.cpt');
+      } else {
+        const qs = `${reportName}=1&AccountID=${accountId}&PeriodID=${periodId}`;
+        const endpointUrl = `/Reports/ReportPage.aspx?${qs}`;
+        opened = await this.openV1Window(endpointUrl);
+      }
+    } else {
+      if (reportFilename === 'GeorgeDetailAccountStatement') {
+        const qs = `AccountID=${accountId}&BillPeriodID=${periodId}`;
+        opened = await this.openBIReport(qs, 'EMS/Embedded/Billing/GeorgeDetailStatement.cpt');
+      } else {
+        const qs = `${reportName}=1&AccountID=${accountId}&PeriodID=${periodId}`;
+        const endpointUrl = `/Reports/ReportPage.aspx?${qs}`;
+        opened = await this.openV1Window(endpointUrl);
+      }
+    }
+
+    if (opened) {
+      this.stmtGenerated.set({ reportFilename, reportName, opened: true });
+      this.toast.show('Statement report opened in new window', 'success');
+    }
+  }
+
+  async openBIReport(queryString: string, viewletPath: string): Promise<boolean> {
+    let biUrl = this.stmtBiEmbeddedUrl();
+    let biUsername = this.stmtBiReportUsername();
+
+    if (!biUrl) {
+      biUrl = await this.fetchConfigSetting('BIEmbeddedURL');
+      this.stmtBiEmbeddedUrl.set(biUrl);
+    }
+    if (!biUsername) {
+      biUsername = await this.fetchConfigSetting('BIReportUsername');
+      this.stmtBiReportUsername.set(biUsername);
+    }
+
+    if (!biUrl) {
+      this.toast.show('BI Embedded URL not configured — contact your administrator', 'error');
+      return false;
+    }
+
+    const base = biUrl.trim().replace(/\/+$/g, '');
+    const route = viewletPath.trim().replace(/^\/+/g, '');
+    const url = `${base}/webroot/decision/view/duchamp?viewlet=/${route}&Username=${encodeURIComponent(biUsername)}&${queryString}`;
+    const features = 'width=1200,height=800,top=50,left=50,toolbar=no,menubar=no,scrollbars=yes,resizable=yes';
+    const win = window.open(url, '_blank', features);
+    if (!win) {
+      this.toast.show('Popup blocked — please allow popups for this site and try again', 'error');
+      return false;
+    }
+    return true;
+  }
+
+  async openV1Window(redirectLink: string): Promise<boolean> {
+    let baseUrl = this.stmtBaseWebUrl();
+
+    if (!baseUrl) {
+      baseUrl = await this.fetchConfigSetting('BaseWebURL');
+      this.stmtBaseWebUrl.set(baseUrl);
+    }
+
+    if (!baseUrl) {
+      this.toast.show('Base Web URL not configured — contact your administrator', 'error');
+      return false;
+    }
+
+    const base = baseUrl.trim().replace(/\/+$/g, '');
+    const route = redirectLink.trim().replace(/^\/+/g, '');
+    const url = `${base}/${route}`;
+    const features = 'width=1200,height=800,top=50,left=50,toolbar=no,menubar=no,scrollbars=yes,resizable=yes';
+    const win = window.open(url, '_blank', features);
+    if (!win) {
+      this.toast.show('Popup blocked — please allow popups for this site and try again', 'error');
+      return false;
+    }
+    return true;
   }
 
   async generateStatementLink() {
@@ -4744,9 +4892,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.stmtGeneratedLink.set('');
     try {
       const result = await firstValueFrom(
-        this.api.post<any>('/api/platinum/billing-enquiry/generate-statement-link', payload)
+        this.api.post<any>('/api/platinum/billing-enquiry/generate-statement', payload)
       );
-      const link = result?.link || result?.url || result?.statementUrl || '';
+      const link = result?.link || result?.url || result?.statementUrl || result?.fileUrl || result?.downloadUrl || '';
       this.stmtGeneratedLink.set(link);
       if (link) {
         this.toast.show('Statement link generated', 'success');
@@ -4776,11 +4924,23 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     window.open(`/api/platinum/statement-download?fileUrl=${encodeURIComponent(fileUrl)}&inline=true`, '_blank');
   }
 
-  downloadStatement(fileUrl?: string) {
+  async downloadStatement(fileUrl?: string) {
     if (!fileUrl) {
       this.toast.show('No download link available', 'error');
       return;
     }
+
+    try {
+      const exists = await firstValueFrom(
+        this.api.get<any>('/api/platinum/billing-enquiry/check-file-exists', { fileUrl })
+      );
+      if (exists === false || exists === 'false' || exists?.exists === false) {
+        this.toast.show('File not found. The statement may have been moved or deleted.', 'error');
+        return;
+      }
+    } catch {
+    }
+
     window.open(`/api/platinum/statement-download?fileUrl=${encodeURIComponent(fileUrl)}`, '_blank');
     this.toast.show('Statement download started', 'success');
   }

@@ -577,6 +577,38 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
     }
   });
 
+  app.get("/api/platinum/billing-enquiry/get-billing-template", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/BillingEnquiry/getBillingTemplate", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-enquiry/get-detail-billing-template", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/BillingEnquiry/getDetailBillingTemplate", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-enquiry/check-file-exists", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const fileUrl = req.query.fileUrl as string;
+      if (!fileUrl) return res.status(400).json({ message: "fileUrl is required" });
+      const data = await platinumGet(session, "/api/BillingEnquiry/CheckFileExists", { fileUrl });
+      res.json(data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   app.post("/api/platinum/billing-enquiry/send-statement", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;

@@ -2931,18 +2931,10 @@
                 <div class="stmt-actions-bar">
                   <button class="stmt-action-btn stmt-action-pdf" (click)="generateStatement()" [disabled]="stmtGenerating()" data-testid="btn-stmt-generate">
                     @if (stmtGenerating()) {
-                      <span class="stmt-spinner"></span> Generating PDF...
+                      <span class="stmt-spinner"></span> Opening Report...
                     } @else {
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                      Generate PDF
-                    }
-                  </button>
-                  <button class="stmt-action-btn stmt-action-link" (click)="generateStatementLink()" [disabled]="stmtGeneratingLink()" data-testid="btn-stmt-gen-link">
-                    @if (stmtGeneratingLink()) {
-                      <span class="stmt-spinner"></span> Generating Link...
-                    } @else {
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                      Generate Link
+                      View Statement
                     }
                   </button>
                   <button class="stmt-action-btn stmt-action-send" (click)="openStmtSendPanel()" data-testid="btn-stmt-open-send">
@@ -2957,36 +2949,26 @@
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                     </div>
                     <div class="stmt-output-info">
-                      <span class="stmt-output-title">PDF Ready</span>
+                      <span class="stmt-output-title">Report Opened</span>
                       <span class="stmt-output-detail">{{ stmtType() === 'detailed' ? 'Detailed' : 'Standard' }} | {{ stmtFinYear() }}{{ stmtMonthFrom() ? ' — ' + stmtMonthFrom() : '' }}{{ stmtMonthTo() && stmtMonthTo() !== stmtMonthFrom() ? ' to ' + stmtMonthTo() : '' }}</span>
                     </div>
-                    <button class="stmt-output-btn stmt-output-btn-preview" (click)="previewStatement(stmtGenerated()?.fileUrl || stmtGenerated()?.downloadUrl || stmtGenerated()?.url)" data-testid="btn-stmt-preview">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-                      Preview
-                    </button>
-                    <button class="stmt-output-btn" (click)="downloadStatement(stmtGenerated()?.fileUrl || stmtGenerated()?.downloadUrl || stmtGenerated()?.url)" data-testid="btn-stmt-download">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                      Download
-                    </button>
+                    @if (stmtGenerated()?.fileUrl || stmtGenerated()?.downloadUrl || stmtGenerated()?.url) {
+                      <button class="stmt-output-btn stmt-output-btn-preview" (click)="previewStatement(stmtGenerated()?.fileUrl || stmtGenerated()?.downloadUrl || stmtGenerated()?.url)" data-testid="btn-stmt-preview">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                        Preview
+                      </button>
+                      <button class="stmt-output-btn" (click)="downloadStatement(stmtGenerated()?.fileUrl || stmtGenerated()?.downloadUrl || stmtGenerated()?.url)" data-testid="btn-stmt-download">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Download
+                      </button>
+                    }
                     <button class="stmt-output-btn stmt-output-btn-send" (click)="openStmtSendPanel()" data-testid="btn-stmt-send-from-result">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                       Send
                     </button>
-                  </div>
-                }
-
-                @if (stmtGeneratedLink()) {
-                  <div class="stmt-output-card stmt-output-link" data-testid="stmt-link-result">
-                    <div class="stmt-output-icon">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--platinum-primary)" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                    </div>
-                    <div class="stmt-output-info stmt-link-info">
-                      <span class="stmt-output-title">Statement Link</span>
-                      <span class="stmt-link-url">{{ stmtGeneratedLink() }}</span>
-                    </div>
-                    <button class="stmt-output-btn" (click)="copyStatementLink()" data-testid="btn-stmt-copy-link">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                      Copy
+                    <button class="stmt-output-btn" (click)="generateStatement()" data-testid="btn-stmt-reopen">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                      Re-open
                     </button>
                   </div>
                 }
