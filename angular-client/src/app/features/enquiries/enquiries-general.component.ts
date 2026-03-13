@@ -115,20 +115,34 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   private _apiCache = new Map<string, Promise<any>>();
   private _apiCacheAccountId: number | null = null;
 
+  private readonly NOCACHE_PATTERNS = [
+    'total-balance', 'close-balance', 'account-balance', 'payment-amount',
+    'service-type-balance', 'deposit-amount', 'outstanding', 'debt-inquiry',
+    'closing-balance', 'open-balance',
+  ];
+
   private cachedGet<T = any>(url: string, params?: Record<string, string>): Promise<T> {
-    const sortedParams = params ? Object.keys(params).sort().map(k => `${k}=${params[k]}`).join('&') : '';
+    const isFinancial = this.NOCACHE_PATTERNS.some(p => url.includes(p));
+    const finalParams = isFinancial ? { ...params, _t: String(Date.now()) } : params;
+
+    const sortedParams = finalParams ? Object.keys(finalParams).filter(k => k !== '_t').sort().map(k => `${k}=${finalParams[k]}`).join('&') : '';
     const key = `${url}?${sortedParams}`;
-    const existing = this._apiCache.get(key);
-    if (existing) return existing;
-    const promise = firstValueFrom(this.api.get<T>(url, params)).catch((err: any) => {
+
+    if (!isFinancial) {
+      const existing = this._apiCache.get(key);
+      if (existing) return existing;
+    }
+
+    const promise = firstValueFrom(this.api.get<T>(url, finalParams)).catch((err: any) => {
       return { _error: true, status: err?.status, statusText: err?.statusText, detail: err?.message } as any;
     });
-    this._apiCache.set(key, promise);
+    if (!isFinancial) {
+      this._apiCache.set(key, promise);
+    }
     return promise;
   }
 
   private clearApiCache(accountId?: number): void {
-    if (accountId && this._apiCacheAccountId === accountId) return;
     this._apiCache.clear();
     this._apiCacheAccountId = accountId || null;
   }
@@ -2243,7 +2257,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         case 'transactions':
           try {
             const receiptResult = await firstValueFrom(
-              this.api.get<any>(`/api/platinum/billing-enquiry/payment-amount-by-account-ids/${accountId}`)
+              this.api.get<any>(`/api/platinum/billing-enquiry/payment-amount-by-account-ids/${accountId}`, { _t: String(Date.now()) })
             );
             const receiptArr = this.normalizeArray(receiptResult);
             if (receiptArr.length > 0) {
@@ -2626,10 +2640,10 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           }
           const bvpYear = this.bvpFinYear();
           const [billedVsPaid, billedBalance2, bvpCloseBalance, bvpReceipts] = await Promise.allSettled([
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/billed-vs-paid-amounts`, { accountId: String(accountId), financialYear: bvpYear })),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/billed-vs-paid-amounts`, { accountId: String(accountId), financialYear: bvpYear, _t: String(Date.now()) })),
             this.fetchAccountBalance(accountId),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/close-balance-detail/${accountId}`)),
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/payment-amount-by-account-ids/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/close-balance-detail/${accountId}`, { _t: String(Date.now()) })),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/payment-amount-by-account-ids/${accountId}`, { _t: String(Date.now()) })),
           ]);
           const bvpArr = billedVsPaid.status === 'fulfilled' ? this.normalizeArray(billedVsPaid.value) : [];
           const balArr = billedBalance2.status === 'fulfilled' ? this.normalizeArray(billedBalance2.value) : [];
@@ -2745,7 +2759,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
     try {
       const res = await firstValueFrom(
-        this.api.get<any>(`/api/platinum/billing-enquiry/account-balance/${accountId}`)
+        this.api.get<any>(`/api/platinum/billing-enquiry/account-balance/${accountId}`, { _t: String(Date.now()) })
       );
       if (res && !res._error) {
         console.log('[balance] TotalBalanceDebt OK for', accountId);
@@ -3353,10 +3367,10 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.tabError.set(null);
     try {
       const [billedVsPaid, billedBalance2, closeBalResult, bvpReceipts] = await Promise.allSettled([
-        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/billed-vs-paid-amounts`, { accountId: String(accountId), financialYear: year })),
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/billed-vs-paid-amounts`, { accountId: String(accountId), financialYear: year, _t: String(Date.now()) })),
         this.fetchAccountBalance(accountId),
-        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/close-balance-detail/${accountId}`)),
-        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/payment-amount-by-account-ids/${accountId}`)),
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/close-balance-detail/${accountId}`, { _t: String(Date.now()) })),
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/payment-amount-by-account-ids/${accountId}`, { _t: String(Date.now()) })),
       ]);
       const bvpArr = billedVsPaid.status === 'fulfilled' ? this.normalizeArray(billedVsPaid.value) : [];
       const balArr = billedBalance2.status === 'fulfilled' ? this.normalizeArray(billedBalance2.value) : [];
@@ -3475,7 +3489,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     if (!loaded) {
       try {
         const result = await firstValueFrom(
-          this.api.get<any>(`/api/platinum/billing-enquiry/service-type-balance/${accountId}`, params)
+          this.api.get<any>(`/api/platinum/billing-enquiry/service-type-balance/${accountId}`, { ...params, _t: String(Date.now()) })
         );
         const arr = this.normalizeArray(result);
         if (arr.length > 0 && !arr[0]._error) {
@@ -3515,7 +3529,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const results = await Promise.allSettled(
       months.map(m => firstValueFrom(
         this.api.get<any>(`/api/platinum/billing-enquiry/get-billing-period-transactions`, {
-          accountId: String(accountId), finYear, billingMonth: m, balanceType: '3'
+          accountId: String(accountId), finYear, billingMonth: m, balanceType: '3', _t: String(Date.now())
         })
       ))
     );
@@ -3767,7 +3781,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       if (month) {
         const result = await firstValueFrom(
           this.api.get<any>(`/api/platinum/billing-enquiry/get-billing-period-transactions`, {
-            accountId: String(accountId), finYear, billingMonth: month, balanceType: '3'
+            accountId: String(accountId), finYear, billingMonth: month, balanceType: '3', _t: String(Date.now())
           })
         );
         const arr = this.normalizeArray(result);
@@ -3781,7 +3795,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         const results = await Promise.allSettled(
           months.map(m => firstValueFrom(
             this.api.get<any>(`/api/platinum/billing-enquiry/get-billing-period-transactions`, {
-              accountId: String(accountId), finYear, billingMonth: m, balanceType: '3'
+              accountId: String(accountId), finYear, billingMonth: m, balanceType: '3', _t: String(Date.now())
             })
           ))
         );
@@ -3829,9 +3843,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       if (bMonthNum !== undefined) params['billingMonth'] = String(bMonthNum);
 
       if (drilldown === 'openbalance' && pId) {
-        detail = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/open-balance-detail`, params));
+        detail = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/open-balance-detail`, { ...params, _t: String(Date.now()) }));
       } else if (drilldown === 'closebalance' && pId) {
-        detail = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/close-balance-detail`, params));
+        detail = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/close-balance-detail`, { ...params, _t: String(Date.now()) }));
       } else if (drilldown === 'receipt' && pIdNum) {
         detail = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/receipt-transaction-detail`, params));
       } else if (drilldown === 'levy' && pIdNum) {
@@ -3925,7 +3939,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       const monthResults = await Promise.allSettled(
         months.map(m => firstValueFrom(
           this.api.get<any>(`/api/platinum/billing-enquiry/get-billing-period-transactions`, {
-            accountId: String(accountId), finYear, billingMonth: m, balanceType: '3'
+            accountId: String(accountId), finYear, billingMonth: m, balanceType: '3', _t: String(Date.now())
           })
         ))
       );
@@ -5031,7 +5045,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const account = this.selectedAccount();
     const accountId = this.getAccountId(account);
     try {
-      const data = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/service-type-balance`, { accountId: String(accountId), financialYear: this.svcBalanceFinYear() }));
+      const data = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/service-type-balance`, { accountId: String(accountId), financialYear: this.svcBalanceFinYear(), _t: String(Date.now()) }));
       this.svcBalanceData.set(this.normalizeArray(data));
     } catch (err: any) {
       this.svcBalanceData.set([]);
