@@ -420,14 +420,20 @@ function parseDescriptionForClues(note: string, reference: string): ParsedClues 
 
   const nameSearchTerms: string[] = [...slashSurnames];
   const cleanNote = decodedNote.trim();
-  if (cleanNote.length >= 3 && !isBankingDesc && accountNumbers.length === 0 && meterNumbers.length === 0 && erfNumbers.length === 0) {
-    const strippedNote = cleanNote.replace(/\b[A-Z]{0,3}\d{4,}\b/gi, '').replace(/[-–—]/g, ' ').trim();
-    const words = strippedNote.split(/[\s,&]+/).map(w => w.replace(/[^A-Za-z'-]/g, '')).filter(w => w.length >= 2);
-    const alphaWords = words.filter(w => /^[A-Za-z'-]+$/.test(w) && !NOISE_WORDS.has(w.toUpperCase()));
-    if (alphaWords.length >= 2 && alphaWords.length <= 8) {
-      nameSearchTerms.push(alphaWords.join(' '));
-      const longWords = alphaWords.filter(w => w.length >= 4);
-      for (const word of longWords.slice(0, 2)) {
+
+  const extractNameWords = (input: string): string[] => {
+    const strippedNote = input.replace(/\b[A-Z]{0,3}\d{4,}\b/gi, '').replace(/\bERF\s*\d+\b/gi, '').replace(/[-–—]/g, ' ').trim();
+    const words = strippedNote.split(/[\s,&]+/).map(w => w.replace(/[^A-Za-z'-]/g, '')).filter(w => w.length >= 3);
+    return words.filter(w => /^[A-Za-z'-]+$/.test(w) && !NOISE_WORDS.has(w.toUpperCase()) && !GENERIC_WORDS.has(w.toLowerCase()));
+  };
+
+  if (cleanNote.length >= 3 && !isBankingDesc) {
+    const alphaWords = extractNameWords(cleanNote);
+    if (alphaWords.length >= 1 && alphaWords.length <= 8) {
+      if (alphaWords.length >= 2) {
+        nameSearchTerms.push(alphaWords.join(' '));
+      }
+      for (const word of alphaWords.filter(w => w.length >= 4).slice(0, 3)) {
         if (!nameSearchTerms.includes(word)) {
           nameSearchTerms.push(word);
         }
@@ -1414,6 +1420,38 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
         );
       }
 
+      const acSearchTerms: string[] = [];
+      for (const erf of clues.erfNumbers.slice(0, 2)) {
+        const erfText = `ERF${erf.erf}`;
+        if (!acSearchTerms.includes(erfText)) acSearchTerms.push(erfText);
+        const erfSpaced = `ERF ${erf.erf}`;
+        if (!acSearchTerms.includes(erfSpaced)) acSearchTerms.push(erfSpaced);
+      }
+      for (const nameTerm of clues.nameSearchTerms.slice(0, 2)) {
+        if (nameTerm.length >= 3 && !acSearchTerms.includes(nameTerm)) acSearchTerms.push(nameTerm);
+      }
+      for (const term of acSearchTerms.slice(0, 4)) {
+        for (const acType of ['erfNumber', 'accountNumber'] as const) {
+          searchPromises.push(
+            this.safeCall(() => firstValueFrom(
+              this.api.get('/api/platinum/billing-enquiry/autocomplete', { search: term, type: acType })
+            )).then((rawData: any) => {
+              const items = this.unwrap(rawData);
+              for (const r of items.slice(0, 5)) {
+                const itemName = (r.name || [r.initials, r.lastName].filter(Boolean).join(' ') || r.surname_Company || '').toUpperCase();
+                const nameTerms = clues.nameSearchTerms.map(n => n.toUpperCase());
+                const nameMatch = nameTerms.some(n => itemName.includes(n));
+                const confidence = nameMatch ? 95 : 70;
+                const matchType = acType === 'erfNumber' ? 'erf_number' as const : 'account_number' as const;
+                this.addResult(suggestions, r, matchType,
+                  `Autocomplete "${term}"${nameMatch ? ' + name confirmed' : ''}`, confidence,
+                  [`Autocomplete search: "${term}" (${acType})`, nameMatch ? `Name match in "${itemName}"` : 'Verify account holder']);
+              }
+            })
+          );
+        }
+      }
+
       const refTrimmed = (item.reference || '').trim();
       if (/^\d{3,7}$/.test(refTrimmed) && !clues.accountNumbers.some(a => a === refTrimmed || a.endsWith(refTrimmed))) {
         const paddedRef = refTrimmed.padStart(12, '0');
@@ -1437,6 +1475,19 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
       progressMap.set(id, `Running ${searchPromises.length} searches...`);
       this.inlineProgress.set(new Map(progressMap));
       await Promise.allSettled(searchPromises);
+
+      if (clues.nameSearchTerms.length > 0 && suggestions.length > 0) {
+        const upperNames = clues.nameSearchTerms.map(n => n.toUpperCase());
+        for (const s of suggestions) {
+          const sName = (s.name || '').toUpperCase();
+          if (upperNames.some(n => sName.includes(n))) {
+            if (s.matchType !== 'name') {
+              s.confidence = Math.min(s.confidence + 10, 99);
+              s.matchReasoning = [...(s.matchReasoning || []), `Name "${clues.nameSearchTerms[0]}" confirmed in account holder`];
+            }
+          }
+        }
+      }
 
       suggestions.sort((a, b) => b.confidence - a.confidence);
       const sugMap = new Map(this.inlineSuggestions());
