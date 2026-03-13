@@ -492,11 +492,10 @@
                         }
                         @if (match.erfNumber || match.sgNumber) {
                           <div class="match-property-info">
-                            @if (match.erfNumber) {
-                              <span class="match-tag">ERF {{ match.erfNumber }}</span>
-                            }
                             @if (match.sgNumber) {
-                              <span class="match-tag">SG: {{ match.sgNumber }}</span>
+                              <span class="match-tag sg-tag">ERF {{ match.sgNumber }}</span>
+                            } @else if (match.erfNumber) {
+                              <span class="match-tag">ERF {{ match.erfNumber }}</span>
                             }
                             @if (match.suburb) {
                               <span class="match-tag">{{ match.suburb }}</span>

@@ -1408,6 +1408,21 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
             }
           })
         );
+        searchPromises.push(
+          this.safeCall(() => firstValueFrom(
+            this.api.get('/api/platinum/billing-enquiry/autocomplete', { search: erf.erf, type: 'erfNumber' })
+          )).then((rawData: any) => {
+            const items = this.unwrap(rawData);
+            for (const r of items.slice(0, 10)) {
+              const sgNum = r.displayItem && /^[A-Z]\d{3}\//.test(r.displayItem) ? r.displayItem : '';
+              if (sgNum) { r.sgNumber = sgNum; r.erfNumber = sgNum; }
+              const hasAreaMatch = checkAreaMatch(r, erf.area);
+              this.addResult(suggestions, r, 'erf_number', `${erfLabel} — SG: ${sgNum || 'property'}${hasAreaMatch ? ' ✓' : ''}`,
+                hasAreaMatch ? 95 : 88,
+                [`ERF autocomplete for "${erf.erf}"`, sgNum ? `SG: ${sgNum}` : 'Property match', 'Searched via billing enquiry ERF lookup']);
+            }
+          })
+        );
         const erfPadded = erf.erf.padStart(8, '0');
         searchPromises.push(
           this.safeCall(() => firstValueFrom(
@@ -1441,6 +1456,27 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
             }
           })
         );
+      }
+
+      const erfSearchedNums = new Set(clues.erfNumbers.map(e => e.erf));
+      for (const accNum of clues.accountNumbers.slice(0, 3)) {
+        if (accNum.length >= 3 && accNum.length <= 6 && !erfSearchedNums.has(accNum)) {
+          erfSearchedNums.add(accNum);
+          searchPromises.push(
+            this.safeCall(() => firstValueFrom(
+              this.api.get('/api/platinum/billing-enquiry/autocomplete', { search: accNum, type: 'erfNumber' })
+            )).then((rawData: any) => {
+              const items = this.unwrap(rawData);
+              for (const r of items.slice(0, 10)) {
+                const sgNum = r.displayItem && /^[A-Z]\d{3}\//.test(r.displayItem) ? r.displayItem : '';
+                if (sgNum) { r.sgNumber = sgNum; r.erfNumber = sgNum; }
+                this.addResult(suggestions, r, 'erf_number', `ERF ${accNum} — SG: ${sgNum || 'property'}`,
+                  sgNum ? 82 : 70,
+                  [`"${accNum}" may be an ERF number`, sgNum ? `SG: ${sgNum}` : 'Property match', 'Searched via billing enquiry ERF lookup']);
+              }
+            })
+          );
+        }
       }
 
       for (const nameTerm of clues.nameSearchTerms.slice(0, 2)) {
