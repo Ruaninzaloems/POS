@@ -1648,9 +1648,11 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
 
     try {
       try {
-        const freshItem: any = await firstValueFrom(
+        const freshCheck = firstValueFrom(
           this.api.get('/api/platinum/direct-deposit-allocation/get-pos-item-details', { posItemId: String(item.posItem_ID) })
         );
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000));
+        const freshItem: any = await Promise.race([freshCheck, timeout]);
         const detail = freshItem?.posItem || freshItem || {};
         if (detail.billingAllocated || detail.dateAllocated) {
           this.quickAllocError.set('This deposit was already allocated by another user.');
@@ -1667,12 +1669,14 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
       this.quickAllocStatus.set('Creating virtual session...');
       let virtualCashierId: number | null = null;
       try {
-        const sessionResult: any = await firstValueFrom(
+        const sessCall = firstValueFrom(
           this.api.post('/api/platinum/direct-deposit-allocation/create-virtual-session', {
             posItemId: item.posItem_ID,
             userId: user?.user_ID || 0,
           })
         );
+        const sessTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000));
+        const sessionResult: any = await Promise.race([sessCall, sessTimeout]);
         virtualCashierId = sessionResult?.virtualCashierId || sessionResult?.sessionId || sessionResult?.id || null;
       } catch (e: any) {
         console.warn('[QuickAlloc] Virtual session creation failed (non-blocking):', e?.message);
