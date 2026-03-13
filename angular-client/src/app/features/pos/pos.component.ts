@@ -821,6 +821,9 @@ export class PosComponent implements OnInit, OnDestroy {
     const isWater = /water/i.test(meterSvcType) || /^0[12]/i.test(meterNo);
     const prepaidType = meterNo ? (isWater ? 'Water' : 'Electricity') : '';
 
+    const accountBalance = Number(merged.outStandingAmt ?? merged.outstandingAmount ?? merged.balance ?? merged.totalDue ?? 0);
+    console.log(`[addAccountToBasket] Account ${accountNo} actual balance from API: ${accountBalance}`);
+
     const item: BasketItem = {
       id: crypto.randomUUID(),
       type: 'account',
@@ -844,6 +847,7 @@ export class PosComponent implements OnInit, OnDestroy {
         hasPrepaidMeter: !!meterNo,
         prepaidMeterNo: meterNo,
         prepaidType,
+        accountBalance,
         originalData: merged,
       },
     };
