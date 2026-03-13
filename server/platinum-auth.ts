@@ -709,42 +709,60 @@ export async function platinumPost(session: UserSession, path: string, body: any
 }
 
 export async function platinumPut(session: UserSession, path: string, body: any, params?: Record<string, string>): Promise<any> {
-  const token = await refreshSessionToken(session);
   const sessionApiUrl = getApiUrlForSession(session);
   let url = `${sessionApiUrl}${path}`;
   if (params) {
     const qs = new URLSearchParams(params).toString().replace(/%2F/gi, '/');
     if (qs) url += `?${qs}`;
   }
-  const res = await fetch(url, {
-    method: "PUT",
-    headers: { Authorization: `Bearer ${token}`, Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (res.status === 401) {
-    session.token = '';
-    session.tokenExpiry = 0;
-    const retryToken = await refreshSessionToken(session);
-    const retryRes = await fetch(url, {
-      method: "PUT",
-      headers: { Authorization: `Bearer ${retryToken}`, Accept: "application/json", "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!retryRes.ok) return { _error: true, status: retryRes.status, statusText: retryRes.statusText };
-    const text = await retryRes.text();
-    try { return text ? JSON.parse(text) : null; } catch { return text; }
-  }
-  if (!res.ok) {
-    const errText = await res.text().catch(() => '');
-    console.error(`[PlatinumPUT] ${path} returned ${res.status}: ${errText}`);
-    return { _error: true, status: res.status, statusText: res.statusText, detail: errText };
-  }
-  const text = await res.text();
-  try { return text ? JSON.parse(text) : null; } catch { return text; }
+  await acquireSlot();
+  try {
+    const token = await refreshSessionToken(session);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    try {
+      const res = await fetch(url, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      if (res.status === 401) {
+        session.token = '';
+        session.tokenExpiry = 0;
+        const retryToken = await refreshSessionToken(session);
+        const retryController = new AbortController();
+        const retryTimeout = setTimeout(() => retryController.abort(), 30000);
+        try {
+          const retryRes = await fetch(url, {
+            method: "PUT",
+            headers: { Authorization: `Bearer ${retryToken}`, Accept: "application/json", "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+            signal: retryController.signal,
+          });
+          if (!retryRes.ok) return { _error: true, status: retryRes.status, statusText: retryRes.statusText };
+          const text = await retryRes.text();
+          try { return text ? JSON.parse(text) : null; } catch { return text; }
+        } finally { clearTimeout(retryTimeout); }
+      }
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        console.error(`[PlatinumPUT] ${path} returned ${res.status}: ${errText}`);
+        return { _error: true, status: res.status, statusText: res.statusText, detail: errText };
+      }
+      const text = await res.text();
+      try { return text ? JSON.parse(text) : null; } catch { return text; }
+    } catch (e: any) {
+      if (e.name === 'AbortError') {
+        console.error(`[PlatinumPUT] ${path} timed out after 30s`);
+        return { _error: true, status: 408, statusText: 'Request Timeout' };
+      }
+      throw e;
+    } finally { clearTimeout(timeoutId); }
+  } finally { releaseSlot(); }
 }
 
 export async function platinumDelete(session: UserSession, path: string, params?: Record<string, string>): Promise<any> {
-  const token = await refreshSessionToken(session);
   const sessionApiUrl = getApiUrlForSession(session);
   let url = `${sessionApiUrl}${path}`;
   if (params) {
@@ -752,26 +770,51 @@ export async function platinumDelete(session: UserSession, path: string, params?
     if (qs) url += `?${qs}`;
   }
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  await acquireSlot();
   try {
-    const res = await fetch(url, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
-      signal: controller.signal,
-    });
+    const token = await refreshSessionToken(session);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    try {
+      const res = await fetch(url, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+        signal: controller.signal,
+      });
 
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '');
-      return { _error: true, status: res.status, statusText: res.statusText, detail: errText };
-    }
+      if (res.status === 401) {
+        session.token = '';
+        session.tokenExpiry = 0;
+        const retryToken = await refreshSessionToken(session);
+        const retryController = new AbortController();
+        const retryTimeout = setTimeout(() => retryController.abort(), 30000);
+        try {
+          const retryRes = await fetch(url, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${retryToken}`, Accept: "application/json" },
+            signal: retryController.signal,
+          });
+          if (!retryRes.ok) return { _error: true, status: retryRes.status, statusText: retryRes.statusText };
+          const text = await retryRes.text();
+          try { return text ? JSON.parse(text) : null; } catch { return text; }
+        } finally { clearTimeout(retryTimeout); }
+      }
 
-    const text = await res.text();
-    try { return text ? JSON.parse(text) : null; } catch { return text; }
-  } catch (e: any) {
-    if (e.name === 'AbortError') return { _error: true, status: 408, statusText: 'Request Timeout' };
-    throw e;
-  } finally { clearTimeout(timeoutId); }
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        return { _error: true, status: res.status, statusText: res.statusText, detail: errText };
+      }
+
+      const text = await res.text();
+      try { return text ? JSON.parse(text) : null; } catch { return text; }
+    } catch (e: any) {
+      if (e.name === 'AbortError') {
+        console.error(`[PlatinumDELETE] ${path} timed out after 30s`);
+        return { _error: true, status: 408, statusText: 'Request Timeout' };
+      }
+      throw e;
+    } finally { clearTimeout(timeoutId); }
+  } finally { releaseSlot(); }
 }
 
 export function getPlatinumApiUrl(session?: UserSession): string {
