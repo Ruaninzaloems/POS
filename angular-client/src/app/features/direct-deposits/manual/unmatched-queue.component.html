@@ -330,6 +330,37 @@
           </button>
         </div>
         <div class="dialog-body">
+          @if (depositAllocDone()) {
+            <div class="alloc-complete-screen">
+              <div class="alloc-complete-icon">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-5"/></svg>
+              </div>
+              <h3 class="alloc-complete-title">Allocation Complete</h3>
+              <p class="alloc-complete-desc">
+                Deposit #{{ selectedItem()!.posItem_ID }} has been successfully allocated.
+              </p>
+              <div class="alloc-complete-details">
+                <div class="alloc-complete-row">
+                  <span class="alloc-complete-label">Amount</span>
+                  <span class="alloc-complete-value mono bold">{{ formatCurrency(depositAllocDone()!.amount) }}</span>
+                </div>
+                <div class="alloc-complete-row">
+                  <span class="alloc-complete-label">Account</span>
+                  <span class="alloc-complete-value mono">{{ depositAllocDone()!.accountNo }}</span>
+                </div>
+                <div class="alloc-complete-row">
+                  <span class="alloc-complete-label">Name</span>
+                  <span class="alloc-complete-value">{{ depositAllocDone()!.name }}</span>
+                </div>
+              </div>
+              <div class="alloc-complete-actions">
+                <button class="btn-primary" (click)="closeDetail()" data-testid="button-return-to-list">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                  Return to Deposit List
+                </button>
+              </div>
+            </div>
+          } @else {
           <div class="detail-section">
             <h4 class="detail-section-title">Transaction Details</h4>
             <div class="detail-grid">
@@ -674,6 +705,7 @@
                 Allocate This Deposit
               </button>
             </div>
+          }
           }
         </div>
       </div>

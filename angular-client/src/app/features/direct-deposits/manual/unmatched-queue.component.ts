@@ -514,6 +514,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
   quickAllocComplete = signal(false);
   quickAllocError = signal('');
   quickAllocMatchId = signal<number | null>(null);
+  depositAllocDone = signal<{ accountNo: string; name: string; amount: number; posItemId: number } | null>(null);
 
   manualSearchOpen = signal(false);
   msAdvancedOpen = signal(false);
@@ -1776,6 +1777,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
           if ((pollResult.errors || []).length === 0) {
             this.quickAllocStatus.set('Allocation completed successfully!');
             this.quickAllocComplete.set(true);
+            this.depositAllocDone.set({ accountNo: match.accountNo, name: match.name, amount: item.amount, posItemId: item.posItem_ID });
             this.toast.success(`Allocated R ${item.amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })} to ${match.accountNo} — ${match.name}`);
             this.removeAllocatedItem(item.posItem_ID);
           } else {
@@ -1787,6 +1789,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
       } else {
         this.quickAllocStatus.set('Allocation completed successfully!');
         this.quickAllocComplete.set(true);
+        this.depositAllocDone.set({ accountNo: match.accountNo, name: match.name, amount: item.amount, posItemId: item.posItem_ID });
         this.toast.success(`Allocated R ${item.amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })} to ${match.accountNo} — ${match.name}`);
         this.removeAllocatedItem(item.posItem_ID);
       }
@@ -1852,6 +1855,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
     this.quickAllocComplete.set(false);
     this.quickAllocError.set('');
     this.quickAllocMatchId.set(null);
+    this.depositAllocDone.set(null);
     this.manualSearchOpen.set(false);
     this.msAdvancedOpen.set(false);
     this.msResults.set([]);
