@@ -1743,7 +1743,7 @@ export class PosComponent implements OnInit, OnDestroy {
         account_ID: ad.accountId,
         accountNumber: ad.accountNumber,
         name: ad.name,
-        outStandingAmt: item.amountToPay,
+        outStandingAmt: item.amountDue,
         billId: null,
         cutOffID: ad.cutOffID ?? 0,
         cutOffAmount: ad.cutOffAmount ?? 0,
