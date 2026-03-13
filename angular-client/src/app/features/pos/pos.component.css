@@ -3835,3 +3835,68 @@
 .vat-breakdown-value {
   font-family: 'Inter', monospace;
 }
+
+.misc-tender-section {
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
+.misc-tender-blocks {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+}
+.misc-tender-block {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 20px;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  background: #fff;
+  color: #555;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.misc-tender-block:hover {
+  border-color: var(--platinum-primary, #0f2b46);
+  color: var(--platinum-primary, #0f2b46);
+  background: rgba(15,43,70,0.03);
+}
+.misc-tender-block.active {
+  border-color: var(--platinum-primary, #0f2b46);
+  background: var(--platinum-primary, #0f2b46);
+  color: #fff;
+}
+.misc-tender-block.active svg {
+  stroke: #fff;
+}
+.misc-card-fields {
+  margin-top: 8px;
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.misc-tender-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  background: #e8f5e9;
+  color: #2e7d32;
+  vertical-align: middle;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.misc-tender-tag.misc-tender-card {
+  background: #e3f2fd;
+  color: #1565c0;
+}

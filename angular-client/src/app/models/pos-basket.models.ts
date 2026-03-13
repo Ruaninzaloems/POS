@@ -63,6 +63,8 @@ export interface PrepaidItemData {
   accountNumber?: string;
 }
 
+export type MiscTenderType = 'cash' | 'card';
+
 export interface MiscItemData {
   groupId: number;
   groupName: string;
@@ -74,6 +76,9 @@ export interface MiscItemData {
   isVatable: boolean;
   vatPercentage: number;
   vatAmount: number;
+  tenderType: MiscTenderType;
+  cardNumber?: string;
+  cardExpiry?: string;
 }
 
 export interface BasketItem {

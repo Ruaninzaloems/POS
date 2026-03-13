@@ -475,8 +475,33 @@
                 <input class="form-input" type="text" placeholder="Payment description" [ngModel]="miscDescription()" (ngModelChange)="miscDescription.set($event)" data-testid="input-misc-desc" />
               </div>
             </div>
+            <div class="misc-tender-section">
+              <label class="form-label">Payment Method</label>
+              <div class="misc-tender-blocks">
+                <button class="misc-tender-block" [class.active]="miscTenderType() === 'cash'" (click)="miscTenderType.set('cash')" data-testid="button-misc-cash">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M2 10h2M20 10h2M2 14h2M20 14h2"/></svg>
+                  <span>Cash</span>
+                </button>
+                <button class="misc-tender-block" [class.active]="miscTenderType() === 'card'" (click)="miscTenderType.set('card')" data-testid="button-misc-card">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/><path d="M6 16h4"/></svg>
+                  <span>Card</span>
+                </button>
+              </div>
+            </div>
+            @if (miscTenderType() === 'card') {
+              <div class="form-row misc-card-fields">
+                <div class="form-group">
+                  <label class="form-label">Card Number</label>
+                  <input class="form-input" type="text" placeholder="0000 0000 0000 0000" maxlength="19" [ngModel]="miscCardNumber()" (ngModelChange)="formatMiscCardNumber($event)" data-testid="input-misc-card-number" />
+                </div>
+                <div class="form-group" style="max-width:120px">
+                  <label class="form-label">Expiry</label>
+                  <input class="form-input" type="text" placeholder="MM/YY" maxlength="5" [ngModel]="miscCardExpiry()" (ngModelChange)="formatMiscCardExpiry($event)" data-testid="input-misc-card-expiry" />
+                </div>
+              </div>
+            }
             <button class="search-go-btn" style="margin-top:12px" (click)="addMiscFromTab()" [disabled]="miscSelectedGroupId() === 0 || miscAmount() <= 0 || !sessionActive()" data-testid="button-add-misc">
-              Add to Basket
+              Add to Basket ({{ miscTenderType() === 'cash' ? 'Cash' : 'Card' }})
             </button>
           </div>
         }
@@ -665,7 +690,10 @@
               </div>
               @for (item of basket.itemsByType()['misc']; track item.id) {
                 <div class="summary-item-detail">
-                  <div class="summary-item-name">{{ item.miscData?.groupName || item.label }}</div>
+                  <div class="summary-item-name">
+                    {{ item.miscData?.groupName || item.label }}
+                    <span class="misc-tender-tag" [class.misc-tender-card]="item.miscData?.tenderType === 'card'">{{ item.miscData?.tenderType === 'card' ? 'Card' : 'Cash' }}</span>
+                  </div>
                   <div class="summary-item-meta">
                     <span>{{ item.miscData?.scoaItemName }}</span>
                     <span class="mono" [class.summary-zero]="item.amountToPay <= 0">R {{ formatCurrency(item.amountToPay) }}</span>

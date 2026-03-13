@@ -54,6 +54,105 @@ export function registerBillingRoutes(app: Express, httpServer: Server): void {
     }
   });
 
+  app.post("/api/platinum/billing-payment/submit-miscellaneous-payment/:userId", async (req, res) => {
+    let dedupKey = '';
+    let idempotencyToken: string | undefined;
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const userId = req.params.userId;
+      const body = req.body;
+      idempotencyToken = req.headers['x-idempotency-token'] as string | undefined;
+
+      if (!body.miscellaneousPaymentGroup && body.miscellaneousPaymentGroup !== 0) {
+        return res.status(400).json({ message: "miscellaneousPaymentGroup is required" });
+      }
+      if (!body.scoaItem && body.scoaItem !== 0) {
+        return res.status(400).json({ message: "scoaItem is required" });
+      }
+      if (body.totalAmount === undefined || body.totalAmount === null || body.totalAmount < 0) {
+        return res.status(400).json({ message: "totalAmount must be 0 or greater" });
+      }
+
+      const paymentType = Number(body.paymentType ?? 1);
+      const isCard = paymentType === 3;
+      const payload: Record<string, any> = {
+        LastName: body.lastName || '',
+        Initials: body.initials || '',
+        MiscellaneousPaymentGroup: Number(body.miscellaneousPaymentGroup),
+        ScoaItem: Number(body.scoaItem),
+        Description: body.description || '',
+        ReceiptDate: body.receiptDate || new Date().toISOString(),
+        TotalAmount: Number(body.totalAmount),
+        VatAmount: Number(body.vatAmount ?? 0),
+        Amount: Number(body.amount ?? body.totalAmount),
+        TenderAmount: Number(body.tenderAmount ?? body.totalAmount),
+        ChangeAmount: Number(body.changeAmount ?? 0),
+        PaymentType: paymentType,
+        VatPercentage: Number(body.vatPercentage ?? 0),
+        IsVatable: Boolean(body.isVatable),
+        UserId: Number(userId),
+        CashierId: Number(body.cashierId ?? 0),
+        CashOfficeId: Number(body.cashOfficeId ?? 0),
+        FinYear: body.finYear,
+        CardNo: isCard ? (body.cardNo || '') : '',
+        ExpiryDate: isCard ? (body.expiryDate || '') : '',
+        ChequeNo: body.chequeNo || '',
+        BankBranch: body.bankBranch || '',
+        BankBranchCode: body.bankBranchCode || '',
+        AccHolderName: body.accHolderName || '',
+      };
+
+      const logSafe = { ...payload, CardNo: payload.CardNo ? '****' : '', ExpiryDate: payload.ExpiryDate ? '**/**' : '' };
+      console.log(`[submit-misc-payment] userId=${userId}, group=${payload.MiscellaneousPaymentGroup}, scoa=${payload.ScoaItem}, amt=${payload.TotalAmount}, paymentType=${paymentType} (${isCard ? 'Card' : 'Cash'}), token=${idempotencyToken || 'none'}`);
+      console.log(`[submit-misc-payment] Payload:`, JSON.stringify(logSafe));
+
+      dedupKey = `misc-pos|${userId}|${payload.ScoaItem}|${payload.TotalAmount}|${paymentType}`;
+      const dedupCheck = checkPaymentDedup(dedupKey, idempotencyToken);
+      if (dedupCheck.isDuplicate) {
+        console.warn(`[submit-misc-payment] DUPLICATE BLOCKED — key: ${dedupKey}`);
+        if (dedupCheck.inFlight) {
+          res.status(409).json({ message: "Payment already in progress. Please wait." });
+        } else {
+          res.json(dedupCheck.cachedResponse);
+        }
+        return;
+      }
+      reservePaymentSlot(dedupKey, idempotencyToken);
+
+      try {
+        const platinumEndpoint = `/api/billing-payment/submit-miscellaneous-payment/${userId}`;
+        console.log(`[submit-misc-payment] Calling Platinum: ${platinumEndpoint}`);
+        const data = await platinumPost(session, platinumEndpoint, payload);
+        console.log(`[submit-misc-payment] Response:`, JSON.stringify(data)?.substring(0, 1000));
+
+        if (data && !data._error) {
+          if (!data.ids) {
+            const rid = data.receiptID || data.receiptId || data.receipt_ID || data.id;
+            if (rid && Number(rid) > 0) {
+              data.ids = [Number(rid)];
+            }
+          }
+          if (data.isSuccess === undefined && !data._error && (data.ids?.length > 0 || data.receiptNo)) {
+            data.isSuccess = true;
+          }
+          if (data.receiptNo && typeof data.receiptNo === 'string' && data.receiptNo.startsWith('EFT')) {
+            console.warn(`[submit-misc-payment] WARNING: Got EFT receipt "${data.receiptNo}" — unexpected for POS endpoint`);
+          }
+        }
+
+        recordPaymentSubmission(dedupKey, data, idempotencyToken);
+        handlePlatinumResult(res, data);
+      } catch (submitErr: any) {
+        releasePaymentSlot(dedupKey, idempotencyToken);
+        throw submitErr;
+      }
+    } catch (e: any) {
+      releasePaymentSlot(dedupKey, idempotencyToken);
+      console.error(`[submit-misc-payment] Error:`, e.message);
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   app.post("/api/platinum/billing-payment/submit-multiple-payment/:userId", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;

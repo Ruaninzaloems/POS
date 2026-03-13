@@ -597,7 +597,7 @@ export function registerClearanceRoutes(app: Express, httpServer: Server): void 
       };
 
       console.log(`[drop-box] Trying misc submit with payload:`, JSON.stringify(payload));
-      const data = await platinumPost(session, "/api/billing-payment-miscellaneous/submit", payload);
+      const data = await platinumPost(session, `/api/billing-payment/submit-miscellaneous-payment/${userId}`, payload);
       console.log(`[drop-box] Misc submit response:`, JSON.stringify(data).substring(0, 1000));
 
       if (data && !data._error) {

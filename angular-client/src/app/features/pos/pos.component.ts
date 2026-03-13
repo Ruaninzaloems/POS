@@ -11,6 +11,7 @@ import { firstValueFrom } from 'rxjs';
 import {
   BasketItem,
   BasketItemType,
+  MiscTenderType,
   SearchMode,
   TenderType,
   ReceiptDeliveryMethod,
@@ -172,6 +173,9 @@ export class PosComponent implements OnInit, OnDestroy {
   miscDescription = signal('');
   miscLastName = signal('');
   miscInitials = signal('');
+  miscTenderType = signal<MiscTenderType>('cash');
+  miscCardNumber = signal('');
+  miscCardExpiry = signal('');
   systemVatRate = signal<number>(15);
 
   selectedScoaItem = computed(() => {
@@ -1018,6 +1022,7 @@ export class PosComponent implements OnInit, OnDestroy {
         isVatable: scoaItem.isVatable,
         vatPercentage: vatPct,
         vatAmount,
+        tenderType: 'cash',
       },
     };
 
@@ -1970,7 +1975,9 @@ export class PosComponent implements OnInit, OnDestroy {
 
   private async submitMiscPaymentItem(item: BasketItem, userId: number, ci: any, finYear: string, cardNum: string, paymentTypeId: number, changeAmt: number, idempotencyToken?: string): Promise<any> {
     const md = item.miscData!;
-    const isCardPayment = paymentTypeId === 3;
+    const miscTender = md.tenderType || (paymentTypeId === 3 ? 'card' : 'cash');
+    const isCardPayment = miscTender === 'card';
+    const effectivePaymentTypeId = isCardPayment ? this.getPaymentTypeId('card') : this.getPaymentTypeId('cash');
     const sessionCashierId = ci?.id || ci?.cashier_ID || userId;
     const sessionOfficeId = ci?.cashOffice_ID || 0;
     const effectiveVatPct = md.isVatable ? (md.vatPercentage > 0 ? md.vatPercentage : this.systemVatRate()) : 0;
@@ -1978,6 +1985,8 @@ export class PosComponent implements OnInit, OnDestroy {
     const tenderAmt = isCardPayment ? item.amountToPay : (this.cashAmount() > 0 ? this.cashRoundedAmount() : item.amountToPay);
     const now = new Date();
     const receiptDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const effectiveCardNo = isCardPayment ? (md.cardNumber || cardNum || '') : '';
+    const effectiveExpiry = isCardPayment ? (md.cardExpiry || this.formatCardExpiry(this.cardExpiry()) || '') : '';
 
     const payload = {
       userId,
@@ -1995,20 +2004,21 @@ export class PosComponent implements OnInit, OnDestroy {
       amount: item.amountToPay - vatAmount,
       tenderAmount: tenderAmt,
       changeAmount: isCardPayment ? 0 : Math.max(0, changeAmt),
-      paymentType: paymentTypeId,
+      paymentType: effectivePaymentTypeId,
       vatPercentage: effectiveVatPct,
       isVatable: md.isVatable || false,
-      cardNo: isCardPayment ? cardNum : '',
-      expiryDate: isCardPayment ? this.formatCardExpiry(this.cardExpiry()) : '',
+      cardNo: effectiveCardNo,
+      expiryDate: effectiveExpiry,
       chequeNo: '',
       bankBranch: '',
       bankBranchCode: '',
       accHolderName: [md.lastName, md.initials].filter(Boolean).join(' ') || 'Walk-in',
     };
+    console.log(`[submitMiscPayment] miscTender=${miscTender}, effectivePaymentTypeId=${effectivePaymentTypeId}, cardNo=${effectiveCardNo ? '****' : 'none'}`);
     const logSafe = {...payload, cardNo: payload.cardNo ? '****' + payload.cardNo.slice(-4) : ''};
-    console.log(`[submitMiscPayment] Payload via billing-payment-miscellaneous/submit:`, JSON.stringify(logSafe).substring(0, 1500));
+    console.log(`[submitMiscPayment] Payload via submit-miscellaneous-payment/${payload.userId}:`, JSON.stringify(logSafe).substring(0, 1500));
     const result: any = await firstValueFrom(
-      this.api.postWithIdempotency('/api/platinum/billing-payment-miscellaneous/submit', payload, idempotencyToken)
+      this.api.postWithIdempotency(`/api/platinum/billing-payment/submit-miscellaneous-payment/${payload.userId}`, payload, idempotencyToken)
     );
     console.log(`[submitMiscPayment] Response:`, JSON.stringify(result).substring(0, 500));
     if (result && result.isSuccess === false) {
@@ -2239,6 +2249,10 @@ export class PosComponent implements OnInit, OnDestroy {
       this.toast.error('Select a group, item, and enter an amount.');
       return;
     }
+    if (this.miscTenderType() === 'card' && !this.miscCardNumber().replace(/\s/g, '')) {
+      this.toast.error('Enter a card number for card payments.');
+      return;
+    }
     const group = this.miscGroups().find(g => g.groupId === this.miscSelectedGroupId());
     const scoaItem = this.miscScoaItems().find(s => s.scoaItemId === this.miscSelectedScoaId());
     if (!group || !scoaItem) return;
@@ -2265,15 +2279,31 @@ export class PosComponent implements OnInit, OnDestroy {
         isVatable: scoaItem.isVatable,
         vatPercentage: vatPct,
         vatAmount,
+        tenderType: this.miscTenderType(),
+        cardNumber: this.miscTenderType() === 'card' ? this.miscCardNumber().replace(/\s/g, '') : undefined,
+        cardExpiry: this.miscTenderType() === 'card' ? this.miscCardExpiry() : undefined,
       },
     };
     this.basket.addItem(item);
-    this.toast.success(`Added misc: ${group.groupName}`);
+    this.toast.success(`Added misc (${this.miscTenderType()}): ${group.groupName}`);
     this.miscAmount.set(0);
     this.miscDescription.set('');
     this.miscLastName.set('');
     this.miscInitials.set('');
+    this.miscCardNumber.set('');
+    this.miscCardExpiry.set('');
+    this.miscTenderType.set('cash');
     this.activeMode.set('account');
+  }
+
+  formatMiscCardNumber(value: string): void {
+    const digits = value.replace(/\D/g, '').slice(0, 16);
+    this.miscCardNumber.set(digits.replace(/(\d{4})(?=\d)/g, '$1 '));
+  }
+
+  formatMiscCardExpiry(value: string): void {
+    const digits = value.replace(/\D/g, '').slice(0, 4);
+    this.miscCardExpiry.set(digits.length >= 3 ? digits.slice(0, 2) + '/' + digits.slice(2) : digits);
   }
 
   private getReceiptSerialNo(data: any): number {
@@ -2567,6 +2597,9 @@ export class PosComponent implements OnInit, OnDestroy {
     this.miscDescription.set('');
     this.miscLastName.set('');
     this.miscInitials.set('');
+    this.miscTenderType.set('cash');
+    this.miscCardNumber.set('');
+    this.miscCardExpiry.set('');
     this.prepaidAmount.set(0);
 
     this.cashAmount.set(0);
