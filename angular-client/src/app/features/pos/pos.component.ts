@@ -832,11 +832,22 @@ export class PosComponent implements OnInit, OnDestroy {
     const isWater = /water/i.test(meterSvcType) || /^0[12]/i.test(meterNo);
     const prepaidType = meterNo ? (isWater ? 'Water' : 'Electricity') : '';
 
+    console.log(`[addAccountToBasket] Merged data keys:`, Object.keys(merged).join(', '));
+    console.log(`[addAccountToBasket] Merged data (truncated):`, JSON.stringify(merged).substring(0, 2000));
+    const idNumber = merged.idNumber || merged.identityNo || merged.identity_no || merged.id_number || merged.idNo || '';
+    const registrationNumber = merged.registrationNo || merged.registration_no || merged.companyRegistrationNo || merged.compRegNo || '';
+    const sgNumber = merged.sgNumber || merged.sg_number || merged.sgNo || merged.surveyorGeneralNo || merged.sg_Number || '';
+    const erfNumber = merged.erfNo || merged.erf_no || merged.erfNumber || merged.standNo || merged.stand_no || merged.standNumber || '';
+    const ward = merged.ward || merged.wardDesc || merged.ward_desc || '';
+    const suburb = merged.suburb || merged.suburbDesc || merged.suburb_desc || merged.suburbName || '';
+    const locationAddress = merged.locationAddress || merged.location_address || merged.propertyAddress || merged.propertyDesc || '';
+    console.log(`[addAccountToBasket] Extracted — id:${idNumber}, reg:${registrationNumber}, sg:${sgNumber}, erf:${erfNumber}, ward:${ward}, suburb:${suburb}, loc:${locationAddress}`);
+
     const item: BasketItem = {
       id: crypto.randomUUID(),
       type: 'account',
       label: name,
-      description: `${accountNo} — ${address || 'No address on file'}`,
+      description: `${accountNo} — ${address || locationAddress || 'No address on file'}`,
       amountDue: balance,
       amountToPay: 0,
       accountData: {
@@ -856,6 +867,13 @@ export class PosComponent implements OnInit, OnDestroy {
         prepaidMeterNo: meterNo,
         prepaidType,
         accountBalance,
+        idNumber,
+        registrationNumber,
+        sgNumber,
+        erfNumber,
+        locationAddress: locationAddress || address,
+        ward,
+        suburb,
         originalData: merged,
       },
     };

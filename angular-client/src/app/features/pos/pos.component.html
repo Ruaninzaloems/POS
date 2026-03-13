@@ -562,6 +562,54 @@
                       }
                     </span>
                     <span class="cart-item-desc">{{ item.description }}</span>
+                    @if (item.type === 'account' && item.accountData) {
+                      <div class="acct-detail-grid">
+                        @if (item.accountData.address || item.accountData.locationAddress) {
+                          <div class="acct-detail-row">
+                            <span class="acct-detail-icon">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                            </span>
+                            <span class="acct-detail-text">{{ item.accountData.address || item.accountData.locationAddress }}</span>
+                          </div>
+                        }
+                        @if (item.accountData.idNumber) {
+                          <div class="acct-detail-row">
+                            <span class="acct-detail-label">ID:</span>
+                            <span class="acct-detail-text">{{ item.accountData.idNumber }}</span>
+                          </div>
+                        }
+                        @if (item.accountData.registrationNumber) {
+                          <div class="acct-detail-row">
+                            <span class="acct-detail-label">Reg:</span>
+                            <span class="acct-detail-text">{{ item.accountData.registrationNumber }}</span>
+                          </div>
+                        }
+                        @if (item.accountData.sgNumber) {
+                          <div class="acct-detail-row">
+                            <span class="acct-detail-label">SG:</span>
+                            <span class="acct-detail-text">{{ item.accountData.sgNumber }}</span>
+                          </div>
+                        }
+                        @if (item.accountData.erfNumber) {
+                          <div class="acct-detail-row">
+                            <span class="acct-detail-label">Erf:</span>
+                            <span class="acct-detail-text">{{ item.accountData.erfNumber }}</span>
+                          </div>
+                        }
+                        @if (item.accountData.suburb || item.accountData.ward) {
+                          <div class="acct-detail-row">
+                            @if (item.accountData.suburb) {
+                              <span class="acct-detail-label">Suburb:</span>
+                              <span class="acct-detail-text">{{ item.accountData.suburb }}</span>
+                            }
+                            @if (item.accountData.ward) {
+                              <span class="acct-detail-label" style="margin-left:8px">Ward:</span>
+                              <span class="acct-detail-text">{{ item.accountData.ward }}</span>
+                            }
+                          </div>
+                        }
+                      </div>
+                    }
                     @if (item.type === 'account' && item.accountData?.hasPrepaidMeter) {
                       <button class="prepaid-chip" (click)="addPrepaidFromAccount(item)" [attr.data-testid]="'button-prepaid-' + item.id">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>

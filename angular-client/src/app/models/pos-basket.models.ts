@@ -34,6 +34,13 @@ export interface AccountItemData {
   prepaidMeterNo: string;
   prepaidType: string;
   accountBalance: number;
+  idNumber?: string;
+  registrationNumber?: string;
+  sgNumber?: string;
+  erfNumber?: string;
+  locationAddress?: string;
+  ward?: string;
+  suburb?: string;
   originalData: any;
 }
 
