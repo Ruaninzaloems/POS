@@ -70,10 +70,20 @@ export class ClientCommunicationsComponent implements OnInit, OnDestroy {
   validSmsRecipients = computed(() => this.selectedRecipients().filter(r => r.mobile));
   totalEmailAddresses = computed(() => this.validEmailRecipients().reduce((sum, r) => sum + (r.email ? 1 : 0) + r.additionalEmails.length, 0));
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+    document.addEventListener('mousedown', this.handleClickOutside);
+  }
+
+  private handleClickOutside = (e: MouseEvent) => {
+    const container = document.querySelector('.search-container');
+    if (container && !container.contains(e.target as Node)) {
+      this.searchDropdownOpen.set(false);
+    }
+  };
 
   ngOnDestroy(): void {
     if (this.searchTimer) clearTimeout(this.searchTimer);
+    document.removeEventListener('mousedown', this.handleClickOutside);
   }
 
   private isValidEmail(val: any): boolean {
@@ -420,6 +430,25 @@ export class ClientCommunicationsComponent implements OnInit, OnDestroy {
       this.importProgress.set({ current: 0, total: 0, added: 0 });
       input.value = '';
     }
+  }
+
+  isAlreadyAdded(accId: number): boolean {
+    return this.recipientIds.has(accId);
+  }
+
+  formatFileSizeTotal(): string {
+    const total = this.attachments().reduce((s, a) => s + a.size, 0);
+    return this.formatFileSize(total);
+  }
+
+  previewToLine(): string {
+    const vr = this.validEmailRecipients();
+    const shown = vr.slice(0, 3).map(r => `${r.name} <${r.email}>`).join('; ');
+    return vr.length > 3 ? `${shown} (+${vr.length - 3} more)` : shown;
+  }
+
+  previewFileNames(): string {
+    return this.attachments().map(a => a.name).join(', ');
   }
 
   downloadTemplate(): void {
