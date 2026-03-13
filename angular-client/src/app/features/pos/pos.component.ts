@@ -171,6 +171,7 @@ export class PosComponent implements OnInit, OnDestroy {
   miscDescription = signal('');
   miscLastName = signal('');
   miscInitials = signal('');
+  systemVatRate = signal<number>(15);
 
   paymentOptions = signal<any[]>([]);
   paymentTypes = signal<any[]>([]);
@@ -927,19 +928,23 @@ export class PosComponent implements OnInit, OnDestroy {
         this.api.get<any>('/api/platinum/billing-payment-miscellaneous/get-scoa-items', { mISCPayGroupId: String(groupId) })
       );
       const arr = Array.isArray(data) ? data : (data?.data || data?.items || []);
+      const sysVat = this.systemVatRate();
       scoaItems = arr.map((s: any) => {
         const rawName = s.scoaItemName || s.description || s.name || '';
         const codeMatch = rawName.match(/\s+([A-Z]{2}\d{30,})\s*$/);
         const scoaCode = codeMatch ? codeMatch[1] : '';
         const descPart = codeMatch ? rawName.replace(codeMatch[0], '').trim() : rawName;
         const displayName = scoaCode ? `${scoaCode} — ${descPart}` : descPart || rawName;
+        const itemVatable = s.isVatable || false;
+        const rawPct = Number(s.vatPercentage) || 0;
+        const effectivePct = itemVatable && rawPct <= 0 ? sysVat : rawPct;
         return {
           scoaItemId: s.scoaItemId || s.scoa_item_ID || s.scoaItem || s.id || 0,
           scoaItemName: displayName,
           description: s.description || rawName,
           amount: s.amount || 0,
-          isVatable: s.isVatable || false,
-          vatPercentage: s.vatPercentage || 0,
+          isVatable: itemVatable,
+          vatPercentage: effectivePct,
         };
       });
     } catch {
@@ -953,13 +958,17 @@ export class PosComponent implements OnInit, OnDestroy {
       return;
     }
 
+    const amount = scoaItem.amount || 0;
+    const vatPct = scoaItem.vatPercentage || 0;
+    const vatAmount = scoaItem.isVatable && vatPct > 0 ? Math.round(amount * vatPct / (100 + vatPct) * 100) / 100 : 0;
+
     const item: BasketItem = {
       id: crypto.randomUUID(),
       type: 'misc',
       label: `${groupName} — ${scoaItem.scoaItemName}`,
       description: 'Miscellaneous payment',
-      amountDue: scoaItem.amount || 0,
-      amountToPay: scoaItem.amount || 0,
+      amountDue: amount,
+      amountToPay: amount,
       miscData: {
         groupId,
         groupName,
@@ -969,8 +978,8 @@ export class PosComponent implements OnInit, OnDestroy {
         initials: '',
         description: scoaItem.scoaItemName,
         isVatable: scoaItem.isVatable,
-        vatPercentage: scoaItem.vatPercentage,
-        vatAmount: 0,
+        vatPercentage: vatPct,
+        vatAmount,
       },
     };
 
@@ -1913,7 +1922,8 @@ export class PosComponent implements OnInit, OnDestroy {
     const isCardPayment = paymentTypeId === 3;
     const sessionCashierId = ci?.id || ci?.cashier_ID || userId;
     const sessionOfficeId = ci?.cashOffice_ID || 0;
-    const vatAmount = md.isVatable ? Math.round(item.amountToPay * md.vatPercentage / (100 + md.vatPercentage) * 100) / 100 : 0;
+    const effectiveVatPct = md.isVatable ? (md.vatPercentage > 0 ? md.vatPercentage : this.systemVatRate()) : 0;
+    const vatAmount = md.isVatable && effectiveVatPct > 0 ? Math.round(item.amountToPay * effectiveVatPct / (100 + effectiveVatPct) * 100) / 100 : 0;
     const tenderAmt = isCardPayment ? item.amountToPay : (this.cashAmount() > 0 ? this.cashRoundedAmount() : item.amountToPay);
     const now = new Date();
     const receiptDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -1935,7 +1945,7 @@ export class PosComponent implements OnInit, OnDestroy {
       tenderAmount: tenderAmt,
       changeAmount: isCardPayment ? 0 : Math.max(0, changeAmt),
       paymentType: paymentTypeId,
-      vatPercentage: md.vatPercentage || 0,
+      vatPercentage: effectiveVatPct,
       isVatable: md.isVatable || false,
       cardNo: isCardPayment ? cardNum : '',
       expiryDate: isCardPayment ? this.formatCardExpiry(this.cardExpiry()) : '',
@@ -2092,9 +2102,17 @@ export class PosComponent implements OnInit, OnDestroy {
   async loadMiscGroups(): Promise<void> {
     this.miscGroupsLoading.set(true);
     try {
-      const data: any = await firstValueFrom(
-        this.api.get<any>('/api/platinum/billing-payment-miscellaneous/get-groups')
-      );
+      const [data, vatData]: any[] = await Promise.all([
+        firstValueFrom(this.api.get<any>('/api/platinum/billing-payment-miscellaneous/get-groups')),
+        firstValueFrom(this.api.get<any>('/api/platinum/billing-payment-miscellaneous/get-vat-rate')).catch(() => null),
+      ]);
+      if (vatData != null) {
+        const rate = typeof vatData === 'number' ? vatData : (vatData?.vatRate ?? vatData?.vatPercentage ?? vatData?.rate ?? vatData?.value ?? vatData?.vat ?? null);
+        if (rate != null && !isNaN(Number(rate)) && Number(rate) > 0) {
+          this.systemVatRate.set(Number(rate));
+          console.log('[loadMiscGroups] System VAT rate from API:', Number(rate));
+        }
+      }
       const arr = Array.isArray(data) ? data : (data?.data || data?.groups || []);
       this.miscGroups.set(arr.map((g: any) => ({
         groupId: g.groupId || g.group_ID || g.miscellaneousPaymentGroup || g.id || 0,
@@ -2131,23 +2149,27 @@ export class PosComponent implements OnInit, OnDestroy {
       );
       console.log(`[onMiscGroupChange] Raw SCOA response for group ${groupId}:`, JSON.stringify(data).substring(0, 500));
       const arr = Array.isArray(data) ? data : (data?.data || data?.items || []);
+      const sysVat = this.systemVatRate();
       const mapped = arr.map((s: any) => {
         const rawName = s.scoaItemName || s.description || s.name || '';
         const codeMatch = rawName.match(/\s+([A-Z]{2}\d{30,})\s*$/);
         const scoaCode = codeMatch ? codeMatch[1] : '';
         const descPart = codeMatch ? rawName.replace(codeMatch[0], '').trim() : rawName;
         const displayName = scoaCode ? `${scoaCode} — ${descPart}` : descPart || rawName;
+        const itemVatable = s.isVatable !== false;
+        const rawPct = Number(s.vatPercentage) || 0;
+        const effectivePct = itemVatable && rawPct <= 0 ? sysVat : rawPct;
         return {
           scoaItemId: s.scoaItemId || s.scoa_item_ID || s.scoaItem || s.id || 0,
           scoaItemName: displayName,
           description: s.description || rawName,
           amount: s.amount || 0,
-          isVatable: s.isVatable !== false,
-          vatPercentage: s.vatPercentage || 0,
+          isVatable: itemVatable,
+          vatPercentage: effectivePct,
         };
       });
-      console.log(`[onMiscGroupChange] Mapped ${mapped.length} SCOA items`);
-      mapped.forEach((m: ScoaItem) => console.log(`  SCOA: ${m.scoaItemId} - ${m.scoaItemName}`));
+      console.log(`[onMiscGroupChange] Mapped ${mapped.length} SCOA items (systemVatRate=${sysVat}%)`);
+      mapped.forEach((m: ScoaItem) => console.log(`  SCOA: ${m.scoaItemId} - ${m.scoaItemName} vatable=${m.isVatable} vat=${m.vatPercentage}%`));
       this.miscScoaItems.set(mapped);
       if (mapped.length > 0) {
         this.miscSelectedScoaId.set(mapped[0].scoaItemId);
