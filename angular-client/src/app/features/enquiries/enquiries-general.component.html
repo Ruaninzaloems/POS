@@ -3033,6 +3033,11 @@
                       </div>
 
                       <div class="stmt-send-section">
+                        <label class="stmt-send-field-label">Subject</label>
+                        <input type="text" class="stmt-send-input" [ngModel]="stmtSubject()" (ngModelChange)="stmtSubject.set($event)" data-testid="input-stmt-subject" />
+                      </div>
+
+                      <div class="stmt-send-section">
                         <label class="stmt-send-field-label">Email Message</label>
                         <textarea class="stmt-send-textarea" rows="10" [ngModel]="stmtMessageBody()" (ngModelChange)="stmtMessageBody.set($event)" data-testid="textarea-stmt-message"></textarea>
                       </div>

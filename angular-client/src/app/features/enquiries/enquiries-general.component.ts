@@ -249,6 +249,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   stmtAttachment = signal<{type: string; finYear: string; monthFrom: string; monthTo: string; fileUrl?: string} | null>(null);
   stmtAvailableEmails = signal<{email: string; label: string; selected: boolean}[]>([]);
   stmtAvailablePhones = signal<{phone: string; label: string; selected: boolean}[]>([]);
+  stmtSubject = signal('');
   stmtMessageBody = signal('');
   stmtSmsBody = signal('');
   stmtCommHistory = signal<any[]>([]);
@@ -4982,22 +4983,23 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
     const periodDesc = this.buildPeriodDescription(att);
     const typeLabel = att.type === 'detailed' ? 'Detailed Statement' : 'Account Statement';
+
+    this.stmtSubject.set(
+      `${typeLabel} — Account ${accountNo} — ${att.finYear}${att.monthFrom ? ' ' + att.monthFrom : ''}${att.monthTo && att.monthTo !== att.monthFrom ? ' to ' + att.monthTo : ''}`
+    );
+
     this.stmtMessageBody.set(
       `Dear ${accountName || 'Valued Customer'},\n\n` +
       `Please find attached your ${typeLabel} for ${periodDesc}.\n\n` +
       `Account Number: ${accountNo}\n` +
       `Financial Year: ${att.finYear}\n\n` +
       `Should you have any queries regarding your account, please do not hesitate to contact us.\n\n` +
-      `Kind regards,\n` +
-      `George Municipality\n` +
-      `Finance Department\n` +
-      `Tel: 044 801 9111\n` +
-      `Email: info@george.gov.za`
+      `Kind regards,\nFinance Department`
     );
 
     const smsName = accountName ? accountName.split(' ')[0] : 'Customer';
     this.stmtSmsBody.set(
-      `George Municipality: Hi ${smsName}, your ${att.type === 'detailed' ? 'detailed ' : ''}statement (${att.finYear}${att.monthFrom ? ' ' + att.monthFrom : ''}${att.monthTo && att.monthTo !== att.monthFrom ? '-' + att.monthTo : ''}) has been emailed to you. Queries? 044 801 9111`
+      `Hi ${smsName}, your ${att.type === 'detailed' ? 'detailed ' : ''}statement (${att.finYear}${att.monthFrom ? ' ' + att.monthFrom : ''}${att.monthTo && att.monthTo !== att.monthFrom ? '-' + att.monthTo : ''}) is available. Account: ${accountNo}`
     );
 
     this.stmtSendPanelOpen.set(true);
@@ -5106,6 +5108,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
               monthTo: att?.monthTo || this.stmtMonthTo() || undefined,
               month: att?.monthFrom || this.stmtMonthFrom() || this.stmtMonth() || undefined,
               fileUrl: att?.fileUrl || undefined,
+              subject: this.stmtSubject(),
               messageBody: this.stmtMessageBody(),
             })
           );
@@ -5137,7 +5140,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             accountHolder: accountName,
             method,
             recipients,
-            subject: method === 'email' ? `Statement: ${att?.type || this.stmtType()} — ${att?.finYear || this.stmtFinYear()}` : 'SMS Notification',
+            subject: method === 'email' ? this.stmtSubject() : 'SMS Notification',
             messageBody: method === 'email' ? this.stmtMessageBody() : this.stmtSmsBody(),
             statementType: att?.type || this.stmtType(),
             financialYear: att?.finYear || this.stmtFinYear(),
