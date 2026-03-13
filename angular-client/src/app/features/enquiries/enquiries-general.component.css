@@ -124,6 +124,18 @@
 .data-table tbody tr:hover { background: rgba(15,43,70,0.02); }
 .data-table .text-right { text-align: right; }
 .data-table .text-center { text-align: center; }
+
+.rates-billing-table { table-layout: fixed; }
+.rates-billing-table thead th { padding: 0.65rem 1rem; }
+.rates-billing-table tbody td,
+.rates-billing-table tfoot td { padding: 0.5rem 1rem; }
+.rates-month-cell { font-weight: 600; color: var(--platinum-primary, #0f2b46); }
+.rates-rebate-cell { color: var(--platinum-accent, #c9a84c); }
+.rates-net-cell { font-weight: 700; }
+.rates-total-row { font-weight: 700; border-top: 2px solid var(--platinum-primary, #0f2b46); }
+.rates-total-row td { padding-top: 0.65rem !important; padding-bottom: 0.65rem !important; background: rgba(15,43,70,0.03); }
+.rates-billing-table tbody tr:nth-child(even) { background: rgba(15,43,70,0.015); }
+.rates-billing-table tbody tr:hover { background: rgba(15,43,70,0.04); }
 .address-cell { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .clickable { cursor: pointer; }
 

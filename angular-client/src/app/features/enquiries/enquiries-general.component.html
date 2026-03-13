@@ -3611,7 +3611,13 @@
                 <div class="detail-section" style="margin-top: 0.75rem;">
                   <div class="section-header-bar">📊 Property Rates — Monthly Billing <span class="section-count">{{ tabData()?.ratesBillingHistory?.length || 0 }} months</span></div>
                   <div class="data-table-wrapper">
-                    <table class="data-table" data-testid="table-rates-billing-history">
+                    <table class="data-table rates-billing-table" data-testid="table-rates-billing-history">
+                      <colgroup>
+                        <col style="width: 35%;">
+                        <col style="width: 20%;">
+                        <col style="width: 20%;">
+                        <col style="width: 25%;">
+                      </colgroup>
                       <thead>
                         <tr>
                           <th>Month</th>
@@ -3623,31 +3629,31 @@
                       <tbody>
                         @for (item of tabData()?.ratesBillingHistory || []; track $index) {
                           <tr>
-                            <td style="font-weight: 600;">{{ item.month }} {{ item.financialYear }}</td>
+                            <td class="rates-month-cell">{{ item.month }} {{ item.financialYear }}</td>
                             <td class="text-right mono">R {{ formatCurrency(item.levy || 0) }}</td>
-                            <td class="text-right mono" style="color: var(--platinum-accent);">
+                            <td class="text-right mono rates-rebate-cell">
                               @if (item.rebate && item.rebate !== 0) {
                                 R {{ formatCurrency(item.rebate) }}
                               } @else {
                                 -
                               }
                             </td>
-                            <td class="text-right mono" style="font-weight: 700;">R {{ formatCurrency((item.levy || 0) + (item.rebate || 0)) }}</td>
+                            <td class="text-right mono rates-net-cell">R {{ formatCurrency((item.levy || 0) + (item.rebate || 0)) }}</td>
                           </tr>
                         }
                       </tbody>
                       <tfoot>
-                        <tr style="font-weight: 700; border-top: 2px solid var(--platinum-primary, #0f2b46);">
-                          <td>Total</td>
+                        <tr class="rates-total-row">
+                          <td class="rates-month-cell">Total</td>
                           <td class="text-right mono">R {{ formatCurrency(getRatesTotalLevy()) }}</td>
-                          <td class="text-right mono" style="color: var(--platinum-accent);">
+                          <td class="text-right mono rates-rebate-cell">
                             @if (getRatesTotalRebate() !== 0) {
                               R {{ formatCurrency(getRatesTotalRebate()) }}
                             } @else {
                               -
                             }
                           </td>
-                          <td class="text-right mono">R {{ formatCurrency(getRatesTotalLevy() + getRatesTotalRebate()) }}</td>
+                          <td class="text-right mono rates-net-cell">R {{ formatCurrency(getRatesTotalLevy() + getRatesTotalRebate()) }}</td>
                         </tr>
                       </tfoot>
                     </table>
