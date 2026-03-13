@@ -1542,7 +1542,12 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
         this.toast.show(`Found ${suggestions.length} potential match${suggestions.length > 1 ? 'es' : ''}. Select one below to allocate.`, 'success');
       }
     } catch (e: any) {
-      this.toast.error(e?.message || 'Quick search failed');
+      const msg = e?.message || '';
+      if (msg.includes('Internal Server Error') || msg.includes('500')) {
+        this.toast.show('Some searches returned errors — try the Allocate button for manual search.', 'info');
+      } else {
+        this.toast.error(msg || 'Quick search failed');
+      }
     } finally {
       const loadDone = new Set(this.inlineLoading());
       loadDone.delete(id);
