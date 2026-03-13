@@ -1426,23 +1426,58 @@ export class PosComponent implements OnInit, OnDestroy {
             receiptCounter++;
             this.updateProgress(receiptCounter, expectedTotal, `Posting cash receipt for account(s)... (${receiptCounter} of ${expectedTotal})`);
             const cashResult = await this.submitAccountPayment(cashAcctItems, userId!, finYear, receiptDate, cashPaymentTypeId, '', allocation.cashTotal, `${paymentToken}-acct-cash`);
-            const cashReceiptNo = await this.resolveReceiptNo(cashResult);
-            allResults.push({ receiptNumber: cashReceiptNo, tenderType: 'cash', amount: allocation.cashTotal, items: cashAcctItems, rawResponse: cashResult });
+            const cashRIds = this.extractReceiptIds(cashResult);
+            if (cashRIds.length > 1 && cashRIds.length === cashAcctItems.length) {
+              const cashRNoMap = await this.resolveMultipleReceiptNos(cashResult, cashRIds);
+              for (let i = 0; i < cashAcctItems.length; i++) {
+                const rNo = cashRNoMap.get(cashRIds[i]) || `REC-${cashRIds[i]}`;
+                allResults.push({ receiptNumber: rNo, tenderType: 'cash', amount: cashAcctItems[i].amountToPay, items: [cashAcctItems[i]], rawResponse: cashResult });
+              }
+            } else {
+              const cashReceiptNo = await this.resolveReceiptNo(cashResult);
+              allResults.push({ receiptNumber: cashReceiptNo, tenderType: 'cash', amount: allocation.cashTotal, items: cashAcctItems, rawResponse: cashResult });
+            }
           }
           if (cardAcctItems.length > 0) {
             receiptCounter++;
             this.updateProgress(receiptCounter, expectedTotal, `Posting card receipt for account(s)... (${receiptCounter} of ${expectedTotal})`);
             const cardResult = await this.submitAccountPayment(cardAcctItems, userId!, finYear, receiptDate, cardPaymentTypeId, cardNum, allocation.cardTotal, `${paymentToken}-acct-card`);
-            const cardReceiptNo = await this.resolveReceiptNo(cardResult);
-            allResults.push({ receiptNumber: cardReceiptNo, tenderType: 'card', amount: allocation.cardTotal, items: cardAcctItems, rawResponse: cardResult });
+            const cardRIds = this.extractReceiptIds(cardResult);
+            if (cardRIds.length > 1 && cardRIds.length === cardAcctItems.length) {
+              const cardRNoMap = await this.resolveMultipleReceiptNos(cardResult, cardRIds);
+              for (let i = 0; i < cardAcctItems.length; i++) {
+                const rNo = cardRNoMap.get(cardRIds[i]) || `REC-${cardRIds[i]}`;
+                allResults.push({ receiptNumber: rNo, tenderType: 'card', amount: cardAcctItems[i].amountToPay, items: [cardAcctItems[i]], rawResponse: cardResult });
+              }
+            } else {
+              const cardReceiptNo = await this.resolveReceiptNo(cardResult);
+              allResults.push({ receiptNumber: cardReceiptNo, tenderType: 'card', amount: allocation.cardTotal, items: cardAcctItems, rawResponse: cardResult });
+            }
           }
         } else {
           receiptCounter++;
           this.updateProgress(receiptCounter, expectedTotal, `Posting receipt for account(s)... (${receiptCounter} of ${expectedTotal})`);
           const paymentTypeId = this.getPaymentTypeId();
           const result = await this.submitAccountPayment(accountItems, userId!, finYear, receiptDate, paymentTypeId, cardNum, this.basket.totalToPay(), paymentToken);
-          const acctReceiptNo = await this.resolveReceiptNo(result);
-          allResults.push({ receiptNumber: acctReceiptNo, tenderType: this.activeTender(), amount: accountItems.reduce((s, i) => s + i.amountToPay, 0), items: accountItems, rawResponse: result });
+          const receiptIds = this.extractReceiptIds(result);
+          if (receiptIds.length > 1 && receiptIds.length === accountItems.length) {
+            const receiptNoMap = await this.resolveMultipleReceiptNos(result, receiptIds);
+            for (let i = 0; i < accountItems.length; i++) {
+              const rid = receiptIds[i];
+              const rNo = receiptNoMap.get(rid) || `REC-${rid}`;
+              allResults.push({ receiptNumber: rNo, tenderType: this.activeTender(), amount: accountItems[i].amountToPay, items: [accountItems[i]], rawResponse: result });
+            }
+          } else if (receiptIds.length > 1) {
+            const receiptNoMap = await this.resolveMultipleReceiptNos(result, receiptIds);
+            const perAcctAmt = accountItems.reduce((s, i) => s + i.amountToPay, 0) / receiptIds.length;
+            for (const rid of receiptIds) {
+              const rNo = receiptNoMap.get(rid) || `REC-${rid}`;
+              allResults.push({ receiptNumber: rNo, tenderType: this.activeTender(), amount: perAcctAmt, items: accountItems, rawResponse: result });
+            }
+          } else {
+            const acctReceiptNo = await this.resolveReceiptNo(result);
+            allResults.push({ receiptNumber: acctReceiptNo, tenderType: this.activeTender(), amount: accountItems.reduce((s, i) => s + i.amountToPay, 0), items: accountItems, rawResponse: result });
+          }
         }
       }
 
@@ -2552,6 +2587,47 @@ export class PosComponent implements OnInit, OnDestroy {
 
     console.warn('[resolveReceiptNo] Could not extract receipt number from API response:', JSON.stringify(result).substring(0, 500));
     return 'N/A';
+  }
+
+  private async resolveMultipleReceiptNos(result: any, receiptIds: number[]): Promise<Map<number, string>> {
+    const receiptNoMap = new Map<number, string>();
+    if (!receiptIds.length) return receiptNoMap;
+
+    try {
+      const cashierId = this.cashierInfo()?.id || this.cashierInfo()?.cashier_ID || this.user()?.user_ID;
+      if (cashierId) {
+        const unreconciledList: any = await firstValueFrom(
+          this.api.get('/api/platinum/billing-payment-day-end/cashier-receipt-unreconciled-list', { id: String(cashierId) })
+        );
+        const list = Array.isArray(unreconciledList) ? unreconciledList : (unreconciledList?.data || unreconciledList?.items || []);
+        for (const rid of receiptIds) {
+          const match = list.find((r: any) => r.id === rid || r.receiptId === rid || r.receiptID === rid);
+          if (match?.receiptNo) {
+            receiptNoMap.set(rid, String(match.receiptNo));
+          }
+        }
+      }
+    } catch (e: any) {
+      console.warn(`[resolveMultipleReceiptNos] Unreconciled list lookup failed:`, e?.message);
+    }
+
+    for (const rid of receiptIds) {
+      if (receiptNoMap.has(rid)) continue;
+      try {
+        const detailData: any = await firstValueFrom(
+          this.api.get('/api/platinum/pos-multi-receipt-print', { receiptId: String(rid) })
+        );
+        const items = Array.isArray(detailData) ? detailData : (detailData?.value || detailData?.items || []);
+        if (items.length > 0 && items[0].receiptNo) {
+          receiptNoMap.set(rid, String(items[0].receiptNo));
+        }
+      } catch (e: any) {
+        console.warn(`[resolveMultipleReceiptNos] pos-multi-receipt-print lookup failed for ID ${rid}:`, e?.message);
+      }
+    }
+
+    console.log(`[resolveMultipleReceiptNos] Resolved ${receiptNoMap.size}/${receiptIds.length} receipt numbers`);
+    return receiptNoMap;
   }
 
   getReceiptNo(data: any): string {
