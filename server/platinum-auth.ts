@@ -205,7 +205,7 @@ async function fetchTokenForUser(username: string, password: string, dbName: str
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userName: username, password, dbName }),
-          signal: AbortSignal.timeout(15000),
+          signal: AbortSignal.timeout(45000),
         });
 
         if (res.ok) {
@@ -259,7 +259,7 @@ async function fetchTokenForUser(username: string, password: string, dbName: str
       username: username,
       dbName,
     }),
-    signal: AbortSignal.timeout(15000),
+    signal: AbortSignal.timeout(45000),
   });
 
   if (!res.ok) {
