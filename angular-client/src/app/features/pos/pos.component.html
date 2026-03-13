@@ -1352,8 +1352,8 @@
                     <th>#</th>
                     <th>Account</th>
                     <th>Name</th>
-                    <th>Amount</th>
-                    <th>Outstanding</th>
+                    <th class="text-right">Amount</th>
+                    <th class="text-right">Outstanding</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -1364,7 +1364,7 @@
                       <td class="font-mono">{{ row.accountNo }}</td>
                       <td>{{ row.name || '-' }}</td>
                       <td class="font-mono text-right">R {{ formatCurrency(row.amount) }}</td>
-                      <td class="font-mono text-right">
+                      <td class="font-mono text-right" [class.csv-balance-negative]="row.outstandingAmount < 0" [class.csv-balance-positive]="row.outstandingAmount > 0">
                         @if (row.status === 'found') { R {{ formatCurrency(row.outstandingAmount) }} }
                         @else { - }
                       </td>
@@ -1419,10 +1419,6 @@
                 <p>Total payment amount: <strong>R {{ formatCurrency(csvValidTotalAmount()) }}</strong></p>
                 <p class="csv-done-note">Amounts from the CSV will be pre-filled. You can adjust individual amounts in the basket before processing payment.</p>
               </div>
-              <button class="process-btn csv-add-btn" (click)="csvAddToBasket()" data-testid="button-csv-add-to-basket">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
-                Add {{ csvFoundCount() }} Account(s) to Basket
-              </button>
             } @else {
               <div class="csv-done-summary csv-done-empty">
                 <p>No valid accounts found in the imported file. Please check your file and try again.</p>
@@ -1436,8 +1432,8 @@
                     <th>#</th>
                     <th>Account</th>
                     <th>Name</th>
-                    <th>Amount</th>
-                    <th>Outstanding</th>
+                    <th class="text-right">Amount</th>
+                    <th class="text-right">Outstanding</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -1448,7 +1444,7 @@
                       <td class="font-mono">{{ row.accountNo }}</td>
                       <td>{{ row.name || (row.errorMsg || '-') }}</td>
                       <td class="font-mono text-right">R {{ formatCurrency(row.amount) }}</td>
-                      <td class="font-mono text-right">
+                      <td class="font-mono text-right" [class.csv-balance-negative]="row.outstandingAmount < 0" [class.csv-balance-positive]="row.outstandingAmount > 0">
                         @if (row.status === 'found') { R {{ formatCurrency(row.outstandingAmount) }} }
                         @else { - }
                       </td>
@@ -1469,6 +1465,13 @@
                 <span>Page {{ csvPage() }} of {{ csvTotalPages() }}</span>
                 <button class="csv-page-btn" (click)="csvNextPage()" [disabled]="csvPage() >= csvTotalPages()">Next &raquo;</button>
               </div>
+            }
+
+            @if (csvFoundCount() > 0) {
+              <button class="process-btn csv-add-btn" (click)="csvAddToBasket()" data-testid="button-csv-add-to-basket">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+                Add {{ csvFoundCount() }} Account(s) to Basket
+              </button>
             }
           }
         </div>

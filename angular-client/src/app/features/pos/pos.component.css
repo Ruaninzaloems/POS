@@ -3338,7 +3338,17 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-top: 16px;
+}
+
+.csv-balance-negative {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.csv-balance-positive {
+  color: #16a34a;
+  font-weight: 600;
 }
 
 .csv-pagination {
