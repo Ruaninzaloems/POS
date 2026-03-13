@@ -24,12 +24,12 @@
   </div>
 
   <div class="comm-layout">
-    <!-- RECIPIENTS PANEL -->
+    <!-- STEP 1: RECIPIENTS -->
     <div class="recipients-panel card">
       <div class="panel-header">
         <h2>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          Recipients
+          <span class="step-badge">1</span>
+          Add Recipients
           @if (recipients().length > 0) {
             <span class="count-badge">{{ selectedRecipients().length }}/{{ recipients().length }}</span>
           }
@@ -57,26 +57,20 @@
             <span>Importing {{ importProgress().current }} of {{ importProgress().total }}...</span>
             <span class="progress-accent">{{ importProgress().added }} added</span>
           </div>
-          <div class="progress-bar">
-            <div class="progress-fill" [style.width.%]="(importProgress().current / importProgress().total) * 100"></div>
-          </div>
+          <div class="progress-bar"><div class="progress-fill" [style.width.%]="(importProgress().current / importProgress().total) * 100"></div></div>
         </div>
       }
-
       @if (contactEnriching() && contactEnrichProgress().total > 0) {
         <div class="progress-section progress-contact">
           <div class="progress-row">
             <span>Loading contacts {{ contactEnrichProgress().current }} of {{ contactEnrichProgress().total }}...</span>
             <span class="progress-green">{{ ((contactEnrichProgress().current / contactEnrichProgress().total) * 100) | number:'1.0-0' }}%</span>
           </div>
-          <div class="progress-bar">
-            <div class="progress-fill progress-fill-green" [style.width.%]="(contactEnrichProgress().current / contactEnrichProgress().total) * 100"></div>
-          </div>
+          <div class="progress-bar"><div class="progress-fill progress-fill-green" [style.width.%]="(contactEnrichProgress().current / contactEnrichProgress().total) * 100"></div></div>
         </div>
       }
 
       <div class="search-container">
-        <label class="search-label">Search Account</label>
         <div class="search-input-wrap">
           <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
           <input class="form-input search-input" placeholder="Search account number or name..." [ngModel]="searchQuery()" (ngModelChange)="onSearchInput($event)" data-testid="input-search-account" />
@@ -109,9 +103,7 @@
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                     </span>
                   }
-                  @if (ci?.loading) {
-                    <span class="spinner spinner-sm"></span>
-                  }
+                  @if (ci?.loading) { <span class="spinner spinner-sm"></span> }
                   @if (alreadyAdded) {
                     <svg class="icon-added" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
                   } @else {
@@ -144,30 +136,22 @@
                 <div class="recipient-name-row">
                   <span class="recipient-accno">{{ r.accountNo }}</span>
                   <span class="recipient-name">{{ r.name }}</span>
-                  @if (r.contactLoading) {
-                    <span class="spinner spinner-sm"></span>
-                  }
+                  @if (r.contactLoading) { <span class="spinner spinner-sm"></span> }
                 </div>
                 @if (r.contactLoaded) {
                   <div class="recipient-contacts">
                     <div class="contact-row">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" [class.icon-ok]="r.email" [class.icon-miss]="!r.email"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-                      @if (r.email) {
-                        <span class="contact-value">{{ r.email }}</span>
-                      } @else {
-                        <span class="contact-missing">No email</span>
-                      }
+                      @if (r.email) { <span class="contact-value">{{ r.email }}</span> }
+                      @else { <span class="contact-missing">No email</span> }
                     </div>
                     @if (r.additionalEmails.length > 0) {
                       <div class="contact-extra">+{{ r.additionalEmails.length }} more</div>
                     }
                     <div class="contact-row">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" [class.icon-ok]="r.mobile" [class.icon-miss]="!r.mobile"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                      @if (r.mobile) {
-                        <span class="contact-value">{{ r.mobile }}</span>
-                      } @else {
-                        <span class="contact-missing">No mobile</span>
-                      }
+                      @if (r.mobile) { <span class="contact-value">{{ r.mobile }}</span> }
+                      @else { <span class="contact-missing">No mobile</span> }
                     </div>
                   </div>
                 }
@@ -181,12 +165,12 @@
         @if (recipients().length === 0) {
           <div class="empty-recipients">
             <div class="empty-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             </div>
-            <p class="empty-title">No recipients added</p>
-            <p class="empty-sub">Search above or import from CSV</p>
+            <p class="empty-title">No recipients added yet</p>
+            <p class="empty-sub">Search by account number or name above, or import a CSV file</p>
             <button class="empty-template-link" (click)="downloadTemplate()" data-testid="button-download-template-empty">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
               Download import template
             </button>
           </div>
@@ -218,30 +202,31 @@
       }
     </div>
 
-    <!-- COMPOSE PANEL -->
+    <!-- STEP 2: COMPOSE & SEND -->
     <div class="compose-column">
       <div class="compose-panel card">
         <div class="panel-header">
           <h2>
+            <span class="step-badge">2</span>
             @if (mode() === 'email') {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
             } @else {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-green"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
             }
-            Compose {{ mode() === 'email' ? 'Email' : 'SMS' }}
+            Write Your {{ mode() === 'email' ? 'Email' : 'SMS' }} Message
           </h2>
         </div>
         <div class="compose-form">
           @if (mode() === 'email') {
             <div class="form-group">
-              <label class="form-label">Subject</label>
+              <label class="form-label">Subject <span class="required">*</span></label>
               <input class="form-input" [ngModel]="subject()" (ngModelChange)="subject.set($event)" placeholder="Enter email subject..." data-testid="input-subject" />
             </div>
           }
 
           <div class="form-group form-group-grow">
             <label class="form-label">
-              Message
+              Message <span class="required">*</span>
               @if (mode() === 'sms') {
                 <span class="char-hint">({{ messageBody().length }}/160)</span>
               }
@@ -298,26 +283,51 @@
         </div>
       </div>
 
-      <!-- SEND SUMMARY CARD -->
+      <!-- STEP 3: REVIEW & SEND -->
       <div class="send-card card">
+        <div class="panel-header send-header">
+          <h2>
+            <span class="step-badge step-badge-send">3</span>
+            Review &amp; Send
+          </h2>
+        </div>
         <div class="send-card-inner">
-          <div class="send-summary">
-            @if (mode() === 'email') {
-              <p class="send-line">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="send-line-icon"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-                <strong>{{ totalEmailAddresses() }}</strong> email(s) across <strong>{{ validEmailRecipients().length }}</strong> account(s)
-              </p>
-              @if (attachments().length > 0) {
-                <p class="send-line send-line-muted">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-                  {{ attachments().length }} attachment(s) — {{ formatFileSizeTotal() }}
-                </p>
+          <div class="send-checklist">
+            <div class="check-item" [class.check-done]="selectedRecipients().length > 0">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                @if (selectedRecipients().length > 0) {
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/>
+                } @else {
+                  <circle cx="12" cy="12" r="10"/>
+                }
+              </svg>
+              @if (mode() === 'email') {
+                <span><strong>{{ totalEmailAddresses() }}</strong> email address{{ totalEmailAddresses() !== 1 ? 'es' : '' }} across <strong>{{ validEmailRecipients().length }}</strong> account{{ validEmailRecipients().length !== 1 ? 's' : '' }}</span>
+              } @else {
+                <span><strong>{{ validSmsRecipients().length }}</strong> SMS recipient{{ validSmsRecipients().length !== 1 ? 's' : '' }}</span>
               }
-            } @else {
-              <p class="send-line">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-green"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
-                <strong>{{ validSmsRecipients().length }}</strong> SMS recipient(s) &bull; {{ messageBody().length }}/160 chars
-              </p>
+            </div>
+            <div class="check-item" [class.check-done]="messageBody().trim().length > 0">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                @if (messageBody().trim().length > 0) {
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/>
+                } @else {
+                  <circle cx="12" cy="12" r="10"/>
+                }
+              </svg>
+              <span>Message: {{ messageBody().trim().length > 0 ? messageBody().trim().length + ' characters' : 'not written yet' }}</span>
+            </div>
+            @if (mode() === 'email' && attachments().length > 0) {
+              <div class="check-item check-done">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+                <span>{{ attachments().length }} attachment{{ attachments().length !== 1 ? 's' : '' }} ({{ formatFileSizeTotal() }})</span>
+              </div>
+            }
+            @if (mode() === 'email' && subject().trim().length > 0) {
+              <div class="check-item check-done">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+                <span>Subject: "{{ subject().trim() }}"</span>
+              </div>
             }
           </div>
           <div class="send-actions">
@@ -327,7 +337,7 @@
             </button>
             <button class="btn-primary btn-send" [class.btn-send-sms]="mode() === 'sms'" (click)="handleSend()" [disabled]="selectedRecipients().length === 0 || !messageBody().trim()" data-testid="button-send">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="m22 2-11 11"/></svg>
-              {{ mode() === 'email' ? 'Send Email' : 'Send SMS' }}
+              {{ mode() === 'email' ? 'Send Email to ' + totalEmailAddresses() + ' Address' + (totalEmailAddresses() !== 1 ? 'es' : '') : 'Send SMS to ' + validSmsRecipients().length + ' Number' + (validSmsRecipients().length !== 1 ? 's' : '') }}
             </button>
           </div>
         </div>
@@ -351,11 +361,8 @@
                 <div class="preview-row">
                   <span class="preview-label">To:</span>
                   <span class="preview-value">
-                    @if (validEmailRecipients().length > 0) {
-                      {{ previewToLine() }}
-                    } @else {
-                      (no recipients)
-                    }
+                    @if (validEmailRecipients().length > 0) { {{ previewToLine() }} }
+                    @else { (no recipients) }
                   </span>
                 </div>
                 <div class="preview-row">
