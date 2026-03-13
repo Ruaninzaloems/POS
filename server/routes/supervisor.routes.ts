@@ -601,12 +601,17 @@ export function registerSupervisorRoutes(app: Express, httpServer: Server): void
         return res.status(response.status).json({ message: "Failed to download statement" });
       }
       const contentType = response.headers.get('content-type') || 'application/pdf';
-      const contentDisposition = response.headers.get('content-disposition');
+      const inline = req.query.inline === 'true';
       res.setHeader('Content-Type', contentType);
-      if (contentDisposition) {
-        res.setHeader('Content-Disposition', contentDisposition);
+      if (inline) {
+        res.setHeader('Content-Disposition', 'inline');
       } else {
-        res.setHeader('Content-Disposition', 'attachment; filename=statement.pdf');
+        const contentDisposition = response.headers.get('content-disposition');
+        if (contentDisposition) {
+          res.setHeader('Content-Disposition', contentDisposition);
+        } else {
+          res.setHeader('Content-Disposition', 'attachment; filename=statement.pdf');
+        }
       }
       const buffer = await response.arrayBuffer();
       res.send(Buffer.from(buffer));

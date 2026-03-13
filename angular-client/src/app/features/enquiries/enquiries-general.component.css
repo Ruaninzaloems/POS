@@ -1411,6 +1411,8 @@
   transition: all 0.15s;
 }
 .stmt-output-btn:hover { background: rgba(15,43,70,0.04); }
+.stmt-output-btn-preview { color: #2563eb; border-color: rgba(37,99,235,0.2); }
+.stmt-output-btn-preview:hover { background: rgba(37,99,235,0.06); }
 .stmt-output-btn-send {
   background: var(--platinum-primary, #0f2b46);
   color: #fff;
@@ -1560,6 +1562,8 @@
   color: var(--platinum-primary, #0f2b46);
 }
 .stmt-hist-btn:hover { background: rgba(15,43,70,0.06); }
+.stmt-hist-preview { color: #2563eb; border-color: rgba(37,99,235,0.2); }
+.stmt-hist-preview:hover { background: rgba(37,99,235,0.06); }
 .stmt-hist-download { color: var(--platinum-accent, #c9a84c); border-color: rgba(201,168,76,0.25); }
 .stmt-hist-download:hover { background: rgba(201,168,76,0.08); }
 .stmt-hist-send { color: #2563eb; border-color: rgba(37,99,235,0.2); }

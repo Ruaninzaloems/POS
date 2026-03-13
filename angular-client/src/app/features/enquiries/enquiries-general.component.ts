@@ -4761,6 +4761,14 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     });
   }
 
+  previewStatement(fileUrl?: string) {
+    if (!fileUrl) {
+      this.toast.show('No preview link available', 'error');
+      return;
+    }
+    window.open(`/api/platinum/statement-download?fileUrl=${encodeURIComponent(fileUrl)}&inline=true`, '_blank');
+  }
+
   downloadStatement(fileUrl?: string) {
     if (!fileUrl) {
       this.toast.show('No download link available', 'error');
