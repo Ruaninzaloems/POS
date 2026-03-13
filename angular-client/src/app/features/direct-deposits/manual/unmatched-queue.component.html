@@ -514,7 +514,7 @@
                           </div>
                         }
                       </div>
-                      @if (quickAllocating() && quickAllocMatchId() === match.accountId) {
+                      @if ((quickAllocating() || quickAllocComplete() || quickAllocError()) && quickAllocMatchId() === match.accountId) {
                         <div class="quick-alloc-progress">
                           @if (quickAllocComplete()) {
                             <div class="quick-alloc-done">
@@ -526,6 +526,7 @@
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
                               <span>{{ quickAllocError() }}</span>
                             </div>
+                            <button class="btn-outline btn-sm" style="margin-top:4px" (click)="quickAllocError.set(''); quickAllocMatchId.set(null)">Dismiss</button>
                           } @else {
                             <div class="quick-alloc-spinner">
                               <div class="spinner-sm"></div>
@@ -623,7 +624,7 @@
                             <div class="match-outstanding">Outstanding: {{ formatCurrency(r.outstandingAmount) }}</div>
                           }
                         </div>
-                        @if (quickAllocating() && quickAllocMatchId() === r.accountId) {
+                        @if ((quickAllocating() || quickAllocComplete() || quickAllocError()) && quickAllocMatchId() === r.accountId) {
                           <div class="quick-alloc-progress">
                             @if (quickAllocComplete()) {
                               <div class="quick-alloc-done">
@@ -635,6 +636,7 @@
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
                                 <span>{{ quickAllocError() }}</span>
                               </div>
+                              <button class="btn-outline btn-sm" style="margin-top:4px" (click)="quickAllocError.set(''); quickAllocMatchId.set(null)">Dismiss</button>
                             } @else {
                               <div class="quick-alloc-spinner">
                                 <div class="spinner-sm"></div>

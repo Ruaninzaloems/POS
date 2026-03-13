@@ -1763,11 +1763,15 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
         } catch {}
       }
     } catch (e: any) {
+      console.error('[QuickAlloc] Failed:', e);
       const status = e?.status || e?.error?.status;
+      const detail = e?.error?.detail || e?.error?.message || e?.message || '';
       if (status === 409) {
         this.quickAllocError.set('This deposit is already being allocated by another user.');
+      } else if (status === 500 || detail.includes('Internal Server Error')) {
+        this.quickAllocError.set('Platinum server error — please try again or use the full Allocate This Deposit button.');
       } else {
-        this.quickAllocError.set(e?.error?.message || e?.message || 'Allocation failed');
+        this.quickAllocError.set(detail || 'Allocation failed — please try again.');
       }
     } finally {
       this.quickAllocating.set(false);
