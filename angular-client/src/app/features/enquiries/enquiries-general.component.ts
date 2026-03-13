@@ -288,6 +288,8 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   expandedLinkedRow = signal<number | null>(null);
 
   generatingPropertyLetter = signal<string | null>(null);
+  printOverlayHtml = signal<string | null>(null);
+  printOverlayTitle = signal<string>('');
 
   nbeLoading = signal(false);
   nbeCalculated = signal(false);
@@ -6498,6 +6500,38 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
+  showPrintOverlay(html: string, title: string): void {
+    this.printOverlayHtml.set(html);
+    this.printOverlayTitle.set(title);
+  }
+
+  closePrintOverlay(): void {
+    this.printOverlayHtml.set(null);
+    this.printOverlayTitle.set('');
+  }
+
+  printOverlayContent(): void {
+    const iframe = document.getElementById('print-overlay-iframe') as HTMLIFrameElement;
+    if (iframe?.contentWindow) {
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+    }
+  }
+
+  downloadOverlayContent(): void {
+    const html = this.printOverlayHtml();
+    if (!html) return;
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = (this.printOverlayTitle() || 'document').replace(/[^a-zA-Z0-9 ]/g, '_') + '.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   printProofOfResidence(): void {
     const data = this.proofData();
     if (!data) return;
@@ -6512,9 +6546,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const today = new Date();
     const dateStr = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
 
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>Proof of Residence</title><style>
+    const fullHtml = `<!DOCTYPE html><html><head><title>Proof of Residence</title><style>
       body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
       .proof-container { max-width: 700px; margin: 0 auto; border: 1px solid #333; padding: 30px; }
       .header { border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px; text-align: center; }
@@ -6553,10 +6585,8 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           <p>George Municipality</p>
         </div>
       </div>
-    </body></html>`);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => { printWindow.print(); }, 300);
+    </body></html>`;
+    this.showPrintOverlay(fullHtml, 'Proof of Residence');
   }
 
   async generatePropertyLetter(type: 'section49' | 'section78' | 'valuation'): Promise<void> {
@@ -6653,9 +6683,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         bodyContent += `<div class="body-text">This valuation is as per the current General Valuation Roll and/or Supplementary Valuation Roll.</div>`;
       }
 
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) { this.toast.show('Could not open print window', 'error'); return; }
-      printWindow.document.write(`<!DOCTYPE html><html><head><title>${title}</title><style>
+      const fullHtml = `<!DOCTYPE html><html><head><title>${title}</title><style>
         body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
         .letter-container { max-width: 700px; margin: 0 auto; border: 1px solid #333; padding: 30px; }
         .header { border-bottom: 2px solid #0f2b46; padding-bottom: 15px; margin-bottom: 20px; text-align: center; }
@@ -6679,10 +6707,8 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           ${bodyContent}
           <div class="footer"><p>_________________________</p><p>Authorised Official</p><p>George Municipality</p></div>
         </div>
-      </body></html>`);
-      printWindow.document.close();
-      printWindow.focus();
-      setTimeout(() => { printWindow.print(); }, 300);
+      </body></html>`;
+      this.showPrintOverlay(fullHtml, title);
     } catch (e: any) {
       this.toast.show(`Failed to generate ${type} letter: ${e?.message || 'Unknown error'}`, 'error');
     } finally {

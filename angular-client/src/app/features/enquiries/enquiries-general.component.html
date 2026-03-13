@@ -6125,3 +6125,19 @@
     }
   </div>
 }
+
+@if (printOverlayHtml()) {
+  <div class="print-overlay-backdrop" (click)="closePrintOverlay()" data-testid="print-overlay-backdrop">
+    <div class="print-overlay-container" (click)="$event.stopPropagation()">
+      <div class="print-overlay-toolbar">
+        <span class="print-overlay-title">{{ printOverlayTitle() }}</span>
+        <div class="print-overlay-actions">
+          <button class="print-overlay-btn print-btn" (click)="printOverlayContent()" data-testid="btn-print-overlay-print">🖨️ Print</button>
+          <button class="print-overlay-btn download-btn" (click)="downloadOverlayContent()" data-testid="btn-print-overlay-download">⬇️ Download</button>
+          <button class="print-overlay-btn close-btn" (click)="closePrintOverlay()" data-testid="btn-print-overlay-close">✕</button>
+        </div>
+      </div>
+      <iframe id="print-overlay-iframe" class="print-overlay-iframe" [srcdoc]="printOverlayHtml()"></iframe>
+    </div>
+  </div>
+}

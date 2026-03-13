@@ -3801,3 +3801,80 @@ thead .cons-sticky-col { z-index: 3; background: var(--platinum-primary, #0f2b46
   padding: 0.5rem;
   font-style: italic;
 }
+
+.print-overlay-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.print-overlay-container {
+  width: 90vw;
+  max-width: 820px;
+  height: 85vh;
+  background: #fff;
+  border-radius: 0.75rem;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.print-overlay-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--platinum-primary, #0f2b46);
+  color: #fff;
+  gap: 0.75rem;
+}
+.print-overlay-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.print-overlay-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+.print-overlay-btn {
+  border: none;
+  border-radius: 0.375rem;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.print-overlay-btn:active { transform: scale(0.97); }
+.print-overlay-btn.print-btn {
+  background: var(--platinum-accent, #c9a84c);
+  color: var(--platinum-primary, #0f2b46);
+}
+.print-overlay-btn.print-btn:hover { background: #d4b35a; }
+.print-overlay-btn.download-btn {
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+}
+.print-overlay-btn.download-btn:hover { background: rgba(255,255,255,0.25); }
+.print-overlay-btn.close-btn {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  font-size: 1rem;
+  padding: 0.35rem 0.6rem;
+}
+.print-overlay-btn.close-btn:hover { background: rgba(255,255,255,0.2); }
+.print-overlay-iframe {
+  flex: 1;
+  border: none;
+  width: 100%;
+  background: #f5f5f5;
+}
