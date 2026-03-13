@@ -3538,20 +3538,27 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const totals: Record<string, number> = {};
     months.forEach(m => totals[monthFieldMap[m]] = 0);
 
+    const openingBalances: Record<string, number> = {};
+    months.forEach(m => openingBalances[monthFieldMap[m]] = 0);
+
     for (let mi = 0; mi < months.length; mi++) {
       const res = results[mi];
       if (res.status !== 'fulfilled') continue;
       const txns = this.normalizeArray(res.value);
+      const field = monthFieldMap[months[mi]];
 
       for (const t of txns) {
         const desc = t.transactionDescription || t.description || '';
         if (!desc) continue;
         const descLower = desc.toLowerCase();
-        if (descLower.includes('open') && descLower.includes('balance')) continue;
-        if (descLower.includes('clos') && descLower.includes('balance')) continue;
 
         const amount = Number(t.amount ?? t.debitAmount ?? t.total ?? t.totalAmount ?? 0) || 0;
-        const field = monthFieldMap[months[mi]];
+
+        if (descLower.includes('open') && descLower.includes('balance')) {
+          openingBalances[field] = amount;
+          continue;
+        }
+        if (descLower.includes('clos') && descLower.includes('balance')) continue;
 
         let serviceDesc = desc;
         if (desc.toLowerCase().startsWith('levy - ')) serviceDesc = desc.substring(7);
@@ -3572,9 +3579,15 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const pivotedRows = Array.from(serviceMap.values());
     if (pivotedRows.length === 0) return [];
 
+    let firstOpenBal = 0;
+    for (const m of months) {
+      const ob = openingBalances[monthFieldMap[m]];
+      if (ob !== 0) { firstOpenBal = ob; break; }
+    }
+
     const openingRow: any = { description: 'Opening Balance', financialYear: finYear, _isSpecialRow: true };
     months.forEach(m => openingRow[monthFieldMap[m]] = 0);
-    let running = 0;
+    let running = firstOpenBal;
     for (const m of months) {
       openingRow[monthFieldMap[m]] = running;
       running += totals[monthFieldMap[m]];
@@ -3584,7 +3597,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     months.forEach(m => totalRow[monthFieldMap[m]] = totals[monthFieldMap[m]]);
 
     const closingRow: any = { description: 'Closing Balance', financialYear: finYear, _isSpecialRow: true };
-    let closingBal = 0;
+    let closingBal = firstOpenBal;
     for (const m of months) {
       closingBal += totals[monthFieldMap[m]];
       closingRow[monthFieldMap[m]] = closingBal;
