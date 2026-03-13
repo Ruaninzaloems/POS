@@ -4209,6 +4209,7 @@
                                       <th class="debt-th-amt">Consumption</th>
                                       <th class="debt-th-desc">Status</th>
                                       <th class="debt-th-desc">Levy</th>
+                                      <th class="debt-th-desc">Capturer</th>
                                       <th class="debt-th-desc">Flag</th>
                                     </tr>
                                   </thead>
@@ -4225,6 +4226,7 @@
                                         <td class="debt-td-amt mono bold">{{ getConsumptionVal(r) | number:'1.0-0' }}</td>
                                         <td class="debt-td-desc">{{ r.readingStatus || '-' }}</td>
                                         <td class="debt-td-desc">{{ r.levyStatus || '-' }}</td>
+                                        <td class="debt-td-desc">{{ r.capturerDesc || r.capturer || r.capturerName || '-' }}</td>
                                         <td class="debt-td-desc">
                                           @if (isConvAnomaly(r, $index) === 'spike') { <span class="cons-flag cons-flag-spike">⚠️ Spike</span> }
                                           @else if (isConvAnomaly(r, $index) === 'drop') { <span class="cons-flag cons-flag-drop">⬇️ Drop</span> }
@@ -4788,6 +4790,9 @@
                                 <th class="cons-th-sortable" (click)="sortConsumptionBy('readingStatus')" data-testid="th-sort-status">
                                   <span>Status</span><span class="cons-sort-icon">{{ getConsSortIcon('readingStatus') }}</span>
                                 </th>
+                                <th class="cons-th-sortable" (click)="sortConsumptionBy('capturerDesc')" data-testid="th-sort-capturer">
+                                  <span>Capturer</span><span class="cons-sort-icon">{{ getConsSortIcon('capturerDesc') }}</span>
+                                </th>
                               </tr>
                             </thead>
                             <tbody>
@@ -4820,6 +4825,7 @@
                                       {{ isOpenPeriodRow(r) ? 'Awaiting' : (r.readingStatus || r.status || '-') }}
                                     </span>
                                   </td>
+                                  <td>{{ r.capturerDesc || r.capturer || r.capturerName || '-' }}</td>
                                 </tr>
                               }
                             </tbody>
