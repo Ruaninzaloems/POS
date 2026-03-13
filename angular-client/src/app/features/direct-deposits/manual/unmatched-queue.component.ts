@@ -686,17 +686,16 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
       const firstPageItems = this.extractItems(result);
       const serverTotal = result?.totalCount ?? firstPageItems.length;
 
-      if (firstPageItems.length < serverTotal && firstPageItems.length >= pageSize) {
-        await this.loadRemainingPages(firstPageItems, pageSize, serverTotal);
-      } else {
-        this.items.set(firstPageItems);
-        this.totalCount.set(firstPageItems.length);
-      }
-
+      this.items.set(firstPageItems);
+      this.totalCount.set(serverTotal || firstPageItems.length);
       this.selectedItems.set(new Set());
       this.page.set(1);
       this.loading.set(false);
       this.loadProgress.set('');
+
+      if (firstPageItems.length < serverTotal && firstPageItems.length >= pageSize) {
+        this.loadRemainingPages(firstPageItems, pageSize, serverTotal);
+      }
     } catch (e: any) {
       this.error.set(e?.error?.message || e?.message || 'Failed to load deposits');
       this.toast.error('Failed to load deposits');
@@ -713,7 +712,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
 
     try {
       while (currentPage <= maxPages && allItems.length < serverTotal) {
-        this.loadProgress.set(`Loading ${allItems.length} of ~${serverTotal} deposits...`);
+        this.loadProgress.set(`Loading more... ${allItems.length} of ~${serverTotal}`);
         const result: any = await firstValueFrom(
           this.api.post('/api/platinum/direct-deposit-allocation/get-bank-recon-positem-list', {
             page: currentPage,
@@ -726,11 +725,12 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
         const pageItems = this.extractItems(result);
         if (pageItems.length === 0) break;
         allItems.push(...pageItems);
+        this.items.set([...allItems]);
+        this.totalCount.set(allItems.length);
         currentPage++;
       }
     } catch (e: any) {
       console.error('[deposits] Background page load failed at page', currentPage, e);
-      this.toast.show(`Loaded ${allItems.length} of ~${serverTotal} deposits (some pages failed)`, 'info');
     }
     this.items.set([...allItems]);
     this.totalCount.set(allItems.length);
