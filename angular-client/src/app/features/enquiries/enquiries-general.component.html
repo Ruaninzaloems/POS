@@ -4413,6 +4413,7 @@
                                       <th>Billing Month</th>
                                       <th>Meter Book</th>
                                       <th>Route</th>
+                                      <th>Capturer Name</th>
                                       <th>Old Reading Date</th>
                                       <th>Old Reading</th>
                                       <th>New Reading Date</th>
@@ -4435,7 +4436,6 @@
                                       <th>Contractor Remarks</th>
                                       <th>Disconnection Letter</th>
                                       <th>Supporting Document</th>
-                                      <th>User</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -4451,6 +4451,7 @@
                                         <td>{{ r.billingmonth || r.billingMonth || '-' }}</td>
                                         <td>{{ r.meterBookName || '-' }}</td>
                                         <td>{{ r.routeFileName || r.routeFileNo || '-' }}</td>
+                                        <td>{{ r.capturer || '-' }}</td>
                                         <td class="mono">{{ formatDate(r.reading1Date) }}</td>
                                         <td class="mono cons-td-numeric">{{ r.reading1 ?? '-' }}</td>
                                         <td class="mono">{{ formatDate(r.reading2Date) }}</td>
@@ -4473,7 +4474,6 @@
                                         <td class="cons-td-remarks">{{ r.disconnectionRemarks || '-' }}</td>
                                         <td>{{ r.acceptReason || '-' }}</td>
                                         <td class="mono">{{ r.supportingDocs_ID || '-' }}</td>
-                                        <td>{{ r.user || r.userName || r.capturerName || '-' }}</td>
                                       </tr>
                                     }
                                   </tbody>
@@ -5014,6 +5014,7 @@
                                 <th class="cons-th-sortable" (click)="sortConsumptionBy('billingMonth')"><span>Billing Month</span><span class="cons-sort-icon">{{ getConsSortIcon('billingMonth') }}</span></th>
                                 <th class="cons-th-sortable" (click)="sortConsumptionBy('meterBookName')"><span>Meter Book</span><span class="cons-sort-icon">{{ getConsSortIcon('meterBookName') }}</span></th>
                                 <th class="cons-th-sortable" (click)="sortConsumptionBy('routeFileName')"><span>Route</span><span class="cons-sort-icon">{{ getConsSortIcon('routeFileName') }}</span></th>
+                                <th class="cons-th-sortable" (click)="sortConsumptionBy('capturer')"><span>Capturer Name</span><span class="cons-sort-icon">{{ getConsSortIcon('capturer') }}</span></th>
                                 <th class="cons-th-sortable" (click)="sortConsumptionBy('oldReadingDate')"><span>Old Reading Date</span><span class="cons-sort-icon">{{ getConsSortIcon('oldReadingDate') }}</span></th>
                                 <th class="cons-th-sortable cons-th-numeric" (click)="sortConsumptionBy('oldReading')"><span>Old Reading</span><span class="cons-sort-icon">{{ getConsSortIcon('oldReading') }}</span></th>
                                 <th class="cons-th-sortable" (click)="sortConsumptionBy('newReadingDate')"><span>New Reading Date</span><span class="cons-sort-icon">{{ getConsSortIcon('newReadingDate') }}</span></th>
@@ -5036,7 +5037,6 @@
                                 <th class="cons-th-sortable" (click)="sortConsumptionBy('disconnectionRemarks')"><span>Contractor Remarks</span><span class="cons-sort-icon">{{ getConsSortIcon('disconnectionRemarks') }}</span></th>
                                 <th class="cons-th-sortable" (click)="sortConsumptionBy('acceptReason')"><span>Disconnection Letter</span><span class="cons-sort-icon">{{ getConsSortIcon('acceptReason') }}</span></th>
                                 <th class="cons-th-sortable" (click)="sortConsumptionBy('supportingDocs_ID')"><span>Supporting Document</span><span class="cons-sort-icon">{{ getConsSortIcon('supportingDocs_ID') }}</span></th>
-                                <th class="cons-th-sortable" (click)="sortConsumptionBy('user')"><span>User</span><span class="cons-sort-icon">{{ getConsSortIcon('user') }}</span></th>
                               </tr>
                             </thead>
                             <tbody>
@@ -5052,6 +5052,7 @@
                                   <td>{{ r.billingmonth || r.billingMonth || '-' }}</td>
                                   <td>{{ r.meterBookName || '-' }}</td>
                                   <td>{{ r.routeFileName || r.routeFileNo || '-' }}</td>
+                                  <td>{{ r.capturer || '-' }}</td>
                                   <td class="mono">{{ formatDate(r.reading1Date) }}</td>
                                   <td class="mono cons-td-numeric cons-td-reading-val">{{ r.reading1 ?? '-' }}</td>
                                   <td class="mono">{{ formatDate(r.reading2Date) }}</td>
@@ -5098,7 +5099,6 @@
                                   <td class="cons-td-remarks">{{ r.disconnectionRemarks || '-' }}</td>
                                   <td>{{ r.acceptReason || '-' }}</td>
                                   <td class="mono">{{ r.supportingDocs_ID || '-' }}</td>
-                                  <td>{{ r.user || r.userName || r.capturerName || '-' }}</td>
                                 </tr>
                               }
                             </tbody>
