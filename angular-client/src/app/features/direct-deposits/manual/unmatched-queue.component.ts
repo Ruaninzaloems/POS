@@ -1824,6 +1824,30 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
     this.msDebounceTimer = setTimeout(() => this.runManualSearch(), 300);
   }
 
+  private acGet(search: string, type: string): Promise<any[]> {
+    return firstValueFrom(
+      this.api.get('/api/platinum/billing-enquiry/autocomplete', { search, type })
+    ).then((d: any) => this.unwrap(d)).catch(() => []);
+  }
+
+  private ddAcGet(searchTerm: string): Promise<any[]> {
+    return firstValueFrom(
+      this.api.get('/api/platinum/direct-deposit-allocation/get-account-autocomplete', { searchTerm })
+    ).then((d: any) => this.unwrap(d)).catch(() => []);
+  }
+
+  private ddOldAcGet(searchTerm: string): Promise<any[]> {
+    return firstValueFrom(
+      this.api.get('/api/platinum/direct-deposit-allocation/get-old-account-autocomplete', { searchTerm })
+    ).then((d: any) => this.unwrap(d)).catch(() => []);
+  }
+
+  private searchAccPost(params: Record<string, string>): Promise<any[]> {
+    return firstValueFrom(
+      this.api.post('/api/platinum/billing-payment/search-accounts', params)
+    ).then((d: any) => this.unwrap(d)).catch(() => []);
+  }
+
   async runManualSearch(): Promise<void> {
     const quick = this.msQuick().trim();
     const accNo = this.msAccountNo().trim();
@@ -1845,139 +1869,96 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
     this.msSearching.set(true);
 
     try {
-      const searchPromises: Promise<any[]>[] = [];
+      const fastCalls: Promise<any[]>[] = [];
+      const slowCalls: Promise<any[]>[] = [];
 
       if (quick && quick.length >= 2) {
-        searchPromises.push(
-          firstValueFrom(
-            this.api.get('/api/platinum/direct-deposit-allocation/get-account-autocomplete', { searchTerm: quick })
-          ).then((d: any) => this.unwrap(d)).catch(() => [])
-        );
-
-        searchPromises.push(
-          firstValueFrom(
-            this.api.get('/api/platinum/direct-deposit-allocation/get-old-account-autocomplete', { searchTerm: quick })
-          ).then((d: any) => this.unwrap(d)).catch(() => [])
-        );
-
-        searchPromises.push(
-          firstValueFrom(
-            this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: quick })
-          ).then((d: any) => this.unwrap(d)).catch(() => [])
-        );
-
+        fastCalls.push(this.acGet(quick, 'accountNumber'));
+        fastCalls.push(this.acGet(quick, 'name'));
+        fastCalls.push(this.acGet(quick, 'erfNumber'));
+        fastCalls.push(this.ddAcGet(quick));
+        slowCalls.push(this.searchAccPost({ accountNo: quick }));
         if (/^[a-zA-Z]/.test(quick)) {
-          searchPromises.push(
-            firstValueFrom(
-              this.api.post('/api/platinum/billing-payment/search-accounts', { name: quick })
-            ).then((d: any) => this.unwrap(d)).catch(() => [])
-          );
-        }
-
-        if (/^\d+$/.test(quick)) {
-          searchPromises.push(
-            firstValueFrom(
-              this.api.post('/api/platinum/billing-payment/search-accounts', { erfNumber: quick })
-            ).then((d: any) => this.unwrap(d)).catch(() => [])
-          );
+          slowCalls.push(this.searchAccPost({ name: quick }));
         }
       }
 
       if (accNo && accNo.length >= 2) {
-        const padded = accNo.replace(/^0+/, '').padStart(12, '0');
-        searchPromises.push(
-          firstValueFrom(
-            this.api.get('/api/platinum/direct-deposit-allocation/get-account-autocomplete', { searchTerm: accNo })
-          ).then((d: any) => this.unwrap(d)).catch(() => [])
-        );
-        searchPromises.push(
-          firstValueFrom(
-            this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: padded })
-          ).then((d: any) => this.unwrap(d)).catch(() => [])
-        );
+        fastCalls.push(this.acGet(accNo, 'accountNumber'));
+        fastCalls.push(this.ddAcGet(accNo));
       }
 
       if (name && name.length >= 2) {
-        searchPromises.push(
-          firstValueFrom(
-            this.api.post('/api/platinum/billing-payment/search-accounts', { name })
-          ).then((d: any) => this.unwrap(d)).catch(() => [])
-        );
+        fastCalls.push(this.acGet(name, 'name'));
       }
 
       if (erf && erf.length >= 2) {
-        searchPromises.push(
-          firstValueFrom(
-            this.api.post('/api/platinum/billing-payment/search-accounts', { erfNumber: erf })
-          ).then((d: any) => this.unwrap(d)).catch(() => [])
-        );
+        fastCalls.push(this.acGet(erf, 'erfNumber'));
+        fastCalls.push(this.ddOldAcGet(erf.padStart(8, '0')));
+        slowCalls.push(this.searchAccPost({ erfNumber: erf }));
       }
 
       if (meter && meter.length >= 2) {
-        searchPromises.push(
-          firstValueFrom(
-            this.api.post('/api/platinum/billing-payment/search-accounts', { meterNumber: meter })
-          ).then((d: any) => this.unwrap(d)).catch(() => [])
-        );
+        fastCalls.push(this.acGet(meter, 'meterNumber'));
       }
 
       if (idNum && idNum.length >= 2) {
-        searchPromises.push(
-          firstValueFrom(
-            this.api.post('/api/platinum/billing-payment/search-accounts', { idNumber: idNum })
-          ).then((d: any) => this.unwrap(d)).catch(() => [])
-        );
+        fastCalls.push(this.acGet(idNum, 'idNumber'));
       }
 
       if (mobile && mobile.length >= 2) {
-        searchPromises.push(
-          firstValueFrom(
-            this.api.post('/api/platinum/billing-payment/search-accounts', { mobileNo: mobile })
-          ).then((d: any) => this.unwrap(d)).catch(() => [])
-        );
+        fastCalls.push(this.acGet(mobile, 'mobileNumber'));
       }
 
-      if (searchPromises.length === 0) {
+      if (fastCalls.length === 0 && slowCalls.length === 0) {
         this.msSearching.set(false);
         return;
       }
 
-      const allResults = await Promise.all(searchPromises);
-      if (version !== this.msSearchVersion) return;
-
       const seen = new Set<number>();
       const merged: SuggestedMatch[] = [];
 
-      for (const results of allResults) {
-        for (const r of (results || [])) {
-          const id = r.account_ID || r.accountID || r.accountId;
-          if (!id || seen.has(id)) continue;
-          seen.add(id);
-          const accountNo = r.accountNumber || r.accountNo || String(id).padStart(12, '0');
-          const itemName = r.name || [r.initials, r.lastName].filter(Boolean).join(' ') || r.surname_Company || '';
-          merged.push({
-            accountId: id,
-            accountNo,
-            name: itemName,
-            address: r.deliveryAddress?.replace(/\r?\n/g, ', ')?.replace(/, ,/g, ',')?.replace(/,\s*$/,'') || r.streetName || '',
-            town: r.town || '',
-            erfNumber: r.erfNumber || '',
-            outstandingAmount: r.outStandingAmt || r.outstandingAmount || 0,
-            statusDesc: r.statusDesc || '',
-            matchType: 'account_number',
-            matchDetail: 'Search result',
-            confidence: 100,
-          });
+      const mergeResults = (allResults: any[][]) => {
+        for (const results of allResults) {
+          for (const r of (results || [])) {
+            const id = r.account_ID || r.accountID || r.accountId;
+            if (!id || seen.has(id)) continue;
+            seen.add(id);
+            const accountNo = r.accountNumber || r.accountNo || String(id).padStart(12, '0');
+            const itemName = r.name || [r.initials, r.lastName].filter(Boolean).join(' ') || r.surname_Company || '';
+            merged.push({
+              accountId: id,
+              accountNo,
+              name: itemName,
+              address: r.deliveryAddress?.replace(/\r?\n/g, ', ')?.replace(/, ,/g, ',')?.replace(/,\s*$/,'') || r.streetName || '',
+              town: r.town || '',
+              erfNumber: r.erfNumber || '',
+              outstandingAmount: r.outStandingAmt || r.outstandingAmount || 0,
+              statusDesc: r.statusDesc || '',
+              matchType: 'account_number',
+              matchDetail: 'Search result',
+              confidence: 100,
+            });
+          }
         }
-      }
+      };
 
+      const fastResults = await Promise.all(fastCalls);
+      if (version !== this.msSearchVersion) return;
+      mergeResults(fastResults);
       this.msResults.set(merged.slice(0, 50));
       this.msSearched.set(true);
-    } catch (e: any) {
-      if (version === this.msSearchVersion) {
-        this.toast.error('Search failed: ' + (e?.message || 'Unknown error'));
+      this.msSearching.set(false);
+
+      if (slowCalls.length > 0) {
+        this.msSearching.set(true);
+        const slowResults = await Promise.all(slowCalls);
+        if (version !== this.msSearchVersion) return;
+        mergeResults(slowResults);
+        this.msResults.set(merged.slice(0, 50));
+        this.msSearching.set(false);
       }
-    } finally {
+    } catch (e: any) {
       if (version === this.msSearchVersion) {
         this.msSearching.set(false);
       }
