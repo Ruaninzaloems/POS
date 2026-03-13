@@ -3942,6 +3942,9 @@
 
                       <div class="cons-main-panel">
                         @if (meterSelectedConv()) {
+                          <div style="margin-bottom: 0.5rem;">
+                            <button class="svc-bal-back" (click)="meterSelectedConv.set(null); meterConvHistory.set([]); meterConvInsights.set(null)" data-testid="button-back-meter-list">← Back to Meter List</button>
+                          </div>
                           <div class="cons-selected-header">
                             <div class="cons-selected-title">
                               <span class="cons-selected-svc">{{ meterSelectedConv().serviceDesc || 'Meter' }}</span>
@@ -4342,6 +4345,9 @@
 
                       <div class="cons-main-panel">
                         @if (meterSelectedPrepaid()) {
+                          <div style="margin-bottom: 0.5rem;">
+                            <button class="svc-bal-back" (click)="meterSelectedPrepaid.set(null); meterPrepaidSales.set([]); meterPrepaidStats.set(null)" data-testid="button-back-prepaid-list">← Back to Meter List</button>
+                          </div>
                           <div class="cons-selected-header pp-header">
                             <div class="cons-selected-title">
                               <span class="cons-selected-svc">{{ meterSelectedPrepaid().prepaidServiceDesc || meterSelectedPrepaid().serviceType || meterSelectedPrepaid().serviceDescription || meterSelectedPrepaid().serviceDesc || 'Prepaid Meter' }}</span>
