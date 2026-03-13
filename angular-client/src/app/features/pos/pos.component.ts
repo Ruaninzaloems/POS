@@ -173,6 +173,34 @@ export class PosComponent implements OnInit, OnDestroy {
   miscInitials = signal('');
   systemVatRate = signal<number>(15);
 
+  selectedScoaItem = computed(() => {
+    const id = this.miscSelectedScoaId();
+    if (!id) return null;
+    return this.miscScoaItems().find(s => s.scoaItemId === id) || null;
+  });
+
+  miscIsVatable = computed(() => {
+    const item = this.selectedScoaItem();
+    return item ? item.isVatable : false;
+  });
+
+  miscEffectiveVatPct = computed(() => {
+    const item = this.selectedScoaItem();
+    if (!item || !item.isVatable) return 0;
+    return item.vatPercentage > 0 ? item.vatPercentage : this.systemVatRate();
+  });
+
+  miscLiveVatAmount = computed(() => {
+    const amt = this.miscAmount();
+    const pct = this.miscEffectiveVatPct();
+    if (amt <= 0 || pct <= 0) return 0;
+    return Math.round(amt * pct / (100 + pct) * 100) / 100;
+  });
+
+  miscLiveExclAmount = computed(() => {
+    return Math.round((this.miscAmount() - this.miscLiveVatAmount()) * 100) / 100;
+  });
+
   paymentOptions = signal<any[]>([]);
   paymentTypes = signal<any[]>([]);
   cashierInfo = signal<any>(null);

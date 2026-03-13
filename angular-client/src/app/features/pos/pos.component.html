@@ -440,10 +440,26 @@
                 <input class="form-input" type="text" placeholder="Initials" [ngModel]="miscInitials()" (ngModelChange)="miscInitials.set($event)" data-testid="input-misc-initials" />
               </div>
               <div class="form-group">
-                <label class="form-label">Amount (R)</label>
+                <label class="form-label">Amount (R) <span class="misc-vat-badge" [class.vat-inclusive]="miscIsVatable()" [class.vat-exempt]="!miscIsVatable()" data-testid="text-vat-status">{{ miscIsVatable() ? 'VAT Incl.' : 'VAT Exempt' }}</span></label>
                 <input class="form-input" type="number" min="0" step="0.01" placeholder="Enter amount" [ngModel]="miscAmount() || null" (ngModelChange)="miscAmount.set(+$event || 0)" (focus)="$event.target.select()" data-testid="input-misc-amount" />
               </div>
             </div>
+            @if (miscIsVatable() && miscAmount() > 0) {
+              <div class="misc-vat-breakdown" data-testid="misc-vat-breakdown">
+                <div class="vat-breakdown-row">
+                  <span class="vat-breakdown-label">Excl. VAT</span>
+                  <span class="vat-breakdown-value">R {{ formatCurrency(miscLiveExclAmount()) }}</span>
+                </div>
+                <div class="vat-breakdown-row">
+                  <span class="vat-breakdown-label">VAT ({{ miscEffectiveVatPct() }}%)</span>
+                  <span class="vat-breakdown-value">R {{ formatCurrency(miscLiveVatAmount()) }}</span>
+                </div>
+                <div class="vat-breakdown-row vat-breakdown-total">
+                  <span class="vat-breakdown-label">Total Incl. VAT</span>
+                  <span class="vat-breakdown-value">R {{ formatCurrency(miscAmount()) }}</span>
+                </div>
+              </div>
+            }
             <div class="form-row">
               <div class="form-group" style="flex:2">
                 <label class="form-label">Description</label>
