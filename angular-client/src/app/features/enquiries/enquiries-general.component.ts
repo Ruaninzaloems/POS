@@ -6627,7 +6627,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       const ownerName = this.escHtml(prop?.name || prop?.owner || consUnit?.ownerName || consUnitByAcct?.ownerName || consAcctDetails?.ownerName || acct?.name || '');
       const address = this.escHtml(prop?.propertyStreet || prop?.streetName || consUnitByAcct?.propertyStreet || consAcctDetails?.propertyStreet || acct?.locationAddress || '');
       const sgNumber = this.escHtml(prop?.sgNumber || consUnit?.sgNumber || consUnitByAcct?.sgNumber || consAcctDetails?.sgNumber || acct?.sgNumber || '');
-      const erfNumber = this.escHtml(prop?.erfNumber || consUnitByAcct?.erfNumber || consUnitByAcct?.erfNo || consAcctDetails?.erfNumber || consAcctDetails?.erfNo || acct?.erfNumber || '');
+      const erfNumber = this.escHtml(prop?.erfNumber || consUnitByAcct?.erfNumber || consUnitByAcct?.erfNo || consAcctDetails?.erfNumber || consAcctDetails?.erfNo || acct?.['erfNumber'] || '');
       const suburb = this.escHtml(prop?.suburb || prop?.subSuburb || consUnitByAcct?.suburb || consAcctDetails?.suburb || '');
       const town = this.escHtml(prop?.town || consUnitByAcct?.town || consAcctDetails?.town || '');
       const marketValue = prop?.marketValue || consUnit?.marketValue || consUnitByAcct?.marketValue || consUnitByAcct?.standMarketValue || consAcctDetails?.marketValue || 0;
