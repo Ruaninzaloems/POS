@@ -1461,8 +1461,13 @@ export class PosComponent implements OnInit, OnDestroy {
     const cardTenderAmt = this.cardAmount();
     const effectiveChangeAmount = this.changeAmount();
 
+    const ordered = this.basket.orderedItems();
+    const affectedAccountIds = new Set<number>();
+    ordered.forEach(i => {
+      if (i.type === 'account' && i.accountData?.accountId) affectedAccountIds.add(i.accountData.accountId);
+    });
+
     try {
-      const ordered = this.basket.orderedItems();
       const accountItems = ordered.filter(i => i.type === 'account' && i.amountToPay > 0);
       const clearanceItems = ordered.filter(i => i.type === 'clearance' && i.amountToPay > 0 && i.clearanceData);
       const prepaidItems = ordered.filter(i => i.type === 'prepaid' && i.amountToPay > 0 && i.prepaidData);
@@ -1690,18 +1695,22 @@ export class PosComponent implements OnInit, OnDestroy {
       this.showReceipt.set(true);
       this.showPaymentPanel.set(false);
       this.toast.success(`${allResults.length} receipt(s) processed successfully!`);
+
       this.basket.clearAll();
       this.resetTenderFields();
 
       this.autoPrintReceipts();
+      this.triggerAccountRebuilds(affectedAccountIds);
     } catch (e: any) {
       if (allResults.length > 0) {
         this.receiptResults.set(allResults);
         this.showReceipt.set(true);
         this.showPaymentPanel.set(false);
         this.toast.error(`Partial success: ${allResults.length} receipt(s) posted. Error on remaining: ${e?.error?.message || e?.message}`);
+
         this.basket.clearAll();
         this.resetTenderFields();
+        this.triggerAccountRebuilds(affectedAccountIds);
       } else {
         this.toast.error(e?.error?.message || e?.message || 'Payment processing failed.');
       }
@@ -2460,6 +2469,21 @@ export class PosComponent implements OnInit, OnDestroy {
     } catch (e: any) {
       console.error('[autoPrint] Auto-print failed:', e);
       this.toast.error('Auto-print failed — use the Print button to retry.');
+    }
+  }
+
+  private async triggerAccountRebuilds(accountIds: Set<number>): Promise<void> {
+    if (accountIds.size === 0) return;
+    console.log(`[accountRebuild] Triggering rebuild for ${accountIds.size} account(s):`, [...accountIds]);
+    for (const accountId of accountIds) {
+      try {
+        await firstValueFrom(
+          this.api.get<any>(`/api/platinum/billing-enquiry/rebuild-full-account`, { accountId: String(accountId) })
+        );
+        console.log(`[accountRebuild] Rebuild completed for account ${accountId}`);
+      } catch (e: any) {
+        console.warn(`[accountRebuild] Rebuild failed for account ${accountId}:`, e?.message);
+      }
     }
   }
 

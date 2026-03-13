@@ -347,11 +347,14 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
       const session = requireAuth(req, res); if (!session) return;
       const query = { ...req.query as Record<string, string> };
       delete query._nocache;
+      console.log(`[account-rebuild] Triggering rebuildFullAccount for accountId=${query.accountId}`);
       const data = await platinumGet(session, "/api/BillingEnquiry/rebuildFullAccount", query);
+      console.log(`[account-rebuild] Result for accountId=${query.accountId}:`, JSON.stringify(data).substring(0, 300));
       res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
       res.set('Pragma', 'no-cache');
       handlePlatinumResult(res, data);
     } catch (e: any) {
+      console.error(`[account-rebuild] Failed for accountId=${req.query.accountId}:`, e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
