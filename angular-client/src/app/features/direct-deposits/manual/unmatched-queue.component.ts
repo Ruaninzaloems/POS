@@ -515,6 +515,19 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
   quickAllocError = signal('');
   quickAllocMatchId = signal<number | null>(null);
 
+  manualSearchOpen = signal(false);
+  msAdvancedOpen = signal(false);
+  msQuick = '';
+  msAccountNo = '';
+  msName = '';
+  msErf = '';
+  msMeter = '';
+  msIdNumber = '';
+  msMobile = '';
+  msSearching = signal(false);
+  msSearched = signal(false);
+  msResults = signal<SuggestedMatch[]>([]);
+
   inlineSuggestions = signal<Map<number, SuggestedMatch[]>>(new Map());
   inlineLoading = signal<Set<number>>(new Set());
   inlineExpanded = signal<Set<number>>(new Set());
@@ -1788,6 +1801,156 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
     this.quickAllocComplete.set(false);
     this.quickAllocError.set('');
     this.quickAllocMatchId.set(null);
+    this.manualSearchOpen.set(false);
+    this.msAdvancedOpen.set(false);
+    this.msResults.set([]);
+    this.msSearched.set(false);
+    this.clearManualSearch();
+  }
+
+  async runManualSearch(): Promise<void> {
+    if (this.msSearching()) return;
+
+    const quick = (this.msQuick || '').trim();
+    const accNo = (this.msAccountNo || '').trim();
+    const name = (this.msName || '').trim();
+    const erf = (this.msErf || '').trim();
+    const meter = (this.msMeter || '').trim();
+    const idNum = (this.msIdNumber || '').trim();
+    const mobile = (this.msMobile || '').trim();
+
+    const hasAdvanced = accNo || name || erf || meter || idNum || mobile;
+    if (!quick && !hasAdvanced) {
+      this.toast.error('Please enter a search term');
+      return;
+    }
+
+    this.msSearching.set(true);
+    this.msSearched.set(false);
+    this.msResults.set([]);
+
+    try {
+      const searchPromises: Promise<any[]>[] = [];
+
+      if (quick) {
+        searchPromises.push(
+          firstValueFrom(
+            this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: quick })
+          ).then((d: any) => this.unwrap(d)).catch(() => [])
+        );
+
+        if (/^[a-zA-Z]/.test(quick)) {
+          searchPromises.push(
+            firstValueFrom(
+              this.api.post('/api/platinum/billing-payment/search-accounts', { name: quick })
+            ).then((d: any) => this.unwrap(d)).catch(() => [])
+          );
+        }
+
+        if (/^\d+$/.test(quick)) {
+          searchPromises.push(
+            firstValueFrom(
+              this.api.post('/api/platinum/billing-payment/search-accounts', { erfNumber: quick })
+            ).then((d: any) => this.unwrap(d)).catch(() => [])
+          );
+        }
+      }
+
+      if (accNo) {
+        const padded = accNo.replace(/^0+/, '').padStart(12, '0');
+        searchPromises.push(
+          firstValueFrom(
+            this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: padded })
+          ).then((d: any) => this.unwrap(d)).catch(() => [])
+        );
+      }
+
+      if (name) {
+        searchPromises.push(
+          firstValueFrom(
+            this.api.post('/api/platinum/billing-payment/search-accounts', { name })
+          ).then((d: any) => this.unwrap(d)).catch(() => [])
+        );
+      }
+
+      if (erf) {
+        searchPromises.push(
+          firstValueFrom(
+            this.api.post('/api/platinum/billing-payment/search-accounts', { erfNumber: erf })
+          ).then((d: any) => this.unwrap(d)).catch(() => [])
+        );
+      }
+
+      if (meter) {
+        searchPromises.push(
+          firstValueFrom(
+            this.api.post('/api/platinum/billing-payment/search-accounts', { meterNumber: meter })
+          ).then((d: any) => this.unwrap(d)).catch(() => [])
+        );
+      }
+
+      if (idNum) {
+        searchPromises.push(
+          firstValueFrom(
+            this.api.post('/api/platinum/billing-payment/search-accounts', { idNumber: idNum })
+          ).then((d: any) => this.unwrap(d)).catch(() => [])
+        );
+      }
+
+      if (mobile) {
+        searchPromises.push(
+          firstValueFrom(
+            this.api.post('/api/platinum/billing-payment/search-accounts', { mobileNo: mobile })
+          ).then((d: any) => this.unwrap(d)).catch(() => [])
+        );
+      }
+
+      const allResults = await Promise.all(searchPromises);
+      const seen = new Set<number>();
+      const merged: SuggestedMatch[] = [];
+
+      for (const results of allResults) {
+        for (const r of (results || [])) {
+          const id = r.account_ID || r.accountID || r.accountId;
+          if (!id || seen.has(id)) continue;
+          seen.add(id);
+          const accountNo = r.accountNumber || r.accountNo || String(id).padStart(12, '0');
+          const itemName = r.name || [r.initials, r.lastName].filter(Boolean).join(' ') || r.surname_Company || '';
+          merged.push({
+            accountId: id,
+            accountNo,
+            name: itemName,
+            address: r.deliveryAddress?.replace(/\r?\n/g, ', ')?.replace(/, ,/g, ',')?.replace(/,\s*$/,'') || r.streetName || '',
+            town: r.town || '',
+            erfNumber: r.erfNumber || '',
+            outstandingAmount: r.outStandingAmt || r.outstandingAmount || 0,
+            statusDesc: r.statusDesc || '',
+            matchType: 'account_number',
+            matchDetail: 'Manual search result',
+            confidence: 100,
+          });
+        }
+      }
+
+      this.msResults.set(merged.slice(0, 50));
+      this.msSearched.set(true);
+    } catch (e: any) {
+      this.toast.error('Search failed: ' + (e?.message || 'Unknown error'));
+    } finally {
+      this.msSearching.set(false);
+    }
+  }
+
+  clearManualSearch(): void {
+    this.msQuick = '';
+    this.msAccountNo = '';
+    this.msName = '';
+    this.msErf = '';
+    this.msMeter = '';
+    this.msIdNumber = '';
+    this.msMobile = '';
+    this.msResults.set([]);
+    this.msSearched.set(false);
   }
 
   formatCurrency(val: number): string {

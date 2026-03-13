@@ -544,6 +544,125 @@
               }
             </div>
 
+            <div class="detail-section manual-search-section">
+              <h4 class="detail-section-title" (click)="manualSearchOpen.set(!manualSearchOpen())" style="cursor:pointer;user-select:none;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Manual Account Search
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" [style.transform]="manualSearchOpen() ? 'rotate(180deg)' : 'rotate(0)'" style="transition:transform .2s;margin-left:auto"><polyline points="6 9 12 15 18 9"/></svg>
+              </h4>
+              @if (manualSearchOpen()) {
+                <div class="manual-search-form">
+                  <div class="ms-quick-row">
+                    <input type="text" class="ms-input ms-input-wide" [(ngModel)]="msQuick" placeholder="Search by account number, name, ID, phone..." data-testid="input-manual-search-quick" (keydown.enter)="runManualSearch()">
+                    <button class="btn-primary btn-sm" (click)="runManualSearch()" [disabled]="msSearching()" data-testid="button-manual-search">
+                      @if (msSearching()) { <div class="spinner-sm"></div> } @else { Search }
+                    </button>
+                    <button class="btn-outline btn-sm" (click)="msAdvancedOpen.set(!msAdvancedOpen())" data-testid="button-toggle-advanced">
+                      {{ msAdvancedOpen() ? 'Simple' : 'Advanced' }}
+                    </button>
+                  </div>
+                  @if (msAdvancedOpen()) {
+                    <div class="ms-advanced-grid">
+                      <div class="ms-field">
+                        <label>Account Number</label>
+                        <input type="text" [(ngModel)]="msAccountNo" placeholder="e.g. 000000003698" data-testid="input-ms-account">
+                      </div>
+                      <div class="ms-field">
+                        <label>Name / Company</label>
+                        <input type="text" [(ngModel)]="msName" placeholder="Search by name" data-testid="input-ms-name">
+                      </div>
+                      <div class="ms-field">
+                        <label>ERF Number</label>
+                        <input type="text" [(ngModel)]="msErf" placeholder="e.g. 13110" data-testid="input-ms-erf">
+                      </div>
+                      <div class="ms-field">
+                        <label>Meter Number</label>
+                        <input type="text" [(ngModel)]="msMeter" placeholder="Physical meter number" data-testid="input-ms-meter">
+                      </div>
+                      <div class="ms-field">
+                        <label>ID / Registration No.</label>
+                        <input type="text" [(ngModel)]="msIdNumber" placeholder="13 digit ID number" data-testid="input-ms-id">
+                      </div>
+                      <div class="ms-field">
+                        <label>Mobile Number</label>
+                        <input type="text" [(ngModel)]="msMobile" placeholder="0821234567" data-testid="input-ms-mobile">
+                      </div>
+                    </div>
+                    <div class="ms-actions">
+                      <button class="btn-primary btn-sm" (click)="runManualSearch()" [disabled]="msSearching()" data-testid="button-manual-search-adv">
+                        @if (msSearching()) { <div class="spinner-sm"></div> } @else { Search }
+                      </button>
+                      <button class="btn-outline btn-sm" (click)="clearManualSearch()" data-testid="button-clear-manual-search">Clear All</button>
+                    </div>
+                  }
+                </div>
+
+                @if (msResults().length > 0) {
+                  <div class="ms-results-header">
+                    <span>{{ msResults().length }} result{{ msResults().length === 1 ? '' : 's' }} found</span>
+                  </div>
+                  <div class="matches-list">
+                    @for (r of msResults(); track r.accountId) {
+                      <div class="match-card" [attr.data-testid]="'ms-result-' + r.accountId">
+                        <div class="match-info">
+                          <div class="match-top">
+                            <span class="match-type-icon" title="Manual search">🔍</span>
+                            <span class="match-acc mono">{{ r.accountNo }}</span>
+                            @if (r.statusDesc) {
+                              <span class="match-tag">{{ r.statusDesc }}</span>
+                            }
+                          </div>
+                          <div class="match-name">{{ r.name }}</div>
+                          @if (r.address) {
+                            <div class="match-address">
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                              {{ r.address }}{{ r.town ? ', ' + r.town : '' }}
+                            </div>
+                          }
+                          @if (r.erfNumber) {
+                            <div class="match-property-info">
+                              <span class="match-tag">ERF {{ r.erfNumber }}</span>
+                            </div>
+                          }
+                          @if (r.outstandingAmount) {
+                            <div class="match-outstanding">Outstanding: {{ formatCurrency(r.outstandingAmount) }}</div>
+                          }
+                        </div>
+                        @if (quickAllocating() && quickAllocMatchId() === r.accountId) {
+                          <div class="quick-alloc-progress">
+                            @if (quickAllocComplete()) {
+                              <div class="quick-alloc-done">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                <span>{{ quickAllocStatus() }}</span>
+                              </div>
+                            } @else if (quickAllocError()) {
+                              <div class="quick-alloc-error">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                                <span>{{ quickAllocError() }}</span>
+                              </div>
+                            } @else {
+                              <div class="quick-alloc-spinner">
+                                <div class="spinner-sm"></div>
+                                <span>{{ quickAllocStatus() }}</span>
+                              </div>
+                            }
+                          </div>
+                        } @else {
+                          <button class="btn-primary btn-sm" (click)="quickAllocate(selectedItem()!, r)" [disabled]="quickAllocating()" [attr.data-testid]="'button-ms-allocate-' + r.accountId">
+                            Allocate
+                          </button>
+                        }
+                      </div>
+                    }
+                  </div>
+                } @else if (msSearched() && !msSearching()) {
+                  <div class="matches-empty">
+                    <p>No accounts found matching your search.</p>
+                  </div>
+                }
+              }
+            </div>
+
             <div class="dialog-footer">
               <button class="btn-outline" (click)="closeDetail()" data-testid="button-cancel-detail">Close</button>
               <button class="btn-primary" (click)="navigateToAllocate(selectedItem()!)" data-testid="button-allocate-from-detail">
