@@ -95,6 +95,7 @@ export class PosComponent implements OnInit, OnDestroy {
   accountDetailLoading = signal(false);
 
   showPaymentPanel = signal(false);
+  tenderOrderExpanded = signal(true);
   activeTender = signal<TenderType>('cash');
   cashAmount = signal(0);
   cardAmount = signal(0);

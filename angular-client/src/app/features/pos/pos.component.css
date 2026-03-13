@@ -883,25 +883,40 @@
 .payment-panel {
   background: white;
   border-radius: 14px;
-  width: 480px;
-  max-height: 90vh;
+  width: 580px;
+  max-height: 92vh;
   overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
   animation: slideUp 0.2s;
 }
 .payment-panel-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 18px 24px;
+  padding: 16px 24px;
   background: var(--platinum-primary, #0f2b46);
   color: white;
   border-radius: 14px 14px 0 0;
+}
+.panel-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.panel-header-left svg {
+  opacity: 0.7;
+  flex-shrink: 0;
 }
 .payment-panel-header h2 {
   font-size: 17px;
   font-weight: 700;
   margin: 0;
+}
+.panel-header-sub {
+  font-size: 11px;
+  font-weight: 400;
+  opacity: 0.7;
+  margin-top: 2px;
 }
 
 .payment-amount-banner {
@@ -909,7 +924,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px 24px;
-  background: #f8fafc;
+  background: linear-gradient(135deg, #f8fafc 0%, #eef2f7 100%);
   border-bottom: 1px solid #e2e8f0;
 }
 .payment-label {
@@ -917,11 +932,183 @@
   color: #64748b;
   font-weight: 500;
 }
+.payment-banner-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.payment-banner-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.payment-items-count {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+  background: white;
+  padding: 2px 10px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
 .payment-due {
   font-family: 'SF Mono', ui-monospace, monospace;
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 700;
   color: var(--platinum-primary, #0f2b46);
+}
+
+.tender-order-summary {
+  border-bottom: 1px solid #e2e8f0;
+}
+.order-summary-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+.order-summary-toggle:hover {
+  background: #f8fafc;
+}
+.order-summary-toggle svg:first-child {
+  color: #94a3b8;
+}
+.order-summary-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex: 1;
+}
+.order-chevron {
+  color: #94a3b8;
+  transition: transform 0.2s;
+}
+.order-chevron-open {
+  transform: rotate(180deg);
+}
+.order-items-list {
+  padding: 0 24px 12px;
+}
+.order-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  gap: 12px;
+}
+.order-item-row:last-child {
+  margin-bottom: 0;
+}
+.order-item-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+.order-item-type-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.order-item-type-badge[data-type="account"] {
+  background: #dbeafe;
+  color: #1e40af;
+}
+.order-item-type-badge[data-type="clearance"] {
+  background: #fef3c7;
+  color: #92400e;
+}
+.order-item-type-badge[data-type="prepaid"] {
+  background: #d1fae5;
+  color: #065f46;
+}
+.order-item-type-badge[data-type="misc"] {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+.order-item-detail {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.order-item-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.order-item-desc {
+  font-size: 11px;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.order-item-amounts {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+.order-item-pay {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--platinum-primary, #0f2b46);
+  font-family: 'SF Mono', ui-monospace, monospace;
+}
+.order-item-vat {
+  font-size: 10px;
+  color: #2e7d32;
+  font-weight: 500;
+}
+
+.totals-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+.total-due-line {
+  color: #64748b;
+  font-weight: 500;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed #e2e8f0;
+  margin-bottom: 4px;
+}
+.tender-line span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tender-line svg {
+  color: #94a3b8;
+}
+.tender-limit-warning {
+  font-size: 11px;
+  color: #dc2626;
+  background: #fef2f2;
+  padding: 4px 10px;
+  border-radius: 6px;
+  margin-top: 2px;
+  text-align: center;
 }
 
 .tender-tabs {
@@ -1252,7 +1439,7 @@
   }
   .payment-panel, .receipt-panel, .dialog-panel {
     width: calc(100% - 32px);
-    max-width: 480px;
+    max-width: 580px;
   }
   .breakdown-grid {
     grid-template-columns: repeat(2, 1fr);
