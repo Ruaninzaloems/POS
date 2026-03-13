@@ -608,16 +608,24 @@
                               <span class="match-tag">{{ r.statusDesc }}</span>
                             }
                           </div>
-                          <div class="match-name">{{ r.name }}</div>
+                          @if (r.name) {
+                            <div class="match-name">{{ r.name }}</div>
+                          } @else {
+                            <div class="match-name" style="color:#94a3b8;font-style:italic">Loading details...</div>
+                          }
                           @if (r.address) {
                             <div class="match-address">
                               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                               {{ r.address }}{{ r.town ? ', ' + r.town : '' }}
                             </div>
                           }
-                          @if (r.erfNumber) {
+                          @if (r.sgNumber || r.erfNumber) {
                             <div class="match-property-info">
-                              <span class="match-tag">ERF {{ r.erfNumber }}</span>
+                              @if (r.sgNumber) {
+                                <span class="match-tag sg-tag">ERF {{ r.sgNumber }}</span>
+                              } @else if (r.erfNumber) {
+                                <span class="match-tag">ERF {{ r.erfNumber }}</span>
+                              }
                             </div>
                           }
                           @if (r.outstandingAmount) {

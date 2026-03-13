@@ -1930,19 +1930,42 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
             seen.add(id);
             const accountNo = r.accountNumber || r.accountNo || String(id).padStart(12, '0');
             const itemName = r.name || [r.initials, r.lastName].filter(Boolean).join(' ') || r.surname_Company || '';
+            const sgNum = r.displayItem && /^[A-Z]\d{3}\//.test(r.displayItem) ? r.displayItem : '';
             merged.push({
               accountId: id,
               accountNo,
               name: itemName,
               address: r.deliveryAddress?.replace(/\r?\n/g, ', ')?.replace(/, ,/g, ',')?.replace(/,\s*$/,'') || r.streetName || '',
               town: r.town || '',
-              erfNumber: r.erfNumber || '',
+              erfNumber: r.erfNumber || sgNum || '',
+              sgNumber: sgNum || r.sgNumber || '',
               outstandingAmount: r.outStandingAmt || r.outstandingAmount || 0,
               statusDesc: r.statusDesc || '',
               matchType: 'account_number',
-              matchDetail: 'Search result',
+              matchDetail: sgNum ? `SG: ${sgNum}` : 'Search result',
               confidence: 100,
             });
+          }
+        }
+      };
+
+      const enrichWithDetails = async (items: SuggestedMatch[]) => {
+        const toEnrich = items.filter(m => !m.name && m.accountId);
+        if (toEnrich.length === 0) return;
+        const enrichResults = await Promise.all(
+          toEnrich.map(m => this.searchAccPost({ accountNo: m.accountNo }).catch(() => []))
+        );
+        for (let i = 0; i < toEnrich.length; i++) {
+          const details = (enrichResults[i] || [])[0];
+          if (!details) continue;
+          const m = toEnrich[i];
+          const found = merged.find(x => x.accountId === m.accountId);
+          if (found) {
+            if (!found.name) found.name = details.name || [details.initials, details.lastName].filter(Boolean).join(' ') || details.surname_Company || '';
+            if (!found.address) found.address = details.deliveryAddress?.replace(/\r?\n/g, ', ')?.replace(/, ,/g, ',')?.replace(/,\s*$/,'') || details.streetName || '';
+            if (!found.town) found.town = details.town || '';
+            if (!found.outstandingAmount) found.outstandingAmount = details.outStandingAmt || details.outstandingAmount || 0;
+            if (!found.statusDesc) found.statusDesc = details.statusDesc || '';
           }
         }
       };
@@ -1950,17 +1973,35 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
       const fastResults = await Promise.all(fastCalls);
       if (version !== this.msSearchVersion) return;
       mergeResults(fastResults);
-      this.msResults.set(merged.slice(0, 50));
+      this.msResults.set([...merged].slice(0, 50));
       this.msSearched.set(true);
       this.msSearching.set(false);
+
+      const needsEnrich = merged.some(m => !m.name && m.accountId);
+      if (needsEnrich) {
+        enrichWithDetails(merged).then(() => {
+          if (version === this.msSearchVersion) {
+            this.msResults.set([...merged].slice(0, 50));
+          }
+        });
+      }
 
       if (slowCalls.length > 0) {
         this.msSearching.set(true);
         const slowResults = await Promise.all(slowCalls);
         if (version !== this.msSearchVersion) return;
         mergeResults(slowResults);
-        this.msResults.set(merged.slice(0, 50));
+        this.msResults.set([...merged].slice(0, 50));
         this.msSearching.set(false);
+
+        const needsEnrich2 = merged.some(m => !m.name && m.accountId);
+        if (needsEnrich2) {
+          enrichWithDetails(merged).then(() => {
+            if (version === this.msSearchVersion) {
+              this.msResults.set([...merged].slice(0, 50));
+            }
+          });
+        }
       }
     } catch (e: any) {
       if (version === this.msSearchVersion) {
