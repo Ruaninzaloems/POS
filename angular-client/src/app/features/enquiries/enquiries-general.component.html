@@ -3613,47 +3613,47 @@
                   <div class="data-table-wrapper">
                     <table class="data-table rates-billing-table" data-testid="table-rates-billing-history">
                       <colgroup>
-                        <col style="width: 35%;">
-                        <col style="width: 20%;">
-                        <col style="width: 20%;">
-                        <col style="width: 25%;">
+                        <col style="width: 30%;">
+                        <col style="width: 23%;">
+                        <col style="width: 23%;">
+                        <col style="width: 24%;">
                       </colgroup>
                       <thead>
                         <tr>
-                          <th>Month</th>
-                          <th class="text-right">Levy</th>
-                          <th class="text-right">Rebate</th>
-                          <th class="text-right">Net Amount</th>
+                          <th style="text-align: left;">Month</th>
+                          <th style="text-align: right; padding-right: 1.25rem;">Levy</th>
+                          <th style="text-align: right; padding-right: 1.25rem;">Rebate</th>
+                          <th style="text-align: right; padding-right: 1.25rem;">Net Amount</th>
                         </tr>
                       </thead>
                       <tbody>
                         @for (item of tabData()?.ratesBillingHistory || []; track $index) {
                           <tr>
-                            <td class="rates-month-cell">{{ item.month }} {{ item.financialYear }}</td>
-                            <td class="text-right mono">R {{ formatCurrency(item.levy || 0) }}</td>
-                            <td class="text-right mono rates-rebate-cell">
+                            <td class="rates-month-cell" style="text-align: left;">{{ item.month }} {{ item.financialYear }}</td>
+                            <td class="mono" style="text-align: right; padding-right: 1.25rem;">R {{ formatCurrency(item.levy || 0) }}</td>
+                            <td class="mono rates-rebate-cell" style="text-align: right; padding-right: 1.25rem;">
                               @if (item.rebate && item.rebate !== 0) {
                                 R {{ formatCurrency(item.rebate) }}
                               } @else {
                                 -
                               }
                             </td>
-                            <td class="text-right mono rates-net-cell">R {{ formatCurrency((item.levy || 0) + (item.rebate || 0)) }}</td>
+                            <td class="mono rates-net-cell" style="text-align: right; padding-right: 1.25rem;">R {{ formatCurrency((item.levy || 0) + (item.rebate || 0)) }}</td>
                           </tr>
                         }
                       </tbody>
                       <tfoot>
                         <tr class="rates-total-row">
-                          <td class="rates-month-cell">Total</td>
-                          <td class="text-right mono">R {{ formatCurrency(getRatesTotalLevy()) }}</td>
-                          <td class="text-right mono rates-rebate-cell">
+                          <td class="rates-month-cell" style="text-align: left;">Total</td>
+                          <td class="mono" style="text-align: right; padding-right: 1.25rem;">R {{ formatCurrency(getRatesTotalLevy()) }}</td>
+                          <td class="mono rates-rebate-cell" style="text-align: right; padding-right: 1.25rem;">
                             @if (getRatesTotalRebate() !== 0) {
                               R {{ formatCurrency(getRatesTotalRebate()) }}
                             } @else {
                               -
                             }
                           </td>
-                          <td class="text-right mono rates-net-cell">R {{ formatCurrency(getRatesTotalLevy() + getRatesTotalRebate()) }}</td>
+                          <td class="mono rates-net-cell" style="text-align: right; padding-right: 1.25rem;">R {{ formatCurrency(getRatesTotalLevy() + getRatesTotalRebate()) }}</td>
                         </tr>
                       </tfoot>
                     </table>

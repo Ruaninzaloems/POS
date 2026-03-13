@@ -2426,7 +2426,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           const ratesFyParam: Record<string, string> = ratesFy ? { finYear: ratesFy } : {};
           const acctForRates: any = this.selectedAccount();
           const ratesUnitPartId = acctForRates?.unitPartitionID || acctForRates?.unitPartition_ID;
-          const [ratesDetail, ratesHistory, ratesPropDetails, propRatesSearch, detailedTxns, ratesConsUnitById, ratesConsAcctDetails, ratesServices] = await Promise.allSettled([
+          const [ratesDetail, ratesHistory, ratesPropDetails, propRatesSearch, detailedTxns, ratesConsUnitById, ratesConsAcctDetails, ratesServices, ratesMeterPropServices, ratesDebtInquiry] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-rates-details/${accountId}`, ratesFyParam)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/rates-run-history/${accountId}`, ratesFyParam)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
@@ -2440,6 +2440,8 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/cons-unit-by-account`, { AccountId: String(accountId) })),
             firstValueFrom(this.api.get<any>(`/api/platinum/receipt-prepaid/cons-account-details`, { accountId: String(accountId) })),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/metered-services-on-account/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-service-meter-per-property/${accountId}`)),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/total-balance-debt-inquiry/${accountId}`, { _t: String(Date.now()), financialYear: ratesFy || this.getCurrentFinYear() })),
           ]);
           const ratesDetailVal = ratesDetail.status === 'fulfilled' ? (Array.isArray(ratesDetail.value) ? ratesDetail.value[0] : ratesDetail.value) : null;
           const ratesHistoryVal = ratesHistory.status === 'fulfilled' ? this.normalizeArray(ratesHistory.value) : [];
@@ -2528,15 +2530,33 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           const ratesConsAcctVal = ratesConsAcctDetails.status === 'fulfilled' ? (Array.isArray(ratesConsAcctDetails.value) ? ratesConsAcctDetails.value[0] : ratesConsAcctDetails.value) : null;
           const ratesConsAcct = ratesConsAcctVal && !ratesConsAcctVal._error ? ratesConsAcctVal : null;
           const ratesServicesList = ratesServices.status === 'fulfilled' ? this.normalizeArray(ratesServices.value) : [];
-          if (ratesServicesList.length > 0) {
-            console.log('[rates] services keys:', Object.keys(ratesServicesList[0]));
-            console.log('[rates] services:', JSON.stringify(ratesServicesList.map((s: any) => ({ serviceDesc: s.serviceDesc || s.serviceDescription, tariffDesc: s.tariffDesc || s.tariffDescription || s.ratesTariffDescription || s.tariff, serviceTypeID: s.serviceTypeID, status: s.serviceStatus || s.status }))).substring(0, 2000));
+          const meterPropSvcList = ratesMeterPropServices.status === 'fulfilled' ? this.normalizeArray(ratesMeterPropServices.value) : [];
+          const allSvcsCombined = [...ratesServicesList, ...meterPropSvcList];
+          if (allSvcsCombined.length > 0) {
+            console.log('[rates] all services count:', allSvcsCombined.length, 'metered:', ratesServicesList.length, 'meterProp:', meterPropSvcList.length);
+            if (meterPropSvcList.length > 0) console.log('[rates] meterProp keys:', Object.keys(meterPropSvcList[0]));
+            console.log('[rates] all services:', JSON.stringify(allSvcsCombined.map((s: any) => ({ serviceDesc: s.serviceDesc || s.serviceDescription, tariff: s.tariff, tariffDesc: s.tariffDesc || s.tariffDescription, serviceTypeID: s.serviceTypeID, status: s.serviceStatus || s.status }))).substring(0, 3000));
           }
-          const propRatesSvc = ratesServicesList.find((s: any) => {
+          let propRatesSvc = allSvcsCombined.find((s: any) => {
             const desc = (s.serviceDesc || s.serviceDescription || '').toLowerCase();
-            return desc.includes('property rate') || desc.includes('rates');
+            return desc.includes('property rate');
           });
-          const activeRatesTariff = propRatesSvc?.tariffDesc || propRatesSvc?.tariffDescription || propRatesSvc?.ratesTariffDescription || propRatesSvc?.tariff || propRatesSvc?.serviceDesc || propRatesSvc?.serviceDescription || '';
+          if (!propRatesSvc) {
+            propRatesSvc = allSvcsCombined.find((s: any) => {
+              const desc = (s.serviceDesc || s.serviceDescription || '').toLowerCase();
+              return desc.includes('rates') && !desc.includes('water') && !desc.includes('elec') && !desc.includes('sewer') && !desc.includes('refuse');
+            });
+          }
+          let activeRatesTariff = propRatesSvc?.tariff || propRatesSvc?.tariffDesc || propRatesSvc?.tariffDescription || propRatesSvc?.ratesTariffDescription || propRatesSvc?.serviceDesc || propRatesSvc?.serviceDescription || '';
+          if (!activeRatesTariff) {
+            const debtInqData = ratesDebtInquiry.status === 'fulfilled' ? this.normalizeArray(ratesDebtInquiry.value) : [];
+            console.log('[rates] debtInquiry services:', JSON.stringify(debtInqData.map((s: any) => ({ serviceDescription: s.serviceDescription, serviceTypeID: s.serviceTypeID }))));
+            const propRateBalance = debtInqData.find((s: any) => {
+              const desc = (s.serviceDescription || '').toLowerCase();
+              return desc.includes('property rate');
+            });
+            if (propRateBalance) activeRatesTariff = propRateBalance.serviceDescription || '';
+          }
           data = {
             ratesDetails: ratesDetailVal && !ratesDetailVal._error ? ratesDetailVal : null,
             ratesHistory: ratesHistoryVal,
