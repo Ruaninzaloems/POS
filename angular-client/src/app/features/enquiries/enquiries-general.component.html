@@ -1117,7 +1117,7 @@
                     </div>
                     <div class="acct-col">
                       <div class="acct-field"><span class="acct-field-label">Type of Use</span><span class="acct-field-value">{{ tabData()?.valuations?.[0]?.typeOfUseDesc || tabData()?.valuations?.[0]?.zoneDesc || tabData()?.valuations?.[0]?.propertyCategory || '-' }}</span></div>
-                      <div class="acct-field"><span class="acct-field-label">Property Category</span><span class="acct-field-value">{{ tabData()?.valuations?.[0]?.propertyCategory || tabData()?.valuations?.[0]?.category || '-' }}</span></div>
+                      <div class="acct-field"><span class="acct-field-label">Property Category</span><span class="acct-field-value">{{ tabData()?.valuations?.[0]?.propertyCategory || tabData()?.valuations?.[0]?.category || tabData()?.valuations?.[0]?.zoneDesc || tabData()?.accountSnapshot?.propertyCategory || '-' }}</span></div>
                       <div class="acct-field"><span class="acct-field-label">Rates Tariff Code</span><span class="acct-field-value">{{ tabData()?.valuations?.[0]?.ratesTariffCode || '-' }}</span></div>
                       <div class="acct-field"><span class="acct-field-label">Reason for Valuation Change</span><span class="acct-field-value">{{ tabData()?.valuations?.[0]?.reason || tabData()?.valuations?.[0]?.reasonForValuationChange || '-' }}</span></div>
                       <div class="acct-field"><span class="acct-field-label">Expected Expiry Date</span><span class="acct-field-value">{{ formatDate(tabData()?.valuations?.[0]?.expectedExpiryDate || tabData()?.valuations?.[0]?.valuationExpiryDate) || '-' }}</span></div>
@@ -1173,7 +1173,7 @@
                             <td class="text-right mono accent">R {{ formatCurrency(v.standMarketValue || v.marketValue || 0) }}</td>
                             <td>{{ v.rollNumber || '-' }}</td>
                             <td>{{ formatDate(v.rollDate || v.rollStartDate) }}</td>
-                            <td>{{ v.propertyCategory || v.category || '-' }}</td>
+                            <td>{{ v.propertyCategory || v.category || v.zoneDesc || '-' }}</td>
                             <td>{{ v.typeOfUseDesc || v.zoneDesc || '-' }}</td>
                             <td style="font-size: 0.75rem;">{{ v.ratesTariffCode || '-' }}</td>
                             <td>{{ formatDate(v.phaseInCommencementDate) || '-' }}</td>
