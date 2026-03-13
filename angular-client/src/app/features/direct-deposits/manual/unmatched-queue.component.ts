@@ -1695,7 +1695,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
         const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000));
         const freshItem: any = await Promise.race([freshCheck, timeout]);
         const detail = freshItem?.posItem || freshItem || {};
-        if (detail.billingAllocated || detail.dateAllocated) {
+        if (detail.billingAllocated === true) {
           this.quickAllocError.set('This deposit was already allocated by another user.');
           this.quickAllocating.set(false);
           this.quickAllocStatus.set('');
