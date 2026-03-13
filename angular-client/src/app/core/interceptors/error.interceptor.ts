@@ -13,6 +13,11 @@ const SILENT_URL_PATTERNS = [
   '/api/platinum/billing-payment/search-account-groups',
   '/api/platinum/billing-payment-miscellaneous/',
   '/api/platinum/billing-payment/save-multiple-account-payment',
+  '/api/platinum/direct-deposit-allocation/get-account-autocomplete',
+  '/api/platinum/direct-deposit-allocation/get-old-account-autocomplete',
+  '/api/platinum/direct-deposit-allocation/get-clearance-autocomplete',
+  '/api/platinum/direct-deposit-allocation/get-pos-item-details',
+  '/api/platinum/direct-deposit-allocation/create-virtual-session',
 ];
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
