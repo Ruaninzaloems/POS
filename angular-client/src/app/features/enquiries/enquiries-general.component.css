@@ -1447,7 +1447,7 @@
   align-items: center;
   justify-content: space-between;
 }
-.stmt-send-panel-title { font-weight: 700; font-size: 1rem; color: var(--platinum-primary, #0f2b46); }
+.stmt-send-panel-title { font-weight: 700; font-size: 1rem; color: var(--platinum-primary, #0f2b46); display: flex; align-items: center; gap: 8px; }
 .stmt-send-panel-close {
   background: none;
   border: none;
@@ -1527,6 +1527,221 @@
 .stmt-send-submit:hover:not(:disabled) { filter: brightness(1.2); }
 .stmt-send-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 .stmt-send-submit svg { stroke: #fff; }
+
+.stmt-send-panel-wide {
+  width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.stmt-send-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.stmt-recipient-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.stmt-recipient-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+}
+.stmt-recipient-chip:hover {
+  border-color: var(--platinum-primary, #0f2b46);
+  background: rgba(15,43,70,0.02);
+}
+.stmt-chip-selected {
+  border-color: var(--platinum-primary, #0f2b46);
+  background: rgba(15,43,70,0.04);
+}
+.stmt-chip-selected svg { stroke: #16a34a; }
+.stmt-chip-email {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--platinum-primary, #0f2b46);
+  flex: 1;
+}
+.stmt-chip-label {
+  font-size: 11px;
+  color: #888;
+  background: rgba(15,43,70,0.06);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.stmt-no-contacts-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #fff3e0;
+  border: 1px solid #ffcc80;
+  border-radius: 8px;
+  font-size: 12.5px;
+  color: #e65100;
+}
+.stmt-send-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid rgba(15,43,70,0.15);
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  line-height: 1.5;
+  resize: vertical;
+  color: #333;
+}
+.stmt-send-textarea:focus {
+  outline: none;
+  border-color: var(--platinum-accent, #c9a84c);
+  box-shadow: 0 0 0 2px rgba(201,168,76,0.15);
+}
+.stmt-sms-textarea {
+  font-size: 13px;
+}
+.stmt-sms-counter {
+  float: right;
+  font-size: 11px;
+  font-weight: 500;
+  color: #888;
+}
+.stmt-sms-over {
+  color: #dc2626;
+  font-weight: 700;
+}
+.stmt-sent-confirmation {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 16px;
+  text-align: center;
+}
+.stmt-sent-icon { margin-bottom: 4px; }
+.stmt-sent-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #16a34a;
+}
+.stmt-sent-detail {
+  font-size: 13px;
+  color: #555;
+}
+.stmt-comm-history-section {
+  border-top: 1px solid #eee;
+  padding-top: 12px;
+  margin-top: 4px;
+}
+.stmt-comm-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.stmt-comm-history-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--platinum-primary, #0f2b46);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.stmt-comm-history-refresh {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #888;
+  padding: 4px;
+  border-radius: 4px;
+}
+.stmt-comm-history-refresh:hover { color: var(--platinum-primary, #0f2b46); background: rgba(15,43,70,0.05); }
+.stmt-comm-history-empty {
+  font-size: 12px;
+  color: #999;
+  text-align: center;
+  padding: 12px;
+}
+.stmt-comm-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.stmt-comm-history-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  background: #f8fafc;
+  border-radius: 6px;
+  border: 1px solid #eee;
+}
+.stmt-comm-history-icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+.stmt-comm-email {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+.stmt-comm-email svg { stroke: #1565c0; }
+.stmt-comm-sms {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+.stmt-comm-sms svg { stroke: #2e7d32; }
+.stmt-comm-history-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.stmt-comm-history-method {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #333;
+  word-break: break-word;
+}
+.stmt-comm-history-meta {
+  font-size: 11px;
+  color: #888;
+}
+.stmt-comm-history-date {
+  font-size: 10.5px;
+  color: #aaa;
+}
+.stmt-comm-history-status {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.stmt-status-sent {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+.stmt-status-failed {
+  background: #fce4ec;
+  color: #c62828;
+}
 
 .stmt-spinner {
   display: inline-block;

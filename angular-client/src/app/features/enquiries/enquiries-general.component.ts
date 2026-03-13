@@ -242,6 +242,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   stmtMonths: string[] = ['', 'July', 'August', 'September', 'October', 'November', 'December', 'January', 'February', 'March', 'April', 'May', 'June'];
   stmtSendPanelOpen = signal(false);
   stmtAttachment = signal<{type: string; finYear: string; monthFrom: string; monthTo: string; fileUrl?: string} | null>(null);
+  stmtAvailableEmails = signal<{email: string; label: string; selected: boolean}[]>([]);
+  stmtAvailablePhones = signal<{phone: string; label: string; selected: boolean}[]>([]);
+  stmtMessageBody = signal('');
+  stmtSmsBody = signal('');
+  stmtCommHistory = signal<any[]>([]);
+  stmtCommHistoryLoading = signal(false);
+  stmtSendStep = signal<'compose' | 'sent'>('compose');
 
   commMethod = signal<'email' | 'sms'>('email');
   commRecipient = signal('');
@@ -4781,24 +4788,118 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   openStmtSendPanel(attachment?: {type: string; finYear: string; monthFrom: string; monthTo: string; fileUrl?: string}) {
     const basic = this.getAccountBasic();
     const contact = this.tabData()?.contact;
-    const email = contact?.email || contact?.emailId || basic?.emailId || basic?.email || '';
-    const phone = contact?.tel_Mobile || contact?.cellPhone || contact?.contactNo || basic?.contactNo || '';
-    if (email) this.stmtEmail.set(email);
-    if (phone) this.stmtPhone.set(phone);
-    this.stmtAttachment.set(attachment || {
+    const account = this.selectedAccount();
+    const accountName = account?.['name'] || account?.['accountName'] || account?.['surname_Company'] || basic?.['name'] || basic?.['accountName'] || '';
+    const accountNo = account?.['accountNo'] || account?.['accountNumber'] || basic?.['accountNo'] || '';
+
+    const emails: {email: string; label: string; selected: boolean}[] = [];
+    const primaryEmail = contact?.email || contact?.emailAddress || contact?.emailId || contact?.eMail || basic?.emailId || basic?.email || '';
+    if (primaryEmail) emails.push({email: primaryEmail, label: 'Primary Email', selected: true});
+    for (let i = 1; i <= 4; i++) {
+      const addEmail = contact?.[`additionalEmail${i}`] || '';
+      if (addEmail && !emails.find(e => e.email === addEmail)) {
+        emails.push({email: addEmail, label: `Additional Email ${i}`, selected: true});
+      }
+    }
+    this.stmtAvailableEmails.set(emails);
+
+    const phones: {phone: string; label: string; selected: boolean}[] = [];
+    const mobile = contact?.tel_Mobile || contact?.mobileNumber || contact?.cellphone || contact?.cellPhone || basic?.contactNo || '';
+    if (mobile) phones.push({phone: mobile, label: 'Mobile', selected: true});
+    const home = contact?.tel_Home || contact?.homeNumber || '';
+    if (home && home !== mobile) phones.push({phone: home, label: 'Home', selected: false});
+    const work = contact?.tel_Work || contact?.workNumber || '';
+    if (work && work !== mobile && work !== home) phones.push({phone: work, label: 'Work', selected: false});
+    this.stmtAvailablePhones.set(phones);
+
+    const att = attachment || {
       type: this.stmtType(),
       finYear: this.stmtFinYear(),
       monthFrom: this.stmtMonthFrom(),
       monthTo: this.stmtMonthTo(),
-    });
+    };
+    this.stmtAttachment.set(att);
+
+    const periodDesc = this.buildPeriodDescription(att);
+    const typeLabel = att.type === 'detailed' ? 'Detailed Statement' : 'Account Statement';
+    this.stmtMessageBody.set(
+      `Dear ${accountName || 'Valued Customer'},\n\n` +
+      `Please find attached your ${typeLabel} for ${periodDesc}.\n\n` +
+      `Account Number: ${accountNo}\n` +
+      `Financial Year: ${att.finYear}\n\n` +
+      `Should you have any queries regarding your account, please do not hesitate to contact us.\n\n` +
+      `Kind regards,\n` +
+      `George Municipality\n` +
+      `Finance Department\n` +
+      `Tel: 044 801 9111\n` +
+      `Email: info@george.gov.za`
+    );
+
+    const smsName = accountName ? accountName.split(' ')[0] : 'Customer';
+    this.stmtSmsBody.set(
+      `George Municipality: Hi ${smsName}, your ${att.type === 'detailed' ? 'detailed ' : ''}statement (${att.finYear}${att.monthFrom ? ' ' + att.monthFrom : ''}${att.monthTo && att.monthTo !== att.monthFrom ? '-' + att.monthTo : ''}) has been emailed to you. Queries? 044 801 9111`
+    );
+
     this.stmtSendPanelOpen.set(true);
     this.stmtSendMode.set('email');
+    this.stmtSendStep.set('compose');
+    this.loadCommHistory();
+  }
+
+  buildPeriodDescription(att: {type: string; finYear: string; monthFrom: string; monthTo: string}): string {
+    if (att.monthFrom && att.monthTo && att.monthFrom !== att.monthTo) {
+      return `${att.monthFrom} to ${att.monthTo} (${att.finYear})`;
+    } else if (att.monthFrom) {
+      return `${att.monthFrom} ${att.finYear}`;
+    }
+    return `the financial year ${att.finYear}`;
+  }
+
+  toggleStmtEmail(index: number) {
+    const emails = [...this.stmtAvailableEmails()];
+    emails[index] = { ...emails[index], selected: !emails[index].selected };
+    this.stmtAvailableEmails.set(emails);
+  }
+
+  toggleStmtPhone(index: number) {
+    const phones = [...this.stmtAvailablePhones()];
+    phones[index] = { ...phones[index], selected: !phones[index].selected };
+    this.stmtAvailablePhones.set(phones);
+  }
+
+  getSelectedEmails(): string[] {
+    return this.stmtAvailableEmails().filter(e => e.selected).map(e => e.email);
+  }
+
+  getSelectedPhones(): string[] {
+    return this.stmtAvailablePhones().filter(p => p.selected).map(p => p.phone);
+  }
+
+  getSmsCharCount(): number {
+    return this.stmtSmsBody().length;
+  }
+
+  async loadCommHistory() {
+    const account = this.selectedAccount();
+    if (!account) return;
+    const accountId = this.getAccountId(account);
+    if (!accountId) return;
+    this.stmtCommHistoryLoading.set(true);
+    try {
+      const logs = await firstValueFrom(this.api.get<any[]>(`/api/communication-logs/${accountId}`));
+      this.stmtCommHistory.set(Array.isArray(logs) ? logs : []);
+    } catch {
+      this.stmtCommHistory.set([]);
+    } finally {
+      this.stmtCommHistoryLoading.set(false);
+    }
   }
 
   closeStmtSendPanel() {
     this.stmtSendPanelOpen.set(false);
     this.stmtSendMode.set(null);
     this.stmtAttachment.set(null);
+    this.stmtSendStep.set('compose');
   }
 
   async sendStatement(method: 'email' | 'sms') {
@@ -4806,33 +4907,91 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     if (!account) return;
     const accountId = this.getAccountId(account);
     if (!accountId) return;
-    if (method === 'email' && !this.stmtEmail()) {
-      this.toast.show('Please enter an email address', 'error');
+
+    const selectedEmails = this.getSelectedEmails();
+    const selectedPhones = this.getSelectedPhones();
+
+    if (method === 'email' && selectedEmails.length === 0) {
+      this.toast.show('Please select at least one email address', 'error');
       return;
     }
-    if (method === 'sms' && !this.stmtPhone()) {
-      this.toast.show('Please enter a phone number', 'error');
+    if (method === 'sms' && selectedPhones.length === 0) {
+      this.toast.show('Please select at least one phone number', 'error');
       return;
     }
+    if (method === 'sms' && this.stmtSmsBody().length > 160) {
+      this.toast.show('SMS message must be 160 characters or less', 'error');
+      return;
+    }
+
     const att = this.stmtAttachment();
+    const basic = this.getAccountBasic();
+    const accountName = account?.['name'] || account?.['accountName'] || account?.['surname_Company'] || basic?.['name'] || '';
+    const accountNo = account?.['accountNo'] || account?.['accountNumber'] || basic?.['accountNo'] || '';
+    const recipients = method === 'email' ? selectedEmails.join(', ') : selectedPhones.join(', ');
+
     this.stmtSending.set(true);
     try {
-      await firstValueFrom(
-        this.api.post<any>('/api/platinum/billing-enquiry/send-statement', {
-          accountId,
-          method,
-          email: this.stmtEmail(),
-          phone: this.stmtPhone(),
-          statementType: att?.type || this.stmtType(),
-          financialYear: att?.finYear || this.stmtFinYear(),
-          monthFrom: att?.monthFrom || this.stmtMonthFrom() || undefined,
-          monthTo: att?.monthTo || this.stmtMonthTo() || undefined,
-          month: att?.monthFrom || this.stmtMonthFrom() || this.stmtMonth() || undefined,
-          fileUrl: att?.fileUrl || undefined,
-        })
-      );
-      this.toast.show(`Statement sent via ${method.toUpperCase()} successfully`, 'success');
-      this.closeStmtSendPanel();
+      if (method === 'email') {
+        for (const email of selectedEmails) {
+          await firstValueFrom(
+            this.api.post<any>('/api/platinum/billing-enquiry/send-statement', {
+              accountId,
+              method: 'email',
+              email,
+              phone: '',
+              statementType: att?.type || this.stmtType(),
+              financialYear: att?.finYear || this.stmtFinYear(),
+              monthFrom: att?.monthFrom || this.stmtMonthFrom() || undefined,
+              monthTo: att?.monthTo || this.stmtMonthTo() || undefined,
+              month: att?.monthFrom || this.stmtMonthFrom() || this.stmtMonth() || undefined,
+              fileUrl: att?.fileUrl || undefined,
+              messageBody: this.stmtMessageBody(),
+            })
+          );
+        }
+      } else {
+        for (const phone of selectedPhones) {
+          await firstValueFrom(
+            this.api.post<any>('/api/platinum/billing-enquiry/send-statement', {
+              accountId,
+              method: 'sms',
+              email: '',
+              phone,
+              statementType: att?.type || this.stmtType(),
+              financialYear: att?.finYear || this.stmtFinYear(),
+              monthFrom: att?.monthFrom || this.stmtMonthFrom() || undefined,
+              monthTo: att?.monthTo || this.stmtMonthTo() || undefined,
+              month: att?.monthFrom || this.stmtMonthFrom() || this.stmtMonth() || undefined,
+              messageBody: this.stmtSmsBody(),
+            })
+          );
+        }
+      }
+
+      try {
+        await firstValueFrom(
+          this.api.post<any>('/api/communication-logs', {
+            accountId,
+            accountNumber: accountNo,
+            accountHolder: accountName,
+            method,
+            recipients,
+            subject: method === 'email' ? `Statement: ${att?.type || this.stmtType()} — ${att?.finYear || this.stmtFinYear()}` : 'SMS Notification',
+            messageBody: method === 'email' ? this.stmtMessageBody() : this.stmtSmsBody(),
+            statementType: att?.type || this.stmtType(),
+            financialYear: att?.finYear || this.stmtFinYear(),
+            periodFrom: att?.monthFrom || this.stmtMonthFrom() || '',
+            periodTo: att?.monthTo || this.stmtMonthTo() || '',
+          })
+        );
+      } catch {
+        console.warn('[sendStatement] Communication log save failed — statement was sent');
+      }
+
+      this.stmtSendStep.set('sent');
+      this.toast.show(`Statement sent via ${method.toUpperCase()} to ${recipients}`, 'success');
+      this.loadCommHistory();
     } catch (e: any) {
       this.toast.show(e?.error?.message || `Failed to send via ${method}`, 'error');
     } finally {

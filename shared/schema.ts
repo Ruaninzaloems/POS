@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, numeric, timestamp, jsonb, serial, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, numeric, timestamp, jsonb, serial, integer, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -79,3 +79,30 @@ export const messages = pgTable("messages", {
   content: text("content").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+export const communicationLogs = pgTable("communication_logs", {
+  id: serial("id").primaryKey(),
+  accountId: text("account_id").notNull(),
+  accountNumber: text("account_number"),
+  accountHolder: text("account_holder"),
+  method: text("method").notNull(),
+  recipients: text("recipients").notNull(),
+  subject: text("subject"),
+  messageBody: text("message_body"),
+  statementType: text("statement_type"),
+  financialYear: text("financial_year"),
+  periodFrom: text("period_from"),
+  periodTo: text("period_to"),
+  status: text("status").notNull().default("sent"),
+  sentBy: text("sent_by"),
+  sentByName: text("sent_by_name"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertCommunicationLogSchema = createInsertSchema(communicationLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCommunicationLog = z.infer<typeof insertCommunicationLogSchema>;
+export type CommunicationLog = typeof communicationLogs.$inferSelect;

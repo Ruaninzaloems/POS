@@ -2995,17 +2995,22 @@
 
             @if (stmtSendPanelOpen()) {
               <div class="stmt-send-overlay" (click)="closeStmtSendPanel()" data-testid="stmt-send-overlay">
-                <div class="stmt-send-panel" (click)="$event.stopPropagation()" data-testid="stmt-send-panel">
+                <div class="stmt-send-panel stmt-send-panel-wide" (click)="$event.stopPropagation()" data-testid="stmt-send-panel">
                   <div class="stmt-send-panel-header">
-                    <span class="stmt-send-panel-title">Send Statement</span>
+                    <span class="stmt-send-panel-title">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                      Send Statement
+                    </span>
                     <button class="stmt-send-panel-close" (click)="closeStmtSendPanel()" data-testid="btn-stmt-send-close">&times;</button>
                   </div>
+
                   @if (stmtAttachment()) {
                     <div class="stmt-send-attachment-info">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                       <span>{{ stmtAttachment()!.type === 'detailed' ? 'Detailed' : 'Standard' }} — {{ stmtAttachment()!.finYear }}{{ stmtAttachment()!.monthFrom ? ' / ' + stmtAttachment()!.monthFrom : '' }}{{ stmtAttachment()!.monthTo && stmtAttachment()!.monthTo !== stmtAttachment()!.monthFrom ? ' to ' + stmtAttachment()!.monthTo : '' }}</span>
                     </div>
                   }
+
                   <div class="stmt-send-method-toggle">
                     <button class="stmt-send-method-btn" [class.stmt-send-method-active]="stmtSendMode() === 'email'" (click)="stmtSendMode.set('email')" data-testid="btn-send-method-email">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
@@ -3016,30 +3021,147 @@
                       SMS
                     </button>
                   </div>
-                  @if (stmtSendMode() === 'email') {
-                    <div class="stmt-send-field">
-                      <label class="stmt-send-field-label">Email Address</label>
-                      <input type="email" class="stmt-send-input" placeholder="recipient@email.com" [ngModel]="stmtEmail()" (ngModelChange)="stmtEmail.set($event)" data-testid="input-stmt-email" />
-                    </div>
-                    <button class="stmt-send-submit" (click)="sendStatement('email')" [disabled]="stmtSending() || !stmtEmail()" data-testid="btn-stmt-send-email">
-                      @if (stmtSending()) { <span class="stmt-spinner"></span> Sending... } @else {
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                        Send Email
-                      }
-                    </button>
+
+                  @if (stmtSendStep() === 'compose') {
+                    @if (stmtSendMode() === 'email') {
+                      <div class="stmt-send-section">
+                        <label class="stmt-send-field-label">Recipients (from account contact details)</label>
+                        @if (stmtAvailableEmails().length === 0) {
+                          <div class="stmt-no-contacts-warning">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e65100" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            <span>No email addresses found on this account. Please update the contact details first.</span>
+                          </div>
+                        } @else {
+                          <div class="stmt-recipient-chips">
+                            @for (em of stmtAvailableEmails(); track em.email; let i = $index) {
+                              <button class="stmt-recipient-chip" [class.stmt-chip-selected]="em.selected" (click)="toggleStmtEmail(i)" [attr.data-testid]="'chip-email-' + i">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                  @if (em.selected) {
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+                                  } @else {
+                                    <circle cx="12" cy="12" r="10"/>
+                                  }
+                                </svg>
+                                <span class="stmt-chip-email">{{ em.email }}</span>
+                                <span class="stmt-chip-label">{{ em.label }}</span>
+                              </button>
+                            }
+                          </div>
+                        }
+                      </div>
+
+                      <div class="stmt-send-section">
+                        <label class="stmt-send-field-label">Email Message</label>
+                        <textarea class="stmt-send-textarea" rows="10" [ngModel]="stmtMessageBody()" (ngModelChange)="stmtMessageBody.set($event)" data-testid="textarea-stmt-message"></textarea>
+                      </div>
+
+                      <button class="stmt-send-submit" (click)="sendStatement('email')" [disabled]="stmtSending() || getSelectedEmails().length === 0" data-testid="btn-stmt-send-email">
+                        @if (stmtSending()) { <span class="stmt-spinner"></span> Sending... } @else {
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                          Send to {{ getSelectedEmails().length }} Recipient{{ getSelectedEmails().length !== 1 ? 's' : '' }}
+                        }
+                      </button>
+                    }
+
+                    @if (stmtSendMode() === 'sms') {
+                      <div class="stmt-send-section">
+                        <label class="stmt-send-field-label">Recipients (from account contact details)</label>
+                        @if (stmtAvailablePhones().length === 0) {
+                          <div class="stmt-no-contacts-warning">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e65100" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            <span>No phone numbers found on this account. Please update the contact details first.</span>
+                          </div>
+                        } @else {
+                          <div class="stmt-recipient-chips">
+                            @for (ph of stmtAvailablePhones(); track ph.phone; let i = $index) {
+                              <button class="stmt-recipient-chip" [class.stmt-chip-selected]="ph.selected" (click)="toggleStmtPhone(i)" [attr.data-testid]="'chip-phone-' + i">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                  @if (ph.selected) {
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+                                  } @else {
+                                    <circle cx="12" cy="12" r="10"/>
+                                  }
+                                </svg>
+                                <span class="stmt-chip-email">{{ ph.phone }}</span>
+                                <span class="stmt-chip-label">{{ ph.label }}</span>
+                              </button>
+                            }
+                          </div>
+                        }
+                      </div>
+
+                      <div class="stmt-send-section">
+                        <label class="stmt-send-field-label">
+                          SMS Message
+                          <span class="stmt-sms-counter" [class.stmt-sms-over]="getSmsCharCount() > 160">{{ getSmsCharCount() }}/160</span>
+                        </label>
+                        <textarea class="stmt-send-textarea stmt-sms-textarea" rows="3" maxlength="160" [ngModel]="stmtSmsBody()" (ngModelChange)="stmtSmsBody.set($event)" data-testid="textarea-stmt-sms"></textarea>
+                      </div>
+
+                      <button class="stmt-send-submit" (click)="sendStatement('sms')" [disabled]="stmtSending() || getSelectedPhones().length === 0 || getSmsCharCount() > 160" data-testid="btn-stmt-send-sms">
+                        @if (stmtSending()) { <span class="stmt-spinner"></span> Sending... } @else {
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                          Send SMS to {{ getSelectedPhones().length }} Recipient{{ getSelectedPhones().length !== 1 ? 's' : '' }}
+                        }
+                      </button>
+                    }
                   }
-                  @if (stmtSendMode() === 'sms') {
-                    <div class="stmt-send-field">
-                      <label class="stmt-send-field-label">Phone Number</label>
-                      <input type="tel" class="stmt-send-input" placeholder="0821234567" [ngModel]="stmtPhone()" (ngModelChange)="stmtPhone.set($event)" data-testid="input-stmt-phone" />
+
+                  @if (stmtSendStep() === 'sent') {
+                    <div class="stmt-sent-confirmation">
+                      <div class="stmt-sent-icon">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                      </div>
+                      <span class="stmt-sent-title">Statement Sent Successfully</span>
+                      <span class="stmt-sent-detail">
+                        Sent via {{ stmtSendMode() === 'email' ? 'Email' : 'SMS' }} to
+                        {{ stmtSendMode() === 'email' ? getSelectedEmails().join(', ') : getSelectedPhones().join(', ') }}
+                      </span>
+                      <button class="stmt-send-submit" style="margin-top:12px" (click)="stmtSendStep.set('compose')">Send Another</button>
                     </div>
-                    <button class="stmt-send-submit" (click)="sendStatement('sms')" [disabled]="stmtSending() || !stmtPhone()" data-testid="btn-stmt-send-sms">
-                      @if (stmtSending()) { <span class="stmt-spinner"></span> Sending... } @else {
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                        Send SMS
-                      }
-                    </button>
                   }
+
+                  <div class="stmt-comm-history-section">
+                    <div class="stmt-comm-history-header">
+                      <span class="stmt-comm-history-title">Communication History</span>
+                      <button class="stmt-comm-history-refresh" (click)="loadCommHistory()" [disabled]="stmtCommHistoryLoading()" data-testid="btn-comm-history-refresh">
+                        @if (stmtCommHistoryLoading()) { <span class="stmt-spinner"></span> } @else {
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        }
+                      </button>
+                    </div>
+                    @if (stmtCommHistory().length === 0 && !stmtCommHistoryLoading()) {
+                      <div class="stmt-comm-history-empty">No communication records yet</div>
+                    }
+                    @if (stmtCommHistory().length > 0) {
+                      <div class="stmt-comm-history-list">
+                        @for (log of stmtCommHistory(); track log.id) {
+                          <div class="stmt-comm-history-item">
+                            <div class="stmt-comm-history-icon" [class.stmt-comm-email]="log.method === 'email'" [class.stmt-comm-sms]="log.method === 'sms'">
+                              @if (log.method === 'email') {
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                              } @else {
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                              }
+                            </div>
+                            <div class="stmt-comm-history-info">
+                              <span class="stmt-comm-history-method">{{ log.method === 'email' ? 'Email' : 'SMS' }} to {{ log.recipients }}</span>
+                              <span class="stmt-comm-history-meta">
+                                {{ log.statementType ? (log.statementType === 'detailed' ? 'Detailed' : 'Standard') : '' }}
+                                {{ log.financialYear ? '— ' + log.financialYear : '' }}
+                                {{ log.periodFrom ? ' / ' + log.periodFrom : '' }}{{ log.periodTo && log.periodTo !== log.periodFrom ? ' to ' + log.periodTo : '' }}
+                              </span>
+                              <span class="stmt-comm-history-date">
+                                {{ log.createdAt ? (log.createdAt | date:'dd/MM/yyyy HH:mm') : '' }}
+                                {{ log.sentByName ? ' by ' + log.sentByName : '' }}
+                              </span>
+                            </div>
+                            <span class="stmt-comm-history-status" [class.stmt-status-sent]="log.status === 'sent'" [class.stmt-status-failed]="log.status === 'failed'">{{ log.status }}</span>
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
                 </div>
               </div>
             }
