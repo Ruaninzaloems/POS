@@ -36,3 +36,9 @@ id = "VIOgFaW8rV5QqL5KcJdpg"
 uri = "file://debt-legal-phases/PHASE_4_9_COMMS_LEGAL_DOCS_ENGINE_ANALYTICS.xlsx"
 type = "table"
 title = "Phase 4-9: Debt & Legal — Complete API Design Pack"
+
+[[outputs]]
+id = "GxtI1nlt9VYSRb5ta84XJ"
+uri = "file://POS_UAT_Test_Plan.xlsx"
+type = "table"
+title = "POS UAT Test Plan — George Municipality"
