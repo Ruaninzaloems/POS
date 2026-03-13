@@ -1692,7 +1692,15 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             services: allSvc.status === 'fulfilled' ? this.normalizeArray(allSvc.value) : [],
             searchServices: svcSearch.status === 'fulfilled' ? this.normalizeArray(svcSearch.value) : [],
             additionalBilling: addBilling.status === 'fulfilled' ? this.normalizeArray(addBilling.value) : [],
-            additionalInfo: svcNotif.status === 'fulfilled' ? this.normalizeArray(svcNotif.value) : [],
+            additionalInfo: svcNotif.status === 'fulfilled' ? this.normalizeArray(svcNotif.value).filter((ai: any) => {
+              const hasReceipt = !!(ai.receiptNo || ai.receiptNumber);
+              const hasAmount = !!(ai.receiptAmount && Number(ai.receiptAmount) !== 0);
+              const hasComment = !!(ai.comment || ai.comments || ai.remark);
+              const hasDoc = !!(ai.documentNo || ai.documentNumber || ai.docNo);
+              const hasCard = !!(ai.cardNo || ai.cardNumber);
+              const hasBlock = !!(ai.blockOrUnblock || ai.blockUnblock || ai.action);
+              return hasReceipt || hasAmount || hasComment || hasDoc || hasCard || hasBlock;
+            }) : [],
           };
           break;
 
