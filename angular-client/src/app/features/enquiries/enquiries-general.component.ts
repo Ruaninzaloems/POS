@@ -6081,7 +6081,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const meterNo = meter?.physicalMeterNo || meter?.meterNo || '';
     const opts = this.getExportOpts('Consumption', 'CONSUMPTION HISTORY REPORT');
     opts.extraHeaders = [{ label: 'Meter Number', value: meterNo }];
-    const headers = ['Billing Month', 'Old Date', 'Old Reading', 'New Date', 'New Reading', 'Days', 'Consumption', 'Flag', 'Reading Status', 'Capturer'];
+    const headers = ['Billing Month', 'Old Date', 'Old Reading', 'New Date', 'New Reading', 'Days', 'Consumption', 'Flag', 'Reading Status'];
     const rows = history.map((r: any) => [
       r.billingmonth || r.billingMonth || '',
       this.formatDate(r.reading1Date || r.readingDate),
@@ -6092,7 +6092,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       this.getConsumptionVal(r),
       r.flag || '',
       r.readingStatus || r.status || '',
-      r.capturerDesc || r.capturer || r.capturerName || '',
     ]);
     this.exportService.exportCsv(opts, headers, rows);
     this.toast.show('Consumption history exported', 'success');
@@ -6105,8 +6104,8 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const meterNo = meter?.physicalMeterNo || meter?.meterNo || '';
     const opts = this.getExportOpts('Consumption', 'CONSUMPTION HISTORY REPORT');
     opts.extraHeaders = [{ label: 'Meter Number', value: meterNo }];
-    const headers = ['Month', 'Old Date', 'Old Rdg', 'New Date', 'New Rdg', 'Days', 'Consumption', 'Flag', 'Status', 'Capturer'];
-    const aligns: ('left' | 'right')[] = ['left', 'left', 'right', 'left', 'right', 'right', 'right', 'left', 'left', 'left'];
+    const headers = ['Month', 'Old Date', 'Old Rdg', 'New Date', 'New Rdg', 'Days', 'Consumption', 'Flag', 'Status'];
+    const aligns: ('left' | 'right')[] = ['left', 'left', 'right', 'left', 'right', 'right', 'right', 'left', 'left'];
     const rows = history.map((r: any) => [
       r.billingmonth || r.billingMonth || '',
       this.formatDate(r.reading1Date || r.readingDate),
@@ -6117,7 +6116,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       String(this.getConsumptionVal(r)),
       r.flag || '',
       r.readingStatus || r.status || '',
-      r.capturerDesc || r.capturer || r.capturerName || '',
     ]);
     this.exportService.exportPdf(opts, headers, rows, aligns);
   }
