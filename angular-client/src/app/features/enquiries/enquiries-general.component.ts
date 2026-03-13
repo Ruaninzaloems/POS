@@ -228,14 +228,20 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   stmtType = signal<'standard' | 'detailed'>('standard');
   stmtFinYear = signal('');
   stmtMonth = signal('');
+  stmtMonthFrom = signal('');
+  stmtMonthTo = signal('');
   stmtGenerating = signal(false);
   stmtGenerated = signal<any>(null);
+  stmtGeneratingLink = signal(false);
+  stmtGeneratedLink = signal('');
   stmtSending = signal(false);
   stmtSendMode = signal<'email' | 'sms' | null>(null);
   stmtEmail = signal('');
   stmtPhone = signal('');
   stmtAvailableYears = signal<string[]>([]);
   stmtMonths: string[] = ['', 'July', 'August', 'September', 'October', 'November', 'December', 'January', 'February', 'March', 'April', 'May', 'June'];
+  stmtSendPanelOpen = signal(false);
+  stmtAttachment = signal<{type: string; finYear: string; monthFrom: string; monthTo: string; fileUrl?: string} | null>(null);
 
   commMethod = signal<'email' | 'sms'>('email');
   commRecipient = signal('');
@@ -4690,29 +4696,69 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     }
   }
 
-  async generateStatement() {
+  getStmtPayload() {
     const account = this.selectedAccount();
-    if (!account) return;
+    if (!account) return null;
     const accountId = this.getAccountId(account);
-    if (!accountId) return;
+    if (!accountId) return null;
+    return {
+      accountId,
+      statementType: this.stmtType(),
+      financialYear: this.stmtFinYear(),
+      monthFrom: this.stmtMonthFrom() || undefined,
+      monthTo: this.stmtMonthTo() || undefined,
+      month: this.stmtMonthFrom() || this.stmtMonth() || undefined,
+    };
+  }
+
+  async generateStatement() {
+    const payload = this.getStmtPayload();
+    if (!payload) return;
     this.stmtGenerating.set(true);
     this.stmtGenerated.set(null);
+    this.stmtGeneratedLink.set('');
     try {
       const result = await firstValueFrom(
-        this.api.post<any>('/api/platinum/billing-enquiry/generate-statement', {
-          accountId,
-          statementType: this.stmtType(),
-          financialYear: this.stmtFinYear(),
-          month: this.stmtMonth() || undefined,
-        })
+        this.api.post<any>('/api/platinum/billing-enquiry/generate-statement', payload)
       );
       this.stmtGenerated.set(result);
-      this.toast.show('Statement generated successfully', 'success');
+      this.toast.show('Statement PDF generated successfully', 'success');
     } catch (e: any) {
       this.toast.show(e?.error?.message || 'Failed to generate statement', 'error');
     } finally {
       this.stmtGenerating.set(false);
     }
+  }
+
+  async generateStatementLink() {
+    const payload = this.getStmtPayload();
+    if (!payload) return;
+    this.stmtGeneratingLink.set(true);
+    this.stmtGeneratedLink.set('');
+    try {
+      const result = await firstValueFrom(
+        this.api.post<any>('/api/platinum/billing-enquiry/generate-statement-link', payload)
+      );
+      const link = result?.link || result?.url || result?.statementUrl || '';
+      this.stmtGeneratedLink.set(link);
+      if (link) {
+        this.toast.show('Statement link generated', 'success');
+      } else {
+        this.toast.show('Link generated but no URL returned', 'info');
+      }
+    } catch (e: any) {
+      this.toast.show(e?.error?.message || 'Failed to generate statement link', 'error');
+    } finally {
+      this.stmtGeneratingLink.set(false);
+    }
+  }
+
+  copyStatementLink() {
+    const link = this.stmtGeneratedLink();
+    if (!link) return;
+    navigator.clipboard.writeText(link).then(() => {
+      this.toast.show('Link copied to clipboard', 'success');
+    });
   }
 
   downloadStatement(fileUrl?: string) {
@@ -4722,6 +4768,29 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     }
     window.open(`/api/platinum/statement-download?fileUrl=${encodeURIComponent(fileUrl)}`, '_blank');
     this.toast.show('Statement download started', 'success');
+  }
+
+  openStmtSendPanel(attachment?: {type: string; finYear: string; monthFrom: string; monthTo: string; fileUrl?: string}) {
+    const basic = this.getAccountBasic();
+    const contact = this.tabData()?.contact;
+    const email = contact?.email || contact?.emailId || basic?.emailId || basic?.email || '';
+    const phone = contact?.tel_Mobile || contact?.cellPhone || contact?.contactNo || basic?.contactNo || '';
+    if (email) this.stmtEmail.set(email);
+    if (phone) this.stmtPhone.set(phone);
+    this.stmtAttachment.set(attachment || {
+      type: this.stmtType(),
+      finYear: this.stmtFinYear(),
+      monthFrom: this.stmtMonthFrom(),
+      monthTo: this.stmtMonthTo(),
+    });
+    this.stmtSendPanelOpen.set(true);
+    this.stmtSendMode.set('email');
+  }
+
+  closeStmtSendPanel() {
+    this.stmtSendPanelOpen.set(false);
+    this.stmtSendMode.set(null);
+    this.stmtAttachment.set(null);
   }
 
   async sendStatement(method: 'email' | 'sms') {
@@ -4737,6 +4806,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       this.toast.show('Please enter a phone number', 'error');
       return;
     }
+    const att = this.stmtAttachment();
     this.stmtSending.set(true);
     try {
       await firstValueFrom(
@@ -4745,13 +4815,16 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           method,
           email: this.stmtEmail(),
           phone: this.stmtPhone(),
-          statementType: this.stmtType(),
-          financialYear: this.stmtFinYear(),
-          month: this.stmtMonth() || undefined,
+          statementType: att?.type || this.stmtType(),
+          financialYear: att?.finYear || this.stmtFinYear(),
+          monthFrom: att?.monthFrom || this.stmtMonthFrom() || undefined,
+          monthTo: att?.monthTo || this.stmtMonthTo() || undefined,
+          month: att?.monthFrom || this.stmtMonthFrom() || this.stmtMonth() || undefined,
+          fileUrl: att?.fileUrl || undefined,
         })
       );
       this.toast.show(`Statement sent via ${method.toUpperCase()} successfully`, 'success');
-      this.stmtSendMode.set(null);
+      this.closeStmtSendPanel();
     } catch (e: any) {
       this.toast.show(e?.error?.message || `Failed to send via ${method}`, 'error');
     } finally {
@@ -4771,11 +4844,39 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
     this.stmtType.set(stType as 'standard' | 'detailed');
     this.stmtFinYear.set(fy);
+    this.stmtMonthFrom.set(month);
+    this.stmtMonthTo.set(month);
     this.stmtMonth.set(month);
     await this.generateStatement();
   }
 
   async sendStatementRow(stmt: any): Promise<void> {
+    const fy = stmt.financialYear || stmt.billingPeriod || stmt.period || this.stmtFinYear();
+    const month = stmt.month || stmt.billingMonth || '';
+    const stType = (stmt.statementType || stmt.type || '').toLowerCase().includes('detail') ? 'detailed' : 'standard';
+
+    this.openStmtSendPanel({
+      type: stType,
+      finYear: fy,
+      monthFrom: month,
+      monthTo: month,
+      fileUrl: stmt.fileUrl || stmt.downloadUrl || stmt.url,
+    });
+  }
+
+  regenFromHistory(stmt: any): void {
+    const fy = stmt.financialYear || stmt.billingPeriod || stmt.period || this.stmtFinYear();
+    const month = stmt.month || stmt.billingMonth || '';
+    const stType = (stmt.statementType || stmt.type || '').toLowerCase().includes('detail') ? 'detailed' : 'standard';
+    this.stmtType.set(stType as 'standard' | 'detailed');
+    this.stmtFinYear.set(fy);
+    this.stmtMonthFrom.set(month);
+    this.stmtMonthTo.set(month);
+    this.stmtMonth.set(month);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async _legacySendStatementRow(stmt: any): Promise<void> {
     const fy = stmt.financialYear || stmt.billingPeriod || stmt.period || this.stmtFinYear();
     const month = stmt.month || stmt.billingMonth || '';
     const stType = (stmt.statementType || stmt.type || '').toLowerCase().includes('detail') ? 'detailed' : 'standard';

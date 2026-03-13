@@ -2878,80 +2878,167 @@
               <div class="tab-error-banner">⚠️ {{ tabData()._error }}</div>
             }
 
-            <div class="stmt-generator" data-testid="stmt-generator">
-              <div class="stmt-gen-header">
-                <span class="stmt-gen-title">📄 Generate Account Statement</span>
+            <div class="stmt-workspace" data-testid="stmt-generator">
+              <div class="stmt-workspace-header">
+                <span class="stmt-workspace-title">Account Statements</span>
+                <span class="stmt-workspace-subtitle">Generate, download, or send statements for this account</span>
               </div>
-              <div class="stmt-gen-body">
-                <div class="stmt-type-toggle">
-                  <button class="stmt-type-btn" [class.stmt-type-active]="stmtType() === 'standard'" (click)="stmtType.set('standard')" data-testid="btn-stmt-standard">Account Statement</button>
-                  <button class="stmt-type-btn" [class.stmt-type-active]="stmtType() === 'detailed'" (click)="stmtType.set('detailed')" data-testid="btn-stmt-detailed">Detailed Account Statement</button>
+
+              <div class="stmt-workspace-body">
+                <div class="stmt-config-panel">
+                  <div class="stmt-config-section">
+                    <span class="stmt-config-label">Statement Type</span>
+                    <div class="stmt-type-pills">
+                      <button class="stmt-pill" [class.stmt-pill-active]="stmtType() === 'standard'" (click)="stmtType.set('standard')" data-testid="btn-stmt-standard">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        Account Statement
+                      </button>
+                      <button class="stmt-pill" [class.stmt-pill-active]="stmtType() === 'detailed'" (click)="stmtType.set('detailed')" data-testid="btn-stmt-detailed">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        Detailed Statement
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="stmt-config-row">
+                    <div class="stmt-config-section stmt-config-fy">
+                      <span class="stmt-config-label">Financial Year</span>
+                      <select class="stmt-config-select" [ngModel]="stmtFinYear()" (ngModelChange)="stmtFinYear.set($event)" data-testid="select-stmt-finyear">
+                        @for (y of stmtAvailableYears(); track y) {
+                          <option [value]="y">{{ y }}</option>
+                        }
+                      </select>
+                    </div>
+                    <div class="stmt-config-section stmt-config-month">
+                      <span class="stmt-config-label">From Month</span>
+                      <select class="stmt-config-select" [ngModel]="stmtMonthFrom()" (ngModelChange)="stmtMonthFrom.set($event)" data-testid="select-stmt-month-from">
+                        @for (m of stmtMonths; track m) {
+                          <option [value]="m">{{ m || '-- All --' }}</option>
+                        }
+                      </select>
+                    </div>
+                    <div class="stmt-config-section stmt-config-month">
+                      <span class="stmt-config-label">To Month</span>
+                      <select class="stmt-config-select" [ngModel]="stmtMonthTo()" (ngModelChange)="stmtMonthTo.set($event)" data-testid="select-stmt-month-to">
+                        @for (m of stmtMonths; track m) {
+                          <option [value]="m">{{ m || '-- All --' }}</option>
+                        }
+                      </select>
+                    </div>
+                  </div>
                 </div>
 
-                <div class="stmt-controls-row">
-                  <div class="stmt-control-group">
-                    <label class="stmt-label">Financial Year</label>
-                    <select class="stmt-select" [ngModel]="stmtFinYear()" (ngModelChange)="stmtFinYear.set($event)" data-testid="select-stmt-finyear">
-                      @for (y of stmtAvailableYears(); track y) {
-                        <option [value]="y">{{ y }}</option>
-                      }
-                    </select>
-                  </div>
-                  <div class="stmt-control-group">
-                    <label class="stmt-label">Month (optional)</label>
-                    <select class="stmt-select" [ngModel]="stmtMonth()" (ngModelChange)="stmtMonth.set($event)" data-testid="select-stmt-month">
-                      @for (m of stmtMonths; track m) {
-                        <option [value]="m">{{ m || '-- All Months --' }}</option>
-                      }
-                    </select>
-                  </div>
-                  <div class="stmt-control-group stmt-actions-group">
-                    <label class="stmt-label">&nbsp;</label>
-                    <button class="stmt-btn stmt-btn-generate" (click)="generateStatement()" [disabled]="stmtGenerating()" data-testid="btn-stmt-generate">
-                      @if (stmtGenerating()) { <span class="stmt-spinner"></span> Generating... } @else { ⚡ Generate Live }
-                    </button>
-                  </div>
+                <div class="stmt-actions-bar">
+                  <button class="stmt-action-btn stmt-action-pdf" (click)="generateStatement()" [disabled]="stmtGenerating()" data-testid="btn-stmt-generate">
+                    @if (stmtGenerating()) {
+                      <span class="stmt-spinner"></span> Generating PDF...
+                    } @else {
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                      Generate PDF
+                    }
+                  </button>
+                  <button class="stmt-action-btn stmt-action-link" (click)="generateStatementLink()" [disabled]="stmtGeneratingLink()" data-testid="btn-stmt-gen-link">
+                    @if (stmtGeneratingLink()) {
+                      <span class="stmt-spinner"></span> Generating Link...
+                    } @else {
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                      Generate Link
+                    }
+                  </button>
+                  <button class="stmt-action-btn stmt-action-send" (click)="openStmtSendPanel()" data-testid="btn-stmt-open-send">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    Send Statement
+                  </button>
                 </div>
 
                 @if (stmtGenerated()) {
-                  <div class="stmt-result-panel" data-testid="stmt-result">
-                    <div class="stmt-result-header">
-                      <span class="stmt-result-icon">✅</span>
-                      <span class="stmt-result-text">Statement Ready — {{ stmtType() === 'detailed' ? 'Detailed' : 'Standard' }} | {{ stmtFinYear() }}{{ stmtMonth() ? ' / ' + stmtMonth() : '' }}</span>
+                  <div class="stmt-output-card" data-testid="stmt-result">
+                    <div class="stmt-output-icon">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                     </div>
-                    <div class="stmt-delivery-actions">
-                      <button class="stmt-btn stmt-btn-download" (click)="downloadStatement(stmtGenerated()?.fileUrl || stmtGenerated()?.downloadUrl || stmtGenerated()?.url)" data-testid="btn-stmt-download">📥 Download PDF</button>
-                      <button class="stmt-btn stmt-btn-email" (click)="stmtSendMode.set(stmtSendMode() === 'email' ? null : 'email')" [class.stmt-btn-active]="stmtSendMode() === 'email'" data-testid="btn-stmt-email">📧 Email</button>
-                      <button class="stmt-btn stmt-btn-sms" (click)="stmtSendMode.set(stmtSendMode() === 'sms' ? null : 'sms')" [class.stmt-btn-active]="stmtSendMode() === 'sms'" data-testid="btn-stmt-sms">📱 SMS</button>
+                    <div class="stmt-output-info">
+                      <span class="stmt-output-title">PDF Ready</span>
+                      <span class="stmt-output-detail">{{ stmtType() === 'detailed' ? 'Detailed' : 'Standard' }} | {{ stmtFinYear() }}{{ stmtMonthFrom() ? ' — ' + stmtMonthFrom() : '' }}{{ stmtMonthTo() && stmtMonthTo() !== stmtMonthFrom() ? ' to ' + stmtMonthTo() : '' }}</span>
                     </div>
+                    <button class="stmt-output-btn" (click)="downloadStatement(stmtGenerated()?.fileUrl || stmtGenerated()?.downloadUrl || stmtGenerated()?.url)" data-testid="btn-stmt-download">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                      Download
+                    </button>
+                    <button class="stmt-output-btn stmt-output-btn-send" (click)="openStmtSendPanel()" data-testid="btn-stmt-send-from-result">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                      Send
+                    </button>
+                  </div>
+                }
 
-                    @if (stmtSendMode() === 'email') {
-                      <div class="stmt-send-form" data-testid="stmt-email-form">
-                        <div class="stmt-send-row">
-                          <input type="email" class="stmt-input" placeholder="recipient@email.com" [ngModel]="stmtEmail()" (ngModelChange)="stmtEmail.set($event)" data-testid="input-stmt-email" />
-                          <button class="stmt-btn stmt-btn-send" (click)="sendStatement('email')" [disabled]="stmtSending() || !stmtEmail()" data-testid="btn-stmt-send-email">
-                            @if (stmtSending()) { <span class="stmt-spinner"></span> Sending... } @else { Send Email }
-                          </button>
-                        </div>
-                        <div class="stmt-send-hint">Statement PDF will be emailed to the address above</div>
-                      </div>
-                    }
-
-                    @if (stmtSendMode() === 'sms') {
-                      <div class="stmt-send-form" data-testid="stmt-sms-form">
-                        <div class="stmt-send-row">
-                          <input type="tel" class="stmt-input" placeholder="0821234567" [ngModel]="stmtPhone()" (ngModelChange)="stmtPhone.set($event)" data-testid="input-stmt-phone" />
-                          <button class="stmt-btn stmt-btn-send" (click)="sendStatement('sms')" [disabled]="stmtSending() || !stmtPhone()" data-testid="btn-stmt-send-sms">
-                            @if (stmtSending()) { <span class="stmt-spinner"></span> Sending... } @else { Send SMS }
-                          </button>
-                        </div>
-                        <div class="stmt-send-hint">Statement link will be sent via SMS to the number above</div>
-                      </div>
-                    }
+                @if (stmtGeneratedLink()) {
+                  <div class="stmt-output-card stmt-output-link" data-testid="stmt-link-result">
+                    <div class="stmt-output-icon">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--platinum-primary)" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    </div>
+                    <div class="stmt-output-info stmt-link-info">
+                      <span class="stmt-output-title">Statement Link</span>
+                      <span class="stmt-link-url">{{ stmtGeneratedLink() }}</span>
+                    </div>
+                    <button class="stmt-output-btn" (click)="copyStatementLink()" data-testid="btn-stmt-copy-link">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                      Copy
+                    </button>
                   </div>
                 }
               </div>
             </div>
+
+            @if (stmtSendPanelOpen()) {
+              <div class="stmt-send-overlay" (click)="closeStmtSendPanel()" data-testid="stmt-send-overlay">
+                <div class="stmt-send-panel" (click)="$event.stopPropagation()" data-testid="stmt-send-panel">
+                  <div class="stmt-send-panel-header">
+                    <span class="stmt-send-panel-title">Send Statement</span>
+                    <button class="stmt-send-panel-close" (click)="closeStmtSendPanel()" data-testid="btn-stmt-send-close">&times;</button>
+                  </div>
+                  @if (stmtAttachment()) {
+                    <div class="stmt-send-attachment-info">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                      <span>{{ stmtAttachment()!.type === 'detailed' ? 'Detailed' : 'Standard' }} — {{ stmtAttachment()!.finYear }}{{ stmtAttachment()!.monthFrom ? ' / ' + stmtAttachment()!.monthFrom : '' }}{{ stmtAttachment()!.monthTo && stmtAttachment()!.monthTo !== stmtAttachment()!.monthFrom ? ' to ' + stmtAttachment()!.monthTo : '' }}</span>
+                    </div>
+                  }
+                  <div class="stmt-send-method-toggle">
+                    <button class="stmt-send-method-btn" [class.stmt-send-method-active]="stmtSendMode() === 'email'" (click)="stmtSendMode.set('email')" data-testid="btn-send-method-email">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                      Email
+                    </button>
+                    <button class="stmt-send-method-btn" [class.stmt-send-method-active]="stmtSendMode() === 'sms'" (click)="stmtSendMode.set('sms')" data-testid="btn-send-method-sms">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                      SMS
+                    </button>
+                  </div>
+                  @if (stmtSendMode() === 'email') {
+                    <div class="stmt-send-field">
+                      <label class="stmt-send-field-label">Email Address</label>
+                      <input type="email" class="stmt-send-input" placeholder="recipient@email.com" [ngModel]="stmtEmail()" (ngModelChange)="stmtEmail.set($event)" data-testid="input-stmt-email" />
+                    </div>
+                    <button class="stmt-send-submit" (click)="sendStatement('email')" [disabled]="stmtSending() || !stmtEmail()" data-testid="btn-stmt-send-email">
+                      @if (stmtSending()) { <span class="stmt-spinner"></span> Sending... } @else {
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                        Send Email
+                      }
+                    </button>
+                  }
+                  @if (stmtSendMode() === 'sms') {
+                    <div class="stmt-send-field">
+                      <label class="stmt-send-field-label">Phone Number</label>
+                      <input type="tel" class="stmt-send-input" placeholder="0821234567" [ngModel]="stmtPhone()" (ngModelChange)="stmtPhone.set($event)" data-testid="input-stmt-phone" />
+                    </div>
+                    <button class="stmt-send-submit" (click)="sendStatement('sms')" [disabled]="stmtSending() || !stmtPhone()" data-testid="btn-stmt-send-sms">
+                      @if (stmtSending()) { <span class="stmt-spinner"></span> Sending... } @else {
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                        Send SMS
+                      }
+                    </button>
+                  }
+                </div>
+              </div>
+            }
 
             <div class="debt-table-section" style="margin-top: 1rem;">
               <div class="debt-table-header stmt-hist-header">
@@ -2969,7 +3056,6 @@
                       <th class="debt-th-desc">Amount</th>
                       <th class="debt-th-desc">Generated Date</th>
                       <th class="debt-th-desc">Status</th>
-                      <th class="debt-th-desc">Download</th>
                       <th class="debt-th-desc">Actions</th>
                     </tr>
                   </thead>
@@ -2984,21 +3070,23 @@
                         <td class="debt-td-desc">{{ formatDate(s.generatedDate || s.dateGenerated || s.date || s.dateCaptured) }}</td>
                         <td class="debt-td-desc"><span class="ind-status-badge" [class.ind-active]="(s.status || '').toLowerCase() !== 'failed'">{{ s.status || '-' }}</span></td>
                         <td class="debt-td-desc">
-                          @if (s.fileUrl || s.downloadUrl || s.url) {
-                            <button class="stmt-dl-btn" (click)="downloadStatement(s.fileUrl || s.downloadUrl || s.url)" [attr.data-testid]="'btn-download-stmt-' + $index" title="Download PDF">📥</button>
-                          } @else {
-                            <span class="stmt-no-dl">-</span>
-                          }
-                        </td>
-                        <td class="debt-td-desc">
                           <div class="stmt-row-actions">
-                            <button class="stmt-act-btn stmt-act-view" (click)="viewStatementRow(s)" title="View / regenerate this statement" [attr.data-testid]="'btn-view-stmt-' + $index">👁️</button>
-                            <button class="stmt-act-btn stmt-act-send" (click)="sendStatementRow(s)" title="Email this statement to account holder" [attr.data-testid]="'btn-send-stmt-' + $index">📧</button>
+                            @if (s.fileUrl || s.downloadUrl || s.url) {
+                              <button class="stmt-hist-btn stmt-hist-download" (click)="downloadStatement(s.fileUrl || s.downloadUrl || s.url)" [attr.data-testid]="'btn-download-stmt-' + $index" title="Download PDF">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                              </button>
+                            }
+                            <button class="stmt-hist-btn stmt-hist-send" (click)="sendStatementRow(s)" [attr.data-testid]="'btn-send-stmt-' + $index" title="Send via Email or SMS">
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                            </button>
+                            <button class="stmt-hist-btn stmt-hist-regen" (click)="regenFromHistory(s)" [attr.data-testid]="'btn-regen-stmt-' + $index" title="Load into generator">
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                            </button>
                           </div>
                         </td>
                       </tr>
                     } @empty {
-                      <tr><td colspan="9" class="debt-td-desc" style="text-align:center; color: var(--pos-text-muted); padding: 1rem;">No statements generated yet. Use the generator above to create one.</td></tr>
+                      <tr><td colspan="8" class="debt-td-desc" style="text-align:center; color: var(--pos-text-muted); padding: 1rem;">No statements generated yet. Use the tools above to create one.</td></tr>
                     }
                   </tbody>
                 </table>
