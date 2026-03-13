@@ -933,39 +933,151 @@
   <!-- RECEIPT MODAL -->
   @if (showReceipt() && receiptResults().length > 0) {
     <div class="payment-overlay" (click)="closeReceipt()">
-      <div class="receipt-panel" (click)="$event.stopPropagation()" data-testid="receipt-modal">
-        <div class="receipt-header">
-          <h2>Payment Successful</h2>
+      <div class="receipt-panel-v2" (click)="$event.stopPropagation()" data-testid="receipt-modal">
+        <div class="rcpt-header-v2">
+          <div class="rcpt-header-left">
+            <div class="rcpt-check-icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="m9 11 3 3L22 4"/></svg>
+            </div>
+            <div>
+              <h2>Payment Successful</h2>
+              <span class="rcpt-header-sub">{{ getReceiptTimestamp() }}</span>
+            </div>
+          </div>
           <button class="close-btn" (click)="closeReceipt()" data-testid="button-close-receipt">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
           </button>
         </div>
-        <div class="receipt-body">
-          <div class="receipt-icon-wrap">
-            <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+
+        <div class="rcpt-body-v2">
+          <div class="rcpt-totals-bar" data-testid="receipt-summary-banner">
+            <div class="rcpt-totals-left">
+              <span class="rcpt-totals-label">Total Paid</span>
+              <span class="rcpt-totals-amount">R {{ formatCurrency(getReceiptGrandTotal()) }}</span>
+            </div>
+            <div class="rcpt-totals-right">
+              <span class="rcpt-totals-count">{{ receiptResults().length }} Receipt(s)</span>
+              <span class="rcpt-totals-items">{{ getReceiptTotalItems() }} Item(s)</span>
+            </div>
           </div>
 
-          <div class="receipt-summary-banner" data-testid="receipt-summary-banner">
-            <span class="receipt-count">{{ receiptResults().length }} Receipt(s) Generated</span>
-            <span class="receipt-total-amt">Total: R {{ formatCurrency(getReceiptGrandTotal()) }}</span>
-          </div>
+          @if (hasSplitPayments()) {
+            <div class="rcpt-split-notice">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+              Split Payment: Cash R {{ formatCurrency(getSplitCashTotal()) }} + Card R {{ formatCurrency(getSplitCardTotal()) }}
+            </div>
+          }
 
-          <div class="receipt-list">
+          <div class="rcpt-items-list">
             @for (r of receiptResults(); track $index) {
-              <div class="receipt-item" [class.receipt-cash]="r.tenderType === 'cash'" [class.receipt-card]="r.tenderType === 'card'">
-                <div class="receipt-item-left">
-                  <span class="receipt-no" data-testid="text-receipt-no">Receipt #{{ r.receiptNumber }}</span>
-                  <span class="receipt-item-desc">{{ getReceiptItemDesc(r) }}</span>
+              <div class="rcpt-card-v2" [class.rcpt-card-cash]="r.tenderType === 'cash'" [class.rcpt-card-card]="r.tenderType === 'card'">
+                <div class="rcpt-card-top">
+                  <div class="rcpt-card-type-badge" [class.type-account]="r.items[0]?.type === 'account'" [class.type-clearance]="r.items[0]?.type === 'clearance'" [class.type-prepaid]="r.items[0]?.type === 'prepaid'" [class.type-misc]="r.items[0]?.type === 'misc'">
+                    {{ getReceiptTypeLabel(r) }}
+                  </div>
+                  <div class="rcpt-card-tender">
+                    <span class="receipt-tender-badge" [class.badge-cash]="r.tenderType === 'cash'" [class.badge-card]="r.tenderType === 'card'">{{ r.tenderType === 'cash+card' ? 'SPLIT' : (r.tenderType | uppercase) }}</span>
+                  </div>
                 </div>
-                <div class="receipt-item-right">
-                  <span class="receipt-tender-badge" [class.badge-cash]="r.tenderType === 'cash'" [class.badge-card]="r.tenderType === 'card'" [class.badge-cheque]="r.tenderType === 'cheque'" [class.badge-eft]="r.tenderType === 'eft'">{{ r.tenderType === 'cash+card' ? 'Split' : (r.tenderType | titlecase) }}</span>
-                  <span class="receipt-amt">R {{ formatCurrency(r.amount) }}</span>
+
+                <div class="rcpt-card-receipt-row">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+                  <span class="rcpt-card-receipt-no" data-testid="text-receipt-no">{{ r.receiptNumber }}</span>
+                </div>
+
+                <div class="rcpt-card-details">
+                  @if (r.items[0]?.type === 'account') {
+                    @for (item of r.items; track item.id) {
+                      <div class="rcpt-detail-row">
+                        <span class="rcpt-detail-label">Account</span>
+                        <span class="rcpt-detail-value">{{ item.accountData?.accountNumber || '-' }}</span>
+                      </div>
+                      <div class="rcpt-detail-row">
+                        <span class="rcpt-detail-label">Name</span>
+                        <span class="rcpt-detail-value">{{ item.accountData?.name || '-' }}</span>
+                      </div>
+                      @if (item.accountData?.address) {
+                        <div class="rcpt-detail-row">
+                          <span class="rcpt-detail-label">Address</span>
+                          <span class="rcpt-detail-value rcpt-detail-truncate">{{ item.accountData?.address }}</span>
+                        </div>
+                      }
+                    }
+                  }
+                  @if (r.items[0]?.type === 'clearance') {
+                    <div class="rcpt-detail-row">
+                      <span class="rcpt-detail-label">Clearance ID</span>
+                      <span class="rcpt-detail-value">{{ r.items[0]?.clearanceData?.clearanceId || '-' }}</span>
+                    </div>
+                    <div class="rcpt-detail-row">
+                      <span class="rcpt-detail-label">Owner</span>
+                      <span class="rcpt-detail-value">{{ r.items[0]?.clearanceData?.ownerName || '-' }}</span>
+                    </div>
+                    <div class="rcpt-detail-row">
+                      <span class="rcpt-detail-label">Property</span>
+                      <span class="rcpt-detail-value rcpt-detail-truncate">{{ r.items[0]?.clearanceData?.propertyDesc || '-' }}</span>
+                    </div>
+                  }
+                  @if (r.items[0]?.type === 'prepaid') {
+                    <div class="rcpt-detail-row">
+                      <span class="rcpt-detail-label">Meter No</span>
+                      <span class="rcpt-detail-value font-mono">{{ r.items[0]?.prepaidData?.meterNumber || '-' }}</span>
+                    </div>
+                    <div class="rcpt-detail-row">
+                      <span class="rcpt-detail-label">Service</span>
+                      <span class="rcpt-detail-value">{{ r.items[0]?.prepaidData?.serviceType || 'Electricity' }}</span>
+                    </div>
+                  }
+                  @if (r.items[0]?.type === 'misc') {
+                    <div class="rcpt-detail-row">
+                      <span class="rcpt-detail-label">Payment Group</span>
+                      <span class="rcpt-detail-value">{{ r.items[0]?.miscData?.groupName || '-' }}</span>
+                    </div>
+                    <div class="rcpt-detail-row">
+                      <span class="rcpt-detail-label">SCOA Item</span>
+                      <span class="rcpt-detail-value rcpt-detail-truncate">{{ r.items[0]?.miscData?.scoaItemName || '-' }}</span>
+                    </div>
+                    @if (r.items[0]?.miscData?.lastName || r.items[0]?.miscData?.initials) {
+                      <div class="rcpt-detail-row">
+                        <span class="rcpt-detail-label">Payer</span>
+                        <span class="rcpt-detail-value">{{ getMiscPayerName(r.items[0]?.miscData) }}</span>
+                      </div>
+                    }
+                    @if (r.items[0]?.miscData?.description) {
+                      <div class="rcpt-detail-row">
+                        <span class="rcpt-detail-label">Description</span>
+                        <span class="rcpt-detail-value rcpt-detail-truncate">{{ r.items[0]?.miscData?.description }}</span>
+                      </div>
+                    }
+                    @if (r.items[0]?.miscData?.isVatable) {
+                      <div class="rcpt-detail-row">
+                        <span class="rcpt-detail-label">VAT ({{ r.items[0]?.miscData?.vatPercentage }}%)</span>
+                        <span class="rcpt-detail-value">R {{ formatCurrency(r.items[0]?.miscData?.vatAmount || 0) }}</span>
+                      </div>
+                    }
+                  }
+                </div>
+
+                <div class="rcpt-card-amount-row">
+                  <span class="rcpt-card-amount-label">Amount Paid</span>
+                  <span class="rcpt-card-amount-value">R {{ formatCurrency(r.amount) }}</span>
                 </div>
               </div>
             }
           </div>
 
-          <div class="receipt-delivery-section">
+          <div class="rcpt-transaction-info">
+            <div class="rcpt-info-row">
+              <span>Cashier</span>
+              <span>{{ (user()?.firstName || '') + ' ' + (user()?.lastName || '') | titlecase }}</span>
+            </div>
+            <div class="rcpt-info-row">
+              <span>Office</span>
+              <span>{{ cashierInfo()?.cashOfficeName || '-' }}</span>
+            </div>
+          </div>
+
+          <div class="rcpt-delivery-v2">
             <h4>Send Receipt</h4>
             <div class="delivery-buttons">
               <button class="delivery-btn" (click)="sendReceiptVia('print')" [disabled]="printingReceipt()" data-testid="button-print-receipt">
@@ -1004,7 +1116,10 @@
             }
           </div>
 
-          <button class="done-btn" (click)="closeReceipt()" data-testid="button-done">Done — Next Transaction</button>
+          <button class="done-btn-v2" (click)="closeReceipt()" data-testid="button-done">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 11 3 3L22 4"/></svg>
+            Done — Next Transaction
+          </button>
         </div>
       </div>
     </div>

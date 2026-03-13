@@ -2307,6 +2307,56 @@ export class PosComponent implements OnInit, OnDestroy {
     return this.receiptResults().reduce((s, r) => s + r.amount, 0);
   }
 
+  getReceiptTimestamp(): string {
+    const now = new Date();
+    const d = String(now.getDate()).padStart(2, '0');
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const y = now.getFullYear();
+    const h = String(now.getHours()).padStart(2, '0');
+    const min = String(now.getMinutes()).padStart(2, '0');
+    return `${d}/${m}/${y} ${h}:${min}`;
+  }
+
+  getReceiptTotalItems(): number {
+    const results = this.receiptResults();
+    const ids = new Set<string>();
+    for (const r of results) {
+      for (const item of r.items) {
+        ids.add(item.id);
+      }
+    }
+    return ids.size;
+  }
+
+  hasSplitPayments(): boolean {
+    const results = this.receiptResults();
+    const types = new Set(results.map(r => r.tenderType));
+    return types.has('cash') && types.has('card');
+  }
+
+  getSplitCashTotal(): number {
+    return this.receiptResults().filter(r => r.tenderType === 'cash').reduce((s, r) => s + r.amount, 0);
+  }
+
+  getSplitCardTotal(): number {
+    return this.receiptResults().filter(r => r.tenderType === 'card').reduce((s, r) => s + r.amount, 0);
+  }
+
+  getReceiptTypeLabel(r: ReceiptResult): string {
+    const type = r.items[0]?.type;
+    if (type === 'account') return 'Consumer Payment';
+    if (type === 'clearance') return 'Clearance';
+    if (type === 'prepaid') return 'Prepaid Recharge';
+    if (type === 'misc') return 'Miscellaneous';
+    return 'Payment';
+  }
+
+  getMiscPayerName(miscData: any): string {
+    if (!miscData) return '-';
+    const parts = [miscData.initials, miscData.lastName].filter((p: string) => !!p);
+    return parts.join(' ') || '-';
+  }
+
   getReceiptItemDesc(r: ReceiptResult): string {
     if (!r.items || r.items.length === 0) return '';
     const item = r.items[0];
