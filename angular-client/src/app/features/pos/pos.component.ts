@@ -3208,6 +3208,85 @@ export class PosComponent implements OnInit, OnDestroy {
     return colors[type];
   }
 
+  getMiscIconInfo(name: string): { icon: string; color: string; bg: string; label: string } {
+    const n = (name || '').toLowerCase();
+    const icons: Array<{ keys: string[]; icon: string; color: string; bg: string; label: string }> = [
+      { keys: ['building', 'plan', 'architect', 'construction', 'erection'],
+        icon: 'M3 21V9l9-6 9 6v12M9 21v-6h6v6',
+        color: '#7c3aed', bg: '#f3f0ff', label: 'Building' },
+      { keys: ['fire', 'ext of', 'extinguish', 'emergency', 'rescue', 'disaster'],
+        icon: 'M12 2c1 3 3 5 3 8a6 6 0 0 1-6 6 6 6 0 0 1-6-6c0-3 2-5 3-8 1 2 3 3 3 5a2 2 0 0 0 4 0c0-2-1-3-1-5z',
+        color: '#dc2626', bg: '#fef2f2', label: 'Fire' },
+      { keys: ['inspection', 'inspect', 'compliance', 'audit', 'check'],
+        icon: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
+        color: '#0891b2', bg: '#ecfeff', label: 'Inspection' },
+      { keys: ['occupation', 'certificate', 'permit', 'licence', 'license', 'approval'],
+        icon: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M9 15l2 2 4-4',
+        color: '#059669', bg: '#ecfdf5', label: 'Certificate' },
+      { keys: ['water', 'irrigation', 'meter', 'sewerage', 'sewer', 'drain', 'plumb'],
+        icon: 'M12 2v6l-2 2v4a4 4 0 1 0 8 0v-4l-2-2V2',
+        color: '#2563eb', bg: '#eff6ff', label: 'Water' },
+      { keys: ['electric', 'power', 'energy', 'solar', 'prepaid', 'voltage'],
+        icon: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z',
+        color: '#d97706', bg: '#fffbeb', label: 'Electric' },
+      { keys: ['refuse', 'waste', 'garbage', 'trash', 'recycl', 'clean', 'sanit'],
+        icon: 'M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2',
+        color: '#16a34a', bg: '#f0fdf4', label: 'Waste' },
+      { keys: ['road', 'street', 'traffic', 'transport', 'parking', 'vehicle', 'motor'],
+        icon: 'M5 17h14M5 17a2 2 0 0 1-2-2V7h18v8a2 2 0 0 1-2 2M5 17l-1 4h2l1-4M19 17l1 4h-2l-1-4M7 11h4M13 11h4',
+        color: '#64748b', bg: '#f8fafc', label: 'Transport' },
+      { keys: ['park', 'garden', 'nature', 'sport', 'recreation', 'swim', 'pool', 'hall', 'community', 'facility', 'venue'],
+        icon: 'M17 14c2 0 3 1 3 3s-1 3-3 3H7c-2 0-3-1-3-3s1-3 3-3M12 2v8M7.8 7.8L12 10l4.2-2.2',
+        color: '#22c55e', bg: '#f0fdf4', label: 'Facilities' },
+      { keys: ['health', 'clinic', 'medical', 'hospital', 'ambulance', 'pharmacy'],
+        icon: 'M22 12h-4l-3 9L9 3l-3 9H2',
+        color: '#ef4444', bg: '#fef2f2', label: 'Health' },
+      { keys: ['library', 'book', 'education', 'school', 'learn', 'training'],
+        icon: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15z',
+        color: '#8b5cf6', bg: '#f5f3ff', label: 'Library' },
+      { keys: ['rental', 'rent', 'lease', 'hire', 'tenant'],
+        icon: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+        color: '#6366f1', bg: '#eef2ff', label: 'Rental' },
+      { keys: ['rate', 'property', 'valuation', 'assess', 'levy', 'tariff'],
+        icon: 'M2 20h20M5 20V10l7-6 7 6v10M9 20v-4h6v4',
+        color: '#0f2b46', bg: '#e8edf2', label: 'Rates' },
+      { keys: ['fine', 'penalty', 'infringement', 'contravention', 'summon'],
+        icon: 'M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01',
+        color: '#ea580c', bg: '#fff7ed', label: 'Penalty' },
+      { keys: ['advert', 'sign', 'banner', 'billboard', 'media'],
+        icon: 'M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7',
+        color: '#0ea5e9', bg: '#f0f9ff', label: 'Advertising' },
+      { keys: ['cemetery', 'burial', 'grave', 'funeral', 'memorial'],
+        icon: 'M12 2v6M9 5h6M12 22V8M7 22h10M5 12h14',
+        color: '#475569', bg: '#f1f5f9', label: 'Cemetery' },
+      { keys: ['animal', 'dog', 'cat', 'pet', 'kennel', 'pound', 'vet'],
+        icon: 'M10 5.172C10 3.782 8.423 2.679 6.5 3c-2.823.47-4.113 6.006-4 7 .137 1.217 1.5 2.5 3 2.5s2.529-.275 3-1M14 5.172C14 3.782 15.577 2.679 17.5 3c2.823.47 4.113 6.006 4 7-.137 1.217-1.5 2.5-3 2.5s-2.529-.275-3-1M8 14v.5M16 14v.5M11.25 16.25h1.5L12 17l-.75-.75z',
+        color: '#a855f7', bg: '#faf5ff', label: 'Animals' },
+      { keys: ['housing', 'human settlement', 'subsidis', 'subsidi', 'low cost'],
+        icon: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM9 22V12h6v10',
+        color: '#0d9488', bg: '#f0fdfa', label: 'Housing' },
+      { keys: ['deposit', 'refund', 'guarantee', 'surety'],
+        icon: 'M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6',
+        color: '#059669', bg: '#ecfdf5', label: 'Deposit' },
+      { keys: ['tourism', 'museum', 'heritage', 'cultural', 'visitor'],
+        icon: 'M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z',
+        color: '#c2410c', bg: '#fff7ed', label: 'Tourism' },
+      { keys: ['sundry', 'sundries', 'general', 'miscellaneous', 'other', 'various'],
+        icon: 'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z',
+        color: '#64748b', bg: '#f8fafc', label: 'Sundry' },
+    ];
+
+    for (const entry of icons) {
+      if (entry.keys.some(k => n.includes(k))) {
+        return entry;
+      }
+    }
+    return {
+      icon: 'M9 5H2v7M22 19h-7v-7M2 12a10 10 0 0 1 17.5-6.5M22 12A10 10 0 0 1 4.5 18.5',
+      color: '#7c3aed', bg: '#f5f3ff', label: 'Payment'
+    };
+  }
+
   getTypeOrder(type: BasketItemType): number {
     return PROCESSING_ORDER[type];
   }

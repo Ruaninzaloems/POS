@@ -236,12 +236,26 @@
                     </div>
                   } @else {
                     <div class="result-top-row">
-                      <div class="result-type-badge" [style.background]="getTypeColor(result.resultType === 'group' ? 'account' : result.resultType)">
-                        {{ result.resultType === 'group' ? 'GROUP' : result.resultType.toUpperCase() }}
-                      </div>
-                      <div class="result-name-col">
+                      @if (result.resultType === 'misc') {
+                        <div class="misc-icon-badge" [style.background]="getMiscIconInfo(result.label).bg" [style.color]="getMiscIconInfo(result.label).color">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" [attr.stroke]="getMiscIconInfo(result.label).color" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path [attr.d]="getMiscIconInfo(result.label).icon"/>
+                          </svg>
+                        </div>
+                      } @else {
+                        <div class="result-type-badge" [style.background]="getTypeColor(result.resultType === 'group' ? 'account' : result.resultType)">
+                          {{ result.resultType === 'group' ? 'GROUP' : result.resultType.toUpperCase() }}
+                        </div>
+                      }
+                      <div class="result-name-col" style="flex:1;min-width:0">
                         <span class="result-name">{{ result.label }}</span>
-                        <span class="result-address">{{ result.description }}</span>
+                        <span class="result-address">
+                          @if (result.resultType === 'misc') {
+                            <span class="misc-category-tag" [style.color]="getMiscIconInfo(result.label).color">{{ getMiscIconInfo(result.label).label }}</span>
+                            <span style="margin:0 4px;opacity:0.3">|</span>
+                          }
+                          {{ result.description }}
+                        </span>
                       </div>
                       @if (result.balance) {
                         <div class="result-balance-col">
@@ -547,10 +561,19 @@
               @for (item of basket.orderedItems(); track item.id) {
                 <div class="cart-item" [attr.data-testid]="'item-' + item.id">
                   <div class="cart-item-top">
-                    <div class="cart-item-type-badge" [style.background]="getTypeColor(item.type)">
-                      <span class="type-order">{{ getTypeOrder(item.type) }}</span>
-                      {{ typeLabels[item.type] }}
-                    </div>
+                    @if (item.type === 'misc') {
+                      <div class="cart-item-type-badge cart-misc-badge" [style.background]="getMiscIconInfo(item.miscData?.groupName || item.label).bg" [style.color]="getMiscIconInfo(item.miscData?.groupName || item.label).color" [style.border]="'1px solid ' + getMiscIconInfo(item.miscData?.groupName || item.label).color + '30'">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" [attr.stroke]="getMiscIconInfo(item.miscData?.groupName || item.label).color" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path [attr.d]="getMiscIconInfo(item.miscData?.groupName || item.label).icon"/>
+                        </svg>
+                        {{ getMiscIconInfo(item.miscData?.groupName || item.label).label }}
+                      </div>
+                    } @else {
+                      <div class="cart-item-type-badge" [style.background]="getTypeColor(item.type)">
+                        <span class="type-order">{{ getTypeOrder(item.type) }}</span>
+                        {{ typeLabels[item.type] }}
+                      </div>
+                    }
                     <button class="remove-btn" (click)="basket.removeItem(item.id)" title="Remove" [attr.data-testid]="'button-remove-' + item.id">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                     </button>
@@ -737,14 +760,21 @@
                 <span class="mono summary-type-total">R {{ formatCurrency(getTypeSubtotal('misc')) }}</span>
               </div>
               @for (item of basket.itemsByType()['misc']; track item.id) {
-                <div class="summary-item-detail">
-                  <div class="summary-item-name">
-                    {{ item.miscData?.groupName || item.label }}
-                    <span class="misc-tender-tag" [class.misc-tender-card]="item.miscData?.tenderType === 'card'">{{ item.miscData?.tenderType === 'card' ? 'Card' : 'Cash' }}</span>
+                <div class="summary-item-detail basket-misc-item">
+                  <div class="basket-misc-icon" [style.background]="getMiscIconInfo(item.miscData?.groupName || item.label).bg" [style.color]="getMiscIconInfo(item.miscData?.groupName || item.label).color">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" [attr.stroke]="getMiscIconInfo(item.miscData?.groupName || item.label).color" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path [attr.d]="getMiscIconInfo(item.miscData?.groupName || item.label).icon"/>
+                    </svg>
                   </div>
-                  <div class="summary-item-meta">
-                    <span>{{ item.miscData?.scoaItemName }}</span>
-                    <span class="mono" [class.summary-zero]="item.amountToPay <= 0">R {{ formatCurrency(item.amountToPay) }}</span>
+                  <div class="basket-misc-content">
+                    <div class="summary-item-name">
+                      {{ item.miscData?.groupName || item.label }}
+                      <span class="misc-tender-tag" [class.misc-tender-card]="item.miscData?.tenderType === 'card'">{{ item.miscData?.tenderType === 'card' ? 'Card' : 'Cash' }}</span>
+                    </div>
+                    <div class="summary-item-meta">
+                      <span>{{ item.miscData?.scoaItemName }}</span>
+                      <span class="mono" [class.summary-zero]="item.amountToPay <= 0">R {{ formatCurrency(item.amountToPay) }}</span>
+                    </div>
                   </div>
                 </div>
               }
@@ -837,14 +867,21 @@
               @for (item of basket.orderedItems(); track item.id) {
                 <div class="order-item-row">
                   <div class="order-item-info">
-                    <span class="order-item-type-badge" [attr.data-type]="item.type">
-                      @switch (item.type) {
-                        @case ('account') { ACC }
-                        @case ('clearance') { CLR }
-                        @case ('prepaid') { PRE }
-                        @case ('misc') { MISC }
-                      }
-                    </span>
+                    @if (item.type === 'misc') {
+                      <span class="order-item-misc-icon" [style.background]="getMiscIconInfo(item.miscData?.groupName || item.label).bg" [style.color]="getMiscIconInfo(item.miscData?.groupName || item.label).color">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" [attr.stroke]="getMiscIconInfo(item.miscData?.groupName || item.label).color" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path [attr.d]="getMiscIconInfo(item.miscData?.groupName || item.label).icon"/>
+                        </svg>
+                      </span>
+                    } @else {
+                      <span class="order-item-type-badge" [attr.data-type]="item.type">
+                        @switch (item.type) {
+                          @case ('account') { ACC }
+                          @case ('clearance') { CLR }
+                          @case ('prepaid') { PRE }
+                        }
+                      </span>
+                    }
                     <div class="order-item-detail">
                       <span class="order-item-label">{{ item.label }}</span>
                       <span class="order-item-desc">{{ item.description }}</span>
