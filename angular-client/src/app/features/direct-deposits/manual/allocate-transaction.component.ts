@@ -267,12 +267,12 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
         const activeJob: any = await firstValueFrom(
           this.api.get('/api/dd-allocation/active-job', { posItemId: String(this.posItemId()) })
         );
-        if (activeJob && activeJob.jobId && (activeJob.status === 'PROCESSING' || activeJob.status === 'COMPLETED')) {
+        if (activeJob && activeJob.jobId && (activeJob.status === 'PROCESSING' || activeJob.status === 'QUEUED' || activeJob.status === 'COMPLETED')) {
           if (activeJob.status === 'COMPLETED' && (activeJob.errors || []).length === 0) {
             this.toast.show('This deposit has already been allocated.', 'info');
             this.goBack();
             return;
-          } else if (activeJob.status === 'PROCESSING') {
+          } else if (activeJob.status === 'PROCESSING' || activeJob.status === 'QUEUED') {
             this.toast.show('This deposit is being allocated by another user. Please wait.', 'info');
             this.goBack();
             return;
@@ -1233,6 +1233,11 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
         );
         consecutiveErrors = 0;
         const elapsed = Math.round((Date.now() - started) / 1000);
+        if (status.status === 'QUEUED') {
+          const pos = status.queuePosition || '?';
+          this.postingStatus.set(`Queued — position ${pos} (${elapsed}s). Other allocations are processing, yours will start automatically.`);
+          continue;
+        }
         const retryInfo = (status.currentLine || '').includes('retry') ? ` (${status.currentLine})` : '';
         this.postingStatus.set(
           `Processing: ${status.completedLines || 0} of ${status.totalLines || '?'} lines... (${elapsed}s)${retryInfo}`

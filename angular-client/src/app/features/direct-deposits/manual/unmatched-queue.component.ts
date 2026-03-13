@@ -1948,6 +1948,11 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
         );
         consecutiveErrors = 0;
         const elapsed = Math.round((Date.now() - started) / 1000);
+        if (status.status === 'QUEUED') {
+          const pos = status.queuePosition || '?';
+          this.quickAllocStatus.set(`Queued — position ${pos} (${elapsed}s). Waiting for other allocations to complete...`);
+          continue;
+        }
         const retryInfo = (status.currentLine || '').includes('retry') ? ` (${status.currentLine})` : '';
         this.quickAllocStatus.set(
           `Processing: ${status.completedLines || 0} of ${status.totalLines || '?'} lines... (${elapsed}s)${retryInfo}`

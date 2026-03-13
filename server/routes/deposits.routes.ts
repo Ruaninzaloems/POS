@@ -438,7 +438,7 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
   interface DDBatchJob {
     jobId: string;
     posItemId: number;
-    status: 'PROCESSING' | 'COMPLETED' | 'PARTIAL_FAILURE' | 'FAILED';
+    status: 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'PARTIAL_FAILURE' | 'FAILED';
     totalLines: number;
     completedLines: number;
     failedLines: number;
@@ -446,26 +446,185 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
     results: DDBatchLineResult[];
     errors: string[];
     createdAt: number;
+    queuePosition?: number;
   }
 
   const ddBatchJobs = new Map<string, DDBatchJob>();
   const ddPosItemLocks = new Set<number>();
   let ddJobCounter = 0;
 
+  const MAX_CONCURRENT_JOBS = 3;
+  let activeJobCount = 0;
+  const jobQueue: Array<{ jobId: string; execute: () => Promise<void> }> = [];
+
+  const platinumApiSemaphore = {
+    maxConcurrent: 4,
+    current: 0,
+    queue: [] as Array<() => void>,
+
+    async acquire(): Promise<void> {
+      if (this.current < this.maxConcurrent) {
+        this.current++;
+        return;
+      }
+      await new Promise<void>((resolve) => {
+        this.queue.push(resolve);
+      });
+      this.current++;
+    },
+
+    release(): void {
+      this.current--;
+      if (this.queue.length > 0) {
+        const next = this.queue.shift()!;
+        next();
+      }
+    },
+  };
+
+  const circuitBreaker = {
+    failures: 0,
+    lastFailure: 0,
+    state: 'CLOSED' as 'CLOSED' | 'OPEN' | 'HALF_OPEN',
+    threshold: 8,
+    resetTimeout: 30_000,
+
+    recordSuccess(): void {
+      this.failures = 0;
+      this.state = 'CLOSED';
+    },
+
+    recordFailure(): void {
+      this.failures++;
+      this.lastFailure = Date.now();
+      if (this.failures >= this.threshold) {
+        this.state = 'OPEN';
+        console.warn(`[DD CircuitBreaker] OPEN — ${this.failures} consecutive failures, pausing for ${this.resetTimeout / 1000}s`);
+      }
+    },
+
+    async waitIfOpen(): Promise<void> {
+      if (this.state === 'OPEN') {
+        const elapsed = Date.now() - this.lastFailure;
+        if (elapsed < this.resetTimeout) {
+          const waitMs = this.resetTimeout - elapsed;
+          console.log(`[DD CircuitBreaker] Waiting ${Math.round(waitMs / 1000)}s before retrying...`);
+          await new Promise(r => setTimeout(r, waitMs));
+        }
+        this.state = 'HALF_OPEN';
+      }
+    },
+
+    isAvailable(): boolean {
+      if (this.state === 'CLOSED' || this.state === 'HALF_OPEN') return true;
+      if (Date.now() - this.lastFailure >= this.resetTimeout) {
+        this.state = 'HALF_OPEN';
+        return true;
+      }
+      return false;
+    },
+  };
+
+  const tokenCache = new Map<string, { token: string; ts: number }>();
+  const tokenInflight = new Map<string, Promise<string>>();
+  const TOKEN_CACHE_TTL = 4 * 60 * 1000;
+
+  function getSessionKey(session: any): string {
+    const id = session.id || session.sessionID;
+    if (!id) throw new Error('Session has no ID — cannot manage tokens safely');
+    return String(id);
+  }
+
+  async function getOrRefreshToken(session: any, jobId: string): Promise<string> {
+    const sessionKey = getSessionKey(session);
+    const cached = tokenCache.get(sessionKey);
+    if (cached && Date.now() - cached.ts < TOKEN_CACHE_TTL) {
+      return cached.token;
+    }
+    const existing = tokenInflight.get(sessionKey);
+    if (existing) {
+      return existing;
+    }
+    const promise = (async () => {
+      try {
+        console.log(`[DD Token ${jobId}] Refreshing token for session ${sessionKey}`);
+        const token = await refreshSessionToken(session);
+        tokenCache.set(sessionKey, { token, ts: Date.now() });
+        return token;
+      } finally {
+        tokenInflight.delete(sessionKey);
+      }
+    })();
+    tokenInflight.set(sessionKey, promise);
+    return promise;
+  }
+
+  function invalidateTokenCache(session: any): void {
+    try {
+      const sessionKey = getSessionKey(session);
+      tokenCache.delete(sessionKey);
+    } catch {}
+  }
+
+  function processJobQueue(): void {
+    while (jobQueue.length > 0 && activeJobCount < MAX_CONCURRENT_JOBS) {
+      const entry = jobQueue.shift()!;
+      const job = ddBatchJobs.get(entry.jobId);
+      if (!job || job.status !== 'QUEUED') {
+        continue;
+      }
+      job.status = 'PROCESSING';
+      job.currentLine = 'Starting...';
+      delete job.queuePosition;
+      activeJobCount++;
+      entry.execute().finally(() => {
+        activeJobCount--;
+        processJobQueue();
+      });
+    }
+    let pos = 1;
+    for (const q of jobQueue) {
+      const j = ddBatchJobs.get(q.jobId);
+      if (j && j.status === 'QUEUED') {
+        j.queuePosition = pos++;
+        j.currentLine = `Queued — position ${j.queuePosition} of ${jobQueue.length}`;
+      }
+    }
+  }
+
   setInterval(() => {
     const ONE_HOUR = 60 * 60 * 1000;
     const STALE_PROCESSING_TIMEOUT = 15 * 60 * 1000;
     const now = Date.now();
+    const staleJobIds = new Set<string>();
     for (const [jobId, job] of ddBatchJobs.entries()) {
-      if (job.status === 'PROCESSING' && now - job.createdAt > STALE_PROCESSING_TIMEOUT) {
+      if ((job.status === 'PROCESSING' || job.status === 'QUEUED') && now - job.createdAt > STALE_PROCESSING_TIMEOUT) {
         job.status = 'FAILED';
         job.currentLine = 'Job timed out (stale processing)';
         job.errors.push('Server-side processing exceeded maximum time limit');
         ddPosItemLocks.delete(job.posItemId);
+        staleJobIds.add(jobId);
         console.warn(`[DD Batch] Marked stale job ${jobId} as FAILED, released posItemId lock ${job.posItemId}`);
       }
-      if (now - job.createdAt > ONE_HOUR && job.status !== 'PROCESSING') {
+      if (now - job.createdAt > ONE_HOUR && job.status !== 'PROCESSING' && job.status !== 'QUEUED') {
         ddBatchJobs.delete(jobId);
+      }
+    }
+    if (staleJobIds.size > 0) {
+      const beforeLen = jobQueue.length;
+      for (let i = jobQueue.length - 1; i >= 0; i--) {
+        if (staleJobIds.has(jobQueue[i].jobId)) {
+          jobQueue.splice(i, 1);
+        }
+      }
+      if (beforeLen !== jobQueue.length) {
+        console.log(`[DD Batch] Removed ${beforeLen - jobQueue.length} stale entries from job queue`);
+      }
+    }
+    if (tokenCache.size > 50) {
+      const stale = Date.now() - TOKEN_CACHE_TTL;
+      for (const [k, v] of tokenCache) {
+        if (v.ts < stale) tokenCache.delete(k);
       }
     }
   }, 10 * 60 * 1000);
@@ -489,7 +648,7 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
         return res.status(400).json({ message: "posItemId must be a positive number" });
       }
       if (ddPosItemLocks.has(numericPosItemId)) {
-        const existingJob = Array.from(ddBatchJobs.values()).find(j => j.posItemId === numericPosItemId && j.status === 'PROCESSING');
+        const existingJob = Array.from(ddBatchJobs.values()).find(j => j.posItemId === numericPosItemId && (j.status === 'PROCESSING' || j.status === 'QUEUED'));
         return res.status(409).json({
           message: "This deposit is already being allocated by another user. Please wait for the current allocation to complete.",
           jobId: existingJob?.jobId || null,
@@ -503,21 +662,20 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
       const job: DDBatchJob = {
         jobId,
         posItemId: numericPosItemId,
-        status: 'PROCESSING',
+        status: 'QUEUED',
         totalLines: lines.filter((l: any) => l.allocationType !== 'CASHBOOK' && l.accountNo !== 'CASHBOOK-RTN').length,
         completedLines: 0,
         failedLines: 0,
-        currentLine: 'Starting...',
+        currentLine: 'Initializing...',
         results: [],
         errors: [],
         createdAt: Date.now(),
       };
       ddBatchJobs.set(jobId, job);
 
-      let token: string;
       let apiUrl: string;
       try {
-        token = await refreshSessionToken(session);
+        await getOrRefreshToken(session, jobId);
         apiUrl = getPlatinumApiUrl(session);
       } catch (e: any) {
         job.status = 'FAILED';
@@ -527,7 +685,7 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
         return res.status(500).json({ message: "Failed to initialize session for batch processing", detail: e.message });
       }
 
-      res.json({ jobId, message: "Batch job started. Poll /api/dd-allocation/job/:jobId for progress." });
+      res.json({ jobId, message: "Job accepted. Poll /api/dd-allocation/job/:jobId for progress." });
 
       const submitUrl = `${apiUrl}/api/billing-direct-deposit-allocation/submit-details-data`;
 
@@ -554,7 +712,18 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
             await sleep(backoff);
           }
 
+          await circuitBreaker.waitIfOpen();
+
+          await platinumApiSemaphore.acquire();
           try {
+            let token: string;
+            try {
+              token = await getOrRefreshToken(session, jobId);
+            } catch (tokenErr: any) {
+              console.error(`[DD Batch ${jobId}] Token refresh failed:`, tokenErr?.message);
+              throw tokenErr;
+            }
+
             const timeoutMs = attempt === 0 ? 60_000 : 90_000;
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -568,29 +737,34 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
             const responseText = await rawRes.text();
 
             if (rawRes.status === 401) {
-              console.warn(`[DD Batch ${jobId}] Got 401, refreshing token`);
-              try {
-                token = await refreshSessionToken(session);
-              } catch (refreshErr: any) {
-                console.error(`[DD Batch ${jobId}] Token refresh failed:`, refreshErr?.message);
-              }
+              console.warn(`[DD Batch ${jobId}] Got 401, invalidating token cache`);
+              invalidateTokenCache(session);
               if (attempt < MAX_RETRIES) continue;
+              circuitBreaker.recordFailure();
               return { rawRes, responseText, attempts: attempt + 1 };
             }
 
             if (isRetryable(rawRes.status) && attempt < MAX_RETRIES) {
               console.warn(`[DD Batch ${jobId}] ${lineLabel} got HTTP ${rawRes.status}, will retry`);
+              circuitBreaker.recordFailure();
               lastErr = new Error(`HTTP ${rawRes.status}: ${responseText.substring(0, 200)}`);
               continue;
+            }
+
+            if (rawRes.status < 400) {
+              circuitBreaker.recordSuccess();
             }
 
             return { rawRes, responseText, attempts: attempt + 1 };
           } catch (fetchErr: any) {
             lastErr = fetchErr;
+            circuitBreaker.recordFailure();
             if (!isRetryable(0, fetchErr) || attempt >= MAX_RETRIES) {
               throw fetchErr;
             }
             console.warn(`[DD Batch ${jobId}] ${lineLabel} fetch error (attempt ${attempt + 1}): ${fetchErr?.message}`);
+          } finally {
+            platinumApiSemaphore.release();
           }
         }
         throw lastErr || new Error('Exhausted retries');
@@ -609,6 +783,11 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
           for (const line of sortedLines) {
             if (line.accountNo === 'CASHBOOK-RTN' || line.allocationType === 'CASHBOOK') continue;
             lineIdx++;
+
+            if (lineIdx > 1 && activeJobCount > 1) {
+              const interLineDelay = Math.min(200 * activeJobCount, 1000);
+              await sleep(interLineDelay);
+            }
 
             const allocType = line.allocationType || 'ACCOUNT';
             const lineLabel = `${allocType} ${line.accountNo || ''} (R ${Number(line.amount).toFixed(2)})`;
@@ -739,13 +918,19 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
         }
       };
 
-      processBatch().catch((e) => {
-        job.status = 'FAILED';
-        job.currentLine = 'Unexpected error during processing';
-        job.errors.push(`Batch processing error: ${e?.message || 'Unknown'}`);
-        ddPosItemLocks.delete(numericPosItemId);
-        console.error(`[DD Batch ${jobId}] Unhandled error:`, e?.message);
-      });
+      const executeJob = async () => {
+        await processBatch().catch((e) => {
+          job.status = 'FAILED';
+          job.currentLine = 'Unexpected error during processing';
+          job.errors.push(`Batch processing error: ${e?.message || 'Unknown'}`);
+          ddPosItemLocks.delete(numericPosItemId);
+          console.error(`[DD Batch ${jobId}] Unhandled error:`, e?.message);
+        });
+      };
+
+      jobQueue.push({ jobId, execute: executeJob });
+      console.log(`[DD Batch ${jobId}] Enqueued (queue length: ${jobQueue.length}, active: ${activeJobCount}/${MAX_CONCURRENT_JOBS})`);
+      processJobQueue();
     } catch (e: any) {
       console.error('[DD Batch] EXCEPTION:', e.message);
       if (!res.headersSent) {
@@ -772,6 +957,7 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
         currentLine: job.currentLine,
         results: job.results,
         errors: job.errors,
+        queuePosition: job.queuePosition,
       });
     } catch (e: any) {
       res.status(500).json({ message: "Failed to fetch job status", detail: e.message });
@@ -786,7 +972,7 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
         return res.status(400).json({ message: "posItemId required" });
       }
       for (const [, job] of ddBatchJobs) {
-        if (job.posItemId === posItemId && (job.status === 'PROCESSING' || Date.now() - job.createdAt < 120_000)) {
+        if (job.posItemId === posItemId && (job.status === 'PROCESSING' || job.status === 'QUEUED' || Date.now() - job.createdAt < 120_000)) {
           return res.json({
             jobId: job.jobId,
             posItemId: job.posItemId,
@@ -797,6 +983,7 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
             currentLine: job.currentLine,
             results: job.results,
             errors: job.errors,
+            queuePosition: job.queuePosition,
           });
         }
       }
