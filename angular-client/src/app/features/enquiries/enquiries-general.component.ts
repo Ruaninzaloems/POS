@@ -2424,7 +2424,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           const ratesFyParam: Record<string, string> = ratesFy ? { finYear: ratesFy } : {};
           const acctForRates: any = this.selectedAccount();
           const ratesUnitPartId = acctForRates?.unitPartitionID || acctForRates?.unitPartition_ID;
-          const [ratesDetail, ratesHistory, ratesPropDetails, propRatesSearch, detailedTxns, ratesConsUnitById] = await Promise.allSettled([
+          const [ratesDetail, ratesHistory, ratesPropDetails, propRatesSearch, detailedTxns, ratesConsUnitById, ratesConsAcctDetails] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-rates-details/${accountId}`, ratesFyParam)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/rates-run-history/${accountId}`, ratesFyParam)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
@@ -2436,6 +2436,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             })),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/detailed-transaction-results/${accountId}`, ratesFyParam)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/cons-unit-by-account`, { AccountId: String(accountId) })),
+            firstValueFrom(this.api.get<any>(`/api/platinum/receipt-prepaid/cons-account-details`, { accountId: String(accountId) })),
           ]);
           const ratesDetailVal = ratesDetail.status === 'fulfilled' ? (Array.isArray(ratesDetail.value) ? ratesDetail.value[0] : ratesDetail.value) : null;
           const ratesHistoryVal = ratesHistory.status === 'fulfilled' ? this.normalizeArray(ratesHistory.value) : [];
@@ -2521,6 +2522,8 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           }
 
           const ratesConsUnit = ratesConsUnitByIdVal && !ratesConsUnitByIdVal._error ? ratesConsUnitByIdVal : null;
+          const ratesConsAcctVal = ratesConsAcctDetails.status === 'fulfilled' ? (Array.isArray(ratesConsAcctDetails.value) ? ratesConsAcctDetails.value[0] : ratesConsAcctDetails.value) : null;
+          const ratesConsAcct = ratesConsAcctVal && !ratesConsAcctVal._error ? ratesConsAcctVal : null;
           data = {
             ratesDetails: ratesDetailVal && !ratesDetailVal._error ? ratesDetailVal : null,
             ratesHistory: ratesHistoryVal,
@@ -2532,6 +2535,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             valuationImport: valuationImportVal,
             propertyRatesData: propRatesData,
             consUnit: ratesConsUnit,
+            consAccountDetails: ratesConsAcct,
           };
           break;
 
@@ -3070,9 +3074,11 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const td = this.tabData();
     const pr = (td?.propertyRatesData || [])[0];
     const rd = td?.ratesDetails;
+    const ca = td?.consAccountDetails;
     return pr?.tariffDescription || pr?.tariffDesc || pr?.ratesTariffDescription ||
       rd?.tariffDescription || rd?.tariffDesc ||
-      pr?.levyDescription || rd?.levyDescription || '-';
+      pr?.levyDescription || rd?.levyDescription ||
+      ca?.tariffDescription || ca?.tariffDesc || ca?.ratesTariffDescription || '-';
   }
 
   getRatesTotalLevy(): number {

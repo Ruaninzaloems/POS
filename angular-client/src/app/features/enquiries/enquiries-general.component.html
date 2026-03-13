@@ -3444,11 +3444,11 @@
                   </div>
                   <div class="rates-prop-info-item">
                     <span class="rates-prop-info-label">Property Category</span>
-                    <span class="rates-prop-info-value">{{ safeStr(tabData()?.consUnit?.propertyCategory || tabData()?.consUnit?.category || tabData()?.propertyDetails?.propertyCategory || (tabData()?.propertyRatesData || [])[0]?.propertyCategory || tabData()?.propertyDetails?.category) }}</span>
+                    <span class="rates-prop-info-value">{{ safeStr(tabData()?.consUnit?.propertyCategory || tabData()?.consUnit?.category || tabData()?.consAccountDetails?.zoneDesc || tabData()?.propertyDetails?.propertyCategory || (tabData()?.propertyRatesData || [])[0]?.propertyCategory || tabData()?.propertyDetails?.category || tabData()?.propertyDetails?.zoneDesc) }}</span>
                   </div>
                   <div class="rates-prop-info-item">
                     <span class="rates-prop-info-label">Property Type of Use</span>
-                    <span class="rates-prop-info-value">{{ safeStr(tabData()?.consUnit?.typeOfUseDesc || tabData()?.consUnit?.typeOfUse || tabData()?.consUnit?.typeofUse || tabData()?.propertyDetails?.typeOfUseDesc || tabData()?.propertyDetails?.typeOfUse || (tabData()?.propertyRatesData || [])[0]?.propertyTypeOfUse) }}</span>
+                    <span class="rates-prop-info-value">{{ safeStr(tabData()?.consUnit?.typeOfUseDesc || tabData()?.consUnit?.typeOfUse || tabData()?.consUnit?.typeofUse || tabData()?.consAccountDetails?.typeOfUseDesc || tabData()?.propertyDetails?.typeOfUseDesc || tabData()?.propertyDetails?.typeOfUse || (tabData()?.propertyRatesData || [])[0]?.propertyTypeOfUse) }}</span>
                   </div>
                   <div class="rates-prop-info-item">
                     <span class="rates-prop-info-label">Active Rates Tariff</span>
