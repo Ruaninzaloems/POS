@@ -509,6 +509,12 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
   detailOpen = signal(false);
   parsedClues = signal<ParsedClues | null>(null);
 
+  quickAllocating = signal(false);
+  quickAllocStatus = signal('');
+  quickAllocComplete = signal(false);
+  quickAllocError = signal('');
+  quickAllocMatchId = signal<number | null>(null);
+
   inlineSuggestions = signal<Map<number, SuggestedMatch[]>>(new Map());
   inlineLoading = signal<Set<number>>(new Set());
   inlineExpanded = signal<Set<number>>(new Set());
@@ -1617,6 +1623,157 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
     });
   }
 
+  async quickAllocate(item: BankReconPosItem, match: SuggestedMatch): Promise<void> {
+    if (this.quickAllocating()) return;
+    this.quickAllocating.set(true);
+    this.quickAllocStatus.set('Verifying deposit is still available...');
+    this.quickAllocComplete.set(false);
+    this.quickAllocError.set('');
+    this.quickAllocMatchId.set(match.accountId);
+
+    try {
+      try {
+        const freshItem: any = await firstValueFrom(
+          this.api.get('/api/platinum/direct-deposit-allocation/get-pos-item-details', { posItemId: String(item.posItem_ID) })
+        );
+        const detail = freshItem?.posItem || freshItem || {};
+        if (detail.billingAllocated || detail.dateAllocated) {
+          this.quickAllocError.set('This deposit was already allocated by another user.');
+          this.quickAllocating.set(false);
+          this.quickAllocStatus.set('');
+          return;
+        }
+      } catch (e: any) {
+        console.warn('[QuickAlloc] Freshness check failed (proceeding):', e?.message);
+      }
+
+      const user = this.auth.user();
+
+      this.quickAllocStatus.set('Creating virtual session...');
+      let virtualCashierId: number | null = null;
+      try {
+        const sessionResult: any = await firstValueFrom(
+          this.api.post('/api/platinum/direct-deposit-allocation/create-virtual-session', {
+            posItemId: item.posItem_ID,
+            userId: user?.user_ID || 0,
+          })
+        );
+        virtualCashierId = sessionResult?.virtualCashierId || sessionResult?.sessionId || sessionResult?.id || null;
+      } catch (e: any) {
+        console.warn('[QuickAlloc] Virtual session creation failed (non-blocking):', e?.message);
+      }
+
+      this.quickAllocStatus.set('Fetching financial year...');
+      let finYear: string;
+      try {
+        const fyResult: any = await firstValueFrom(this.api.get('/api/platinum/active-fin-year'));
+        finYear = typeof fyResult === 'string' ? fyResult : (fyResult?.finYear || fyResult?.financialYear || fyResult?.value || String(fyResult));
+      } catch {
+        this.quickAllocError.set('Could not fetch active financial year.');
+        this.quickAllocating.set(false);
+        this.quickAllocStatus.set('');
+        return;
+      }
+
+      const now = new Date();
+      const saDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+      const txDate = item.dateOfTransaction || saDate;
+
+      const nameParts = (match.name || '').split(/\s+/);
+      const lastName = nameParts.length > 0 ? nameParts[nameParts.length - 1] : '';
+      const initials = nameParts.length > 1 ? nameParts.slice(0, -1).map(w => w.charAt(0)).join('') : '';
+
+      this.quickAllocStatus.set(`Submitting allocation to ${match.accountNo}...`);
+
+      const result: any = await firstValueFrom(
+        this.api.post('/api/dd-allocation/submit-batch', {
+          posItemId: item.posItem_ID,
+          reconId: item.bankReconID,
+          financialYear: finYear,
+          transactionDate: txDate,
+          transactionNote: item.note || item.reference || '',
+          lines: [{
+            accountId: match.accountId,
+            accountNo: match.accountNo,
+            amount: item.amount,
+            allocationType: 'ACCOUNT',
+            description: item.note || '',
+            miscPaymentGroupId: null,
+            clearanceId: null,
+            vatAmount: 0,
+            lastName,
+            initials,
+          }],
+        })
+      );
+
+      const jobId = result?.jobId;
+      if (jobId) {
+        this.quickAllocStatus.set('Processing allocation...');
+        const pollResult = await this.pollQuickAllocJob(jobId);
+
+        if (pollResult.status === 'COMPLETED' || pollResult.status === 'PARTIAL_FAILURE' || pollResult.status === 'PARTIAL') {
+          if ((pollResult.errors || []).length === 0) {
+            this.quickAllocStatus.set('Allocation completed successfully!');
+            this.quickAllocComplete.set(true);
+            this.toast.success(`Allocated R ${item.amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })} to ${match.accountNo} — ${match.name}`);
+            this.removeAllocatedItem(item.posItem_ID);
+          } else {
+            this.quickAllocError.set(pollResult.errors?.join('; ') || 'Allocation completed with errors');
+          }
+        } else {
+          this.quickAllocError.set(pollResult.errors?.join('; ') || 'Allocation processing failed');
+        }
+      } else {
+        this.quickAllocStatus.set('Allocation completed successfully!');
+        this.quickAllocComplete.set(true);
+        this.toast.success(`Allocated R ${item.amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })} to ${match.accountNo} — ${match.name}`);
+        this.removeAllocatedItem(item.posItem_ID);
+      }
+
+      if (virtualCashierId) {
+        try {
+          await firstValueFrom(
+            this.api.post('/api/platinum/direct-deposit-allocation/close-virtual-session', { sessionId: virtualCashierId })
+          );
+        } catch {}
+      }
+    } catch (e: any) {
+      const status = e?.status || e?.error?.status;
+      if (status === 409) {
+        this.quickAllocError.set('This deposit is already being allocated by another user.');
+      } else {
+        this.quickAllocError.set(e?.error?.message || e?.message || 'Allocation failed');
+      }
+    } finally {
+      this.quickAllocating.set(false);
+    }
+  }
+
+  private async pollQuickAllocJob(jobId: string, maxAttempts = 30, intervalMs = 2000): Promise<any> {
+    for (let i = 0; i < maxAttempts; i++) {
+      await new Promise(resolve => setTimeout(resolve, intervalMs));
+      try {
+        const status: any = await firstValueFrom(
+          this.api.get(`/api/dd-allocation/job/${jobId}`)
+        );
+        this.quickAllocStatus.set(`Processing: ${status.completedLines || 0} of ${status.totalLines || '?'} lines...`);
+        if (status.status === 'COMPLETED' || status.status === 'PARTIAL_FAILURE' || status.status === 'PARTIAL' || status.status === 'FAILED') {
+          return status;
+        }
+      } catch {
+        break;
+      }
+    }
+    return { status: 'FAILED', errors: ['Job polling timed out'] };
+  }
+
+  private removeAllocatedItem(posItemId: number): void {
+    const updated = this.items().filter(i => i.posItem_ID !== posItemId);
+    this.items.set(updated);
+    this.totalCount.set(Math.max(0, this.totalCount() - 1));
+  }
+
   navigateToHistory(): void {
     this.router.navigate(['/direct-deposits/manual/history']);
   }
@@ -1626,6 +1783,11 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
     this.selectedItem.set(null);
     this.suggestedMatches.set([]);
     this.parsedClues.set(null);
+    this.quickAllocating.set(false);
+    this.quickAllocStatus.set('');
+    this.quickAllocComplete.set(false);
+    this.quickAllocError.set('');
+    this.quickAllocMatchId.set(null);
   }
 
   formatCurrency(val: number): string {
