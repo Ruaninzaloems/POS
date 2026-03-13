@@ -2502,6 +2502,48 @@ export class PosComponent implements OnInit, OnDestroy {
     this.receiptResults.set([]);
     this.receiptEmail.set('');
     this.receiptPhone.set('');
+
+    this.basket.clearAll();
+
+    this.searchMode.set('unified');
+    this.activeMode.set('account');
+    this.unifiedSearchQuery.set('');
+    this.unifiedSearchResults.set([]);
+    this.tabSearchQuery.set('');
+    this.tabSearchResults.set([]);
+    this.tabSearchActive.set(false);
+    this.accountDetailLoading.set(false);
+
+    this.miscSelectedGroupId.set(0);
+    this.miscSelectedScoaId.set(0);
+    this.miscScoaItems.set([]);
+    this.miscAmount.set(0);
+    this.miscDescription.set('');
+    this.miscLastName.set('');
+    this.miscInitials.set('');
+    this.prepaidAmount.set(0);
+
+    this.cashAmount.set(0);
+    this.cardAmount.set(0);
+    this.cardNumber.set('');
+    this.cardExpiry.set('');
+    this.cardReference.set('');
+    this.chequeAmount.set(0);
+    this.chequeNumber.set('');
+    this.chequeName.set('');
+    this.chequeBankId.set(0);
+    this.eftAmount.set(0);
+    this.eftReference.set('');
+    this.activeTender.set('cash');
+    this.tenderOrderExpanded.set(true);
+    this.showPaymentPanel.set(false);
+    this.processingPayment.set(false);
+    this.paymentProgressCurrent.set(0);
+    this.paymentProgressTotal.set(0);
+    this.paymentProgressLabel.set('');
+
+    this.csvStep.set('upload');
+    this.csvFileName.set('');
   }
 
   openCancelDialog(): void {
