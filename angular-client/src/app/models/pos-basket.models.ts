@@ -33,6 +33,7 @@ export interface AccountItemData {
   hasPrepaidMeter: boolean;
   prepaidMeterNo: string;
   prepaidType: string;
+  accountBalance: number;
   originalData: any;
 }
 

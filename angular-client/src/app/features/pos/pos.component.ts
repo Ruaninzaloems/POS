@@ -801,6 +801,9 @@ export class PosComponent implements OnInit, OnDestroy {
       return;
     }
 
+    const searchBalance = Number(acctData.outStandingAmt ?? acctData.outstandingAmount ?? acctData.balance ?? acctData.totalDue ?? 0);
+    console.log(`[addAccountToBasket] Account ${accountNo} search balance: ${searchBalance}`);
+
     this.accountDetailLoading.set(true);
     let detailData: any = null;
     try {
@@ -813,16 +816,17 @@ export class PosComponent implements OnInit, OnDestroy {
     this.accountDetailLoading.set(false);
 
     const merged = { ...acctData, ...(detailData && !detailData._error ? detailData : {}) };
-    const balance = Number(merged.outstandingAmount || merged.outStandingAmt || merged.balance || merged.totalDue || 0);
+    const detailBalance = detailData && !detailData._error ? Number(detailData.outStandingAmt ?? detailData.outstandingAmount ?? 0) : null;
+    const accountBalance = searchBalance || detailBalance || 0;
+    console.log(`[addAccountToBasket] Account ${accountNo} detail balance: ${detailBalance}, using balance: ${accountBalance}`);
+
+    const balance = accountBalance;
     const name = merged.name || merged.accountName || merged.consumerName || merged.surname_Company || '';
     const address = (merged.deliveryAddress || merged.streetName || merged.address || merged.physicalAddress || merged.locationAddress || '').replace(/\r\n/g, ', ').replace(/,\s*$/, '');
     const meterNo = merged.physicalMeterNo || merged.prepaidMeterNo || merged.meterNo || merged.meter_No || '';
     const meterSvcType = merged.meterServiceType || merged.serviceType || merged.prepaidType || '';
     const isWater = /water/i.test(meterSvcType) || /^0[12]/i.test(meterNo);
     const prepaidType = meterNo ? (isWater ? 'Water' : 'Electricity') : '';
-
-    const accountBalance = Number(merged.outStandingAmt ?? merged.outstandingAmount ?? merged.balance ?? merged.totalDue ?? 0);
-    console.log(`[addAccountToBasket] Account ${accountNo} actual balance from API: ${accountBalance}`);
 
     const item: BasketItem = {
       id: crypto.randomUUID(),
@@ -926,6 +930,7 @@ export class PosComponent implements OnInit, OnDestroy {
           hasPrepaidMeter: !!meterNo,
           prepaidMeterNo: meterNo,
           prepaidType: '',
+          accountBalance: balance,
           originalData: acct,
         },
       });
@@ -1486,7 +1491,7 @@ export class PosComponent implements OnInit, OnDestroy {
               account_ID: ad.accountId,
               accountNumber: ad.accountNumber,
               name: ad.name,
-              outStandingAmt: item.amountDue,
+              outStandingAmt: ad.accountBalance ?? item.amountDue,
               paymentAmount: item.amountToPay,
               deliveryAddress: ad.address || orig.deliveryAddress || '',
               statusDesc: orig.statusDesc || '-',
@@ -1742,12 +1747,14 @@ export class PosComponent implements OnInit, OnDestroy {
       const item = items[0];
       const ad = item.accountData!;
       const orig = ad.originalData || {};
+      const currentBalance = ad.accountBalance ?? item.amountDue;
+      console.log(`[submitAccountPayment] Account ${ad.accountNumber} outStandingAmt being sent: ${currentBalance}`);
       const submitAccountBase: any = {
         ...orig,
         account_ID: ad.accountId,
         accountNumber: ad.accountNumber,
         name: ad.name,
-        outStandingAmt: item.amountDue,
+        outStandingAmt: currentBalance,
         billId: null,
         cutOffID: ad.cutOffID ?? 0,
         cutOffAmount: ad.cutOffAmount ?? 0,
@@ -1771,7 +1778,7 @@ export class PosComponent implements OnInit, OnDestroy {
           changeAmount: isCardPayment ? 0 : Math.max(0, totalAmount - item.amountToPay),
           paymentType: paymentTypeId,
           paymentOption: this.getPaymentOptionId(),
-          outStandingAmount: item.amountDue,
+          outStandingAmount: currentBalance,
           cutOffID: ad.cutOffID ?? 0,
           cutOffAmount: ad.cutOffAmount ?? 0,
           debtAmount: ad.debtAmount ?? 0,
@@ -1807,6 +1814,8 @@ export class PosComponent implements OnInit, OnDestroy {
       const submitAccounts = items.map(item => {
         const ad = item.accountData!;
         const orig = ad.originalData || {};
+        const bal = ad.accountBalance ?? item.amountDue;
+        console.log(`[submitAccountPayment-multi] Account ${ad.accountNumber} outStandingAmt: ${bal}`);
         return {
           capturerID: userId,
           accountID: ad.accountId,
@@ -1815,8 +1824,8 @@ export class PosComponent implements OnInit, OnDestroy {
           name: ad.name || '',
           sgNumber: orig.erfNumber || orig.sgNo || '',
           address: ad.address || orig.deliveryAddress || '',
-          outstandingAmount: item.amountDue,
-          outStandingAmt: item.amountDue,
+          outstandingAmount: bal,
+          outStandingAmt: bal,
           accountStatus: orig.statusDesc || '-',
           accountType: orig.accountDesc || '',
           paymentAmount: item.amountToPay,
@@ -1827,7 +1836,7 @@ export class PosComponent implements OnInit, OnDestroy {
         };
       });
       const totalPaymentAmount = items.reduce((s, i) => s + i.amountToPay, 0);
-      const totalOutstanding = items.reduce((s, i) => s + i.amountDue, 0);
+      const totalOutstanding = items.reduce((s, i) => s + (i.accountData?.accountBalance ?? i.amountDue), 0);
       const payload = {
         accounts: submitAccounts,
         requestModel: {
@@ -3211,6 +3220,7 @@ export class PosComponent implements OnInit, OnDestroy {
           hasPrepaidMeter: !!meterNo,
           prepaidMeterNo: meterNo,
           prepaidType: '',
+          accountBalance: row.outstandingAmount,
           originalData: merged,
         },
       };
