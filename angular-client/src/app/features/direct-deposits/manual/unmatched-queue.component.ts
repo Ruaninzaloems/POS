@@ -377,11 +377,6 @@ function parseDescriptionForClues(note: string, reference: string): ParsedClues 
         accountNumbers.splice(i, 1);
       }
     }
-    for (const erf of erfNumbers) {
-      if (erf.erf.length >= 3 && !oldAccountCodes.includes(erf.erf)) {
-        oldAccountCodes.push(erf.erf);
-      }
-    }
   }
 
   const oldCodePatterns = [
@@ -917,7 +912,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
       for (const accNum of clues.accountNumbers.slice(0, 3)) {
         searchPromises.push(
           this.safeCall(() => firstValueFrom(
-            this.api.get('/api/platinum/direct-deposit-allocation/get-account-autocomplete', { searchText: accNum })
+            this.api.get('/api/platinum/direct-deposit-allocation/get-account-autocomplete', { searchTerm: accNum })
           )).then((rawData: any) => {
             const items = this.unwrap(rawData);
             for (const r of items.slice(0, 3)) {
@@ -961,7 +956,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
       for (const oldCode of clues.oldAccountCodes.slice(0, 3)) {
         searchPromises.push(
           this.safeCall(() => firstValueFrom(
-            this.api.get('/api/platinum/direct-deposit-allocation/get-old-account-autocomplete', { searchText: oldCode })
+            this.api.get('/api/platinum/direct-deposit-allocation/get-old-account-autocomplete', { searchTerm: oldCode })
           )).then((rawData: any) => {
             const items = this.unwrap(rawData);
             for (const r of items.slice(0, 3)) {
@@ -983,7 +978,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
         if (!clues.oldAccountCodes.includes(accNum)) {
           searchPromises.push(
             this.safeCall(() => firstValueFrom(
-              this.api.get('/api/platinum/direct-deposit-allocation/get-old-account-autocomplete', { searchText: accNum })
+              this.api.get('/api/platinum/direct-deposit-allocation/get-old-account-autocomplete', { searchTerm: accNum })
             )).then((rawData: any) => {
               const items = this.unwrap(rawData);
               for (const r of items.slice(0, 2)) {
@@ -1005,7 +1000,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
       for (const mtr of clues.meterNumbers.slice(0, 3)) {
         searchPromises.push(
           this.safeCall(() => firstValueFrom(
-            this.api.get('/api/platinum/direct-deposit-allocation/get-account-autocomplete', { searchText: mtr })
+            this.api.get('/api/platinum/direct-deposit-allocation/get-account-autocomplete', { searchTerm: mtr })
           )).then((rawData: any) => {
             const items = this.unwrap(rawData);
             for (const r of items.slice(0, 3)) {
@@ -1064,7 +1059,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
         const erfPadded = erf.erf.padStart(8, '0');
         searchPromises.push(
           this.safeCall(() => firstValueFrom(
-            this.api.get('/api/platinum/direct-deposit-allocation/get-old-account-autocomplete', { searchText: erfPadded })
+            this.api.get('/api/platinum/direct-deposit-allocation/get-old-account-autocomplete', { searchTerm: erfPadded })
           )).then((rawData: any) => {
             const items = this.unwrap(rawData);
             for (const r of items.slice(0, 10)) {
@@ -1091,7 +1086,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
 
         searchPromises.push(
           this.safeCall(() => firstValueFrom(
-            this.api.get('/api/platinum/direct-deposit-allocation/get-account-autocomplete', { searchText: erfPadded })
+            this.api.get('/api/platinum/direct-deposit-allocation/get-account-autocomplete', { searchTerm: erfPadded })
           )).then((rawData: any) => {
             const items = this.unwrap(rawData);
             for (const r of items.slice(0, 10)) {
@@ -1113,7 +1108,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
         if (erf.erf !== erfPadded) {
           searchPromises.push(
             this.safeCall(() => firstValueFrom(
-              this.api.get('/api/platinum/direct-deposit-allocation/get-account-autocomplete', { searchText: erf.erf })
+              this.api.get('/api/platinum/direct-deposit-allocation/get-account-autocomplete', { searchTerm: erf.erf })
             )).then((rawData: any) => {
               const items = this.unwrap(rawData);
               for (const r of items.slice(0, 10)) {
@@ -1133,7 +1128,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
           );
           searchPromises.push(
             this.safeCall(() => firstValueFrom(
-              this.api.get('/api/platinum/direct-deposit-allocation/get-old-account-autocomplete', { searchText: erf.erf })
+              this.api.get('/api/platinum/direct-deposit-allocation/get-old-account-autocomplete', { searchTerm: erf.erf })
             )).then((rawData: any) => {
               const items = this.unwrap(rawData);
               for (const r of items.slice(0, 10)) {
@@ -1314,7 +1309,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
       for (const accNum of clues.accountNumbers.slice(0, 3)) {
         searchPromises.push(
           this.safeCall(() => firstValueFrom(
-            this.api.get('/api/platinum/direct-deposit-allocation/get-account-autocomplete', { searchText: accNum })
+            this.api.get('/api/platinum/direct-deposit-allocation/get-account-autocomplete', { searchTerm: accNum })
           )).then((rawData: any) => {
             const items = this.unwrap(rawData);
             for (const r of items.slice(0, 3)) {
@@ -1343,7 +1338,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
       for (const oldCode of clues.oldAccountCodes.slice(0, 3)) {
         searchPromises.push(
           this.safeCall(() => firstValueFrom(
-            this.api.get('/api/platinum/direct-deposit-allocation/get-old-account-autocomplete', { searchText: oldCode })
+            this.api.get('/api/platinum/direct-deposit-allocation/get-old-account-autocomplete', { searchTerm: oldCode })
           )).then((rawData: any) => {
             const items = this.unwrap(rawData);
             for (const r of items.slice(0, 3)) {
@@ -1357,7 +1352,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
       for (const mtr of clues.meterNumbers.slice(0, 3)) {
         searchPromises.push(
           this.safeCall(() => firstValueFrom(
-            this.api.get('/api/platinum/direct-deposit-allocation/get-account-autocomplete', { searchText: mtr })
+            this.api.get('/api/platinum/direct-deposit-allocation/get-account-autocomplete', { searchTerm: mtr })
           )).then((rawData: any) => {
             const items = this.unwrap(rawData);
             for (const r of items.slice(0, 3)) {
@@ -1395,7 +1390,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
         const erfPadded = erf.erf.padStart(8, '0');
         searchPromises.push(
           this.safeCall(() => firstValueFrom(
-            this.api.get('/api/platinum/direct-deposit-allocation/get-old-account-autocomplete', { searchText: erfPadded })
+            this.api.get('/api/platinum/direct-deposit-allocation/get-old-account-autocomplete', { searchTerm: erfPadded })
           )).then((rawData: any) => {
             const items = this.unwrap(rawData);
             for (const r of items.slice(0, 10)) {
@@ -1413,7 +1408,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
         );
         searchPromises.push(
           this.safeCall(() => firstValueFrom(
-            this.api.get('/api/platinum/direct-deposit-allocation/get-account-autocomplete', { searchText: erfPadded })
+            this.api.get('/api/platinum/direct-deposit-allocation/get-account-autocomplete', { searchTerm: erfPadded })
           )).then((rawData: any) => {
             const items = this.unwrap(rawData);
             for (const r of items.slice(0, 10)) {
