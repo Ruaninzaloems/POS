@@ -2426,7 +2426,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           const ratesFyParam: Record<string, string> = ratesFy ? { finYear: ratesFy } : {};
           const acctForRates: any = this.selectedAccount();
           const ratesUnitPartId = acctForRates?.unitPartitionID || acctForRates?.unitPartition_ID;
-          const [ratesDetail, ratesHistory, ratesPropDetails, propRatesSearch, detailedTxns, ratesConsUnitById, ratesConsAcctDetails] = await Promise.allSettled([
+          const [ratesDetail, ratesHistory, ratesPropDetails, propRatesSearch, detailedTxns, ratesConsUnitById, ratesConsAcctDetails, ratesServices] = await Promise.allSettled([
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-rates-details/${accountId}`, ratesFyParam)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/rates-run-history/${accountId}`, ratesFyParam)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
@@ -2439,6 +2439,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/detailed-transaction-results/${accountId}`, ratesFyParam)),
             firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/cons-unit-by-account`, { AccountId: String(accountId) })),
             firstValueFrom(this.api.get<any>(`/api/platinum/receipt-prepaid/cons-account-details`, { accountId: String(accountId) })),
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/metered-services-on-account/${accountId}`)),
           ]);
           const ratesDetailVal = ratesDetail.status === 'fulfilled' ? (Array.isArray(ratesDetail.value) ? ratesDetail.value[0] : ratesDetail.value) : null;
           const ratesHistoryVal = ratesHistory.status === 'fulfilled' ? this.normalizeArray(ratesHistory.value) : [];
@@ -2526,6 +2527,16 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           const ratesConsUnit = ratesConsUnitByIdVal && !ratesConsUnitByIdVal._error ? ratesConsUnitByIdVal : null;
           const ratesConsAcctVal = ratesConsAcctDetails.status === 'fulfilled' ? (Array.isArray(ratesConsAcctDetails.value) ? ratesConsAcctDetails.value[0] : ratesConsAcctDetails.value) : null;
           const ratesConsAcct = ratesConsAcctVal && !ratesConsAcctVal._error ? ratesConsAcctVal : null;
+          const ratesServicesList = ratesServices.status === 'fulfilled' ? this.normalizeArray(ratesServices.value) : [];
+          if (ratesServicesList.length > 0) {
+            console.log('[rates] services keys:', Object.keys(ratesServicesList[0]));
+            console.log('[rates] services:', JSON.stringify(ratesServicesList.map((s: any) => ({ serviceDesc: s.serviceDesc || s.serviceDescription, tariffDesc: s.tariffDesc || s.tariffDescription || s.ratesTariffDescription || s.tariff, serviceTypeID: s.serviceTypeID, status: s.serviceStatus || s.status }))).substring(0, 2000));
+          }
+          const propRatesSvc = ratesServicesList.find((s: any) => {
+            const desc = (s.serviceDesc || s.serviceDescription || '').toLowerCase();
+            return desc.includes('property rate') || desc.includes('rates');
+          });
+          const activeRatesTariff = propRatesSvc?.tariffDesc || propRatesSvc?.tariffDescription || propRatesSvc?.ratesTariffDescription || propRatesSvc?.tariff || propRatesSvc?.serviceDesc || propRatesSvc?.serviceDescription || '';
           data = {
             ratesDetails: ratesDetailVal && !ratesDetailVal._error ? ratesDetailVal : null,
             ratesHistory: ratesHistoryVal,
@@ -2538,6 +2549,8 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             propertyRatesData: propRatesData,
             consUnit: ratesConsUnit,
             consAccountDetails: ratesConsAcct,
+            servicesList: ratesServicesList,
+            activeRatesTariff: activeRatesTariff,
           };
           break;
 
@@ -3074,6 +3087,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
   getRatesActiveTariff(): string {
     const td = this.tabData();
+    if (td?.activeRatesTariff) return td.activeRatesTariff;
     const pr = (td?.propertyRatesData || [])[0];
     const rd = td?.ratesDetails;
     const ca = td?.consAccountDetails;
