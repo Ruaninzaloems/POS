@@ -2162,6 +2162,7 @@ export class PosComponent implements OnInit, OnDestroy {
     this.miscDescription.set('');
     this.miscLastName.set('');
     this.miscInitials.set('');
+    this.activeMode.set('account');
   }
 
   private getReceiptSerialNo(data: any): number {
