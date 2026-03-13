@@ -2244,47 +2244,77 @@ export class PosComponent implements OnInit, OnDestroy {
         console.log(`[printReceipt] ${type} receipt serialNo=${sid}, receiptNumber=${r.receiptNumber}`, JSON.stringify(r.rawResponse).substring(0, 300));
       }
 
-      const allReceiptIds: number[] = [];
-      for (const r of results) {
-        const rawIds = this.extractReceiptIds(r.rawResponse);
-        if (rawIds.length > 0) {
-          allReceiptIds.push(...rawIds);
-        } else {
-          const serialNo = this.getReceiptSerialNo(r.rawResponse);
-          if (serialNo > 0) allReceiptIds.push(serialNo);
+      const miscResults = results.filter(r => r.items[0]?.type === 'misc');
+      const nonMiscResults = results.filter(r => r.items[0]?.type !== 'misc');
+
+      for (const mr of miscResults) {
+        const miscIds = this.extractReceiptIds(mr.rawResponse);
+        let miscId = miscIds.length > 0 ? miscIds[0] : this.getReceiptSerialNo(mr.rawResponse);
+        if (!miscId || miscId <= 0) {
+          errors.push(`Misc receipt: no receipt ID found for "${mr.items[0]?.label || 'misc'}"`);
+          continue;
         }
-      }
-
-      const realReceiptNos = results
-        .map(r => r.receiptNumber)
-        .filter(n => n && n !== 'N/A' && !n.startsWith('REC-'));
-
-      const uniqueIds = Array.from(new Set(allReceiptIds));
-      console.log(`[printReceipt] All receipt IDs: [${uniqueIds.join(',')}], receiptNos: [${realReceiptNos.join(',')}]`);
-
-      if (uniqueIds.length > 0 || realReceiptNos.length > 0) {
         try {
+          console.log(`[printReceipt] Printing misc receipt via print-miscellaneous-receipt?id=${miscId}`);
           const blob = await firstValueFrom(
-            this.api.postBlob('/api/platinum/billing-payment/print-receipt', {
-              ids: uniqueIds.length > 0 ? uniqueIds : [0],
-              receiptNos: realReceiptNos,
-              isReprint: false,
-            })
+            this.api.postBlob(`/api/platinum/billing-payment/print-miscellaneous-receipt?id=${miscId}`, {})
           );
           if (blob && blob.size > 0) {
             const url = URL.createObjectURL(blob);
             window.open(url, '_blank');
             printed++;
           } else {
-            errors.push('Receipt PDF: empty response returned');
+            errors.push(`Misc receipt PDF for ID ${miscId}: empty response`);
           }
-        } catch (printErr: any) {
-          console.error(`[printReceipt] Print error:`, printErr);
-          errors.push(`Receipt print: ${printErr?.error?.message || printErr?.message || 'failed'}`);
+        } catch (miscPrintErr: any) {
+          console.error(`[printReceipt] Misc print error for ID ${miscId}:`, miscPrintErr);
+          errors.push(`Misc receipt print: ${miscPrintErr?.error?.message || miscPrintErr?.message || 'failed'}`);
         }
-      } else {
-        const failedTypes = results.map(r => r.items[0]?.type || 'unknown').join(', ');
-        errors.push(`No receipt IDs extracted for ${failedTypes} payment(s) — receipt may not be printable yet`);
+      }
+
+      if (nonMiscResults.length > 0) {
+        const allReceiptIds: number[] = [];
+        for (const r of nonMiscResults) {
+          const rawIds = this.extractReceiptIds(r.rawResponse);
+          if (rawIds.length > 0) {
+            allReceiptIds.push(...rawIds);
+          } else {
+            const serialNo = this.getReceiptSerialNo(r.rawResponse);
+            if (serialNo > 0) allReceiptIds.push(serialNo);
+          }
+        }
+
+        const realReceiptNos = nonMiscResults
+          .map(r => r.receiptNumber)
+          .filter(n => n && n !== 'N/A' && !n.startsWith('REC-'));
+
+        const uniqueIds = Array.from(new Set(allReceiptIds));
+        console.log(`[printReceipt] Non-misc receipt IDs: [${uniqueIds.join(',')}], receiptNos: [${realReceiptNos.join(',')}]`);
+
+        if (uniqueIds.length > 0 || realReceiptNos.length > 0) {
+          try {
+            const blob = await firstValueFrom(
+              this.api.postBlob('/api/platinum/billing-payment/print-receipt', {
+                ids: uniqueIds.length > 0 ? uniqueIds : [0],
+                receiptNos: realReceiptNos,
+                isReprint: false,
+              })
+            );
+            if (blob && blob.size > 0) {
+              const url = URL.createObjectURL(blob);
+              window.open(url, '_blank');
+              printed++;
+            } else {
+              errors.push('Receipt PDF: empty response returned');
+            }
+          } catch (printErr: any) {
+            console.error(`[printReceipt] Print error:`, printErr);
+            errors.push(`Receipt print: ${printErr?.error?.message || printErr?.message || 'failed'}`);
+          }
+        } else {
+          const failedTypes = nonMiscResults.map(r => r.items[0]?.type || 'unknown').join(', ');
+          errors.push(`No receipt IDs extracted for ${failedTypes} payment(s) — receipt may not be printable yet`);
+        }
       }
 
       if (printed > 0) {

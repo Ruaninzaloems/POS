@@ -449,22 +449,20 @@ describe('POS End-to-End API Tests', () => {
       }
     }, 15000);
 
-    it('6C.3 Print misc receipt PDF', async () => {
+    it('6C.3 Print misc receipt PDF via dedicated misc endpoint', async () => {
       if (!miscReceiptId) { console.log('  ⊘ Skipped — no receipt ID'); return; }
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (cookie) headers['Cookie'] = cookie;
-      const printPayload: any = { ids: [miscReceiptId], receiptNos: [], isReprint: false };
-      if (miscReceiptNo) printPayload.receiptNos = [miscReceiptNo];
-      const pdfRes = await fetch(`${BASE}/api/platinum/billing-payment/print-receipt`, {
+      const pdfRes = await fetch(`${BASE}/api/platinum/billing-payment/print-miscellaneous-receipt?id=${miscReceiptId}`, {
         method: 'POST',
         headers,
-        body: JSON.stringify(printPayload),
+        body: JSON.stringify({}),
         signal: AbortSignal.timeout(15000),
       });
       expect(pdfRes.ok).toBe(true);
       const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
       expect(pdfBuffer.length).toBeGreaterThan(5000);
-      console.log(`  ✓ Misc receipt PDF — ${pdfBuffer.length} bytes`);
+      console.log(`  ✓ Misc receipt PDF (print-miscellaneous-receipt) — ${pdfBuffer.length} bytes`);
     }, 20000);
   });
 
