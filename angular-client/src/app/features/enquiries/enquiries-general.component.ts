@@ -3538,8 +3538,8 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const totals: Record<string, number> = {};
     months.forEach(m => totals[monthFieldMap[m]] = 0);
 
-    const openingBalances: Record<string, number> = {};
-    months.forEach(m => openingBalances[monthFieldMap[m]] = 0);
+    const apiOpenBal: Record<string, number> = {};
+    const apiCloseBal: Record<string, number> = {};
 
     for (let mi = 0; mi < months.length; mi++) {
       const res = results[mi];
@@ -3552,13 +3552,16 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         if (!desc) continue;
         const descLower = desc.toLowerCase();
 
-        const amount = Number(t.amount ?? t.debitAmount ?? t.total ?? t.totalAmount ?? 0) || 0;
+        const amount = Number(t.totalAmount ?? t.amount ?? t.debitAmount ?? t.total ?? 0) || 0;
 
         if (descLower.includes('open') && descLower.includes('balance')) {
-          openingBalances[field] = amount;
+          apiOpenBal[field] = amount;
           continue;
         }
-        if (descLower.includes('clos') && descLower.includes('balance')) continue;
+        if (descLower.includes('clos') && descLower.includes('balance')) {
+          apiCloseBal[field] = amount;
+          continue;
+        }
 
         let serviceDesc = desc;
         if (desc.toLowerCase().startsWith('levy - ')) serviceDesc = desc.substring(7);
@@ -3579,29 +3582,36 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const pivotedRows = Array.from(serviceMap.values());
     if (pivotedRows.length === 0) return [];
 
-    let firstOpenBal = 0;
-    for (const m of months) {
-      const ob = openingBalances[monthFieldMap[m]];
-      if (ob !== 0) { firstOpenBal = ob; break; }
-    }
+    console.log('[txn-summary] API opening balances:', JSON.stringify(apiOpenBal));
+    console.log('[txn-summary] API closing balances:', JSON.stringify(apiCloseBal));
+    console.log('[txn-summary] Monthly totals:', JSON.stringify(totals));
 
     const openingRow: any = { description: 'Opening Balance', financialYear: finYear, _isSpecialRow: true };
-    months.forEach(m => openingRow[monthFieldMap[m]] = 0);
-    let running = firstOpenBal;
+    const closingRow: any = { description: 'Closing Balance', financialYear: finYear, _isSpecialRow: true };
+    months.forEach(m => { openingRow[monthFieldMap[m]] = 0; closingRow[monthFieldMap[m]] = 0; });
+
+    let prevClosing = 0;
     for (const m of months) {
-      openingRow[monthFieldMap[m]] = running;
-      running += totals[monthFieldMap[m]];
+      const field = monthFieldMap[m];
+      const ob = apiOpenBal[field];
+      const cb = apiCloseBal[field];
+      if (ob !== undefined) {
+        openingRow[field] = ob;
+      } else {
+        openingRow[field] = prevClosing;
+      }
+      if (cb !== undefined) {
+        closingRow[field] = cb;
+        prevClosing = cb;
+      } else {
+        const computed = openingRow[field] + totals[field];
+        closingRow[field] = computed;
+        prevClosing = computed;
+      }
     }
 
     const totalRow: any = { description: 'Total', financialYear: finYear, _isSpecialRow: true, _isTotalRow: true };
     months.forEach(m => totalRow[monthFieldMap[m]] = totals[monthFieldMap[m]]);
-
-    const closingRow: any = { description: 'Closing Balance', financialYear: finYear, _isSpecialRow: true };
-    let closingBal = firstOpenBal;
-    for (const m of months) {
-      closingBal += totals[monthFieldMap[m]];
-      closingRow[monthFieldMap[m]] = closingBal;
-    }
 
     return [openingRow, ...pivotedRows, totalRow, closingRow];
   }
