@@ -615,7 +615,7 @@
               <div class="svc-balance-drilldown" data-testid="service-balance-detail">
                 <div class="svc-bal-header">
                   <button class="svc-bal-back" (click)="svcSelectedService.set(null)" data-testid="button-back-services">← Back</button>
-                  <h3 class="svc-bal-title">Service Type Balance</h3>
+                  <h3 class="svc-bal-title">{{ getSvcCategory(svcSelectedService()) === 'basic' ? 'Billing History' : 'Service Type Balance' }}</h3>
                   <span class="svc-bal-subtitle">{{ svcSelectedService()?.serviceDesc || svcSelectedService()?.serviceDescription || svcSelectedService()?.tariffType || '' }}</span>
                   <select class="svc-bal-fy-select" [ngModel]="svcBalanceFinYear()" (ngModelChange)="changeSvcBalanceFinYear($event)" data-testid="select-fin-year-detail">
                     @for (fy of getSvcBalanceFinYearOptions(); track fy) {
@@ -820,6 +820,8 @@
                             <div class="svc-card-actions">
                               @if (cat.key === 'prepaid') {
                                 <button class="svc-bal-btn svc-purchase-btn" (click)="viewPrepaidPurchaseHistory(svc)" [attr.data-testid]="'button-purchase-history-' + $index">🧾 Purchase History</button>
+                              } @else if (cat.key === 'basic') {
+                                <button class="svc-bal-btn svc-billing-btn" (click)="viewServiceBalance(svc)" [attr.data-testid]="'button-billing-history-' + $index">📋 Billing History</button>
                               } @else {
                                 <button class="svc-bal-btn" (click)="viewServiceBalance(svc)" [attr.data-testid]="'button-view-balance-' + $index">📊 View Balance</button>
                               }

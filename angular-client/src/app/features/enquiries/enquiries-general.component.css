@@ -3385,6 +3385,8 @@
 .svc-bal-btn:hover { background: var(--platinum-accent, #c9a84c); color: #fff; }
 .svc-purchase-btn { border-color: #a855f7; color: #a855f7; }
 .svc-purchase-btn:hover { background: #a855f7; color: #fff; }
+.svc-billing-btn { border-color: #2563eb; color: #2563eb; }
+.svc-billing-btn:hover { background: #2563eb; color: #fff; }
 
 .cons-bar-actual { background: linear-gradient(180deg, var(--platinum-primary, #0f2b46) 0%, rgba(15,43,70,0.4) 100%); }
 .cons-bar-estimate { background: linear-gradient(180deg, #94a3b8 0%, rgba(148,163,184,0.4) 100%); }
