@@ -1323,18 +1323,74 @@ export class PosComponent implements OnInit, OnDestroy {
     }
     this.resetTenderFields();
     const total = this.basket.totalToPay();
-    if (this.canTenderCash()) {
-      this.cashAmount.set(total);
-      this.activeTender.set('cash');
-    } else if (this.canTenderCard()) {
-      this.cardAmount.set(total);
-      this.activeTender.set('card');
-    } else if (this.canTenderCheque()) {
-      this.chequeAmount.set(total);
-      this.activeTender.set('cheque');
-    } else if (this.canTenderEft()) {
-      this.eftAmount.set(total);
-      this.activeTender.set('eft');
+    const items = this.basket.orderedItems();
+
+    const miscItems = items.filter(i => i.type === 'misc' && i.miscData);
+    const nonMiscItems = items.filter(i => i.type !== 'misc');
+    const miscCardItems = miscItems.filter(i => i.miscData!.tenderType === 'card');
+    const miscCashItems = miscItems.filter(i => i.miscData!.tenderType === 'cash');
+    const miscCardTotal = miscCardItems.reduce((s, i) => s + i.amountToPay, 0);
+    const miscCashTotal = miscCashItems.reduce((s, i) => s + i.amountToPay, 0);
+    const nonMiscTotal = nonMiscItems.reduce((s, i) => s + i.amountToPay, 0);
+
+    const firstCardMisc = miscCardItems.find(i => i.miscData?.cardNumber);
+
+    const prefillCard = () => {
+      if (firstCardMisc?.miscData?.cardNumber) {
+        const digits = firstCardMisc.miscData.cardNumber.replace(/\D/g, '').slice(0, 16);
+        this.cardNumber.set(digits.replace(/(\d{4})(?=\d)/g, '$1 '));
+        this.cardExpiry.set(firstCardMisc.miscData.cardExpiry || '');
+      }
+    };
+
+    const fallbackTender = () => {
+      if (this.canTenderCash()) {
+        this.cashAmount.set(total);
+        this.activeTender.set('cash');
+      } else if (this.canTenderCard()) {
+        this.cardAmount.set(total);
+        this.activeTender.set('card');
+      } else if (this.canTenderCheque()) {
+        this.chequeAmount.set(total);
+        this.activeTender.set('cheque');
+      } else if (this.canTenderEft()) {
+        this.eftAmount.set(total);
+        this.activeTender.set('eft');
+      }
+    };
+
+    if (nonMiscItems.length === 0 && miscItems.length > 0) {
+      if (miscCardItems.length > 0 && miscCashItems.length === 0 && this.canTenderCard()) {
+        this.activeTender.set('card');
+        this.cardAmount.set(total);
+        prefillCard();
+      } else if (miscCashItems.length > 0 && miscCardItems.length === 0 && this.canTenderCash()) {
+        this.activeTender.set('cash');
+        this.cashAmount.set(total);
+      } else if (miscCashItems.length > 0 && miscCardItems.length > 0 && this.canTenderCashCard()) {
+        this.activeTender.set('cash+card');
+        this.cashAmount.set(miscCashTotal);
+        this.cardAmount.set(miscCardTotal);
+        prefillCard();
+      } else {
+        fallbackTender();
+        if (this.activeTender() === 'card' || this.activeTender() === 'cash+card') prefillCard();
+      }
+    } else if (nonMiscItems.length > 0 && miscCardItems.length > 0) {
+      if (this.canTenderCashCard()) {
+        this.activeTender.set('cash+card');
+        this.cashAmount.set(nonMiscTotal + miscCashTotal);
+        this.cardAmount.set(miscCardTotal);
+        prefillCard();
+      } else if (this.canTenderCard()) {
+        this.activeTender.set('card');
+        this.cardAmount.set(total);
+        prefillCard();
+      } else {
+        fallbackTender();
+      }
+    } else {
+      fallbackTender();
     }
     this.showPaymentPanel.set(true);
   }
@@ -1567,8 +1623,15 @@ export class PosComponent implements OnInit, OnDestroy {
       return;
     }
     if (this.cardAmount() > 0 && !this.cardNumber().replace(/\s/g, '')) {
-      this.toast.error('Please enter the card number for card payments.');
-      return;
+      const ordered = this.basket.orderedItems();
+      const nonMiscNeedingCard = ordered.filter(i => i.type !== 'misc');
+      const miscWithoutCard = ordered.filter(i => i.type === 'misc' && i.miscData?.tenderType === 'card' && !i.miscData?.cardNumber);
+      const needsPanelCardNumber = nonMiscNeedingCard.length > 0 || miscWithoutCard.length > 0
+        || ordered.filter(i => i.type === 'misc' && i.miscData?.tenderType === 'card').length === 0;
+      if (needsPanelCardNumber) {
+        this.toast.error('Please enter the card number for card payments.');
+        return;
+      }
     }
     if (this.chequeAmount() > 0 && !this.chequeNumber()) {
       this.toast.error('Please enter the cheque number.');
