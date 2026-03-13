@@ -2344,7 +2344,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             const clearQueryId = clearPropertyId || accountId;
             const [clearResult, linkedResult] = await Promise.allSettled([
               firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/clearance-inquiries/${clearQueryId}`)),
-              firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/linked-accounts-on-property/${accountId}`)),
+              firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/linked-accounts-on-property`, { accountId: String(accountId) })),
             ]);
             const clearArr = clearResult.status === 'fulfilled' ? this.normalizeArray(clearResult.value) : [];
             const linkedArr = linkedResult.status === 'fulfilled' ? this.normalizeArray(linkedResult.value) : [];
@@ -2395,7 +2395,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
         case 'linked-accounts':
           const [linkedSettled] = await Promise.allSettled([
-            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/linked-accounts-on-property/${accountId}`))
+            firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/linked-accounts-on-property`, { accountId: String(accountId) }))
           ]);
           const linkedArr = linkedSettled.status === 'fulfilled' ? this.normalizeArray(linkedSettled.value) : [];
           linkedArr.sort((a: any, b: any) => {
@@ -5639,7 +5639,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.linkedServicesMap.set({});
     try {
       const result = await firstValueFrom(
-        this.api.get<any>(`/api/platinum/billing-enquiry/linked-accounts-on-property/${accountId}`)
+        this.api.get<any>(`/api/platinum/billing-enquiry/linked-accounts-on-property`, { accountId: String(accountId) })
       );
       if (this.linkedRequestToken !== token) return;
       const arr = this.normalizeArray(result);
@@ -5682,7 +5682,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.propDebtExpandedAcct.set(null);
     try {
       const linkedResult = await firstValueFrom(
-        this.api.get<any>(`/api/platinum/billing-enquiry/linked-accounts-on-property/${accountId}`)
+        this.api.get<any>(`/api/platinum/billing-enquiry/linked-accounts-on-property`, { accountId: String(accountId) })
       );
       if (this.propDebtRequestToken !== token) return;
       let allAccounts = this.normalizeArray(linkedResult);
