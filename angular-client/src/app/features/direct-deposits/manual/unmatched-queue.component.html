@@ -553,10 +553,8 @@
               @if (manualSearchOpen()) {
                 <div class="manual-search-form">
                   <div class="ms-quick-row">
-                    <input type="text" class="ms-input ms-input-wide" [(ngModel)]="msQuick" placeholder="Search by account number, name, ID, phone..." data-testid="input-manual-search-quick" (keydown.enter)="runManualSearch()">
-                    <button class="btn-primary btn-sm" (click)="runManualSearch()" [disabled]="msSearching()" data-testid="button-manual-search">
-                      @if (msSearching()) { <div class="spinner-sm"></div> } @else { Search }
-                    </button>
+                    <input type="text" class="ms-input ms-input-wide" [value]="msQuick()" (input)="msQuick.set($any($event.target).value); onMsInput()" placeholder="Type to search — account number, name, ID, phone..." data-testid="input-manual-search-quick">
+                    @if (msSearching()) { <div class="spinner-sm ms-spinner"></div> }
                     <button class="btn-outline btn-sm" (click)="msAdvancedOpen.set(!msAdvancedOpen())" data-testid="button-toggle-advanced">
                       {{ msAdvancedOpen() ? 'Simple' : 'Advanced' }}
                     </button>
@@ -565,33 +563,30 @@
                     <div class="ms-advanced-grid">
                       <div class="ms-field">
                         <label>Account Number</label>
-                        <input type="text" [(ngModel)]="msAccountNo" placeholder="e.g. 000000003698" data-testid="input-ms-account">
+                        <input type="text" [value]="msAccountNo()" (input)="msAccountNo.set($any($event.target).value); onMsInput()" placeholder="e.g. 000000003698" data-testid="input-ms-account">
                       </div>
                       <div class="ms-field">
                         <label>Name / Company</label>
-                        <input type="text" [(ngModel)]="msName" placeholder="Search by name" data-testid="input-ms-name">
+                        <input type="text" [value]="msName()" (input)="msName.set($any($event.target).value); onMsInput()" placeholder="Search by name" data-testid="input-ms-name">
                       </div>
                       <div class="ms-field">
                         <label>ERF Number</label>
-                        <input type="text" [(ngModel)]="msErf" placeholder="e.g. 13110" data-testid="input-ms-erf">
+                        <input type="text" [value]="msErf()" (input)="msErf.set($any($event.target).value); onMsInput()" placeholder="e.g. 13110" data-testid="input-ms-erf">
                       </div>
                       <div class="ms-field">
                         <label>Meter Number</label>
-                        <input type="text" [(ngModel)]="msMeter" placeholder="Physical meter number" data-testid="input-ms-meter">
+                        <input type="text" [value]="msMeter()" (input)="msMeter.set($any($event.target).value); onMsInput()" placeholder="Physical meter number" data-testid="input-ms-meter">
                       </div>
                       <div class="ms-field">
                         <label>ID / Registration No.</label>
-                        <input type="text" [(ngModel)]="msIdNumber" placeholder="13 digit ID number" data-testid="input-ms-id">
+                        <input type="text" [value]="msIdNumber()" (input)="msIdNumber.set($any($event.target).value); onMsInput()" placeholder="13 digit ID number" data-testid="input-ms-id">
                       </div>
                       <div class="ms-field">
                         <label>Mobile Number</label>
-                        <input type="text" [(ngModel)]="msMobile" placeholder="0821234567" data-testid="input-ms-mobile">
+                        <input type="text" [value]="msMobile()" (input)="msMobile.set($any($event.target).value); onMsInput()" placeholder="0821234567" data-testid="input-ms-mobile">
                       </div>
                     </div>
                     <div class="ms-actions">
-                      <button class="btn-primary btn-sm" (click)="runManualSearch()" [disabled]="msSearching()" data-testid="button-manual-search-adv">
-                        @if (msSearching()) { <div class="spinner-sm"></div> } @else { Search }
-                      </button>
                       <button class="btn-outline btn-sm" (click)="clearManualSearch()" data-testid="button-clear-manual-search">Clear All</button>
                     </div>
                   }

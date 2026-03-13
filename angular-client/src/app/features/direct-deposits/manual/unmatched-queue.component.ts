@@ -1,11 +1,11 @@
-import { Component, signal, computed, inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, signal, computed, inject, OnInit, OnDestroy, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { ApiService } from '../../../core/services/api.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { AuthService } from '../../../core/services/auth.service';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Subject } from 'rxjs';
 
 interface BankReconPosItem {
   posItem_ID: number;
@@ -517,16 +517,18 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
 
   manualSearchOpen = signal(false);
   msAdvancedOpen = signal(false);
-  msQuick = '';
-  msAccountNo = '';
-  msName = '';
-  msErf = '';
-  msMeter = '';
-  msIdNumber = '';
-  msMobile = '';
+  msQuick = signal('');
+  msAccountNo = signal('');
+  msName = signal('');
+  msErf = signal('');
+  msMeter = signal('');
+  msIdNumber = signal('');
+  msMobile = signal('');
   msSearching = signal(false);
   msSearched = signal(false);
   msResults = signal<SuggestedMatch[]>([]);
+  private msDebounceTimer: any = null;
+  private msSearchVersion = 0;
 
   inlineSuggestions = signal<Map<number, SuggestedMatch[]>>(new Map());
   inlineLoading = signal<Set<number>>(new Set());
@@ -1808,31 +1810,47 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
     this.clearManualSearch();
   }
 
-  async runManualSearch(): Promise<void> {
-    if (this.msSearching()) return;
+  onMsInput(): void {
+    if (this.msDebounceTimer) clearTimeout(this.msDebounceTimer);
+    this.msDebounceTimer = setTimeout(() => this.runManualSearch(), 300);
+  }
 
-    const quick = (this.msQuick || '').trim();
-    const accNo = (this.msAccountNo || '').trim();
-    const name = (this.msName || '').trim();
-    const erf = (this.msErf || '').trim();
-    const meter = (this.msMeter || '').trim();
-    const idNum = (this.msIdNumber || '').trim();
-    const mobile = (this.msMobile || '').trim();
+  async runManualSearch(): Promise<void> {
+    const quick = this.msQuick().trim();
+    const accNo = this.msAccountNo().trim();
+    const name = this.msName().trim();
+    const erf = this.msErf().trim();
+    const meter = this.msMeter().trim();
+    const idNum = this.msIdNumber().trim();
+    const mobile = this.msMobile().trim();
 
     const hasAdvanced = accNo || name || erf || meter || idNum || mobile;
     if (!quick && !hasAdvanced) {
-      this.toast.error('Please enter a search term');
+      this.msResults.set([]);
+      this.msSearched.set(false);
+      this.msSearching.set(false);
       return;
     }
 
+    const version = ++this.msSearchVersion;
     this.msSearching.set(true);
-    this.msSearched.set(false);
-    this.msResults.set([]);
 
     try {
       const searchPromises: Promise<any[]>[] = [];
 
-      if (quick) {
+      if (quick && quick.length >= 2) {
+        searchPromises.push(
+          firstValueFrom(
+            this.api.get('/api/platinum/direct-deposit-allocation/get-account-autocomplete', { searchTerm: quick })
+          ).then((d: any) => this.unwrap(d)).catch(() => [])
+        );
+
+        searchPromises.push(
+          firstValueFrom(
+            this.api.get('/api/platinum/direct-deposit-allocation/get-old-account-autocomplete', { searchTerm: quick })
+          ).then((d: any) => this.unwrap(d)).catch(() => [])
+        );
+
         searchPromises.push(
           firstValueFrom(
             this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: quick })
@@ -1856,8 +1874,13 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
         }
       }
 
-      if (accNo) {
+      if (accNo && accNo.length >= 2) {
         const padded = accNo.replace(/^0+/, '').padStart(12, '0');
+        searchPromises.push(
+          firstValueFrom(
+            this.api.get('/api/platinum/direct-deposit-allocation/get-account-autocomplete', { searchTerm: accNo })
+          ).then((d: any) => this.unwrap(d)).catch(() => [])
+        );
         searchPromises.push(
           firstValueFrom(
             this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: padded })
@@ -1865,7 +1888,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
         );
       }
 
-      if (name) {
+      if (name && name.length >= 2) {
         searchPromises.push(
           firstValueFrom(
             this.api.post('/api/platinum/billing-payment/search-accounts', { name })
@@ -1873,7 +1896,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
         );
       }
 
-      if (erf) {
+      if (erf && erf.length >= 2) {
         searchPromises.push(
           firstValueFrom(
             this.api.post('/api/platinum/billing-payment/search-accounts', { erfNumber: erf })
@@ -1881,7 +1904,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
         );
       }
 
-      if (meter) {
+      if (meter && meter.length >= 2) {
         searchPromises.push(
           firstValueFrom(
             this.api.post('/api/platinum/billing-payment/search-accounts', { meterNumber: meter })
@@ -1889,7 +1912,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
         );
       }
 
-      if (idNum) {
+      if (idNum && idNum.length >= 2) {
         searchPromises.push(
           firstValueFrom(
             this.api.post('/api/platinum/billing-payment/search-accounts', { idNumber: idNum })
@@ -1897,7 +1920,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
         );
       }
 
-      if (mobile) {
+      if (mobile && mobile.length >= 2) {
         searchPromises.push(
           firstValueFrom(
             this.api.post('/api/platinum/billing-payment/search-accounts', { mobileNo: mobile })
@@ -1905,7 +1928,14 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
         );
       }
 
+      if (searchPromises.length === 0) {
+        this.msSearching.set(false);
+        return;
+      }
+
       const allResults = await Promise.all(searchPromises);
+      if (version !== this.msSearchVersion) return;
+
       const seen = new Set<number>();
       const merged: SuggestedMatch[] = [];
 
@@ -1926,7 +1956,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
             outstandingAmount: r.outStandingAmt || r.outstandingAmount || 0,
             statusDesc: r.statusDesc || '',
             matchType: 'account_number',
-            matchDetail: 'Manual search result',
+            matchDetail: 'Search result',
             confidence: 100,
           });
         }
@@ -1935,22 +1965,27 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
       this.msResults.set(merged.slice(0, 50));
       this.msSearched.set(true);
     } catch (e: any) {
-      this.toast.error('Search failed: ' + (e?.message || 'Unknown error'));
+      if (version === this.msSearchVersion) {
+        this.toast.error('Search failed: ' + (e?.message || 'Unknown error'));
+      }
     } finally {
-      this.msSearching.set(false);
+      if (version === this.msSearchVersion) {
+        this.msSearching.set(false);
+      }
     }
   }
 
   clearManualSearch(): void {
-    this.msQuick = '';
-    this.msAccountNo = '';
-    this.msName = '';
-    this.msErf = '';
-    this.msMeter = '';
-    this.msIdNumber = '';
-    this.msMobile = '';
+    this.msQuick.set('');
+    this.msAccountNo.set('');
+    this.msName.set('');
+    this.msErf.set('');
+    this.msMeter.set('');
+    this.msIdNumber.set('');
+    this.msMobile.set('');
     this.msResults.set([]);
     this.msSearched.set(false);
+    if (this.msDebounceTimer) clearTimeout(this.msDebounceTimer);
   }
 
   formatCurrency(val: number): string {
