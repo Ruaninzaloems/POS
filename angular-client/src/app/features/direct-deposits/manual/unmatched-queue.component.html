@@ -247,8 +247,14 @@
                                     <span class="multi-source-badge" [title]="'Confirmed by: ' + match.matchSources.join(', ')">{{ match.matchSources.length }} sources</span>
                                   }
                                 </div>
-                                <div class="inline-match-name">{{ match.name }}</div>
+                                <div class="inline-match-name">{{ match.name || 'Loading...' }}</div>
                                 <div class="inline-match-detail">{{ match.matchDetail }}</div>
+                                @if (match.bankStatementPrior && match.bankStatementPrior.length > 0) {
+                                  <div class="prior-alloc-badge">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                    Previously allocated {{ match.bankStatementPrior.length }}x — same description
+                                  </div>
+                                }
                                 @if (match.address) {
                                   <div class="inline-match-address">{{ match.address }}{{ match.town ? ', ' + match.town : '' }}</div>
                                 }
@@ -515,6 +521,21 @@
                         </div>
                         <div class="match-name">{{ match.name }}</div>
                         <div class="match-detail">{{ match.matchDetail }}</div>
+                        @if (match.bankStatementPrior && match.bankStatementPrior.length > 0) {
+                          <div class="prior-alloc-badge">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                            Previously allocated {{ match.bankStatementPrior.length }}x — same description
+                          </div>
+                          <div class="prior-alloc-details">
+                            @for (prior of match.bankStatementPrior.slice(0, 3); track $index) {
+                              <div class="prior-alloc-line">
+                                <span class="mono">{{ prior.receiptNo }}</span>
+                                <span>{{ formatCurrency(prior.paidAmount) }}</span>
+                                <span>{{ formatDate(prior.date) }}</span>
+                              </div>
+                            }
+                          </div>
+                        }
                         @if (match.address) {
                           <div class="match-address">
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>

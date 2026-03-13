@@ -859,9 +859,12 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
         existing.address = a.split(/[\r\n]+/).filter(Boolean)[0] || '';
       }
       if (!existing.erfNumber && item.erfNumber) existing.erfNumber = item.erfNumber;
-      if (!existing.accountNo || existing.accountNo === String(accId)) {
+      if (!existing.accountNo || existing.accountNo === String(accId) || existing.accountNo === String(accId).padStart(12, '0')) {
         const betterNo = item.accountNumber || item.accountNo;
-        if (betterNo && betterNo !== String(accId)) existing.accountNo = betterNo;
+        if (betterNo && betterNo !== String(accId) && betterNo !== String(accId).padStart(12, '0')) existing.accountNo = betterNo;
+      }
+      if (!existing.name && (item.name || item.initials || item.lastName)) {
+        existing.name = [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || '';
       }
       if (item._bankStatementPrior && !existing.bankStatementPrior) {
         existing.bankStatementPrior = item._bankStatementPrior;
@@ -1551,9 +1554,84 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
         );
       }
 
+      const descText = (item.note || '').trim();
+      if (descText.length >= 5) {
+        searchPromises.push(
+          this.safeCall(() => firstValueFrom(
+            this.api.get('/api/platinum/billing-enquiry/search-by-bank-statement-note', { searchText: descText })
+          )).then((rawData: any) => {
+            const items = this.unwrap(rawData);
+            const allocatedItems = items.filter((r: any) =>
+              r.allocationStatus && r.allocationStatus.toUpperCase().includes('ACCOUNT') && r.accountId
+            );
+            const accountMap = new Map<number, { count: number; receipts: string[]; dates: string[]; amounts: number[]; note: string }>();
+            for (const r of allocatedItems) {
+              const accId = Number(r.accountId);
+              if (!accId) continue;
+              const existing = accountMap.get(accId) || { count: 0, receipts: [], dates: [], amounts: [], note: r.bankStatementNote || '' };
+              existing.count++;
+              if (r.receiptNo && !existing.receipts.includes(r.receiptNo)) existing.receipts.push(r.receiptNo);
+              if (r.billingAllocationDate) existing.dates.push(r.billingAllocationDate);
+              if (r.paidAmount) existing.amounts.push(r.paidAmount);
+              accountMap.set(accId, existing);
+            }
+            for (const [accId, hist] of accountMap) {
+              const lastDate = hist.dates.sort().reverse()[0] || '';
+              const dateStr = lastDate ? ` (last: ${lastDate.substring(0, 10)})` : '';
+              const receiptStr = hist.receipts.slice(0, 2).join(', ');
+              const priorData = allocatedItems
+                .filter((r: any) => Number(r.accountId) === accId)
+                .slice(0, 5)
+                .map((r: any) => ({
+                  receiptNo: r.receiptNo || '',
+                  paidAmount: r.paidAmount || r.bankAmount || 0,
+                  date: r.billingAllocationDate || r.bankStatementDate || '',
+                  status: r.allocationStatus || '',
+                  description: r.bankStatementNote || '',
+                }));
+              this.addResult(suggestions, {
+                account_ID: accId,
+                accountNumber: String(accId).padStart(12, '0'),
+                _bankStatementPrior: priorData,
+              }, 'history',
+                `Previously allocated ${hist.count}x${dateStr}`,
+                Math.min(97, 88 + hist.count * 2),
+                [
+                  `Bank statement "${hist.note}" was previously allocated to this account`,
+                  `${hist.count} prior allocation${hist.count > 1 ? 's' : ''}${receiptStr ? ` (${receiptStr})` : ''}`,
+                  'Same description → same account (historical match)',
+                ]);
+            }
+          })
+        );
+      }
+
       progressMap.set(id, `Running ${searchPromises.length} searches...`);
       this.inlineProgress.set(new Map(progressMap));
       await Promise.allSettled(searchPromises);
+
+      const needsEnrich = suggestions.filter(s => s.matchType === 'history' && !s.name);
+      if (needsEnrich.length > 0) {
+        progressMap.set(id, 'Enriching history matches...');
+        this.inlineProgress.set(new Map(progressMap));
+        await Promise.allSettled(needsEnrich.map(s =>
+          this.safeCall(() => firstValueFrom(
+            this.api.get('/api/platinum/billing-payment/search-accounts', { accountId: s.accountId })
+          )).then((data: any) => {
+            const items = this.unwrap(data);
+            if (items.length > 0) {
+              const acc = items[0];
+              s.name = [acc.initials, acc.lastName].filter(Boolean).join(' ') || acc.name || '';
+              s.accountNo = acc.accountNumber || acc.accountNo || s.accountNo;
+              s.outstandingAmount = acc.outStandingAmt ?? acc.outstandingAmount ?? s.outstandingAmount;
+              if (!s.address && (acc.deliveryAddress || acc.locationAddress)) {
+                s.address = (acc.deliveryAddress || acc.locationAddress || '').split(/[\r\n]+/).filter(Boolean)[0] || '';
+              }
+              if (!s.town && acc.town) s.town = acc.town;
+            }
+          })
+        ));
+      }
 
       if (clues.nameSearchTerms.length > 0 && suggestions.length > 0) {
         const upperNames = clues.nameSearchTerms.map(n => n.toUpperCase());
