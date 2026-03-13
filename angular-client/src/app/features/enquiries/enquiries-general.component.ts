@@ -6564,13 +6564,17 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     if (!accountId) return;
     this.generatingPropertyLetter.set(type);
     try {
-      const [propRes, consUnitRes] = await Promise.allSettled([
+      const [propRes, consUnitRes, consUnitByAcctRes, consAcctDetailsRes] = await Promise.allSettled([
         firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/property-details-by-account/${accountId}`)),
         firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/consumption-units/${accountId}`)),
+        firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/cons-unit-by-account`, { AccountId: String(accountId) })),
+        firstValueFrom(this.api.get<any>(`/api/platinum/receipt-prepaid/cons-account-details`, { accountId: String(accountId) })),
       ]);
-      const prop = propRes.status === 'fulfilled' ? (Array.isArray(propRes.value) ? propRes.value[0] : propRes.value) : null;
+      const prop = propRes.status === 'fulfilled' && propRes.value && !propRes.value._error ? (Array.isArray(propRes.value) ? propRes.value[0] : propRes.value) : null;
       const consUnit = consUnitRes.status === 'fulfilled' ? (Array.isArray(consUnitRes.value) ? consUnitRes.value[0] : consUnitRes.value) : null;
-      const letterUnitPartId = this.selectedAccount()?.unitPartitionID || consUnit?.unitPartitionID || consUnit?.unitPartition_ID;
+      const consUnitByAcct = consUnitByAcctRes.status === 'fulfilled' && consUnitByAcctRes.value && !consUnitByAcctRes.value._error ? (Array.isArray(consUnitByAcctRes.value) ? consUnitByAcctRes.value[0] : consUnitByAcctRes.value) : null;
+      const consAcctDetails = consAcctDetailsRes.status === 'fulfilled' && consAcctDetailsRes.value && !consAcctDetailsRes.value._error ? (Array.isArray(consAcctDetailsRes.value) ? consAcctDetailsRes.value[0] : consAcctDetailsRes.value) : null;
+      const letterUnitPartId = this.selectedAccount()?.unitPartitionID || consUnit?.unitPartitionID || consUnit?.unitPartition_ID || consUnitByAcct?.unitPartitionID || consUnitByAcct?.unitPartition_ID;
       let vals: any[] = [];
       if (letterUnitPartId) {
         try {
@@ -6581,7 +6585,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         } catch (e) { console.log('[letter] valuation-by-unit failed:', e); }
       }
       if (vals.length === 0) {
-        const letterPropId = prop?.property_ID || prop?.propertyID || prop?.propertyId;
+        const letterPropId = prop?.property_ID || prop?.propertyID || prop?.propertyId || consUnitByAcct?.property_ID || consUnitByAcct?.propertyID;
         if (letterPropId) {
           try {
             const suppVal = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/supplementary-valuations`, { propertyId: String(letterPropId) }));
@@ -6590,15 +6594,15 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         }
       }
       const acct = this.selectedAccount();
-      const ownerName = this.escHtml(prop?.name || prop?.owner || consUnit?.ownerName || acct?.name || '');
-      const address = this.escHtml(prop?.propertyStreet || prop?.streetName || acct?.locationAddress || '');
-      const sgNumber = this.escHtml(prop?.sgNumber || consUnit?.sgNumber || acct?.sgNumber || '');
-      const erfNumber = this.escHtml(prop?.erfNumber || '');
-      const suburb = this.escHtml(prop?.suburb || prop?.subSuburb || '');
-      const town = this.escHtml(prop?.town || '');
-      const marketValue = prop?.marketValue || consUnit?.marketValue || 0;
-      const standSize = this.escHtml(prop?.standSize || consUnit?.standSize || '');
-      const zoning = this.escHtml(prop?.typeOfUse || prop?.typeofUse || prop?.townPlanningZoneType || '');
+      const ownerName = this.escHtml(prop?.name || prop?.owner || consUnit?.ownerName || consUnitByAcct?.ownerName || consAcctDetails?.ownerName || acct?.name || '');
+      const address = this.escHtml(prop?.propertyStreet || prop?.streetName || consUnitByAcct?.propertyStreet || consAcctDetails?.propertyStreet || acct?.locationAddress || '');
+      const sgNumber = this.escHtml(prop?.sgNumber || consUnit?.sgNumber || consUnitByAcct?.sgNumber || consAcctDetails?.sgNumber || acct?.sgNumber || '');
+      const erfNumber = this.escHtml(prop?.erfNumber || consUnitByAcct?.erfNumber || consUnitByAcct?.erfNo || consAcctDetails?.erfNumber || consAcctDetails?.erfNo || acct?.erfNumber || '');
+      const suburb = this.escHtml(prop?.suburb || prop?.subSuburb || consUnitByAcct?.suburb || consAcctDetails?.suburb || '');
+      const town = this.escHtml(prop?.town || consUnitByAcct?.town || consAcctDetails?.town || '');
+      const marketValue = prop?.marketValue || consUnit?.marketValue || consUnitByAcct?.marketValue || consUnitByAcct?.standMarketValue || consAcctDetails?.marketValue || 0;
+      const standSize = this.escHtml(prop?.standSize || consUnit?.standSize || consUnitByAcct?.standSize || consUnitByAcct?.allotmentArea || consAcctDetails?.standSize || '');
+      const zoning = this.escHtml(prop?.typeOfUse || prop?.typeofUse || prop?.townPlanningZoneType || consUnitByAcct?.typeOfUse || consUnitByAcct?.typeofUse || consUnitByAcct?.townPlanningZoneType || consAcctDetails?.zoneDesc || consAcctDetails?.typeOfUseDesc || '');
       const today = new Date();
       const dateStr = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
 
