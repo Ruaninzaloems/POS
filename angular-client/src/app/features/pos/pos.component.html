@@ -202,7 +202,16 @@
                         <div class="account-info-row">
                           <span class="info-label">Balance:</span>
                           <span class="info-value balance-value" [class.owing]="result.balance > 0" [class.credit]="result.balance < 0">R {{ formatCurrency(result.balance) }}</span>
+                          @if (result.balance < 0) {
+                            <span class="credit-badge">Credit</span>
+                          }
                         </div>
+                        @if (result.rawData?.erfNumber || result.rawData?.sgNumber) {
+                          <div class="account-info-row">
+                            <span class="info-label">SG Number:</span>
+                            <span class="info-value">{{ result.rawData.erfNumber || result.rawData.sgNumber }}</span>
+                          </div>
+                        }
                         @if (result.rawData?.hasPrepaidMeter) {
                           <div class="account-info-row">
                             <span class="info-label">Prepaid {{ result.rawData.prepaidType || 'Electricity' }}:</span>
