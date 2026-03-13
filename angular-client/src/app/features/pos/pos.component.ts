@@ -1021,11 +1021,49 @@ export class PosComponent implements OnInit, OnDestroy {
     this.tabSearchLoading.set(true);
     this.tabSearchActive.set(true);
     try {
-      const data: any = await firstValueFrom(
-        this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: query })
-      );
-      const results = Array.isArray(data) ? data : data?.accounts || data?.results || data?.data || [];
-      this.tabSearchResults.set(results);
+      const [accountData, groupData] = await Promise.allSettled([
+        firstValueFrom(this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: query })),
+        firstValueFrom(this.api.post('/api/platinum/billing-payment/search-account-groups', { searchTerm: query })),
+      ]);
+
+      const combined: any[] = [];
+      const seenIds = new Set<number>();
+
+      if (accountData.status === 'fulfilled') {
+        let accts = Array.isArray(accountData.value) ? accountData.value : (accountData.value as any)?.accounts || (accountData.value as any)?.results || (accountData.value as any)?.data || [];
+        if (/^\d+$/.test(query)) {
+          const queryStripped = query.replace(/^0+/, '') || '0';
+          const exactMatches = accts.filter((a: any) => {
+            const acctNo = String(a.accountNo || a.accountNumber || a.accountID || '');
+            return (acctNo.replace(/^0+/, '') || '0') === queryStripped;
+          });
+          if (exactMatches.length > 0) accts = exactMatches;
+        }
+        for (const a of accts) {
+          const id = a.account_ID || a.accountID || a.accountId || 0;
+          if (!id || seenIds.has(id)) continue;
+          seenIds.add(id);
+          combined.push(a);
+        }
+      }
+
+      if (groupData.status === 'fulfilled') {
+        const groups = Array.isArray(groupData.value) ? groupData.value : (groupData.value as any)?.groups || (groupData.value as any)?.data || (groupData.value as any)?.institutions || [];
+        for (const g of groups) {
+          const groupAccounts = g.accounts || [];
+          for (const a of groupAccounts) {
+            const id = a.account_ID || a.accountID || a.accountId || 0;
+            if (!id || seenIds.has(id)) continue;
+            seenIds.add(id);
+            combined.push(a);
+          }
+        }
+      }
+
+      this.tabSearchResults.set(combined);
+      if (combined.length === 0) {
+        this.toast.show('No accounts found for your search.', 'info');
+      }
     } catch {
       this.tabSearchResults.set([]);
       this.toast.error('Search failed. Please try again.');
