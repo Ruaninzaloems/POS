@@ -5078,7 +5078,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const code = svc.meterCode || '';
     if (meter && code) return `${meter} - ${code}`;
     if (meter) return meter;
-    return 'No Meter';
+    return '';
   }
 
   formatTariffRate(svc: any): string {
@@ -5110,7 +5110,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       if (remainder !== undefined) vals.push(`Remainder: ${this.formatDebtAmt(Number(remainder) || 0)}`);
       parts.push(`<div class="svc-rate-line">${vals.join('<br>')}</div>`);
     }
-    if (parts.length === 0) return '<div class="svc-rate-line">-</div>';
+    if (parts.length === 0) return '';
     return parts.join('');
   }
 

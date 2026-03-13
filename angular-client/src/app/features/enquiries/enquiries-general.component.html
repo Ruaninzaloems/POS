@@ -862,35 +862,45 @@
                               <span class="svc-card-status" [class.svc-card-status-active]="isSvcActive(svc)">{{ svc.serviceStatus || svc.statusDesc || svc.status || '-' }}</span>
                             </div>
                             <div class="svc-card-body">
-                              <div class="svc-card-row">
-                                <span class="svc-card-label">Tariff</span>
-                                <span class="svc-card-val svc-card-tariff-val">{{ svc.tariff || svc.tariffDesc || '-' }}</span>
-                              </div>
-                              @if (getSvcMeterDisplay(svc) !== '-') {
+                              @if (svc.tariff || svc.tariffDesc) {
+                                <div class="svc-card-row">
+                                  <span class="svc-card-label">Tariff</span>
+                                  <span class="svc-card-val svc-card-tariff-val">{{ svc.tariff || svc.tariffDesc }}</span>
+                                </div>
+                              }
+                              @if (getSvcMeterDisplay(svc)) {
                                 <div class="svc-card-row">
                                   <span class="svc-card-label">Meter</span>
                                   <span class="svc-card-val mono">{{ getSvcMeterDisplay(svc) }}</span>
                                 </div>
                               }
                               <div class="svc-card-row-pair">
-                                <div class="svc-card-row svc-card-row-half">
-                                  <span class="svc-card-label">Frequency</span>
-                                  <span class="svc-card-val">{{ svc.frequency || '-' }}</span>
-                                </div>
-                                <div class="svc-card-row svc-card-row-half">
-                                  <span class="svc-card-label">Connection</span>
-                                  <span class="svc-card-val">{{ svc.meterConnectionSize || '-' }}</span>
-                                </div>
+                                @if (svc.frequency) {
+                                  <div class="svc-card-row svc-card-row-half">
+                                    <span class="svc-card-label">Frequency</span>
+                                    <span class="svc-card-val">{{ svc.frequency }}</span>
+                                  </div>
+                                }
+                                @if (svc.meterConnectionSize) {
+                                  <div class="svc-card-row svc-card-row-half">
+                                    <span class="svc-card-label">Connection</span>
+                                    <span class="svc-card-val">{{ svc.meterConnectionSize }}</span>
+                                  </div>
+                                }
                               </div>
                               <div class="svc-card-row-pair">
-                                <div class="svc-card-row svc-card-row-half">
-                                  <span class="svc-card-label">Factor/Qty</span>
-                                  <span class="svc-card-val mono">{{ svc.factorQuantity ?? svc.tarifffactor ?? '-' }}</span>
-                                </div>
-                                <div class="svc-card-row svc-card-row-half">
-                                  <span class="svc-card-label">Commenced</span>
-                                  <span class="svc-card-val">{{ formatDate(svc.serviceCommencementDate || svc.commencementDate || svc.startDate) }}</span>
-                                </div>
+                                @if (svc.factorQuantity != null || svc.tarifffactor != null) {
+                                  <div class="svc-card-row svc-card-row-half">
+                                    <span class="svc-card-label">Factor/Qty</span>
+                                    <span class="svc-card-val mono">{{ svc.factorQuantity ?? svc.tarifffactor }}</span>
+                                  </div>
+                                }
+                                @if (svc.serviceCommencementDate || svc.commencementDate || svc.startDate) {
+                                  <div class="svc-card-row svc-card-row-half">
+                                    <span class="svc-card-label">Commenced</span>
+                                    <span class="svc-card-val">{{ formatDate(svc.serviceCommencementDate || svc.commencementDate || svc.startDate) }}</span>
+                                  </div>
+                                }
                               </div>
                             </div>
                             @if (formatTariffRate(svc)) {
