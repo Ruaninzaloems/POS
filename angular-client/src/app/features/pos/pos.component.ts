@@ -2472,19 +2472,28 @@ export class PosComponent implements OnInit, OnDestroy {
     }
   }
 
-  private async triggerAccountRebuilds(accountIds: Set<number>): Promise<void> {
+  private triggerAccountRebuilds(accountIds: Set<number>): void {
     if (accountIds.size === 0) return;
     console.log(`[accountRebuild] Triggering rebuild for ${accountIds.size} account(s):`, [...accountIds]);
-    for (const accountId of accountIds) {
+    const rebuildOne = async (accountId: number, attempt = 1): Promise<void> => {
       try {
         await firstValueFrom(
           this.api.get<any>(`/api/platinum/billing-enquiry/rebuild-full-account`, { accountId: String(accountId) })
         );
-        console.log(`[accountRebuild] Rebuild completed for account ${accountId}`);
+        console.log(`[accountRebuild] OK account ${accountId}`);
       } catch (e: any) {
-        console.warn(`[accountRebuild] Rebuild failed for account ${accountId}:`, e?.message);
+        if (attempt < 3) {
+          console.warn(`[accountRebuild] Retry ${attempt}/2 for account ${accountId}`);
+          await new Promise(r => setTimeout(r, 2000 * attempt));
+          return rebuildOne(accountId, attempt + 1);
+        }
+        console.warn(`[accountRebuild] Failed after 3 attempts for account ${accountId}:`, e?.message);
       }
-    }
+    };
+    Promise.allSettled([...accountIds].map(id => rebuildOne(id))).then(results => {
+      const ok = results.filter(r => r.status === 'fulfilled').length;
+      console.log(`[accountRebuild] Complete: ${ok}/${accountIds.size} succeeded`);
+    });
   }
 
   async sendReceiptVia(method: ReceiptDeliveryMethod): Promise<void> {
