@@ -54,7 +54,7 @@ export function registerBillingRoutes(app: Express, httpServer: Server): void {
     }
   });
 
-  app.post("/api/platinum/billing-payment/submit-miscellaneous-payment/:userId", async (req, res) => {
+  app.post("/api/platinum/billing-payment-miscellaneous/submit-miscellaneous-payment/:userId", async (req, res) => {
     let dedupKey = '';
     let idempotencyToken: string | undefined;
     try {
@@ -75,38 +75,43 @@ export function registerBillingRoutes(app: Express, httpServer: Server): void {
 
       const paymentType = Number(body.paymentType ?? 1);
       const isCard = paymentType === 3;
+      const now = new Date();
+      const receiptDateISO = body.receiptDate
+        ? (body.receiptDate.includes('T') ? body.receiptDate : `${body.receiptDate}T00:00:00`)
+        : now.toISOString().split('.')[0];
+
       const payload: Record<string, any> = {
-        LastName: body.lastName || '',
-        Initials: body.initials || '',
-        MiscellaneousPaymentGroup: Number(body.miscellaneousPaymentGroup),
-        ScoaItem: Number(body.scoaItem),
-        Description: body.description || '',
-        ReceiptDate: body.receiptDate || new Date().toISOString(),
-        TotalAmount: Number(body.totalAmount),
-        VatAmount: Number(body.vatAmount ?? 0),
-        Amount: Number(body.amount ?? body.totalAmount),
-        TenderAmount: Number(body.tenderAmount ?? body.totalAmount),
-        ChangeAmount: Number(body.changeAmount ?? 0),
-        PaymentType: paymentType,
-        VatPercentage: Number(body.vatPercentage ?? 0),
-        IsVatable: Boolean(body.isVatable),
-        UserId: Number(userId),
-        CashierId: Number(body.cashierId ?? 0),
-        CashOfficeId: Number(body.cashOfficeId ?? 0),
-        FinYear: body.finYear,
-        CardNo: isCard ? (body.cardNo || '') : '',
-        ExpiryDate: isCard ? (body.expiryDate || '') : '',
-        ChequeNo: body.chequeNo || '',
-        BankBranch: body.bankBranch || '',
-        BankBranchCode: body.bankBranchCode || '',
-        AccHolderName: body.accHolderName || '',
+        lastName: body.lastName || '',
+        initials: body.initials || '',
+        miscellaneousPaymentGroup: Number(body.miscellaneousPaymentGroup),
+        scoaItem: Number(body.scoaItem),
+        description: body.description || '',
+        receiptDate: receiptDateISO,
+        totalAmount: Number(body.totalAmount),
+        vatAmount: Number(body.vatAmount ?? 0),
+        amount: Number(body.amount ?? body.totalAmount),
+        tenderAmount: Number(body.tenderAmount ?? body.totalAmount),
+        changeAmount: Number(body.changeAmount ?? 0),
+        paymentType: paymentType,
+        vatPercentage: Number(body.vatPercentage ?? 0),
+        isVatable: Boolean(body.isVatable),
+        cardNo: isCard ? (body.cardNo || '') : null,
+        expiryDate: isCard ? (body.expiryDate || '') : null,
+        chequeNo: body.chequeNo || null,
+        bankBranch: body.bankBranch || null,
+        bankBranchCode: body.bankBranchCode || null,
+        bankBranchCodeId: body.bankBranchCodeId || null,
+        accHolderName: body.accHolderName || null,
+        finYear: body.finYear,
+        accountId: body.accountId || null,
+        sundryId: body.sundryId || null,
       };
 
-      const logSafe = { ...payload, CardNo: payload.CardNo ? '****' : '', ExpiryDate: payload.ExpiryDate ? '**/**' : '' };
-      console.log(`[submit-misc-payment] userId=${userId}, group=${payload.MiscellaneousPaymentGroup}, scoa=${payload.ScoaItem}, amt=${payload.TotalAmount}, paymentType=${paymentType} (${isCard ? 'Card' : 'Cash'}), token=${idempotencyToken || 'none'}`);
+      const logSafe = { ...payload, cardNo: payload.cardNo ? '****' : '', expiryDate: payload.expiryDate ? '**/**' : '' };
+      console.log(`[submit-misc-payment] userId=${userId}, group=${payload.miscellaneousPaymentGroup}, scoa=${payload.scoaItem}, amt=${payload.totalAmount}, paymentType=${paymentType} (${isCard ? 'Card' : 'Cash'}), token=${idempotencyToken || 'none'}`);
       console.log(`[submit-misc-payment] Payload:`, JSON.stringify(logSafe));
 
-      dedupKey = `misc-pos|${userId}|${payload.ScoaItem}|${payload.TotalAmount}|${paymentType}`;
+      dedupKey = `misc-pos|${userId}|${payload.scoaItem}|${payload.totalAmount}|${paymentType}`;
       const dedupCheck = checkPaymentDedup(dedupKey, idempotencyToken);
       if (dedupCheck.isDuplicate) {
         console.warn(`[submit-misc-payment] DUPLICATE BLOCKED — key: ${dedupKey}`);
@@ -120,7 +125,7 @@ export function registerBillingRoutes(app: Express, httpServer: Server): void {
       reservePaymentSlot(dedupKey, idempotencyToken);
 
       try {
-        const platinumEndpoint = `/api/billing-payment/submit-miscellaneous-payment/${userId}`;
+        const platinumEndpoint = `/api/billing-payment-miscellaneous/submit-miscellaneous-payment/${userId}`;
         console.log(`[submit-misc-payment] Calling Platinum: ${platinumEndpoint}`);
         const data = await platinumPost(session, platinumEndpoint, payload);
         console.log(`[submit-misc-payment] Response:`, JSON.stringify(data)?.substring(0, 1000));

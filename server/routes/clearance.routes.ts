@@ -443,40 +443,46 @@ export function registerClearanceRoutes(app: Express, httpServer: Server): void 
         return res.status(400).json({ message: "totalAmount must be 0 or greater" });
       }
 
-      const sanitizedPayload = {
+      const paymentType = Number(miscBody.paymentType ?? 1);
+      const isCard = paymentType === 3;
+      const userId = Number(miscBody.userId);
+      const now = new Date();
+      const receiptDateISO = miscBody.receiptDate
+        ? (miscBody.receiptDate.includes('T') ? miscBody.receiptDate : `${miscBody.receiptDate}T00:00:00`)
+        : now.toISOString().split('.')[0];
+
+      const payload: Record<string, any> = {
         lastName: miscBody.lastName || '',
         initials: miscBody.initials || '',
         miscellaneousPaymentGroup: Number(miscBody.miscellaneousPaymentGroup),
         scoaItem: Number(miscBody.scoaItem),
         description: miscBody.description || '',
-        receiptDate: miscBody.receiptDate || new Date().toISOString(),
+        receiptDate: receiptDateISO,
         totalAmount: Number(miscBody.totalAmount),
         vatAmount: Number(miscBody.vatAmount ?? 0),
         amount: Number(miscBody.amount ?? miscBody.totalAmount),
         tenderAmount: Number(miscBody.tenderAmount ?? miscBody.totalAmount),
         changeAmount: Number(miscBody.changeAmount ?? 0),
-        paymentType: Number(miscBody.paymentType ?? 1),
-        posPaymentType_ID: Number(miscBody.paymentType ?? 1),
-        posPaymentTypeId: Number(miscBody.paymentType ?? 1),
+        paymentType: paymentType,
         vatPercentage: Number(miscBody.vatPercentage ?? 0),
         isVatable: Boolean(miscBody.isVatable),
-        userId: Number(miscBody.userId),
-        cashierId: Number(miscBody.cashierId ?? 0),
-        cashOfficeId: Number(miscBody.cashOfficeId ?? 0),
+        cardNo: isCard ? (miscBody.cardNo || '') : null,
+        expiryDate: isCard ? (miscBody.expiryDate || '') : null,
+        chequeNo: miscBody.chequeNo || null,
+        bankBranch: miscBody.bankBranch || null,
+        bankBranchCode: miscBody.bankBranchCode || null,
+        bankBranchCodeId: miscBody.bankBranchCodeId || null,
+        accHolderName: miscBody.accHolderName || null,
         finYear: miscBody.finYear,
-        cardNo: miscBody.cardNo || '',
-        expiryDate: miscBody.expiryDate || '',
-        chequeNo: miscBody.chequeNo || '',
-        bankBranch: miscBody.bankBranch || '',
-        bankBranchCode: miscBody.bankBranchCode || '',
-        accHolderName: miscBody.accHolderName || '',
+        accountId: miscBody.accountId || null,
+        sundryId: miscBody.sundryId || null,
       };
 
-      const logSafe = {...sanitizedPayload, cardNo: sanitizedPayload.cardNo ? '****' : '', expiryDate: sanitizedPayload.expiryDate ? '**/**' : ''};
+      const logSafe = { ...payload, cardNo: payload.cardNo ? '****' : '', expiryDate: payload.expiryDate ? '**/**' : '' };
       console.log(`[misc-submit] Sanitized payload:`, JSON.stringify(logSafe));
 
       miscIdempotencyToken = req.headers['x-idempotency-token'] as string | undefined;
-      miscDedupKey = `misc|${sanitizedPayload.userId}|${sanitizedPayload.scoaItem}|${sanitizedPayload.totalAmount}|${sanitizedPayload.paymentType}`;
+      miscDedupKey = `misc|${userId}|${payload.scoaItem}|${payload.totalAmount}|${paymentType}`;
       const miscDedupCheck = checkPaymentDedup(miscDedupKey, miscIdempotencyToken);
       if (miscDedupCheck.isDuplicate) {
         console.warn(`[misc-submit] DUPLICATE BLOCKED — key: ${miscDedupKey}`);
@@ -488,53 +494,11 @@ export function registerClearanceRoutes(app: Express, httpServer: Server): void 
         return;
       }
       reservePaymentSlot(miscDedupKey, miscIdempotencyToken);
-      const pascalPayload = {
-        LastName: sanitizedPayload.lastName,
-        Initials: sanitizedPayload.initials,
-        MiscellaneousPaymentGroup: sanitizedPayload.miscellaneousPaymentGroup,
-        ScoaItem: sanitizedPayload.scoaItem,
-        Description: sanitizedPayload.description,
-        ReceiptDate: sanitizedPayload.receiptDate,
-        TotalAmount: sanitizedPayload.totalAmount,
-        VatAmount: sanitizedPayload.vatAmount,
-        Amount: sanitizedPayload.amount,
-        TenderAmount: sanitizedPayload.tenderAmount,
-        ChangeAmount: sanitizedPayload.changeAmount,
-        PaymentType: sanitizedPayload.paymentType,
-        PosPaymentType_ID: sanitizedPayload.paymentType,
-        PosPaymentTypeId: sanitizedPayload.paymentType,
-        VatPercentage: sanitizedPayload.vatPercentage,
-        IsVatable: sanitizedPayload.isVatable,
-        UserId: sanitizedPayload.userId,
-        CashierId: sanitizedPayload.cashierId,
-        CashOfficeId: sanitizedPayload.cashOfficeId,
-        FinYear: sanitizedPayload.finYear,
-        CardNo: sanitizedPayload.cardNo,
-        ExpiryDate: sanitizedPayload.expiryDate,
-        ChequeNo: sanitizedPayload.chequeNo,
-        BankBranch: sanitizedPayload.bankBranch,
-        BankBranchCode: sanitizedPayload.bankBranchCode,
-        AccHolderName: sanitizedPayload.accHolderName,
-      };
 
-      const posEndpoint = `/api/billing-payment-miscellaneous/submit`;
-      const attempts: { endpoint: string; payload: any; label: string }[] = [
-        { endpoint: posEndpoint, payload: pascalPayload, label: 'PascalCase' },
-        { endpoint: posEndpoint, payload: sanitizedPayload, label: 'camelCase' },
-      ];
-
-      let data: any = null;
-      for (const { endpoint: ep, payload: pl, label: lbl } of attempts) {
-        data = await platinumPost(session, ep, pl);
-        if (data && !data._error) {
-          console.log(`[misc-submit] SUCCESS via ${lbl} (${ep}):`, JSON.stringify(data)?.substring(0, 1000));
-          if (data.receiptNo && typeof data.receiptNo === 'string' && data.receiptNo.startsWith('EFT')) {
-            console.warn(`[misc-submit] WARNING: API returned EFT receipt number "${data.receiptNo}" — expected POS receipt. This may indicate wrong API endpoint or server-side config.`);
-          }
-          break;
-        }
-        console.warn(`[misc-submit] ${lbl} (${ep}) returned error (${data?.status}):`, JSON.stringify(data)?.substring(0, 500));
-      }
+      const platinumEndpoint = `/api/billing-payment-miscellaneous/submit-miscellaneous-payment/${userId}`;
+      console.log(`[misc-submit] Calling Platinum: ${platinumEndpoint}`);
+      const data = await platinumPost(session, platinumEndpoint, payload);
+      console.log(`[misc-submit] Response:`, JSON.stringify(data)?.substring(0, 1000));
 
       if (data && !data._error) {
         if (!data.ids) {
@@ -546,6 +510,9 @@ export function registerClearanceRoutes(app: Express, httpServer: Server): void 
         }
         if (data.isSuccess === undefined && !data._error && (data.ids?.length > 0 || data.receiptNo)) {
           data.isSuccess = true;
+        }
+        if (data.receiptNo && typeof data.receiptNo === 'string' && data.receiptNo.startsWith('EFT')) {
+          console.warn(`[misc-submit] WARNING: API returned EFT receipt number "${data.receiptNo}" — expected POS receipt.`);
         }
       }
 
@@ -597,7 +564,7 @@ export function registerClearanceRoutes(app: Express, httpServer: Server): void 
       };
 
       console.log(`[drop-box] Trying misc submit with payload:`, JSON.stringify(payload));
-      const data = await platinumPost(session, `/api/billing-payment/submit-miscellaneous-payment/${userId}`, payload);
+      const data = await platinumPost(session, `/api/billing-payment-miscellaneous/submit-miscellaneous-payment/${userId}`, payload);
       console.log(`[drop-box] Misc submit response:`, JSON.stringify(data).substring(0, 1000));
 
       if (data && !data._error) {

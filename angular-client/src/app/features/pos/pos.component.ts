@@ -2219,16 +2219,12 @@ export class PosComponent implements OnInit, OnDestroy {
     const effectiveExpiry = isCardPayment ? (md.cardExpiry || this.formatCardExpiry(this.cardExpiry()) || '') : '';
 
     const payload = {
-      userId,
-      cashierId: sessionCashierId,
-      cashOfficeId: sessionOfficeId,
-      finYear,
       lastName: md.lastName || '',
       initials: md.initials || '',
       miscellaneousPaymentGroup: md.groupId,
       scoaItem: md.scoaItemId,
       description: md.description || md.scoaItemName,
-      receiptDate,
+      receiptDate: `${receiptDate}T00:00:00`,
       totalAmount: item.amountToPay,
       vatAmount,
       amount: item.amountToPay - vatAmount,
@@ -2237,18 +2233,22 @@ export class PosComponent implements OnInit, OnDestroy {
       paymentType: effectivePaymentTypeId,
       vatPercentage: effectiveVatPct,
       isVatable: md.isVatable || false,
-      cardNo: effectiveCardNo,
-      expiryDate: effectiveExpiry,
-      chequeNo: '',
-      bankBranch: '',
-      bankBranchCode: '',
-      accHolderName: [md.lastName, md.initials].filter(Boolean).join(' ') || 'Walk-in',
+      cardNo: isCardPayment ? effectiveCardNo : null,
+      expiryDate: isCardPayment ? effectiveExpiry : null,
+      chequeNo: null,
+      bankBranch: null,
+      bankBranchCode: null,
+      bankBranchCodeId: null,
+      accHolderName: [md.lastName, md.initials].filter(Boolean).join(' ') || null,
+      finYear,
+      accountId: null,
+      sundryId: null,
     };
     console.log(`[submitMiscPayment] miscTender=${miscTender}, effectivePaymentTypeId=${effectivePaymentTypeId}, cardNo=${effectiveCardNo ? '****' : 'none'}`);
     const logSafe = {...payload, cardNo: payload.cardNo ? '****' + payload.cardNo.slice(-4) : ''};
-    console.log(`[submitMiscPayment] Payload via submit-miscellaneous-payment/${payload.userId}:`, JSON.stringify(logSafe).substring(0, 1500));
+    console.log(`[submitMiscPayment] Payload via submit-miscellaneous-payment/${userId}:`, JSON.stringify(logSafe).substring(0, 1500));
     const result: any = await firstValueFrom(
-      this.api.postWithIdempotency(`/api/platinum/billing-payment/submit-miscellaneous-payment/${payload.userId}`, payload, idempotencyToken)
+      this.api.postWithIdempotency(`/api/platinum/billing-payment-miscellaneous/submit-miscellaneous-payment/${userId}`, payload, idempotencyToken)
     );
     console.log(`[submitMiscPayment] Response:`, JSON.stringify(result).substring(0, 500));
     if (result && result.isSuccess === false) {

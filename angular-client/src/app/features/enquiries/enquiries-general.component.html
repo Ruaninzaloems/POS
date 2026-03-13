@@ -4451,18 +4451,18 @@
                                         <td>{{ r.billingmonth || r.billingMonth || '-' }}</td>
                                         <td>{{ r.meterBookName || '-' }}</td>
                                         <td>{{ r.routeFileName || r.routeFileNo || '-' }}</td>
-                                        <td>{{ r.capturer || '-' }}</td>
+                                        <td>{{ r.capturer || r.capturerName || r.reader || r.meterReader || '-' }}</td>
                                         <td class="mono">{{ formatDate(r.reading1Date) }}</td>
                                         <td class="mono cons-td-numeric">{{ r.reading1 ?? '-' }}</td>
                                         <td class="mono">{{ formatDate(r.reading2Date) }}</td>
                                         <td class="mono cons-td-numeric">{{ r.reading2 ?? '-' }}</td>
-                                        <td class="mono cons-td-numeric">{{ r.readingdays ?? '-' }}</td>
+                                        <td class="mono cons-td-numeric">{{ r.readingdays ?? r.readingDays ?? '-' }}</td>
                                         <td class="mono cons-td-numeric bold">{{ getConsumptionVal(r) | number:'1.0-0' }}</td>
                                         <td>{{ r.levyStatus || '-' }}</td>
                                         <td class="mono">{{ formatDate(r.testReadingDate) }}</td>
                                         <td class="mono cons-td-numeric">{{ r.testReading ?? '-' }}</td>
                                         <td>{{ r.declineReason || '-' }}</td>
-                                        <td class="mono">{{ r.errorcode || '-' }}</td>
+                                        <td class="mono">{{ r.errorcode || r.errorCode || '-' }}</td>
                                         <td>{{ r.flag || '-' }}</td>
                                         <td>{{ r.meterChange || '-' }}</td>
                                         <td>{{ r.meterStatus || '-' }}</td>
@@ -5052,12 +5052,12 @@
                                   <td>{{ r.billingmonth || r.billingMonth || '-' }}</td>
                                   <td>{{ r.meterBookName || '-' }}</td>
                                   <td>{{ r.routeFileName || r.routeFileNo || '-' }}</td>
-                                  <td>{{ r.capturer || '-' }}</td>
+                                  <td>{{ r.capturer || r.capturerName || r.reader || r.meterReader || '-' }}</td>
                                   <td class="mono">{{ formatDate(r.reading1Date) }}</td>
                                   <td class="mono cons-td-numeric cons-td-reading-val">{{ r.reading1 ?? '-' }}</td>
                                   <td class="mono">{{ formatDate(r.reading2Date) }}</td>
                                   <td class="mono cons-td-numeric cons-td-reading-val">{{ r.reading2 ?? '-' }}</td>
-                                  <td class="mono cons-td-numeric">{{ r.readingdays ?? '-' }}</td>
+                                  <td class="mono cons-td-numeric">{{ r.readingdays ?? r.readingDays ?? '-' }}</td>
                                   <td class="mono cons-td-numeric cons-td-consumption">
                                     <div class="cons-bar-cell">
                                       <span class="cons-bar-inline" [style.width.%]="getConsChartBarPct(r)"></span>

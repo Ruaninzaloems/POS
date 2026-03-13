@@ -4578,6 +4578,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         case 'days': return Number(r.readingdays || r.readingDays || r.days || r.numberOfDays || 0);
         case 'consumption': return this.getConsumptionVal(r);
         case 'readingStatus': return (r.readingStatus || r.status || '').toLowerCase();
+        case 'capturer': return (r.capturer || r.capturerName || r.reader || r.meterReader || '').toLowerCase();
         case 'dailyAvg': {
           const days = Number(r.readingdays || r.readingDays || r.days || 0);
           const cons = this.getConsumptionVal(r);
@@ -6512,9 +6513,10 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const meterNo = meter?.physicalMeterNo || meter?.meterNo || '';
     const opts = this.getExportOpts('Consumption', 'CONSUMPTION HISTORY REPORT');
     opts.extraHeaders = [{ label: 'Meter Number', value: meterNo }];
-    const headers = ['Billing Month', 'Old Date', 'Old Reading', 'New Date', 'New Reading', 'Days', 'Consumption', 'Flag', 'Reading Status'];
+    const headers = ['Billing Month', 'Capturer', 'Old Date', 'Old Reading', 'New Date', 'New Reading', 'Days', 'Consumption', 'Flag', 'Reading Status'];
     const rows = history.map((r: any) => [
       r.billingmonth || r.billingMonth || '',
+      r.capturer || r.capturerName || r.reader || r.meterReader || '',
       this.formatDate(r.reading1Date || r.readingDate),
       r.reading1 || r.previousReading || '',
       this.formatDate(r.reading2Date || r.date),
@@ -6535,10 +6537,11 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const meterNo = meter?.physicalMeterNo || meter?.meterNo || '';
     const opts = this.getExportOpts('Consumption', 'CONSUMPTION HISTORY REPORT');
     opts.extraHeaders = [{ label: 'Meter Number', value: meterNo }];
-    const headers = ['Month', 'Old Date', 'Old Rdg', 'New Date', 'New Rdg', 'Days', 'Consumption', 'Flag', 'Status'];
-    const aligns: ('left' | 'right')[] = ['left', 'left', 'right', 'left', 'right', 'right', 'right', 'left', 'left'];
+    const headers = ['Month', 'Capturer', 'Old Date', 'Old Rdg', 'New Date', 'New Rdg', 'Days', 'Consumption', 'Flag', 'Status'];
+    const aligns: ('left' | 'right')[] = ['left', 'left', 'left', 'right', 'left', 'right', 'right', 'right', 'left', 'left'];
     const rows = history.map((r: any) => [
       r.billingmonth || r.billingMonth || '',
+      r.capturer || r.capturerName || r.reader || r.meterReader || '',
       this.formatDate(r.reading1Date || r.readingDate),
       r.reading1 || r.previousReading || '',
       this.formatDate(r.reading2Date || r.date),
