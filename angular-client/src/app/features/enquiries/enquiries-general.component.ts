@@ -771,6 +771,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.searching.set(true);
     this.searchError.set(null);
     this.hasSearched.set(true);
+    this.balanceCache.clear();
     const token = ++this.searchToken;
 
     try {
@@ -2715,7 +2716,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
   async fetchAccountBalance(accountId: number): Promise<any> {
     const fy = this.userFinYear();
-    const fyParams: Record<string, string> = {};
+    const fyParams: Record<string, string> = { _t: String(Date.now()) };
     if (fy) fyParams['financialYear'] = fy;
 
     try {

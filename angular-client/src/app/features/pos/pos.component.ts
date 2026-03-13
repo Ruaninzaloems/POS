@@ -659,7 +659,7 @@ export class PosComponent implements OnInit, OnDestroy {
         : firstValueFrom(this.api.get<any>('/api/platinum/billing-payment-miscellaneous/get-groups'));
 
       const [accountData, groupData, miscData] = await Promise.allSettled([
-        firstValueFrom(this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: query })),
+        firstValueFrom(this.api.post('/api/platinum/billing-payment/search-accounts', { accountNo: query, _t: Date.now() })),
         firstValueFrom(this.api.post('/api/platinum/billing-payment/search-account-groups', { searchTerm: query })),
         cachedMiscGroups,
       ]);
@@ -805,7 +805,7 @@ export class PosComponent implements OnInit, OnDestroy {
     let detailData: any = null;
     try {
       detailData = await firstValueFrom(
-        this.api.get<any>('/api/platinum/receipt-prepaid/cons-account-details', { accountId: String(accountId || accountNo) })
+        this.api.get<any>('/api/platinum/receipt-prepaid/cons-account-details', { accountId: String(accountId || accountNo), _t: String(Date.now()) })
       );
     } catch {
       this.toast.show('Could not load full account details, using search data.', 'info');
