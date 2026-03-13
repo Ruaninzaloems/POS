@@ -4435,6 +4435,7 @@
                                       <th>Contractor Remarks</th>
                                       <th>Disconnection Letter</th>
                                       <th>Supporting Document</th>
+                                      <th>User</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -4472,6 +4473,7 @@
                                         <td class="cons-td-remarks">{{ r.disconnectionRemarks || '-' }}</td>
                                         <td>{{ r.acceptReason || '-' }}</td>
                                         <td class="mono">{{ r.supportingDocs_ID || '-' }}</td>
+                                        <td>{{ r.user || r.userName || r.capturerName || '-' }}</td>
                                       </tr>
                                     }
                                   </tbody>
@@ -5034,6 +5036,7 @@
                                 <th class="cons-th-sortable" (click)="sortConsumptionBy('disconnectionRemarks')"><span>Contractor Remarks</span><span class="cons-sort-icon">{{ getConsSortIcon('disconnectionRemarks') }}</span></th>
                                 <th class="cons-th-sortable" (click)="sortConsumptionBy('acceptReason')"><span>Disconnection Letter</span><span class="cons-sort-icon">{{ getConsSortIcon('acceptReason') }}</span></th>
                                 <th class="cons-th-sortable" (click)="sortConsumptionBy('supportingDocs_ID')"><span>Supporting Document</span><span class="cons-sort-icon">{{ getConsSortIcon('supportingDocs_ID') }}</span></th>
+                                <th class="cons-th-sortable" (click)="sortConsumptionBy('user')"><span>User</span><span class="cons-sort-icon">{{ getConsSortIcon('user') }}</span></th>
                               </tr>
                             </thead>
                             <tbody>
@@ -5095,6 +5098,7 @@
                                   <td class="cons-td-remarks">{{ r.disconnectionRemarks || '-' }}</td>
                                   <td>{{ r.acceptReason || '-' }}</td>
                                   <td class="mono">{{ r.supportingDocs_ID || '-' }}</td>
+                                  <td>{{ r.user || r.userName || r.capturerName || '-' }}</td>
                                 </tr>
                               }
                             </tbody>
