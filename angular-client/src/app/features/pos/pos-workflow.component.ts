@@ -1,4 +1,4 @@
-import { Component, signal, computed, OnInit, inject } from '@angular/core';
+import { Component, signal, computed, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -16,7 +16,7 @@ type WorkflowTab = 'setup' | 'transact' | 'day-end';
   templateUrl: './pos-workflow.component.html',
   styleUrl: './pos-workflow.component.css'
 })
-export class PosWorkflowComponent implements OnInit {
+export class PosWorkflowComponent implements OnInit, OnDestroy {
   private api = inject(ApiService);
   private auth = inject(AuthService);
 
@@ -35,7 +35,22 @@ export class PosWorkflowComponent implements OnInit {
   canAccessDayEnd = computed(() => this.sessionReady() || this.needsReconcile());
 
   ngOnInit(): void {
+    this.resetWorkflowState();
     this.checkExistingSession();
+  }
+
+  ngOnDestroy(): void {
+    this.resetWorkflowState();
+  }
+
+  private resetWorkflowState(): void {
+    this.activeTab.set('setup');
+    this.sessionReady.set(false);
+    this.checkingSession.set(true);
+    this.sessionActive.set(false);
+    this.needsReconcile.set(false);
+    this.reconcileMessage.set('');
+    this.sessionStatusMessage.set('');
   }
 
   async checkExistingSession(): Promise<void> {

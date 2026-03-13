@@ -609,18 +609,41 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
+    this.resetAllState();
     this.loadData();
   }
 
   ngOnDestroy(): void {
-    this.clearInlineState();
+    this.resetAllState();
   }
 
-  private clearInlineState(): void {
+  private resetAllState(): void {
+    this.items.set([]);
+    this.loading.set(false);
+    this.error.set('');
+    this.searchQuery.set('');
+    this.statusFilter.set('all');
+    this.page.set(1);
+    this.pageSize.set(25);
+    this.sortField.set('dateOfTransaction');
+    this.sortDir.set('desc');
+    this.selectedItem.set(null);
+    this.suggestedMatches.set([]);
+    this.matchLoading.set(false);
+    this.matchProgress.set('');
+    this.autoAllocating.set(false);
+    this.autoAllocatingId.set(null);
+    this.selectedItems.set(new Set());
+    this.batchAllocating.set(false);
+    this.detailOpen.set(false);
+    this.parsedClues.set(null);
     this.inlineSuggestions.set(new Map());
     this.inlineLoading.set(new Set());
     this.inlineExpanded.set(new Set());
     this.inlineProgress.set(new Map());
+    this.loadingMore.set(false);
+    this.loadProgress.set('');
+    this.totalCount.set(0);
   }
 
   loadingMore = signal(false);
@@ -630,7 +653,10 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
     this.loading.set(true);
     this.error.set('');
     this.loadProgress.set('');
-    this.clearInlineState();
+    this.inlineSuggestions.set(new Map());
+    this.inlineLoading.set(new Set());
+    this.inlineExpanded.set(new Set());
+    this.inlineProgress.set(new Map());
     try {
       const pageSize = 200;
       this.loadProgress.set('Fetching deposits...');

@@ -431,12 +431,135 @@ export class PosComponent implements OnInit, OnDestroy {
   private searchDebounceTimer: any = null;
 
   ngOnInit(): void {
+    this.resetAllState();
     this.loadCashierInfo();
     this.loadBanks();
   }
 
   ngOnDestroy(): void {
     if (this.searchDebounceTimer) clearTimeout(this.searchDebounceTimer);
+    this.resetAllState();
+  }
+
+  private resetAllState(): void {
+    if (this.searchDebounceTimer) clearTimeout(this.searchDebounceTimer);
+    this.searchDebounceTimer = null;
+
+    this.basket.clearAll();
+
+    this.searchMode.set('unified');
+    this.activeMode.set('account');
+    this.unifiedSearchQuery.set('');
+    this.unifiedSearchLoading.set(false);
+    this.unifiedSearchResults.set([]);
+    this.unifiedSearchActive.set(false);
+    this.tabSearchQuery.set('');
+    this.tabSearchLoading.set(false);
+    this.tabSearchResults.set([]);
+    this.tabSearchActive.set(false);
+    this.accountDetailLoading.set(false);
+
+    this.showPaymentPanel.set(false);
+    this.tenderOrderExpanded.set(true);
+    this.activeTender.set('cash');
+    this.cashAmount.set(0);
+    this.cardAmount.set(0);
+    this.cardNumber.set('');
+    this.cardExpiry.set('');
+    this.cardReference.set('');
+    this.chequeAmount.set(0);
+    this.chequeNumber.set('');
+    this.chequeBankId.set(0);
+    this.chequeName.set('');
+    this.eftAmount.set(0);
+    this.eftReference.set('');
+    this.processingPayment.set(false);
+
+    this.receiptResults.set([]);
+    this.showReceipt.set(false);
+    this.printingReceipt.set(false);
+    this.receiptDeliveryMethod.set('print');
+    this.receiptEmail.set('');
+    this.receiptPhone.set('');
+    this.sendingReceipt.set(false);
+
+    this.paymentProgressTotal.set(0);
+    this.paymentProgressCurrent.set(0);
+    this.paymentProgressLabel.set('');
+
+    this.showCancelDialog.set(false);
+    this.cancelReceiptNo.set('');
+    this.cancelReason.set('');
+    this.cancellingReceipt.set(false);
+
+    this.showEnquiryOverlay.set(false);
+    this.showDropBoxDialog.set(false);
+    this.dropBoxAmount.set(0);
+    this.dropBoxReference.set('');
+    this.submittingDropBox.set(false);
+    this.dropBoxStep.set('input');
+    this.dropBoxError.set('');
+    this.dropBoxReceiptNo.set(null);
+    this.dropBoxHistory.set([]);
+    this.dropBoxHistoryLoading.set(false);
+    this.showDropBoxHistory.set(false);
+
+    this.clearanceSearchId.set('');
+    this.clearanceSearching.set(false);
+    this.clearanceError.set('');
+
+    this.prepaidMeterNo.set('');
+    this.prepaidAmount.set(0);
+    this.prepaidSearching.set(false);
+    this.prepaidBreakdown.set(null);
+    this.prepaidError.set('');
+    this.prepaidProcessing.set(false);
+    this.prepaidServiceTypes.set([]);
+    this.prepaidSelectedService.set('');
+
+    this.miscSelectedGroupId.set(0);
+    this.miscScoaItems.set([]);
+    this.miscScoaLoading.set(false);
+    this.miscSelectedScoaId.set(0);
+    this.miscAmount.set(0);
+    this.miscDescription.set('');
+    this.miscLastName.set('');
+    this.miscInitials.set('');
+    this.miscTenderType.set('cash');
+    this.miscCardNumber.set('');
+    this.miscCardExpiry.set('');
+
+    this.accountGroupSearching.set(false);
+    this.accountGroupResults.set([]);
+    this.expandedGroupId.set(null);
+    this.groupAccountsLoading.set(false);
+
+    this.csvImportOpen.set(false);
+    this.csvStep.set('upload');
+    this.csvFileName.set('');
+    this.csvParsedRows.set([]);
+    this.csvValidatedRows.set([]);
+    this.csvValidating.set(false);
+    this.csvValidationProgress.set(0);
+    this.csvCancelled.set(false);
+    this.csvPage.set(1);
+
+    this.banks.set([]);
+    this.banksLoading.set(false);
+    this.miscGroups.set([]);
+    this.miscGroupsLoading.set(false);
+    this.systemVatRate.set(15);
+    this.paymentOptions.set([]);
+    this.paymentTypes.set([]);
+    this.cashierInfo.set(null);
+    this.sessionActive.set(false);
+    this.sessionLoading.set(true);
+    this.sessionStatus.set('none');
+    this.reconcileMessage.set('');
+    this.sessionReturnReason.set('');
+    this.receiptRange.set(null);
+
+    this.cashierCheckDone = false;
   }
 
   onUnifiedSearchInput(value: string): void {
