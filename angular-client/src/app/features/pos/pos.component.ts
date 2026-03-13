@@ -1845,29 +1845,43 @@ export class PosComponent implements OnInit, OnDestroy {
         }
       }
 
-      this.updateProgress(expectedTotal, expectedTotal, 'All receipts posted successfully!');
-      this.receiptResults.set(allResults);
-      this.showReceipt.set(true);
-      this.showPaymentPanel.set(false);
-      this.toast.success(`${allResults.length} receipt(s) processed successfully!`);
+      const validResults = allResults.filter(r => r.receiptNumber && r.receiptNumber !== 'N/A');
+      const failedResults = allResults.filter(r => !r.receiptNumber || r.receiptNumber === 'N/A');
 
-      this.basket.clearAll();
-      this.resetTenderFields();
-
-      this.autoPrintReceipts();
-      this.triggerAccountRebuilds(affectedAccountIds);
-    } catch (e: any) {
-      if (allResults.length > 0) {
-        this.receiptResults.set(allResults);
+      if (validResults.length === 0) {
+        this.updateProgress(expectedTotal, expectedTotal, 'Payment failed — no receipts created.');
+        this.toast.error('Payment failed — the system did not create any receipts. No money was processed.');
+      } else {
+        this.updateProgress(expectedTotal, expectedTotal, 'All receipts posted successfully!');
+        this.receiptResults.set(validResults);
         this.showReceipt.set(true);
         this.showPaymentPanel.set(false);
-        this.toast.error(`Partial success: ${allResults.length} receipt(s) posted. Error on remaining: ${e?.error?.message || e?.message}`);
+
+        if (failedResults.length > 0) {
+          this.toast.error(`${failedResults.length} item(s) failed — no receipt was created. ${validResults.length} receipt(s) succeeded.`);
+        } else {
+          this.toast.success(`${validResults.length} receipt(s) processed successfully!`);
+        }
+
+        this.basket.clearAll();
+        this.resetTenderFields();
+
+        this.autoPrintReceipts();
+        this.triggerAccountRebuilds(affectedAccountIds);
+      }
+    } catch (e: any) {
+      const validCaught = allResults.filter(r => r.receiptNumber && r.receiptNumber !== 'N/A');
+      if (validCaught.length > 0) {
+        this.receiptResults.set(validCaught);
+        this.showReceipt.set(true);
+        this.showPaymentPanel.set(false);
+        this.toast.error(`Partial success: ${validCaught.length} receipt(s) posted. Error on remaining: ${e?.error?.message || e?.message}`);
 
         this.basket.clearAll();
         this.resetTenderFields();
         this.triggerAccountRebuilds(affectedAccountIds);
       } else {
-        this.toast.error(e?.error?.message || e?.message || 'Payment processing failed.');
+        this.toast.error(e?.error?.message || e?.message || 'Payment processing failed — no receipts were created.');
       }
     } finally {
       this.processingPayment.set(false);
@@ -1955,6 +1969,9 @@ export class PosComponent implements OnInit, OnDestroy {
         const detail = result.message || result.detail || result.error || result.statusText || '';
         throw new Error(detail || `API rejected payment for ${ad.accountNumber}`);
       }
+      if (!this.hasReceiptData(result)) {
+        throw new Error(`Payment for account ${ad.accountNumber} failed — no receipt was created by the system.`);
+      }
       return result;
     } else {
       const submitAccounts = items.map(item => {
@@ -2024,6 +2041,9 @@ export class PosComponent implements OnInit, OnDestroy {
         const detail = result.message || result.detail || result.error || result.statusText || '';
         throw new Error(detail || `API rejected multi-account payment`);
       }
+      if (!this.hasReceiptData(result)) {
+        throw new Error('Multi-account payment failed — no receipts were created by the system.');
+      }
       return result;
     }
   }
@@ -2072,6 +2092,9 @@ export class PosComponent implements OnInit, OnDestroy {
     if (result && result.isSuccess === false) {
       throw new Error(result.message || result.detail || 'Clearance payment rejected by API');
     }
+    if (!this.hasReceiptData(result)) {
+      throw new Error('Clearance payment failed — no receipt was created by the system.');
+    }
     return result;
   }
 
@@ -2110,6 +2133,9 @@ export class PosComponent implements OnInit, OnDestroy {
     console.log(`[submitPrepaidPayment] Response:`, JSON.stringify(result).substring(0, 500));
     if (result && result.isSuccess === false) {
       throw new Error(result.message || result.detail || 'Prepaid payment rejected by API');
+    }
+    if (!this.hasReceiptData(result)) {
+      throw new Error('Prepaid payment failed — no receipt was created by the system.');
     }
     return result;
   }
@@ -2165,7 +2191,18 @@ export class PosComponent implements OnInit, OnDestroy {
     if (result && result.isSuccess === false) {
       throw new Error(result.message || result.detail || 'Miscellaneous payment rejected by API');
     }
+    if (!this.hasReceiptData(result)) {
+      throw new Error('Miscellaneous payment failed — no receipt was created by the system.');
+    }
     return result;
+  }
+
+  private hasReceiptData(result: any): boolean {
+    if (!result) return false;
+    const hasReceiptNo = !!(result.receiptNo || result.receiptNumber || result.receipt_no || result.ReceiptNo
+      || result.objData?.receiptNo || result.result?.receiptNo || result.data?.receiptNo);
+    const hasIds = Array.isArray(result.ids) && result.ids.length > 0 && result.ids.some((id: any) => id > 0);
+    return hasReceiptNo || hasIds;
   }
 
   async searchClearance(): Promise<void> {
