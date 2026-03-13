@@ -1,0 +1,443 @@
+Francois Naude
+📷
+For Account Statement (AS):
+
+  1. GET /api/BillingEnquiry/getBillingTemplate → returns { reportFileName: string }
+
+  2. If reportFileName === 'GeorgeAccountStatement':
+
+    - GET /api/BillingEnquiry/GetAAAA_ConfigSetting?strKeyName=BIReportUsername
+
+    - GET /api/BillingEnquiry/GetAAAA_ConfigSetting?strKeyName=BIEmbeddedURL
+
+    - Opens BI report window
+
+  3. Otherwise:
+
+    - GET /api/BillingEnquiry/GetAAAA_ConfigSetting?strKeyName=BaseWebURL
+
+    - Opens V1 SSRS window
+ 
+  For Detailed Account Statement (DAS):
+
+  1. GET /api/BillingEnquiry/getDetailBillingTemplate → returns { reportFileName: string }
+
+  2. If reportFileName === 'GeorgeDetailAccountStatement':
+
+    - GET /api/BillingEnquiry/GetAAAA_ConfigSetting?strKeyName=BIReportUsername
+
+    - GET /api/BillingEnquiry/GetAAAA_ConfigSetting?strKeyName=BIEmbeddedURL
+
+    - Opens BI report window
+
+  3. Otherwise:
+
+    - GET /api/BillingEnquiry/GetAAAA_ConfigSetting?strKeyName=BaseWebURL
+
+    - Opens V1 SSRS window
+ 
+  On download icon click → downloadStatement()
+ 
+  1. GET /api/BillingEnquiry/CheckFileExists?fileUrl={encoded-url} → bool
+
+  2. If true → window.open(fileUrl, '_blank')
+ 
+  ---
+
+  Report Opening Logic (complete flow)
+ 
+  BI Report path (when reportFileName matches George template):
+
+  BIEmbeddedURL = "http://bi-server" (from AAAA_ConfigSettings)
+
+  BIReportUsername = "someuser" (from AAAA_ConfigSettings)
+ 
+  AS  route = environment.AccountStatementFiles.GeorgeStatement
+
+            = "EMS/Embedded/Billing/GeorgeStatement.cpt"
+
+  DAS route = environment.AccountStatementFiles.GeorgeStatementDetailed
+
+            = "EMS/Embedded/Billing/GeorgeDetailStatement.cpt"
+ 
+  qs (AS)  = "AccountID=123&BillPeriodID=456"
+
+  qs (DAS) = "AccountID=123&BillPeriodID=456"
+ 
+  Final URL opened:
+
+    {BIEmbeddedURL}/webroot/decision/view/duchamp?viewlet=/{route}&Username={BIReportUsername}&AccountID={accountId}&BillPeriodID={periodId}
+ 
+  V1 SSRS path (fallback / non-George municipalities):
+
+  BaseWebURL = "http://v1-server" (from AAAA_ConfigSettings)
+ 
+  AS  → {BaseWebURL}/Reports/ReportPage.aspx?BillingAccountStatement=1&AccountID={accountId}&PeriodID={periodId}
+
+  DAS → {BaseWebURL}/Reports/ReportPage.aspx?BillingTrailrun=1&AccountID={accountId}&PeriodID={periodId}
+ 
+you need to add code on your frontend like below 
+ 
+when click on "Submit"
+ 
+search(): void {
+
+  if (!this.selectedReportType) {
+
+    this.toastr.warning('Please select a report type');
+
+    return;
+
+  }
+
+  if (!this.selectedYear) {
+
+    this.toastr.warning('Please select a financial year');
+
+    return;
+
+  }
+ 
+  if (!this.selectedMonth) {
+
+    this.toastr.warning('Please select a billing month');
+
+    return;
+
+  }
+
+  const reportName =
+
+    this.selectedReportType === 'DAS'
+
+      ? 'BillingTrailrun'
+
+      : 'BillingAccountStatement';
+
+  this.runStatementReport(this.selectedMonth, this.accountId, reportName);
+
+}
+ 
+ 
+runStatementReport(
+
+  periodId: number,
+
+  accountId: number,
+
+  reportName: string,
+
+): void {
+
+  let reportFilename = '';
+
+  if (reportName.toLowerCase() === 'billingaccountstatement') {
+
+    this.billingEnquiryService.getBillingTemplate().subscribe(
+
+      (result) => {
+
+        console.log(result);
+
+        reportFilename = result ? result.reportFileName : '';
+
+        if (
+
+          reportFilename &&
+
+          reportName.toLowerCase() === 'billingaccountstatement' &&
+
+          reportFilename === 'GeorgeAccountStatement'
+
+        ) {
+
+          const qs = `AccountID=${accountId}&BillPeriodID=${periodId}`;
+
+          this.openBIreport(qs, environment.AccountStatementFiles.GeorgeStatement);
+
+        } else {
+
+          const qs = `${reportName}=1&AccountID=${accountId}&PeriodID=${periodId}`;
+
+          const endpointUrl = `/Reports/ReportPage.aspx?${qs}`;
+
+          this.windowsopenV1(endpointUrl);
+
+        }
+
+      },
+
+      (error) => {
+
+        console.log(error);
+
+        const qs = `${reportName}=1&AccountID=${accountId}&PeriodID=${periodId}`;
+
+        const endpointUrl = `/Reports/ReportPage.aspx?${qs}`;
+
+        this.windowsopenV1(endpointUrl);
+
+      },
+
+    );
+
+  } else {
+
+    this.billingEnquiryService.getDetailBillingTemplate().subscribe(
+
+      (result) => {
+
+        console.log(result);
+
+        reportFilename = result ? result.reportFileName : '';
+
+        if (
+
+          reportFilename &&
+
+          reportFilename === 'GeorgeDetailAccountStatement'
+
+        ) {
+
+          const qs = `AccountID=${accountId}&BillPeriodID=${periodId}`;
+
+          this.openBIreport(qs, environment.AccountStatementFiles.GeorgeStatementDetailed);
+
+        } else {
+
+          // ---Default Report Page ---
+
+          const qs = `${reportName}=1&AccountID=${accountId}&PeriodID=${periodId}`;
+
+          const endpointUrl = `/Reports/ReportPage.aspx?${qs}`;
+
+          this.windowsopenV1(endpointUrl);
+
+        }
+
+      },
+
+      (error) => {
+
+        console.log(error);
+
+        const qs = `${reportName}=1&AccountID=${accountId}&PeriodID=${periodId}`;
+
+        const endpointUrl = `/Reports/ReportPage.aspx?${qs}`;
+
+        this.windowsopenV1(endpointUrl);
+
+      },
+
+    );
+
+  }
+
+}
+ 
+windowsopenV1(redirectLink: string): void {
+
+  this.getAAAA_ConfigSetting('BaseWebURL').subscribe({
+
+    next: (data) => {
+
+      try {
+
+        if (!data) {
+
+          console.error('BaseWebURL is empty');
+
+          return;
+
+        }
+ 
+        //console.log('getAAAA_ConfigSetting BaseWebURL: ' + data);
+
+        // Normalize base URL and redirect link to avoid double slashes
+
+        const base = data.trim().replace(/\/+$/g, '');
+
+        const route = redirectLink.trim().replace(/^\/+/g, '');
+
+        const endpointUrl = `${base}/${route}`;
+
+        const features =
+
+          'width=1200,height=800,top=50,left=50,toolbar=no,menubar=no,scrollbars=yes,resizable=yes';
+
+        window.open(endpointUrl, '_blank', features);
+
+      } catch (err) {
+
+        console.error('Error constructing or opening window:', err);
+
+      }
+
+    },
+
+    error: (error) => {
+
+      console.error('An error occurred during redirection:', error);
+
+    },
+
+  });
+
+}
+ 
+windowsopenBIReport(redirectLink: string): void {
+
+  this.getAAAA_ConfigSetting('BIEmbeddedURL').subscribe({
+
+    next: (data) => {
+
+      try {
+
+        if (!data) {
+
+          console.error('BI Embedded URL is empty');
+
+          return;
+
+        }
+
+        const base =
+
+          data.trim().replace(/\/+$/g, '') +
+
+          '/webroot/decision/view/duchamp?viewlet=';
+
+        const route = redirectLink.trim().replace(/^\/+/g, '');
+
+        const endpointUrl = `${base}/${route}`;
+
+        const features =
+
+          'width=1200,height=800,top=50,left=50,toolbar=no,menubar=no,scrollbars=yes,resizable=yes';
+
+        window.open(endpointUrl, '_blank', features);
+
+      } catch (err) {
+
+        console.error('Error constructing or opening window:', err);
+
+      }
+
+    },
+
+    error: (error) => {
+
+      console.error('An error occurred during redirection:', error);
+
+    },
+
+  });
+
+}
+ 
+downloadStatement(statement: StatementDownload): void {
+
+  if (!statement.filePath) {
+
+    this.toastr.warning('No file available for download');
+
+    return;
+
+  }
+ 
+  if (!this.fileStorageBaseUrl) {
+
+    this.toastr.error('File storage URL not configured. Please try again.');
+
+    return;
+
+  }
+ 
+  const fileUrl = this.transformToUrl(statement.filePath);
+
+  console.log('Downloading file:', fileUrl);
+ 
+  // Check if file exists using backend API before opening
+
+  this.billingEnquiryService.checkFileExists(fileUrl).subscribe({
+
+    next: (exists) => {
+
+      if (exists) {
+
+        window.open(fileUrl, '_blank');
+
+      } else {
+
+        this.toastr.error('File not found. The statement may have been moved or deleted.');
+
+      }
+
+    },
+
+    error: (error) => {
+
+      console.error('Error checking file:', error);
+
+      this.toastr.error('Unable to verify file. Please try again.');
+
+    }
+
+  });
+
+}
+ 
+private transformToUrl(filePath: string): string {
+
+  // If already a URL, return as is
+
+  if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+
+    return filePath;
+
+  }
+ 
+  // Check if fileStorageBaseUrl is loaded
+
+  if (!this.fileStorageBaseUrl) {
+
+    console.warn('File storage URL not loaded yet');
+
+    return filePath;
+
+  }
+ 
+  // Remove network path prefix and get relative path
+
+  // Pattern: \\server\share\path -> path
+
+  let relativePath = filePath;
+ 
+  // Handle UNC paths (\\server\share\...)
+
+  if (filePath.startsWith('\\\\')) {
+
+    const parts = filePath.split('\\').filter(p => p);
+
+    // Skip server and share name, take the rest
+
+    if (parts.length > 2) {
+
+      relativePath = parts.slice(2).join('/');
+
+    }
+
+  }
+ 
+  // Replace backslashes with forward slashes
+
+  relativePath = relativePath.replace(/\\/g, '/');
+ 
+  // Encode spaces and special characters
+
+  relativePath = encodeURI(relativePath);
+ 
+  return `${this.fileStorageBaseUrl}/${relativePath}`;
+
+}
+ 
