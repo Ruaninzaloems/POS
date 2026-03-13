@@ -566,11 +566,8 @@
   letter-spacing: 0.3px;
   color: var(--platinum-primary, #0f2b46);
   border-bottom: 2px solid #E5E7EB;
-  min-width: 160px;
-  position: sticky;
-  left: 0;
+  white-space: nowrap;
   background: #F8F9FB;
-  z-index: 2;
 }
 .debt-th-amt {
   text-align: right;
@@ -590,10 +587,8 @@
   font-weight: 500;
   color: var(--platinum-primary, #0f2b46);
   border-bottom: 1px solid #F0F0F0;
-  position: sticky;
-  left: 0;
+  white-space: nowrap;
   background: #fff;
-  z-index: 1;
 }
 .debt-td-amt {
   text-align: right;
@@ -3414,8 +3409,8 @@ thead .cons-sticky-col { z-index: 3; background: var(--platinum-primary, #0f2b46
 .cons-smart-table-wrap { overflow-x: auto; max-width: 100%; border-radius: 0.75rem; border: 1px solid #e2e8f0; box-shadow: 0 1px 4px rgba(15,43,70,0.04); }
 .cons-smart-table-wrap.cons-wide-grid { max-height: calc(100vh - 340px); min-height: 300px; overflow-y: auto; }
 .cons-smart-table { width: 100%; min-width: 900px; border-collapse: separate; border-spacing: 0; font-size: 0.82rem; }
-.cons-reading-table { min-width: 700px; }
-.cons-wide-grid .cons-smart-table { min-width: 3600px; }
+.cons-reading-table { min-width: 4200px; }
+.cons-wide-grid .cons-smart-table { min-width: 4200px; }
 .cons-smart-table thead tr { background: var(--platinum-primary, #0f2b46); }
 .cons-wide-grid .cons-smart-table thead { position: sticky; top: 0; z-index: 10; }
 .cons-wide-grid .cons-smart-table thead th { position: sticky; top: 0; background: var(--platinum-primary, #0f2b46); z-index: 10; }
