@@ -1495,7 +1495,12 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
   }
 
   goBack(): void {
-    this.router.navigate(['/direct-deposits/manual']);
+    const tx = this.transaction();
+    if (this.postComplete() && this.postErrors().length === 0 && tx) {
+      this.router.navigate(['/direct-deposits/manual'], { queryParams: { allocated: tx.posItem_ID } });
+    } else {
+      this.router.navigate(['/direct-deposits/manual']);
+    }
   }
 
   formatCurrency(val: number): string {

@@ -169,14 +169,14 @@
                 </td>
                 <td class="cell-amount text-right" [attr.data-testid]="'text-amount-' + item.posItem_ID">{{ formatCurrency(item.amount) }}</td>
                 <td class="cell-status">
-                  @if (item.billingAllocated) {
+                  @if (isItemAllocated(item)) {
                     <span class="status-badge status-allocated" [attr.data-testid]="'badge-status-' + item.posItem_ID">Allocated</span>
                   } @else {
                     <span class="status-badge status-pending" [attr.data-testid]="'badge-status-' + item.posItem_ID">Pending</span>
                   }
                 </td>
                 <td class="cell-actions" (click)="$event.stopPropagation()">
-                  @if (!item.billingAllocated) {
+                  @if (!isItemAllocated(item)) {
                     <div class="action-group">
                       @if (hasAccountClue(item)) {
                         <button class="btn-auto" [class.btn-auto-active]="isInlineExpanded(item.posItem_ID)" (click)="autoAllocateItem(item)" [disabled]="isInlineLoading(item.posItem_ID)" title="Find matching accounts from description" [attr.data-testid]="'button-auto-' + item.posItem_ID">
@@ -198,11 +198,14 @@
                       </button>
                     </div>
                   } @else {
-                    <button class="btn-view" (click)="selectItem(item)" [attr.data-testid]="'button-view-' + item.posItem_ID">View</button>
+                    <span class="status-badge status-allocated" style="font-size:0.6875rem">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                      Done
+                    </span>
                   }
                 </td>
               </tr>
-              @if (isInlineExpanded(item.posItem_ID)) {
+              @if (isInlineExpanded(item.posItem_ID) && !isItemAllocated(item)) {
                 <tr class="suggestion-row">
                   <td [attr.colspan]="8">
                     <div class="inline-suggestions-panel">

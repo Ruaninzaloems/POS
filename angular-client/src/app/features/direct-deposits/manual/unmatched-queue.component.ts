@@ -1,7 +1,7 @@
 import { Component, signal, computed, inject, OnInit, OnDestroy, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
+import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { ApiService } from '../../../core/services/api.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -483,6 +483,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
   private toast = inject(ToastService);
   private auth = inject(AuthService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
 
   loading = signal(false);
   error = signal('');
@@ -515,6 +516,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
   quickAllocError = signal('');
   quickAllocMatchId = signal<number | null>(null);
   depositAllocDone = signal<{ accountNo: string; name: string; amount: number; posItemId: number } | null>(null);
+  allocatedIds = signal<Set<number>>(new Set());
 
   manualSearchOpen = signal(false);
   msAdvancedOpen = signal(false);
@@ -550,10 +552,11 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
       );
     }
     const sf = this.statusFilter();
+    const allocIds = this.allocatedIds();
     if (sf === 'allocated') {
-      data = data.filter(i => i.billingAllocated);
+      data = data.filter(i => i.billingAllocated || allocIds.has(i.posItem_ID));
     } else if (sf === 'unallocated') {
-      data = data.filter(i => !i.billingAllocated);
+      data = data.filter(i => !i.billingAllocated && !allocIds.has(i.posItem_ID));
     }
     return data;
   });
@@ -613,8 +616,9 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
 
   stats = computed(() => {
     const all = this.items();
-    const allocated = all.filter(i => i.billingAllocated);
-    const unallocated = all.filter(i => !i.billingAllocated);
+    const allocIds = this.allocatedIds();
+    const allocated = all.filter(i => i.billingAllocated || allocIds.has(i.posItem_ID));
+    const unallocated = all.filter(i => !i.billingAllocated && !allocIds.has(i.posItem_ID));
     return {
       total: all.length,
       totalAmount: all.reduce((s, i) => s + (i.amount || 0), 0),
@@ -627,6 +631,15 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.resetAllState();
+    const allocatedParam = this.route.snapshot.queryParamMap.get('allocated');
+    if (allocatedParam) {
+      const allocId = Number(allocatedParam);
+      if (allocId) {
+        this.markAllocated(allocId);
+        this.toast.success('Deposit allocated successfully and removed from queue.');
+      }
+      this.router.navigate([], { queryParams: {}, replaceUrl: true });
+    }
     this.loadData();
   }
 
@@ -791,6 +804,10 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
   }
 
   selectItem(item: BankReconPosItem): void {
+    if (this.isItemAllocated(item)) {
+      this.toast.show('This deposit has already been allocated.', 'info');
+      return;
+    }
     this.selectedItem.set(item);
     this.detailOpen.set(true);
     this.loadSuggestedMatches(item);
@@ -1293,6 +1310,10 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
   }
 
   async autoAllocateItem(item: BankReconPosItem): Promise<void> {
+    if (this.isItemAllocated(item)) {
+      this.toast.show('This deposit has already been allocated.', 'info');
+      return;
+    }
     const id = item.posItem_ID;
     const expanded = new Set(this.inlineExpanded());
 
@@ -1616,7 +1637,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
         this.inlineProgress.set(new Map(progressMap));
         await Promise.allSettled(needsEnrich.map(s =>
           this.safeCall(() => firstValueFrom(
-            this.api.get('/api/platinum/billing-payment/search-accounts', { accountId: s.accountId })
+            this.api.get('/api/platinum/billing-payment/search-accounts', { accountId: String(s.accountId) })
           )).then((data: any) => {
             const items = this.unwrap(data);
             if (items.length > 0) {
@@ -1744,10 +1765,18 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
   }
 
   navigateToAllocate(item: BankReconPosItem): void {
+    if (this.isItemAllocated(item)) {
+      this.toast.show('This deposit has already been allocated.', 'info');
+      return;
+    }
     this.router.navigate(['/direct-deposits/manual/allocate', item.posItem_ID]);
   }
 
   navigateToAllocateWithAccount(item: BankReconPosItem, match: SuggestedMatch): void {
+    if (this.isItemAllocated(item)) {
+      this.toast.show('This deposit has already been allocated.', 'info');
+      return;
+    }
     this.router.navigate(['/direct-deposits/manual/allocate', item.posItem_ID], {
       queryParams: {
         accountId: match.accountId,
@@ -1760,6 +1789,10 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
 
   async quickAllocate(item: BankReconPosItem, match: SuggestedMatch): Promise<void> {
     if (this.quickAllocating()) return;
+    if (this.isItemAllocated(item)) {
+      this.toast.show('This deposit has already been allocated.', 'info');
+      return;
+    }
     this.quickAllocating.set(true);
     this.quickAllocStatus.set('Verifying deposit is still available...');
     this.quickAllocComplete.set(false);
@@ -1913,7 +1946,21 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
     return { status: 'FAILED', errors: ['Job polling timed out'] };
   }
 
+  isItemAllocated(item: BankReconPosItem): boolean {
+    return item.billingAllocated === true || this.allocatedIds().has(item.posItem_ID);
+  }
+
+  private markAllocated(posItemId: number): void {
+    const ids = new Set(this.allocatedIds());
+    ids.add(posItemId);
+    this.allocatedIds.set(ids);
+    const exp = new Set(this.inlineExpanded());
+    exp.delete(posItemId);
+    this.inlineExpanded.set(exp);
+  }
+
   private removeAllocatedItem(posItemId: number): void {
+    this.markAllocated(posItemId);
     const updated = this.items().filter(i => i.posItem_ID !== posItemId);
     this.items.set(updated);
     this.totalCount.set(Math.max(0, this.totalCount() - 1));
