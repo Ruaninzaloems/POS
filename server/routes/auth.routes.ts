@@ -25,7 +25,11 @@ export function registerAuthRoutes(app: Express, httpServer: Server): void {
       }
     } catch (e: any) {
       console.error('[Auth] Login error:', e.message, e.stack?.substring(0, 300));
-      const userMessage = e.message?.includes('fetch') || e.message?.includes('ECONNREFUSED') || e.message?.includes('ETIMEDOUT')
+      const isTimeout = e.name === 'TimeoutError' || e.message?.includes('timed out') || e.message?.includes('abort');
+      const isNetwork = e.message?.includes('fetch') || e.message?.includes('ECONNREFUSED') || e.message?.includes('ETIMEDOUT');
+      const userMessage = isTimeout
+        ? 'The billing server is taking too long to respond. Please try again.'
+        : isNetwork
         ? 'Cannot connect to the billing server. Please try again in a moment.'
         : e.message || 'Login failed. Please try again.';
       res.status(500).json({ success: false, error: userMessage });

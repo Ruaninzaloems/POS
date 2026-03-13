@@ -205,6 +205,7 @@ async function fetchTokenForUser(username: string, password: string, dbName: str
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userName: username, password, dbName }),
+          signal: AbortSignal.timeout(15000),
         });
 
         if (res.ok) {
@@ -243,7 +244,8 @@ async function fetchTokenForUser(username: string, password: string, dbName: str
           }
         }
       } catch (e: any) {
-        console.log(`[PlatinumAuth] createToken error: ${e.message}`);
+        const isTimeout = e.name === 'TimeoutError' || e.name === 'AbortError';
+        console.log(`[PlatinumAuth] createToken ${isTimeout ? 'timed out' : 'error'}: ${e.message}`);
       }
     }
   }
@@ -257,6 +259,7 @@ async function fetchTokenForUser(username: string, password: string, dbName: str
       username: username,
       dbName,
     }),
+    signal: AbortSignal.timeout(15000),
   });
 
   if (!res.ok) {
