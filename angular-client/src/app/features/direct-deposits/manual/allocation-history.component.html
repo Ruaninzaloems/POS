@@ -244,7 +244,7 @@
                           -
                         }
                       </td>
-                      <td class="truncate-cell text-danger">{{ acc.errorMessage || '' }}</td>
+                      <td class="error-cell text-danger" [title]="acc.errorMessage || ''">{{ acc.errorMessage || '' }}</td>
                     </tr>
                   }
                 </tbody>
