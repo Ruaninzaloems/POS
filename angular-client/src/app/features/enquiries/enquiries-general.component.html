@@ -397,7 +397,7 @@
                   <span class="debt-table-title">Total Balance/Debt</span>
                   <span class="debt-table-count">{{ getBalanceItems().length }} service{{ getBalanceItems().length !== 1 ? 's' : '' }}</span>
                 </div>
-                <div class="debt-table-wrapper">
+                <div class="debt-table-wrapper debt-desktop-only">
                   <table class="debt-table" data-testid="table-balance-debt">
                     <thead>
                       <tr>
@@ -444,6 +444,50 @@
                       </tr>
                     </tfoot>
                   </table>
+                </div>
+                <div class="debt-mobile-cards debt-mobile-only">
+                  @for (item of getBalanceItems(); track $index) {
+                    <div class="debt-m-card" [attr.data-testid]="'debt-card-' + $index">
+                      <div class="debt-m-card-top">
+                        <span class="debt-m-svc">{{ item.serviceDescription || item.serviceDesc || item.description || item.serviceTypeDesc || 'Service' }}</span>
+                        <span class="debt-m-total" [class.debt-negative]="getDebtVal(item, 'totalOutStanding') < 0">{{ formatDebtAmt(getDebtVal(item, 'totalOutStanding')) }}</span>
+                      </div>
+                      @if (getDebtVal(item, 'totalOutStanding') !== 0) {
+                        <div class="debt-m-aging">
+                          <div class="debt-m-age-item">
+                            <span class="debt-m-age-lbl">New</span>
+                            <span class="debt-m-age-val" [class.debt-negative]="getDebtVal(item, 'newCharge') < 0">{{ formatDebtAmt(getDebtVal(item, 'newCharge')) }}</span>
+                          </div>
+                          <div class="debt-m-age-item">
+                            <span class="debt-m-age-lbl">Current</span>
+                            <span class="debt-m-age-val" [class.debt-negative]="getDebtVal(item, 'current') < 0">{{ formatDebtAmt(getDebtVal(item, 'current')) }}</span>
+                          </div>
+                          <div class="debt-m-age-item">
+                            <span class="debt-m-age-lbl">30d</span>
+                            <span class="debt-m-age-val">{{ formatDebtAmt(getDebtVal(item, 'days30')) }}</span>
+                          </div>
+                          <div class="debt-m-age-item">
+                            <span class="debt-m-age-lbl">60d</span>
+                            <span class="debt-m-age-val">{{ formatDebtAmt(getDebtVal(item, 'days60')) }}</span>
+                          </div>
+                          <div class="debt-m-age-item">
+                            <span class="debt-m-age-lbl">90d</span>
+                            <span class="debt-m-age-val">{{ formatDebtAmt(getDebtVal(item, 'days90')) }}</span>
+                          </div>
+                          <div class="debt-m-age-item">
+                            <span class="debt-m-age-lbl">120d+</span>
+                            <span class="debt-m-age-val">{{ formatDebtAmt(getDebtVal(item, 'days120') + getDebtVal(item, 'days150') + getDebtVal(item, 'days180')) }}</span>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
+                  <div class="debt-m-card debt-m-totals">
+                    <div class="debt-m-card-top">
+                      <span class="debt-m-svc debt-m-total-label">Total</span>
+                      <span class="debt-m-total debt-m-total-val" [class.debt-negative]="getDebtColumnTotal('totalOutStanding') < 0">{{ formatDebtAmt(getDebtColumnTotal('totalOutStanding')) }}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             } @else {
