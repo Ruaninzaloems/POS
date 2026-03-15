@@ -2742,10 +2742,9 @@
 
 @media (max-width: 640px) {
   .pos-workstation {
-    height: auto;
-    min-height: 100vh;
-    min-height: 100dvh;
-    overflow: visible;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
   }
   .pos-header {
     padding: 4px 8px;
@@ -2834,12 +2833,14 @@
     height: 12px;
   }
   .pos-body {
+    flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
+    min-height: 0;
   }
   .pos-split {
     grid-template-columns: 1fr;
-    height: auto;
+    min-height: 0;
   }
   .pos-left {
     padding: 10px;
@@ -4500,7 +4501,7 @@
     padding: 10px;
   }
   .search-results-panel {
-    max-height: 55vh;
+    max-height: 45vh;
     border-radius: 8px;
   }
   .results-header {
