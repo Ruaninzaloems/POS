@@ -464,19 +464,19 @@
                           </div>
                           <div class="debt-m-age-item">
                             <span class="debt-m-age-lbl">30d</span>
-                            <span class="debt-m-age-val">{{ formatDebtAmt(getDebtVal(item, 'days30')) }}</span>
+                            <span class="debt-m-age-val" [class.debt-negative]="getDebtVal(item, 'days30') < 0">{{ formatDebtAmt(getDebtVal(item, 'days30')) }}</span>
                           </div>
                           <div class="debt-m-age-item">
                             <span class="debt-m-age-lbl">60d</span>
-                            <span class="debt-m-age-val">{{ formatDebtAmt(getDebtVal(item, 'days60')) }}</span>
+                            <span class="debt-m-age-val" [class.debt-negative]="getDebtVal(item, 'days60') < 0">{{ formatDebtAmt(getDebtVal(item, 'days60')) }}</span>
                           </div>
                           <div class="debt-m-age-item">
                             <span class="debt-m-age-lbl">90d</span>
-                            <span class="debt-m-age-val">{{ formatDebtAmt(getDebtVal(item, 'days90')) }}</span>
+                            <span class="debt-m-age-val" [class.debt-negative]="getDebtVal(item, 'days90') < 0">{{ formatDebtAmt(getDebtVal(item, 'days90')) }}</span>
                           </div>
                           <div class="debt-m-age-item">
                             <span class="debt-m-age-lbl">120d+</span>
-                            <span class="debt-m-age-val">{{ formatDebtAmt(getDebtVal(item, 'days120') + getDebtVal(item, 'days150') + getDebtVal(item, 'days180')) }}</span>
+                            <span class="debt-m-age-val" [class.debt-negative]="(getDebtVal(item, 'days120') + getDebtVal(item, 'days150') + getDebtVal(item, 'days180')) < 0">{{ formatDebtAmt(getDebtVal(item, 'days120') + getDebtVal(item, 'days150') + getDebtVal(item, 'days180')) }}</span>
                           </div>
                         </div>
                       }
@@ -5424,7 +5424,7 @@
                   <button class="btn-primary" (click)="onSummaryYearChange(summaryFinYear())">Retry</button>
                 </div>
               } @else if (summaryData().length) {
-                <div class="summary-table-wrapper">
+                <div class="summary-table-wrapper sm-desktop-only">
                   <table class="summary-table" data-testid="table-txn-summary">
                     <thead>
                       <tr>
@@ -5465,6 +5465,66 @@
                       }
                     </tbody>
                   </table>
+                </div>
+                <div class="sm-mobile-cards sm-mobile-only">
+                  @for (row of summaryData(); track $index) {
+                    <div class="sm-card" [class.sm-card-special]="row._isSpecialRow" [class.sm-card-total]="row._isTotalRow" [class.sm-card-closing]="getSummaryDescription(row).toLowerCase() === 'closing balance'" [class.sm-card-opening]="getSummaryDescription(row).toLowerCase() === 'opening balance'" [attr.data-testid]="'sm-card-' + $index">
+                      <div class="sm-card-header">
+                        <span class="sm-card-desc">{{ getSummaryDescription(row) }}</span>
+                        <span class="sm-card-fy">{{ getSummaryFinYear(row) }}</span>
+                      </div>
+                      <div class="sm-card-months">
+                        <div class="sm-month-item">
+                          <span class="sm-month-lbl">Jul</span>
+                          <span class="sm-month-val" [class.summary-neg]="getSummaryMonthValue(row, 'Jul') < 0">{{ formatCurrency(getSummaryMonthValue(row, 'Jul')) }}</span>
+                        </div>
+                        <div class="sm-month-item">
+                          <span class="sm-month-lbl">Aug</span>
+                          <span class="sm-month-val" [class.summary-neg]="getSummaryMonthValue(row, 'Aug') < 0">{{ formatCurrency(getSummaryMonthValue(row, 'Aug')) }}</span>
+                        </div>
+                        <div class="sm-month-item">
+                          <span class="sm-month-lbl">Sep</span>
+                          <span class="sm-month-val" [class.summary-neg]="getSummaryMonthValue(row, 'Sep') < 0">{{ formatCurrency(getSummaryMonthValue(row, 'Sep')) }}</span>
+                        </div>
+                        <div class="sm-month-item">
+                          <span class="sm-month-lbl">Oct</span>
+                          <span class="sm-month-val" [class.summary-neg]="getSummaryMonthValue(row, 'Oct') < 0">{{ formatCurrency(getSummaryMonthValue(row, 'Oct')) }}</span>
+                        </div>
+                        <div class="sm-month-item">
+                          <span class="sm-month-lbl">Nov</span>
+                          <span class="sm-month-val" [class.summary-neg]="getSummaryMonthValue(row, 'Nov') < 0">{{ formatCurrency(getSummaryMonthValue(row, 'Nov')) }}</span>
+                        </div>
+                        <div class="sm-month-item">
+                          <span class="sm-month-lbl">Dec</span>
+                          <span class="sm-month-val" [class.summary-neg]="getSummaryMonthValue(row, 'Dec') < 0">{{ formatCurrency(getSummaryMonthValue(row, 'Dec')) }}</span>
+                        </div>
+                        <div class="sm-month-item">
+                          <span class="sm-month-lbl">Jan</span>
+                          <span class="sm-month-val" [class.summary-neg]="getSummaryMonthValue(row, 'Jan') < 0">{{ formatCurrency(getSummaryMonthValue(row, 'Jan')) }}</span>
+                        </div>
+                        <div class="sm-month-item">
+                          <span class="sm-month-lbl">Feb</span>
+                          <span class="sm-month-val" [class.summary-neg]="getSummaryMonthValue(row, 'Feb') < 0">{{ formatCurrency(getSummaryMonthValue(row, 'Feb')) }}</span>
+                        </div>
+                        <div class="sm-month-item">
+                          <span class="sm-month-lbl">Mar</span>
+                          <span class="sm-month-val" [class.summary-neg]="getSummaryMonthValue(row, 'Mar') < 0">{{ formatCurrency(getSummaryMonthValue(row, 'Mar')) }}</span>
+                        </div>
+                        <div class="sm-month-item">
+                          <span class="sm-month-lbl">Apr</span>
+                          <span class="sm-month-val" [class.summary-neg]="getSummaryMonthValue(row, 'Apr') < 0">{{ formatCurrency(getSummaryMonthValue(row, 'Apr')) }}</span>
+                        </div>
+                        <div class="sm-month-item">
+                          <span class="sm-month-lbl">May</span>
+                          <span class="sm-month-val" [class.summary-neg]="getSummaryMonthValue(row, 'May') < 0">{{ formatCurrency(getSummaryMonthValue(row, 'May')) }}</span>
+                        </div>
+                        <div class="sm-month-item">
+                          <span class="sm-month-lbl">Jun</span>
+                          <span class="sm-month-val" [class.summary-neg]="getSummaryMonthValue(row, 'Jun') < 0">{{ formatCurrency(getSummaryMonthValue(row, 'Jun')) }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  }
                 </div>
                 <div class="summary-footer">
                   <span class="summary-row-count">1 – {{ summaryData().length }} of {{ summaryData().length }}</span>
