@@ -33,6 +33,12 @@
   text-decoration: none;
   color: inherit;
   cursor: pointer;
+  background: none;
+  border: none;
+  font-family: inherit;
+  padding: 0;
+  width: 100%;
+  text-align: left;
 }
 
 .brand-icon {
@@ -93,6 +99,12 @@
   cursor: pointer;
   white-space: nowrap;
   margin-bottom: 1px;
+  background: none;
+  border: none;
+  border-left: 3px solid transparent;
+  font-family: inherit;
+  width: 100%;
+  text-align: left;
 }
 .nav-link:hover {
   color: #1e293b;
@@ -360,6 +372,10 @@
   cursor: pointer;
   display: flex;
   align-items: center;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
 }
 .breadcrumb-home:hover { color: #3b82f6; }
 

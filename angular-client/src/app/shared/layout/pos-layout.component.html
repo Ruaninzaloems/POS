@@ -1,7 +1,7 @@
 <div class="app-shell">
   <aside class="app-sidenav" [class.collapsed]="sidebarCollapsed()" [class.mobile-open]="mobileSidebarOpen()">
     <div class="sidenav-header">
-      <a class="brand" href="/" (click)="handleNav($event, '/')" data-testid="link-home-logo">
+      <button class="brand" (click)="handleNav($event, '/')" data-testid="link-home-logo">
         <div class="brand-icon">
           <span class="material-icons">account_balance</span>
         </div>
@@ -9,7 +9,7 @@
           <span class="brand-name">PLATINUM</span>
           <span class="brand-sub">Municipal POS</span>
         </div>
-      </a>
+      </button>
     </div>
 
     <nav class="sidenav-nav">
@@ -27,23 +27,23 @@
             @if (isGroupExpanded(item.label) && !sidebarCollapsed()) {
               <div class="group-children">
                 @for (child of $any(item).children; track child.label) {
-                  <a class="nav-link sub-item" [class.active-link]="isActive(child.href)"
-                     [attr.href]="child.href" (click)="handleNav($event, child.href)"
+                  <button class="nav-link sub-item" [class.active-link]="isActive(child.href)"
+                     (click)="handleNav($event, child.href)"
                      [attr.data-testid]="'link-' + child.label">
                     <span class="material-icons nav-icon">{{ child.icon }}</span>
                     <span class="nav-label">{{ child.label }}</span>
-                  </a>
+                  </button>
                 }
               </div>
             }
           </div>
         } @else {
-          <a class="nav-link" [class.active-link]="isActive($any(item).href)"
-             [attr.href]="$any(item).href" (click)="handleNav($event, $any(item).href)"
+          <button class="nav-link" [class.active-link]="isActive($any(item).href)"
+             (click)="handleNav($event, $any(item).href)"
              [attr.data-testid]="'link-' + item.label">
             <span class="material-icons nav-icon">{{ item.icon }}</span>
             <span class="nav-label" [class.hidden]="sidebarCollapsed()">{{ item.label }}</span>
-          </a>
+          </button>
         }
       }
     </nav>
@@ -92,9 +92,9 @@
 
     <div class="breadcrumb-bar">
       <div class="breadcrumb-trail">
-        <a class="breadcrumb-home" href="/" (click)="handleNav($event, '/')">
+        <button class="breadcrumb-home" (click)="handleNav($event, '/')">
           <span class="material-icons" style="font-size: 16px;">home</span>
-        </a>
+        </button>
         @for (crumb of breadcrumbs(); track crumb.label; let last = $last) {
           <span class="material-icons breadcrumb-separator">chevron_right</span>
           @if (last) {
