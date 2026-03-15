@@ -391,6 +391,7 @@ table tbody tr:hover { background: #f8fafc; }
 .toast-success { background: var(--platinum-success-light); color: #1b5e20; border: 1px solid #a5d6a7; }
 .toast-error { background: var(--platinum-danger-light); color: #c62828; border: 1px solid #ef9a9a; }
 .toast-info { background: var(--platinum-info-light); color: #1565c0; border: 1px solid #90caf9; }
+.toast-warning { background: #fff8e1; color: #e65100; border: 1px solid #ffcc80; }
 @keyframes slideIn {
   from { transform: translateX(100%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }

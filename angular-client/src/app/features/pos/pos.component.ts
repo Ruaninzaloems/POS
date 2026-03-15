@@ -126,6 +126,8 @@ export class PosComponent implements OnInit, OnDestroy {
   paymentProgressCurrent = signal(0);
   paymentProgressLabel = signal('');
 
+  showClearConfirm = signal(false);
+
   showCancelDialog = signal(false);
   cancelReceiptNo = signal('');
   cancelReason = signal('');
@@ -1457,6 +1459,18 @@ export class PosComponent implements OnInit, OnDestroy {
     const remaining = this.basket.totalToPay() - this.cardAmount() - this.chequeAmount() - this.eftAmount();
     const rounded = this.basket.roundToNearest10c(Math.max(0, remaining));
     this.cashAmount.set(rounded);
+  }
+
+  requestClearAll(): void {
+    if (this.basket.itemCount() === 0) return;
+    this.showClearConfirm.set(true);
+  }
+
+  confirmClearAll(): void {
+    this.showClearConfirm.set(false);
+    this.basket.clearAll();
+    this.resetTenderFields();
+    this.toast.info('Basket cleared.');
   }
 
   resetTenderFields(): void {

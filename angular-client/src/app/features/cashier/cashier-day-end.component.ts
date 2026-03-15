@@ -89,6 +89,8 @@ export class CashierDayEndComponent implements OnInit {
   cancelSearchError = signal('');
   cancelReason = signal('');
   isCancellingReceipt = signal(false);
+  showConfirmDialog = signal(false);
+  confirmDialogAction = signal<'submit' | 'cancel' | null>(null);
 
   today = (() => { const d = new Date(); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; })();
 
@@ -243,7 +245,7 @@ export class CashierDayEndComponent implements OnInit {
     return (this.denominations()[key] || 0) * value;
   }
 
-  async handleSaveReconcile(): Promise<void> {
+  requestSaveReconcile(): void {
     const cashierId = this.sessionCashierId();
     if (!cashierId) {
       this.toast.error('No active session found. Cannot submit reconciliation.');
@@ -253,12 +255,38 @@ export class CashierDayEndComponent implements OnInit {
       this.toast.error('Session is not active. Please start a session first.');
       return;
     }
-
     const finYear = this.user()?.finYear;
     if (!finYear) {
       this.toast.error('Financial year missing from your session. Please log in again.');
       return;
     }
+    this.confirmDialogAction.set('submit');
+    this.showConfirmDialog.set(true);
+  }
+
+  dismissConfirmDialog(): void {
+    this.showConfirmDialog.set(false);
+    this.confirmDialogAction.set(null);
+  }
+
+  confirmDialogAccepted(): void {
+    if (this.isSaving() || this.isCancellingReceipt()) return;
+    const action = this.confirmDialogAction();
+    this.showConfirmDialog.set(false);
+    this.confirmDialogAction.set(null);
+    if (action === 'submit') {
+      this.handleSaveReconcile();
+    } else if (action === 'cancel') {
+      this.handleRequestCancel();
+    }
+  }
+
+  async handleSaveReconcile(): Promise<void> {
+    if (this.isSaving()) return;
+    const cashierId = this.sessionCashierId();
+    if (!cashierId) { this.toast.error('No active session found.'); return; }
+    const finYear = this.user()?.finYear;
+    if (!finYear) { this.toast.error('Financial year missing. Please log in again.'); return; }
 
     this.isSaving.set(true);
     try {
@@ -311,6 +339,7 @@ export class CashierDayEndComponent implements OnInit {
         console.log('[DayEnd] validate-cashbook passed');
       } catch (valErr: any) {
         console.warn('[DayEnd] validate-cashbook warning (continuing):', valErr?.message);
+        this.toast.warning('Cashbook validation had a warning — submission will continue.');
       }
 
       const cashierOfficeId = this.sessionOfficeId() || Number(
@@ -349,9 +378,12 @@ export class CashierDayEndComponent implements OnInit {
         if (submitResult?.isSuccess === false || submitResult?.error) {
           const errMsg = submitResult?.message || submitResult?.error || 'Failed to submit day-end for authorization.';
           console.error('[DayEnd] submit-day-auth-reconcile returned error:', errMsg);
+          this.toast.error('Day-end data saved, but supervisor authorization may not have completed. Please check with your supervisor.');
+          return;
         }
       } catch (subErr: any) {
         console.warn('[DayEnd] submit-day-auth-reconcile warning (continuing):', subErr?.message);
+        this.toast.warning('Day-end data saved. Supervisor authorization step had a warning — please verify with your supervisor.');
       }
 
       this.toast.success('Day-end reconciliation submitted for supervisor approval.');

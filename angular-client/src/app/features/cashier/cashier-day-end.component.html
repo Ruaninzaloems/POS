@@ -299,7 +299,7 @@
           <div class="action-buttons">
             <button
               class="btn-primary btn-submit"
-              (click)="handleSaveReconcile()"
+              (click)="requestSaveReconcile()"
               [disabled]="isSaving()"
               data-testid="button-save-reconcile"
             >
@@ -483,7 +483,7 @@
               <div class="cancel-actions">
                 <button
                   class="btn-primary btn-cancel-submit"
-                  (click)="handleRequestCancel()"
+                  (click)="confirmDialogAction.set('cancel'); showConfirmDialog.set(true)"
                   [disabled]="isCancellingReceipt() || !cancelReason()"
                   data-testid="button-submit-cancel"
                 >
@@ -559,3 +559,54 @@
     }
   </div>
 </div>
+
+@if (showConfirmDialog()) {
+  <div class="confirm-overlay" (click)="dismissConfirmDialog()" data-testid="confirm-dialog-overlay">
+    <div class="confirm-dialog" (click)="$event.stopPropagation()" data-testid="confirm-dialog">
+      <div class="confirm-icon" [class.confirm-icon-danger]="confirmDialogAction() === 'cancel'">
+        @if (confirmDialogAction() === 'submit') {
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
+            <path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/>
+            <path d="M7 3v4a1 1 0 0 0 1 1h7"/>
+          </svg>
+        } @else {
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+          </svg>
+        }
+      </div>
+      <h3 class="confirm-title">
+        @if (confirmDialogAction() === 'submit') {
+          Submit Day-End Reconciliation?
+        } @else {
+          Request Receipt Cancellation?
+        }
+      </h3>
+      <p class="confirm-message">
+        @if (confirmDialogAction() === 'submit') {
+          This will close your cashier session and submit it for supervisor approval. You will not be able to process further payments until the supervisor approves.
+        } @else {
+          This will submit a cancellation request for the selected receipt. The supervisor will need to approve the cancellation.
+        }
+      </p>
+      <div class="confirm-actions">
+        <button class="btn-outline confirm-btn-cancel" (click)="dismissConfirmDialog()" data-testid="confirm-dialog-cancel">
+          Go Back
+        </button>
+        <button
+          class="btn-primary confirm-btn-confirm"
+          [class.confirm-btn-danger]="confirmDialogAction() === 'cancel'"
+          (click)="confirmDialogAccepted()"
+          data-testid="confirm-dialog-accept"
+        >
+          @if (confirmDialogAction() === 'submit') {
+            Yes, Submit Day-End
+          } @else {
+            Yes, Request Cancellation
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}

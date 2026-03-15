@@ -298,8 +298,14 @@
               }
             </div>
           } @else if (unifiedSearchActive() && !unifiedSearchLoading() && unifiedSearchResults().length === 0) {
-            <div class="search-results-panel">
-              <div class="empty-results">No results found matching your search.</div>
+            <div class="search-results-panel" data-testid="unified-no-results">
+              <div class="empty-results">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.4; margin-bottom:8px">
+                  <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="M8 11h6"/>
+                </svg>
+                <span class="empty-results-title">No results found</span>
+                <span class="empty-results-hint">Try a different account number, name, or check for typos.</span>
+              </div>
             </div>
           }
         }
@@ -553,7 +559,7 @@
               </h3>
               <div class="cart-actions">
                 <button class="link-btn" (click)="basket.payAllFull()" data-testid="button-pay-all-full">Pay All Full</button>
-                <button class="link-btn danger" (click)="basket.clearAll()" data-testid="button-clear-all">Clear All</button>
+                <button class="link-btn danger" (click)="requestClearAll()" data-testid="button-clear-all">Clear All</button>
               </div>
             </div>
 
@@ -1771,6 +1777,24 @@
       </div>
       <div class="enquiry-overlay-body">
         <app-enquiries-general></app-enquiries-general>
+      </div>
+    </div>
+  }
+
+  @if (showClearConfirm()) {
+    <div class="clear-confirm-overlay" (click)="showClearConfirm.set(false)" data-testid="clear-confirm-overlay">
+      <div class="clear-confirm-dialog" (click)="$event.stopPropagation()" data-testid="clear-confirm-dialog">
+        <div class="clear-confirm-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+          </svg>
+        </div>
+        <h3 class="clear-confirm-title">Clear all {{ basket.itemCount() }} items?</h3>
+        <p class="clear-confirm-msg">This will remove all items from the basket and reset tender amounts.</p>
+        <div class="clear-confirm-actions">
+          <button class="btn-outline" (click)="showClearConfirm.set(false)" data-testid="clear-confirm-cancel">Keep Items</button>
+          <button class="btn-danger" (click)="confirmClearAll()" data-testid="clear-confirm-accept">Clear All</button>
+        </div>
       </div>
     </div>
   }
