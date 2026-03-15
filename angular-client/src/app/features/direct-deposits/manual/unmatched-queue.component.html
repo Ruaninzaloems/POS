@@ -113,7 +113,7 @@
         </p>
       </div>
     } @else {
-      <div class="grid-container" data-testid="table-deposits">
+      <div class="grid-container dd-desktop-only" data-testid="table-deposits">
         <table class="data-grid">
           <thead>
             <tr>
@@ -292,6 +292,115 @@
             }
           </tbody>
         </table>
+      </div>
+
+      <div class="dd-mobile-cards dd-mobile-only">
+        <div class="dd-m-select-all">
+          <input type="checkbox" [checked]="isAllOnPageSelected()" (change)="selectAllItems()" data-testid="checkbox-select-all-mobile" />
+          <span class="dd-m-select-label">Select All</span>
+        </div>
+        @for (item of paginatedItems(); track item.posItem_ID) {
+          <div class="dd-m-card" [class.dd-m-allocated]="item.billingAllocated" [class.dd-m-selected]="isItemSelected(item.posItem_ID)" (click)="selectItem(item)" [attr.data-testid]="'dd-card-' + item.posItem_ID">
+            <div class="dd-m-row1">
+              <div class="dd-m-left">
+                <input type="checkbox" [checked]="isItemSelected(item.posItem_ID)" (click)="toggleItemSelection(item.posItem_ID, $event)" [attr.data-testid]="'checkbox-item-m-' + item.posItem_ID" />
+                <span class="dd-m-id">{{ item.posItem_ID }}</span>
+                <span class="dd-m-date">{{ formatDate(item.dateOfTransaction) }}</span>
+              </div>
+              <span class="dd-m-amount mono">{{ formatCurrency(item.amount) }}</span>
+            </div>
+            <div class="dd-m-row2">
+              @if (item.note) {
+                <span class="dd-m-note">{{ item.note }}</span>
+              }
+              @if (hasAccountClue(item) && !item.billingAllocated) {
+                <span class="clue-badge">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  {{ getClueTypeBadge(item) }}
+                </span>
+              }
+            </div>
+            @if (item.reference) {
+              <div class="dd-m-ref">Ref: {{ item.reference }}</div>
+            }
+            <div class="dd-m-row3">
+              @if (isItemAllocated(item)) {
+                <span class="status-badge status-allocated">Allocated</span>
+              } @else {
+                <span class="status-badge status-pending">Pending</span>
+              }
+              <div class="dd-m-actions" (click)="$event.stopPropagation()">
+                @if (!isItemAllocated(item)) {
+                  @if (hasAccountClue(item)) {
+                    <button class="btn-auto" [class.btn-auto-active]="isInlineExpanded(item.posItem_ID)" (click)="autoAllocateItem(item)" [disabled]="isInlineLoading(item.posItem_ID)" [attr.data-testid]="'button-auto-m-' + item.posItem_ID">
+                      @if (isInlineLoading(item.posItem_ID)) {
+                        <div class="spinner-xs"></div>
+                      } @else {
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        Quick
+                      }
+                    </button>
+                  }
+                  <button class="btn-allocate" (click)="navigateToAllocate(item)" [attr.data-testid]="'button-allocate-m-' + item.posItem_ID">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+                    Allocate
+                  </button>
+                } @else {
+                  <span class="status-badge status-allocated" style="font-size:0.6875rem">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                    Done
+                  </span>
+                }
+              </div>
+            </div>
+          </div>
+          @if (isInlineExpanded(item.posItem_ID) && !isItemAllocated(item)) {
+            <div class="dd-m-suggestions">
+              <div class="inline-suggestions-panel">
+                <div class="inline-suggestions-header">
+                  <div class="inline-suggestions-title">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    <span>Suggested Matches</span>
+                    @if (getInlineSuggestions(item.posItem_ID).length > 0) {
+                      <span class="match-count-badge">{{ getInlineSuggestions(item.posItem_ID).length }}</span>
+                    }
+                  </div>
+                  <button class="btn-collapse" (click)="collapseInline(item.posItem_ID); $event.stopPropagation()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+                @if (isInlineLoading(item.posItem_ID)) {
+                  <div class="inline-loading">
+                    <div class="spinner-sm"></div>
+                    <span>Searching for matches...</span>
+                  </div>
+                } @else if (getInlineSuggestions(item.posItem_ID).length === 0) {
+                  <div class="inline-empty">
+                    <span>No matches found. Use <strong>Allocate</strong> to search manually.</span>
+                  </div>
+                } @else {
+                  <div class="inline-matches-grid">
+                    @for (match of getInlineSuggestions(item.posItem_ID); track match.accountId) {
+                      <div class="inline-match-card" [class.inline-match-high]="match.confidence >= 80" [class.inline-match-medium]="match.confidence >= 50 && match.confidence < 80" (click)="navigateToAllocateWithAccount(item, match); $event.stopPropagation()" [attr.data-testid]="'inline-match-m-' + match.accountId">
+                        <div class="inline-match-left">
+                          <div class="inline-match-top-row">
+                            <span class="inline-match-acc">{{ match.accountNo }}</span>
+                            <span class="confidence-badge" [ngClass]="getConfidenceBadgeClass(match.confidence)">{{ match.confidence }}%</span>
+                          </div>
+                          <div class="inline-match-name">{{ match.name || 'Loading...' }}</div>
+                          <div class="inline-match-detail">{{ match.matchDetail }}</div>
+                        </div>
+                        <div class="inline-match-right">
+                          <button class="btn-select-match">Select</button>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        }
       </div>
 
       <div class="pagination-bar">
