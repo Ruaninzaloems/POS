@@ -1187,7 +1187,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
   async loadTabData(tab: string, accountId: number): Promise<void> {
     const generation = ++this._loadTabGeneration;
-    console.log(`[loadTabData] tab=${tab} accountId=${accountId} gen=${generation}`);
     this.tabLoading.set(true);
     this.tabError.set(null);
 
@@ -1236,19 +1235,11 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           let acctConsUnitVal: any = null;
           const acctConsUnitByIdVal = acctConsUnitById.status === 'fulfilled' ? (Array.isArray(acctConsUnitById.value) ? acctConsUnitById.value[0] : acctConsUnitById.value) : null;
           if (acctConsUnitByIdVal && !acctConsUnitByIdVal._error) {
-            console.log('[account] ConsUnitByAccountId keys:', Object.keys(acctConsUnitByIdVal));
-            console.log('[account] ConsUnitByAccountId sample:', JSON.stringify(acctConsUnitByIdVal).substring(0, 1500));
             if (!acctConsUnitVal) acctConsUnitVal = acctConsUnitByIdVal;
           }
           const acctRatesVal = acctRates.status === 'fulfilled' ? (Array.isArray(acctRates.value) ? acctRates.value[0] : acctRates.value) : null;
           const acctMgmtVal = acctMgmt.status === 'fulfilled' ? (Array.isArray(acctMgmt.value) ? acctMgmt.value[0] : acctMgmt.value) : null;
           let acctSectTitleVal: any = null;
-          if (basicVal) console.log('[account] basic keys:', Object.keys(basicVal));
-          if (airVal) console.log('[account] accountInfo keys:', Object.keys(airVal));
-          if (acctContactVal) console.log('[account] contact keys:', Object.keys(acctContactVal));
-          if (acctConsUnitVal) console.log('[account] consUnit keys:', Object.keys(acctConsUnitVal));
-          if (acctRatesVal) console.log('[account] rates keys:', Object.keys(acctRatesVal));
-          if (acctMgmtVal) console.log('[account] acctMgmt keys:', Object.keys(acctMgmtVal));
           const mergedBasic = { ...basicVal, ...airVal };
           if (acctDepositAmt.status === 'fulfilled' && acctDepositAmt.value != null) {
             const depVal = acctDepositAmt.value;
@@ -1338,8 +1329,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             }
           }
           if (acctConsUnitVal && !acctConsUnitVal._error) {
-            console.log('[account] consUnit ALL keys:', Object.keys(acctConsUnitVal));
-            console.log('[account] consUnit data:', JSON.stringify(acctConsUnitVal).substring(0, 1500));
             const cuFieldMap: Record<string, string[]> = {
               'propertyStatus': ['propertyStatus', 'PropertyStatus', 'statusDesc', 'StatusDesc'],
               'marketValue': ['marketValue', 'MarketValue', 'propertyMarketValue', 'PropertyMarketValue'],
@@ -1374,8 +1363,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             }
           }
           if (acctRatesVal && !acctRatesVal._error) {
-            console.log('[account] rates ALL keys:', Object.keys(acctRatesVal));
-            console.log('[account] rates data:', JSON.stringify(acctRatesVal).substring(0, 1000));
             const rtFieldMap: Record<string, string[]> = {
               'marketValue': ['marketValue', 'MarketValue', 'propertyMarketValue', 'PropertyMarketValue'],
               'valuationCategory': ['valuationCategory', 'ValuationCategory', 'valuationCat', 'ValuationCat'],
@@ -1399,7 +1386,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             }
           }
           if (acctMgmtVal && !acctMgmtVal._error) {
-            console.log('[account] acctMgmt data:', JSON.stringify(acctMgmtVal).substring(0, 800));
             if (acctMgmtVal.cycleDescription && !acctPropFinal['cycleDescription']) {
               acctPropFinal['cycleDescription'] = acctMgmtVal.cycleDescription;
             }
@@ -1408,7 +1394,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             }
           }
           if (acctSectTitleVal && !acctSectTitleVal._error) {
-            console.log('[account] sectionalTitle data:', JSON.stringify(acctSectTitleVal).substring(0, 500));
             const stName = acctSectTitleVal.schemeName || acctSectTitleVal.description || acctSectTitleVal.sectionalTitleSchemeName || acctSectTitleVal.name;
             if (stName && !acctPropFinal['sectionalTitleScheme']) {
               acctPropFinal['sectionalTitleScheme'] = stName;
@@ -1416,8 +1401,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           }
           const acctConsDetailsVal = acctConsDetails.status === 'fulfilled' ? (Array.isArray(acctConsDetails.value) ? acctConsDetails.value[0] : acctConsDetails.value) : null;
           if (acctConsDetailsVal && !acctConsDetailsVal._error) {
-            console.log('[account] consAccountDetails keys:', Object.keys(acctConsDetailsVal));
-            console.log('[account] consAccountDetails sample:', JSON.stringify(acctConsDetailsVal).substring(0, 1000));
             const statusFields = [
               'interestWaiverStatus', 'interestWaiverDesc', 'interestWaiver',
               'indigentSubsidyStatus', 'indigentSubsidy', 'indigentStatus', 'attpStatus',
@@ -1447,11 +1430,10 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
               const valByUnit = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/valuation-by-unit`, { unitPartitionID: String(acctUnitPartId) }));
               if (valByUnit && !valByUnit._error) {
                 acctValuationData = Array.isArray(valByUnit) ? valByUnit[0] : valByUnit;
-                console.log('[account] valuation-by-unit keys:', acctValuationData ? Object.keys(acctValuationData) : 'null');
                 if (acctValuationData?.marketValue && !acctPropFinal['marketValue']) acctPropFinal['marketValue'] = acctValuationData.marketValue;
                 if (acctValuationData?.standMarketValue && !acctPropFinal['marketValue']) acctPropFinal['marketValue'] = acctValuationData.standMarketValue;
               }
-            } catch (e) { console.log('[account] valuation-by-unit failed:', e); }
+            } catch (e) { }
           }
 
           let acctAttpVal: any[] = [];
@@ -1481,7 +1463,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             } else if (rppRaw && !rppRaw._error) {
               acctRppStatusVal = rppRaw;
             }
-            console.log('[account] rppStatus raw:', JSON.stringify(acctRppStatusVal)?.substring(0, 300));
           }
           if (typeof acctRppStatusVal === 'string') {
             derivedStatuses['consumerRppStatus'] = acctRppStatusVal || 'N/A';
@@ -1567,7 +1548,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             const slowPropVal = acctPropDetails.status === 'fulfilled' ? (Array.isArray(acctPropDetails.value) ? acctPropDetails.value[0] : acctPropDetails.value) : null;
             if (slowPropVal && !slowPropVal._error) {
               acctPropVal = slowPropVal;
-              console.log('[account] property keys:', Object.keys(slowPropVal));
             }
             let slowConsUnitVal = acctConsUnit.status === 'fulfilled' ? (Array.isArray(acctConsUnit.value) ? acctConsUnit.value[0] : acctConsUnit.value) : null;
             if (slowConsUnitVal && slowConsUnitVal._error) slowConsUnitVal = null;
@@ -1613,7 +1593,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
             const slowMgmtDetailsVal = acctMgmtDetails.status === 'fulfilled' ? (Array.isArray(acctMgmtDetails.value) ? acctMgmtDetails.value[0] : acctMgmtDetails.value) : null;
             if (slowMgmtDetailsVal && !slowMgmtDetailsVal._error) {
-              console.log('[account] acctMgmtDetails keys:', Object.keys(slowMgmtDetailsVal));
               derivedStatuses['departmentalAccount'] = slowMgmtDetailsVal.departmentID != null && slowMgmtDetailsVal.departmentID !== 0 ? 'Active' : 'Inactive';
             }
 
@@ -1781,8 +1760,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           const propConsUnitVal = consUnit.status === 'fulfilled' ? (Array.isArray(consUnit.value) ? consUnit.value[0] : consUnit.value) : null;
           const propConsUnitByIdVal = consUnitById.status === 'fulfilled' ? (Array.isArray(consUnitById.value) ? consUnitById.value[0] : consUnitById.value) : null;
           if (propConsUnitByIdVal && !propConsUnitByIdVal._error) {
-            console.log('[property] ConsUnitByAccountId keys:', Object.keys(propConsUnitByIdVal));
-            console.log('[property] ConsUnitByAccountId sample:', JSON.stringify(propConsUnitByIdVal).substring(0, 1200));
           }
           const propRatesVal = rates.status === 'fulfilled' ? (Array.isArray(rates.value) ? rates.value[0] : rates.value) : null;
           if (propVal) {
@@ -1870,7 +1847,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             propConsUnitByIdVal?.unitPartitionID || propConsUnitByIdVal?.unitPartition_ID ||
             propConsUnitVal?.unitPartitionID || propConsUnitVal?.unitPartition_ID;
           if (propUnitPartId && propVal) {
-            console.log('[property] fetching partition & valuation for unitPartitionID:', propUnitPartId);
             const [propPartDetails, propValuation, propPartOwner] = await Promise.allSettled([
               firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/partition-details`, { unitPartitionID: propUnitPartId })),
               firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/valuation-by-unit`, { unitPartitionID: propUnitPartId })),
@@ -1879,9 +1855,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             const ppVal = propPartDetails.status === 'fulfilled' ? (Array.isArray(propPartDetails.value) ? propPartDetails.value[0] : propPartDetails.value) : null;
             const pvVal = propValuation.status === 'fulfilled' ? (Array.isArray(propValuation.value) ? propValuation.value[0] : propValuation.value) : null;
             const poVal = propPartOwner.status === 'fulfilled' ? (Array.isArray(propPartOwner.value) ? propPartOwner.value[0] : propPartOwner.value) : null;
-            if (ppVal) console.log('[property] partition-details keys:', Object.keys(ppVal));
-            if (pvVal) console.log('[property] valuation keys:', Object.keys(pvVal));
-            if (poVal) console.log('[property] partition-owner keys:', Object.keys(poVal));
             if (ppVal && !ppVal._error) {
               const pKeys = ['partitionDescription', 'partitionDesc', 'description', 'partitionMarketValue', 'partMarketValue',
                 'marketValue', 'valuationCategory', 'valuationCat', 'valuationCategoryDesc',
@@ -1929,7 +1902,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
                 propValuations = this.normalizeArray(valByUnit);
               }
             } catch (e) {
-              console.log('[property] valuation-by-unit failed:', e);
             }
           }
           if (propValuations.length === 0) {
@@ -1939,7 +1911,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
                 const valResult = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/supplementary-valuations`, { propertyId: propPropertyId }));
                 propValuations = this.normalizeArray(valResult);
               } catch (e) {
-                console.log('[property] supplementary valuations fetch failed:', e);
               }
             }
           }
@@ -1975,7 +1946,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
                 propRebatesLevies = this.normalizeArray(partResult?.data || partResult);
               }
             } catch (e) {
-              console.log('[property] rebates/levies fetch failed:', e);
             }
           }
           let propLinkedMeters: any[] = [];
@@ -1983,7 +1953,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             const lmResult = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/unit-linked-meters`, { accountId: String(accountId) }));
             propLinkedMeters = this.normalizeArray(lmResult);
           } catch (e) {
-            console.log('[property] linked meters fetch failed:', e);
           }
           const propMetersRaw = meters.status === 'fulfilled' ? this.normalizeArray(meters.value) : [];
           const meterKey = (m: any) => (m.physicalMeterNo || m.physicalMeterNumber || m.meterNo || m.meterNumber || '').toString().trim();
@@ -2141,36 +2110,27 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
               const nr = nameInfoResult.value;
               nameVal = Array.isArray(nr) ? nr[0] : nr;
               if (nameVal && nameVal._error) nameVal = null;
-              console.log('[name] name-info result:', nameVal ? Object.keys(nameVal) : 'null/error');
             }
             let consNameVal: any = null;
             if (consAcctResult.status === 'fulfilled') {
               const ca = consAcctResult.value;
               const resolvedNameId = ca?.nameId || ca?.nameID || ca?.name_ID;
-              console.log('[name] cons-accounts result:', ca ? (ca._error ? 'ERROR' : `nameId=${resolvedNameId}, keys=${Object.keys(ca).join(',')}`) : 'null');
               if (ca && !ca._error && resolvedNameId) {
-                console.log('[name] cons-accounts returned nameId:', resolvedNameId);
                 try {
                   const cnResult = await firstValueFrom(this.api.get<any>(`/api/platinum/cons-names/${resolvedNameId}`));
                   if (cnResult && !cnResult._error) {
                     consNameVal = cnResult;
-                    console.log('[name] cons-names keys:', Object.keys(cnResult));
-                    console.log('[name] cons-names sample:', JSON.stringify(cnResult).substring(0, 1500));
                   }
                 } catch (cnErr: any) {
-                  console.log('[name] cons-names fetch failed:', cnErr?.message);
                 }
               }
             } else {
-              console.log('[name] cons-accounts REJECTED:', (consAcctResult as any).reason?.message);
             }
             if (!consNameVal && fullDetailsResult.status === 'fulfilled') {
               const fd = fullDetailsResult.value;
-              console.log('[name] account-full-details result:', fd ? Object.keys(fd) : 'null');
               if (fd && !fd._error) {
                 if (fd.name && !fd.name._error) {
                   consNameVal = fd.name;
-                  console.log('[name] Using name from account-full-details, keys:', Object.keys(consNameVal));
                 }
               }
             }
@@ -2178,17 +2138,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
               const mgmt = acctMgmtResult.value;
               const mgmtObj = Array.isArray(mgmt) ? mgmt[0] : mgmt;
               const mgmtNameId = mgmtObj?.nameID || mgmtObj?.nameId || mgmtObj?.name_ID;
-              console.log('[name] acctMgmt fallback nameID:', mgmtNameId, mgmtObj ? Object.keys(mgmtObj) : 'null');
               if (mgmtNameId) {
                 try {
                   const cnResult = await firstValueFrom(this.api.get<any>(`/api/platinum/cons-names/${mgmtNameId}`));
                   if (cnResult && !cnResult._error) {
                     consNameVal = cnResult;
-                    console.log('[name] Using cons-names from mgmt nameID, keys:', Object.keys(cnResult));
-                    console.log('[name] cons-names sample:', JSON.stringify(cnResult).substring(0, 1500));
                   }
                 } catch (cnErr: any) {
-                  console.log('[name] cons-names via mgmt failed:', cnErr?.message);
                 }
               }
             }
@@ -2254,7 +2210,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
               }
             }
             if (!merged['firstNames'] && !merged['surname_Company'] && !merged['idNo_RegistrationNo']) {
-              console.log('[name] No person data from APIs, building fallback from basic data');
               const [nameBasic, nameAcctInfo] = await Promise.allSettled([
                 firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/basic-account-details/${accountId}`)),
                 firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/account-info-result/${accountId}`)),
@@ -2276,7 +2231,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             }
             data = { name: merged, relatedAccounts: relatedAccts };
           } catch (nameErr: any) {
-            console.log('[name] Error loading name tab:', nameErr?.message);
             data = { name: null, relatedAccounts: [] };
           }
           break;
@@ -2307,12 +2261,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             );
             const receiptArr = this.normalizeArray(receiptResult);
             if (receiptArr.length > 0) {
-              console.log('[transactions] API response keys:', Object.keys(receiptArr[0]));
-              console.log('[transactions] Sample row:', JSON.stringify(receiptArr[0]).substring(0, 500));
             }
             data = { transactions: receiptArr };
           } catch (e: any) {
-            console.error('[transactions] API failed:', e?.message);
             data = { transactions: [], _error: e?.message || 'Failed to load receipts' };
           }
           break;
@@ -2363,17 +2314,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             );
             const stmtArr = this.normalizeArray(stmtResult);
             if (stmtArr.length > 0) {
-              console.log('[statements] API response keys:', Object.keys(stmtArr[0]));
-              console.log('[statements] Sample row:', JSON.stringify(stmtArr[0]).substring(0, 500));
             } else {
-              console.log('[statements] No statement history returned');
             }
             data = { statements: stmtArr };
             this.stmtGenerated.set(null);
             this.stmtSendMode.set(null);
             this.initStmtYears(stmtArr);
           } catch (e: any) {
-            console.error('[statements] API failed:', e?.message);
             data = { statements: [], _error: e?.message || 'Failed to load statements' };
             this.stmtGenerated.set(null);
             this.stmtSendMode.set(null);
@@ -2398,7 +2345,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
               data._error = clearResult.reason?.message || 'Failed to load clearance data';
             }
           } catch (e: any) {
-            console.error('[clearance] API failed:', e?.message);
             data = { clearances: [], _error: e?.message || 'Failed to load clearance data' };
             this.clearanceLinkedAccounts.set([]);
           }
@@ -2411,7 +2357,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             );
             data = { notes: this.normalizeArray(notesResult) };
           } catch (e: any) {
-            console.error('[debtor-notes] API failed:', e?.message);
             data = { notes: [], _error: e?.message || 'Failed to load debtor notes' };
           }
           break;
@@ -2429,7 +2374,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             this.initS129Years(s129Arr);
             this.computeS129Insights(s129Arr);
           } catch (e: any) {
-            console.error('[section129] API failed:', e?.message);
             data = { section129: [], _error: e?.message || 'Failed to load Section 129 data' };
             this.s129FinYear.set('');
             this.s129Month.set('');
@@ -2492,8 +2436,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           const propDetailsVal = ratesPropDetails.status === 'fulfilled' ? (Array.isArray(ratesPropDetails.value) ? ratesPropDetails.value[0] : ratesPropDetails.value) : null;
           const ratesConsUnitByIdVal = ratesConsUnitById.status === 'fulfilled' ? (Array.isArray(ratesConsUnitById.value) ? ratesConsUnitById.value[0] : ratesConsUnitById.value) : null;
           if (ratesConsUnitByIdVal && !ratesConsUnitByIdVal._error) {
-            console.log('[rates] ConsUnitByAccountId keys:', Object.keys(ratesConsUnitByIdVal));
-            console.log('[rates] ConsUnitByAccountId sample:', JSON.stringify(ratesConsUnitByIdVal).substring(0, 1500));
           }
           const propRatesSearchVal = propRatesSearch.status === 'fulfilled' ? propRatesSearch.value : null;
           let propRatesData: any[] = propRatesSearchVal?.data ? (Array.isArray(propRatesSearchVal.data) ? propRatesSearchVal.data : [propRatesSearchVal.data]) : (Array.isArray(propRatesSearchVal) ? propRatesSearchVal : propRatesSearchVal && !propRatesSearchVal._error ? [propRatesSearchVal] : []);
@@ -2553,7 +2495,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
                 if (valArr.length > 0) valuationDataVal = valArr[0];
               }
             } catch (e) {
-              console.log('[rates] valuation-by-unit failed:', e);
             }
           }
           if (valuationsArr.length === 0) {
@@ -2576,11 +2517,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           const ratesServicesList = ratesServices.status === 'fulfilled' ? this.normalizeArray(ratesServices.value) : [];
           const meterPropSvcList = ratesMeterPropServices.status === 'fulfilled' ? this.normalizeArray(ratesMeterPropServices.value) : [];
           const allSvcsCombined = [...ratesServicesList, ...meterPropSvcList];
-          if (allSvcsCombined.length > 0) {
-            console.log('[rates] all services count:', allSvcsCombined.length, 'metered:', ratesServicesList.length, 'meterProp:', meterPropSvcList.length);
-            if (meterPropSvcList.length > 0) console.log('[rates] meterProp keys:', Object.keys(meterPropSvcList[0]));
-            console.log('[rates] all services:', JSON.stringify(allSvcsCombined.map((s: any) => ({ serviceDesc: s.serviceDesc || s.serviceDescription, tariff: s.tariff, tariffDesc: s.tariffDesc || s.tariffDescription, serviceTypeID: s.serviceTypeID, status: s.serviceStatus || s.status }))).substring(0, 3000));
-          }
           let propRatesSvc = allSvcsCombined.find((s: any) => {
             const desc = (s.serviceDesc || s.serviceDescription || '').toLowerCase();
             return desc.includes('property rate');
@@ -2594,7 +2530,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           let activeRatesTariff = propRatesSvc?.tariff || propRatesSvc?.tariffDesc || propRatesSvc?.tariffDescription || propRatesSvc?.ratesTariffDescription || propRatesSvc?.serviceDesc || propRatesSvc?.serviceDescription || '';
           if (!activeRatesTariff) {
             const debtInqData = ratesDebtInquiry.status === 'fulfilled' ? this.normalizeArray(ratesDebtInquiry.value) : [];
-            console.log('[rates] debtInquiry services:', JSON.stringify(debtInqData.map((s: any) => ({ serviceDescription: s.serviceDescription, serviceTypeID: s.serviceTypeID }))));
             const propRateBalance = debtInqData.find((s: any) => {
               const desc = (s.serviceDescription || '').toLowerCase();
               return desc.includes('property rate');
@@ -2627,7 +2562,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             data = { indigentHistory: indHistory };
             this.indigentInsights.set(this.computeIndigentInsights(indHistory));
           } catch (e: any) {
-            console.error('[indigent] API failed:', e?.message);
             data = { indigentHistory: [], _error: e?.message || 'Failed to load indigent subsidy data' };
             this.indigentInsights.set(null);
           }
@@ -2641,8 +2575,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           ]);
           const allMeters = meteredSvc.status === 'fulfilled' ? this.normalizeArray(meteredSvc.value) : [];
           const prepaidList = prepaidMeters.status === 'fulfilled' ? this.normalizeArray(prepaidMeters.value) : [];
-          console.log('[meters] allMeters:', allMeters.length, 'prepaidList:', prepaidList.length);
-          if (prepaidList.length > 0) console.log('[meters] prepaidList[0] keys:', Object.keys(prepaidList[0]), 'data:', JSON.stringify(prepaidList[0]).substring(0, 400));
           const prepaidMeterNos = new Set(prepaidList.map((p: any) => (p.prepaidMeterNo || p.meterNumber || p.physicalMeterNumber || p.meterNo || '').toLowerCase()).filter(Boolean));
           const convMeters = allMeters.filter((m: any) => {
             const desc = (m.serviceDesc || m.serviceDescription || '').toLowerCase();
@@ -2733,15 +2665,11 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           const closeBalArr = bvpCloseBalance.status === 'fulfilled' ? this.normalizeArray(bvpCloseBalance.value) : [];
           const bvpReceiptArr = bvpReceipts.status === 'fulfilled' ? this.normalizeArray(bvpReceipts.value) : [];
           if (bvpArr.length > 0) {
-            console.log('[billed-vs-paid] sample keys:', Object.keys(bvpArr[0]), 'sample:', JSON.stringify(bvpArr[0]).substring(0, 500));
           } else {
-            console.log('[billed-vs-paid] billedVsPaid empty. status:', billedVsPaid.status, billedVsPaid.status === 'rejected' ? (billedVsPaid as any).reason?.message : '');
           }
           if (closeBalArr.length > 0) {
-            console.log('[billed-vs-paid] closeBalanceDetail keys:', Object.keys(closeBalArr[0]), 'sample:', JSON.stringify(closeBalArr[0]).substring(0, 500));
           }
           if (balArr.length > 0) {
-            console.log('[billed-vs-paid] balance sample keys:', Object.keys(balArr[0]));
           }
           const enrichedBvp = this.enrichBvpWithReceipts(bvpArr, bvpReceiptArr);
           data = {
@@ -2821,11 +2749,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         this.api.get<any>(`/api/platinum/billing-enquiry/total-balance-debt-inquiry/${accountId}`, fyParams)
       );
       if (res && !res._error) {
-        console.log('[balance] TotalBalanceDebtInquiry OK for', accountId);
         return Array.isArray(res) ? res : res ? [res] : [];
       }
     } catch {
-      console.log('[balance] TotalBalanceDebtInquiry failed for', accountId);
     }
 
     try {
@@ -2833,11 +2759,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         this.api.get<any>(`/api/platinum/billing-enquiry/close-balance-detail/${accountId}`, fyParams)
       );
       if (res && !res._error) {
-        console.log('[balance] getCloseBalanceDetail OK for', accountId);
         return Array.isArray(res) ? res : res ? [res] : [];
       }
     } catch {
-      console.log('[balance] getCloseBalanceDetail failed for', accountId);
     }
 
     try {
@@ -2845,11 +2769,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         this.api.get<any>(`/api/platinum/billing-enquiry/account-balance/${accountId}`, { _t: String(Date.now()) })
       );
       if (res && !res._error) {
-        console.log('[balance] TotalBalanceDebt OK for', accountId);
         return Array.isArray(res) ? res : res ? [res] : [];
       }
     } catch {
-      console.log('[balance] TotalBalanceDebt failed for', accountId);
     }
 
     try {
@@ -2857,11 +2779,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         this.api.get<any>(`/api/platinum/billing-enquiry/service-type-balance/${accountId}`, fyParams)
       );
       if (res && !res._error) {
-        console.log('[balance] ServiceTypeBalanceDetails OK for', accountId);
         return Array.isArray(res) ? res : res ? [res] : [];
       }
     } catch {
-      console.log('[balance] ServiceTypeBalanceDetails failed for', accountId);
     }
 
     return [];
@@ -3025,12 +2945,10 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         );
         const arr = this.normalizeArray(detail);
         if (arr.length > 0) {
-          console.log('[receipt-detail] keys:', Object.keys(arr[0]));
         }
         this.receiptDetailData.set({ lines: arr });
       }
     } catch (e) {
-      console.error('[receipt-detail] Failed:', e);
       this.receiptDetailData.set({ error: true });
     } finally {
       this.receiptDetailLoading.set(false);
@@ -3041,7 +2959,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     if (event) { event.stopPropagation(); event.preventDefault(); }
     const receiptId = this.getReceiptKey(txn);
     if (!receiptId) {
-      this.toast.show('No receipt ID available for printing', 'error');
+      this.toast.error('No receipt ID available for printing');
       return;
     }
     this.receiptPrinting.set(receiptId);
@@ -3054,7 +2972,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       if (!response.ok) throw new Error(`Print failed: ${response.status}`);
       const blob = await response.blob();
       if (blob.size < 200) {
-        this.toast.show('Receipt PDF is empty or unavailable', 'error');
+        this.toast.error('Receipt PDF is empty or unavailable');
         return;
       }
       const url = URL.createObjectURL(blob);
@@ -3063,10 +2981,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         w.addEventListener('load', () => { setTimeout(() => { w.print(); }, 500); });
       }
       setTimeout(() => URL.revokeObjectURL(url), 60000);
-      this.toast.show('Receipt opened for printing', 'success');
+      this.toast.success('Receipt opened for printing');
     } catch (e: any) {
-      console.error('[print-receipt] Error:', e);
-      this.toast.show('Failed to print receipt: ' + (e.message || 'Unknown error'), 'error');
+      this.toast.error('Failed to print receipt: ' + (e.message || 'Unknown error'));
     } finally {
       this.receiptPrinting.set(null);
     }
@@ -3541,21 +3458,15 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       );
       const arr = this.normalizeArray(result);
       if (arr.length > 0 && !arr[0]._error) {
-        console.log('[txn-summary] TransactionSummaryList keys:', Object.keys(arr[0]), 'count:', arr.length);
-        console.log('[txn-summary] FULL first row:', JSON.stringify(arr[0]));
-        if (arr.length > 1) console.log('[txn-summary] FULL second row:', JSON.stringify(arr[1]));
-
         const hasMonthlyData = this.checkRowHasMonthData(arr[0]);
         if (hasMonthlyData) {
           this.summaryData.set(arr);
           this.summarySource.set('monthly');
           loaded = true;
         } else {
-          console.log('[txn-summary] TransactionSummaryList returned data but no recognizable month fields, trying billing-period approach');
         }
       }
     } catch {
-      console.log('[txn-summary] TransactionSummaryList failed for', accountId);
     }
 
     if (!loaded) {
@@ -3565,10 +3476,8 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           this.summaryData.set(monthlyData);
           this.summarySource.set('monthly');
           loaded = true;
-          console.log('[txn-summary] Built from billing-period-transactions:', monthlyData.length, 'rows');
         }
       } catch (e: any) {
-        console.log('[txn-summary] billing-period approach failed:', e?.message);
       }
     }
 
@@ -3579,13 +3488,11 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         );
         const arr = this.normalizeArray(result);
         if (arr.length > 0 && !arr[0]._error) {
-          console.log('[txn-summary-aging] ServiceTypeBalance keys:', Object.keys(arr[0]), 'count:', arr.length);
           this.summaryData.set(arr);
           this.summarySource.set('aging');
           loaded = true;
         }
       } catch {
-        console.log('[txn-summary] ServiceTypeBalance also failed');
       }
     }
 
@@ -3668,9 +3575,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const pivotedRows = Array.from(serviceMap.values());
     if (pivotedRows.length === 0) return [];
 
-    console.log('[txn-summary] API opening balances:', JSON.stringify(apiOpenBal));
-    console.log('[txn-summary] API closing balances:', JSON.stringify(apiCloseBal));
-    console.log('[txn-summary] Monthly totals:', JSON.stringify(totals));
 
     const openingRow: any = { description: 'Opening Balance', financialYear: finYear, _isSpecialRow: true };
     const closingRow: any = { description: 'Closing Balance', financialYear: finYear, _isSpecialRow: true };
@@ -3795,8 +3699,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       if (fullMonth && kl.includes(fullMonth)) return Number(row[k]) || 0;
     }
     if (!this._summaryFieldsLogged && month === 'Jul') {
-      console.log('[getSummaryMonthValue] Row keys:', Object.keys(row));
-      console.log('[getSummaryMonthValue] Row values:', JSON.stringify(row).substring(0, 1000));
       this._summaryFieldsLogged = true;
     }
     return 0;
@@ -3895,8 +3797,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         );
         const arr = this.normalizeArray(result);
         if (arr.length > 0) {
-          console.log('[detail-txn] sample keys:', Object.keys(arr[0]));
-          console.log('[detail-txn] sample row:', JSON.stringify(arr[0]).substring(0, 800));
         }
         this.detailTransactions.set(arr);
       } else {
@@ -3910,8 +3810,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         );
         const allTxns = results.flatMap(r => r.status === 'fulfilled' ? this.normalizeArray(r.value) : []);
         if (allTxns.length > 0) {
-          console.log('[detail-txn] all months sample keys:', Object.keys(allTxns[0]));
-          console.log('[detail-txn] all months sample row:', JSON.stringify(allTxns[0]).substring(0, 800));
         }
         this.detailTransactions.set(allTxns);
       }
@@ -3977,7 +3875,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         this.detailTxnData.set(this.normalizeArray(detail));
       }
     } catch (e: any) {
-      console.error('[txn-detail] error:', e?.message);
       this.detailTxnData.set([]);
     } finally {
       this.detailTxnLoading.set(false);
@@ -4141,9 +4038,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       a.download = `GEORGE_MUNICIPALITY_Transaction_Detail_${acctNo}_${fdStr}.csv`;
       a.click();
       URL.revokeObjectURL(url);
-      this.toast.show(`Exported ${months.length} month(s) of transactions`, 'success');
+      this.toast.success(`Exported ${months.length} month(s) of transactions`);
     } catch (e: any) {
-      this.toast.show('Failed to export transactions', 'error');
+      this.toast.error('Failed to export transactions');
     } finally {
       this.exportingCsv.set(false);
     }
@@ -4259,7 +4156,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
   private getMeterReadingParams(meter: any, accountId: number): Record<string, string> {
     const meterID = String(meter.meterID ?? meter.meter_ID ?? meter.meterId ?? meter.meterNo ?? meter.meterNumber ?? '');
-    console.log('[getMeterReadingParams] meterID resolved:', meterID, 'from fields: meterID=', meter.meterID, 'meter_ID=', meter.meter_ID, 'meterId=', meter.meterId, 'meterNo=', meter.meterNo, 'physicalMeterNo=', meter.physicalMeterNo);
     return {
       accountID: String(accountId),
       meterID,
@@ -4314,10 +4210,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.consumptionSortDir.set('desc');
     const account = this.selectedAccount();
     const accountId = this.getAccountId(account);
-    console.log('[consumption] METER OBJECT KEYS:', Object.keys(meter));
-    console.log('[consumption] METER OBJECT DATA:', JSON.stringify(meter));
     const baseParams = this.getMeterReadingParams(meter, accountId);
-    console.log('[consumption] selectConsumptionMeter params:', JSON.stringify(baseParams));
     try {
       const currentFy = this.userFinYear() || this.getCurrentFinYear();
       const [startYear] = currentFy.split('/').map(Number);
@@ -4328,20 +4221,16 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history`, { ...baseParams, finYear: fy }))
           .then(res => {
             const arr = this.normalizeArray(res);
-            console.log(`[consumption] FY=${fy} returned ${arr.length} readings, raw type:`, typeof res, Array.isArray(res) ? 'array' : (res ? Object.keys(res) : 'null'));
             return arr;
           })
-          .catch((err) => { console.log(`[consumption] FY=${fy} ERROR:`, err?.message || err); return [] as any[]; })
+          .catch((err) => { return [] as any[]; })
       );
       const results = await Promise.all(requests);
       const allReadings = results.flat();
-      console.log('[consumption] Total readings across all FYs:', allReadings.length);
-      if (allReadings.length > 0) { console.log('[consumption] READING KEYS:', Object.keys(allReadings[0])); console.log('[consumption] SAMPLE READING:', JSON.stringify(allReadings[0])); }
 
       if (allReadings.length === 0) {
         const barParams = { ...baseParams, financialYear: currentFy };
-        console.log('[consumption] No FY readings, trying barchart with params:', JSON.stringify(barParams));
-        const barRes = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history-barchart`, barParams)).catch((err) => { console.log('[consumption] barchart ERROR:', err?.message || err); return []; });
+        const barRes = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/meter-reading-history-barchart`, barParams)).catch((err) => { return []; });
         const barChart = this.normalizeArray(barRes).map((item: any) => {
           const pm = item.processingMonth || '';
           const monthName = pm.includes('-') ? pm.split('-')[0] : pm;
@@ -4352,7 +4241,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
             financialYear: item.financialYear || item.finYear || currentFy,
           };
         });
-        console.log('[consumption] barchart returned:', barChart.length, 'readings');
         if (barChart.length > 0) allReadings.push(...barChart);
       }
 
@@ -4766,17 +4654,17 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const monthFrom = this.stmtMonthFrom() || this.stmtMonth();
 
     if (!finYear) {
-      this.toast.show('Please select a financial year', 'error');
+      this.toast.error('Please select a financial year');
       return;
     }
     if (!monthFrom) {
-      this.toast.show('Please select a billing month', 'error');
+      this.toast.error('Please select a billing month');
       return;
     }
 
     const account = this.selectedAccount();
     if (!account) {
-      this.toast.show('No account selected', 'error');
+      this.toast.error('No account selected');
       return;
     }
     const accountId = this.getAccountId(account);
@@ -4784,7 +4672,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
     const periodId = this.getMonthPeriodId(monthFrom);
     if (!periodId) {
-      this.toast.show('Invalid billing month selected', 'error');
+      this.toast.error('Invalid billing month selected');
       return;
     }
 
@@ -4797,7 +4685,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     try {
       await this.runStatementReport(periodId, Number(accountId), reportName);
     } catch (e: any) {
-      this.toast.show(e?.message || 'Failed to generate statement', 'error');
+      this.toast.error(e?.message || 'Failed to generate statement');
     } finally {
       this.stmtGenerating.set(false);
       this.stmtReportOpening.set(false);
@@ -4813,9 +4701,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     try {
       const result = await firstValueFrom(this.api.get<any>(templateEndpoint, { accountId: String(accountId), periodId: String(periodId) }));
       reportFilename = result?.reportFileName || result?.reportfileName || '';
-      console.log('[statement] Template result:', result, 'reportFilename:', reportFilename);
     } catch (e: any) {
-      console.log('[statement] Template fetch failed, falling back to V1:', e?.message);
     }
 
     let opened = false;
@@ -4841,7 +4727,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
     if (opened) {
       this.stmtGenerated.set({ reportFilename, reportName, opened: true });
-      this.toast.show('Statement report opened in new window', 'success');
+      this.toast.success('Statement report opened in new window');
     }
   }
 
@@ -4859,7 +4745,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     }
 
     if (!biUrl) {
-      this.toast.show('BI Embedded URL not configured — contact your administrator', 'error');
+      this.toast.error('BI Embedded URL not configured — contact your administrator');
       return false;
     }
 
@@ -4869,7 +4755,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const features = 'width=1200,height=800,top=50,left=50,toolbar=no,menubar=no,scrollbars=yes,resizable=yes';
     const win = window.open(url, '_blank', features);
     if (!win) {
-      this.toast.show('Popup blocked — please allow popups for this site and try again', 'error');
+      this.toast.error('Popup blocked — please allow popups for this site and try again');
       return false;
     }
     return true;
@@ -4884,7 +4770,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     }
 
     if (!baseUrl) {
-      this.toast.show('Base Web URL not configured — contact your administrator', 'error');
+      this.toast.error('Base Web URL not configured — contact your administrator');
       return false;
     }
 
@@ -4894,7 +4780,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const features = 'width=1200,height=800,top=50,left=50,toolbar=no,menubar=no,scrollbars=yes,resizable=yes';
     const win = window.open(url, '_blank', features);
     if (!win) {
-      this.toast.show('Popup blocked — please allow popups for this site and try again', 'error');
+      this.toast.error('Popup blocked — please allow popups for this site and try again');
       return false;
     }
     return true;
@@ -4912,12 +4798,12 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       const link = result?.link || result?.url || result?.statementUrl || result?.fileUrl || result?.downloadUrl || '';
       this.stmtGeneratedLink.set(link);
       if (link) {
-        this.toast.show('Statement link generated', 'success');
+        this.toast.success('Statement link generated');
       } else {
-        this.toast.show('Link generated but no URL returned', 'info');
+        this.toast.info('Link generated but no URL returned');
       }
     } catch (e: any) {
-      this.toast.show(e?.error?.message || 'Failed to generate statement link', 'error');
+      this.toast.error(e?.error?.message || 'Failed to generate statement link');
     } finally {
       this.stmtGeneratingLink.set(false);
     }
@@ -4927,13 +4813,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const link = this.stmtGeneratedLink();
     if (!link) return;
     navigator.clipboard.writeText(link).then(() => {
-      this.toast.show('Link copied to clipboard', 'success');
+      this.toast.success('Link copied to clipboard');
     });
   }
 
   previewStatement(fileUrl?: string) {
     if (!fileUrl) {
-      this.toast.show('No preview link available', 'error');
+      this.toast.error('No preview link available');
       return;
     }
     window.open(`/api/platinum/statement-download?fileUrl=${encodeURIComponent(fileUrl)}&inline=true`, '_blank');
@@ -4941,7 +4827,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
   async downloadStatement(fileUrl?: string) {
     if (!fileUrl) {
-      this.toast.show('No download link available', 'error');
+      this.toast.error('No download link available');
       return;
     }
 
@@ -4950,14 +4836,14 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         this.api.get<any>('/api/platinum/billing-enquiry/check-file-exists', { fileUrl })
       );
       if (exists === false || exists === 'false' || exists?.exists === false) {
-        this.toast.show('File not found. The statement may have been moved or deleted.', 'error');
+        this.toast.error('File not found. The statement may have been moved or deleted.');
         return;
       }
     } catch {
     }
 
     window.open(`/api/platinum/statement-download?fileUrl=${encodeURIComponent(fileUrl)}`, '_blank');
-    this.toast.show('Statement download started', 'success');
+    this.toast.success('Statement download started');
   }
 
   openStmtSendPanel(attachment?: {type: string; finYear: string; monthFrom: string; monthTo: string; fileUrl?: string}) {
@@ -5088,15 +4974,15 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const selectedPhones = this.getSelectedPhones();
 
     if (method === 'email' && selectedEmails.length === 0) {
-      this.toast.show('Please select at least one email address', 'error');
+      this.toast.error('Please select at least one email address');
       return;
     }
     if (method === 'sms' && selectedPhones.length === 0) {
-      this.toast.show('Please select at least one phone number', 'error');
+      this.toast.error('Please select at least one phone number');
       return;
     }
     if (method === 'sms' && this.stmtSmsBody().length > 160) {
-      this.toast.show('SMS message must be 160 characters or less', 'error');
+      this.toast.error('SMS message must be 160 characters or less');
       return;
     }
 
@@ -5167,10 +5053,10 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       }
 
       this.stmtSendStep.set('sent');
-      this.toast.show(`Statement sent via ${method.toUpperCase()} to ${recipients}`, 'success');
+      this.toast.success(`Statement sent via ${method.toUpperCase()} to ${recipients}`);
       this.loadCommHistory();
     } catch (e: any) {
-      this.toast.show(e?.error?.message || `Failed to send via ${method}`, 'error');
+      this.toast.error(e?.error?.message || `Failed to send via ${method}`);
     } finally {
       this.stmtSending.set(false);
     }
@@ -5245,7 +5131,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         await this.sendStatement('sms');
       } else {
         this.stmtSendMode.set('email');
-        this.toast.show('No email or phone on file — please enter manually and use the generator above', 'error');
+        this.toast.error('No email or phone on file — please enter manually and use the generator above');
       }
     }
   }
@@ -5308,11 +5194,11 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const accountId = this.getAccountId(account);
     if (!accountId) return;
     if (!this.commRecipient()) {
-      this.toast.show(`Please enter ${this.commMethod() === 'email' ? 'an email address' : 'a phone number'}`, 'error');
+      this.toast.error(`Please enter ${this.commMethod() === 'email' ? 'an email address' : 'a phone number'}`);
       return;
     }
     if (!this.commMessage()) {
-      this.toast.show('Please enter a message or select a template', 'error');
+      this.toast.error('Please enter a message or select a template');
       return;
     }
     this.commSending.set(true);
@@ -5327,13 +5213,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           templateId: this.commSelectedTemplate() || undefined,
         })
       );
-      this.toast.show(`${this.commMethod() === 'email' ? 'Email' : 'SMS'} sent successfully to ${this.commRecipient()}`, 'success');
+      this.toast.success(`${this.commMethod() === 'email' ? 'Email' : 'SMS'} sent successfully to ${this.commRecipient()}`);
       this.commMessage.set('');
       this.commSubject.set('');
       this.commSelectedTemplate.set('');
       this.commShowCompose.set(false);
     } catch (e: any) {
-      this.toast.show(e?.error?.message || `Failed to send ${this.commMethod()}`, 'error');
+      this.toast.error(e?.error?.message || `Failed to send ${this.commMethod()}`);
     } finally {
       this.commSending.set(false);
     }
@@ -5411,25 +5297,17 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.meterPrepaidLoading.set(true);
     this.meterPrepaidSales.set([]);
     this.meterPrepaidStats.set(null);
-    console.log('[prepaid] selectPrepaidMeter keys:', Object.keys(meter));
-    console.log('[prepaid] selectPrepaidMeter data:', JSON.stringify(meter).substring(0, 500));
     const meterId = meter.meterId || meter.meter_id || meter.id || meter.prepaidMeterId || meter.meterID || meter.meter_ID || meter.serviceId || meter.service_ID || meter.meterNo || meter.prepaidMeterNo || '';
-    console.log('[prepaid] resolved meterId:', meterId, 'type:', typeof meterId);
     if (!meterId) {
-      console.log('[prepaid] No meterId found, skipping recharge fetch');
       this.meterPrepaidLoading.set(false);
       return;
     }
     try {
-      console.log('[prepaid] fetching prepaid-recharge-details-for-meter with meterId:', meterId);
       const res = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/prepaid-recharge-details-for-meter`, { meterId: String(meterId) }));
-      console.log('[prepaid] recharge response:', Array.isArray(res) ? `array[${res.length}]` : typeof res, res ? JSON.stringify(res).substring(0, 300) : 'null');
       const sales = this.normalizeArray(res);
-      console.log('[prepaid] normalized sales count:', sales.length);
       this.meterPrepaidSales.set(sales);
       this.meterPrepaidStats.set(this.computePrepaidStats(sales));
     } catch (err: any) {
-      console.error('[prepaid] recharge fetch error:', err?.message || err);
       this.meterPrepaidSales.set([]);
     }
     this.meterPrepaidLoading.set(false);
@@ -6152,7 +6030,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         return String(numA).localeCompare(String(numB), undefined, { numeric: true });
       });
       if (linked.length > 0) {
-        console.log('[linked-accounts] keys:', Object.keys(linked[0]));
       }
       this.linkedAccounts.set(linked);
       const total = linked.reduce((sum: number, a: any) => {
@@ -6161,7 +6038,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       this.linkedTotalOutstanding.set(total);
     } catch (e) {
       if (this.linkedRequestToken !== token) return;
-      console.error('[linked-accounts] Failed to load:', e);
       this.linkedAccounts.set([]);
     } finally {
       if (this.linkedRequestToken === token) {
@@ -6248,7 +6124,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       this.propDebtTotals.set(totals);
     } catch (e) {
       if (this.propDebtRequestToken !== token) return;
-      console.error('[property-debt] Failed:', e);
       this.propDebtAccounts.set([]);
       this.propDebtTotals.set(null);
     } finally {
@@ -6277,11 +6152,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       );
       const services = this.normalizeArray(result);
       if (services.length > 0) {
-        console.log('[linked-services] keys:', Object.keys(services[0]));
       }
       this.linkedServicesMap.set({ ...this.linkedServicesMap(), [acctKey]: services });
     } catch (e) {
-      console.error('[linked-services] Failed:', e);
       this.linkedServicesMap.set({ ...this.linkedServicesMap(), [acctKey]: [] });
     } finally {
       this.linkedServicesLoading.set(null);
@@ -6308,7 +6181,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
   exportBalanceCsv(): void {
     const items = this.getBalanceItems();
-    if (!items.length) { this.toast.show('No balance data to export', 'error'); return; }
+    if (!items.length) { this.toast.error('No balance data to export'); return; }
     const headers = ['Service', 'New Charge', 'Current', '30 Days', '60 Days', '90 Days', '120 Days', '150 Days', '180+ Days', 'Total Outstanding'];
     const rows = items.map((i: any) => [
       i.serviceType || i.serviceTypeDesc || i.description || i.serviceDescription || '',
@@ -6318,12 +6191,12 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       this.getDebtVal(i, 'totalOutStanding'),
     ]);
     this.exportService.exportCsv(this.getExportOpts('Balance_Debt', 'BALANCE / DEBT AGING REPORT'), headers, rows);
-    this.toast.show('Balance report exported', 'success');
+    this.toast.success('Balance report exported');
   }
 
   exportBalancePdf(): void {
     const items = this.getBalanceItems();
-    if (!items.length) { this.toast.show('No balance data to export', 'error'); return; }
+    if (!items.length) { this.toast.error('No balance data to export'); return; }
     const headers = ['Service', 'New Charge', 'Current', '30 Days', '60 Days', '90 Days', '120 Days', '150 Days', '180+ Days', 'Total'];
     const aligns: ('left' | 'right')[] = ['left', 'right', 'right', 'right', 'right', 'right', 'right', 'right', 'right', 'right'];
     const rows = items.map((i: any) => [
@@ -6339,7 +6212,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
   exportPropertyDebtCsv(): void {
     const accounts = this.propDebtAccounts();
-    if (!accounts.length) { this.toast.show('No property debt data to export', 'error'); return; }
+    if (!accounts.length) { this.toast.error('No property debt data to export'); return; }
     const headers = ['Account Number', 'Account Name', 'Status', 'Total Outstanding', 'Current', '30 Days', '60 Days', '90 Days', '120+ Days'];
     const rows = accounts.map((a: any) => [
       a.accountNumber || a.accountNo || '', a.name || a.accountName || '',
@@ -6347,12 +6220,12 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       a.agingCurrent || 0, a.agingD30 || 0, a.agingD60 || 0, a.agingD90 || 0, a.agingD120Plus || 0,
     ]);
     this.exportService.exportCsv(this.getExportOpts('Property_Debt', 'PROPERTY DEBT REPORT'), headers, rows);
-    this.toast.show('Property debt report exported', 'success');
+    this.toast.success('Property debt report exported');
   }
 
   exportPropertyDebtPdf(): void {
     const accounts = this.propDebtAccounts();
-    if (!accounts.length) { this.toast.show('No property debt data to export', 'error'); return; }
+    if (!accounts.length) { this.toast.error('No property debt data to export'); return; }
     const headers = ['Account Number', 'Name', 'Status', 'Total Outstanding', 'Current', '30 Days', '60 Days', '90 Days', '120+ Days'];
     const aligns: ('left' | 'right')[] = ['left', 'left', 'left', 'right', 'right', 'right', 'right', 'right', 'right'];
     const rows = accounts.map((a: any) => [
@@ -6367,7 +6240,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
   exportReceiptsCsv(): void {
     const txns = this.getFilteredReceipts();
-    if (!txns.length) { this.toast.show('No receipts to export', 'error'); return; }
+    if (!txns.length) { this.toast.error('No receipts to export'); return; }
     const headers = ['Receipt No', 'Date', 'Payment Type', 'Amount', 'Cashier', 'Office', 'Status'];
     const rows = txns.map((t: any) => [
       this.getReceiptNo(t), this.formatDate(t.receiptDate || t.transactionDate || t.date),
@@ -6376,12 +6249,12 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       (t.isCancelled || t.cancelReson || t.cancelReason) ? 'Cancelled' : 'Active',
     ]);
     this.exportService.exportCsv(this.getExportOpts('Receipts', 'RECEIPT HISTORY REPORT'), headers, rows);
-    this.toast.show('Receipts exported', 'success');
+    this.toast.success('Receipts exported');
   }
 
   exportReceiptsPdf(): void {
     const txns = this.getFilteredReceipts();
-    if (!txns.length) { this.toast.show('No receipts to export', 'error'); return; }
+    if (!txns.length) { this.toast.error('No receipts to export'); return; }
     const headers = ['Receipt No', 'Date', 'Type', 'Amount', 'Cashier', 'Office', 'Status'];
     const aligns: ('left' | 'right')[] = ['left', 'left', 'left', 'right', 'left', 'left', 'left'];
     const rows = txns.map((t: any) => [
@@ -6396,7 +6269,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   exportDepositsCsv(): void {
     const data = this.tabData();
     const deposits = data?.deposits || [];
-    if (!deposits.length) { this.toast.show('No deposit data to export', 'error'); return; }
+    if (!deposits.length) { this.toast.error('No deposit data to export'); return; }
     const headers = ['Date', 'Description', 'Amount Paid', 'Interest Accrued', 'Type', 'Status'];
     const rows = deposits.map((d: any) => [
       this.formatDate(d.depositDate || d.date || d.datePaid),
@@ -6406,13 +6279,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       d.depositType || d.type || '', d.status || '',
     ]);
     this.exportService.exportCsv(this.getExportOpts('Deposits', 'DEPOSITS REPORT'), headers, rows);
-    this.toast.show('Deposits exported', 'success');
+    this.toast.success('Deposits exported');
   }
 
   exportDepositsPdf(): void {
     const data = this.tabData();
     const deposits = data?.deposits || [];
-    if (!deposits.length) { this.toast.show('No deposit data to export', 'error'); return; }
+    if (!deposits.length) { this.toast.error('No deposit data to export'); return; }
     const headers = ['Date', 'Description', 'Amount Paid', 'Interest', 'Type', 'Status'];
     const aligns: ('left' | 'right')[] = ['left', 'left', 'right', 'right', 'left', 'left'];
     const rows = deposits.map((d: any) => [
@@ -6428,7 +6301,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   exportPaymentPlansCsv(): void {
     const data = this.tabData();
     const plans = data?.plans || data?.paymentPlans || [];
-    if (!plans.length) { this.toast.show('No payment plan data to export', 'error'); return; }
+    if (!plans.length) { this.toast.error('No payment plan data to export'); return; }
     const headers = ['Plan Type', 'Start Date', 'End Date', 'Installment Amount', 'Total Amount', 'Remaining', 'Status'];
     const rows = plans.map((p: any) => [
       p.planType || p.type || p.arrangementType || p.capitalCostType || '',
@@ -6437,13 +6310,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       Number(p.remainingCapital || p.remaining || p.balance || 0), p.status || '',
     ]);
     this.exportService.exportCsv(this.getExportOpts('Payment_Plans', 'PAYMENT PLANS REPORT'), headers, rows);
-    this.toast.show('Payment plans exported', 'success');
+    this.toast.success('Payment plans exported');
   }
 
   exportPaymentPlansPdf(): void {
     const data = this.tabData();
     const plans = data?.plans || data?.paymentPlans || [];
-    if (!plans.length) { this.toast.show('No payment plan data to export', 'error'); return; }
+    if (!plans.length) { this.toast.error('No payment plan data to export'); return; }
     const headers = ['Plan Type', 'Start Date', 'End Date', 'Installment', 'Total', 'Remaining', 'Status'];
     const aligns: ('left' | 'right')[] = ['left', 'left', 'left', 'right', 'right', 'right', 'left'];
     const rows = plans.map((p: any) => [
@@ -6463,7 +6336,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
   exportBilledVsPaidCsv(): void {
     const rows_data = this.tabData()?.billedVsPaid || [];
-    if (!rows_data.length) { this.toast.show('No billed vs paid data to export', 'error'); return; }
+    if (!rows_data.length) { this.toast.error('No billed vs paid data to export'); return; }
     const headers = ['Period', 'Financial Year', 'Billed Amount', 'Paid Amount', 'Variance', 'Collection Rate %'];
     const rows = rows_data.map((r: any) => {
       const billed = this.getBvpRowBilled(r);
@@ -6473,12 +6346,12 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       return [this.getBvpRowLabel(r), r.financialYear || this.bvpFinYear() || '', billed, paid, variance, rate];
     });
     this.exportService.exportCsv(this.getExportOpts('Billed_vs_Paid', 'BILLED VS PAID REPORT'), headers, rows);
-    this.toast.show('Billed vs Paid report exported', 'success');
+    this.toast.success('Billed vs Paid report exported');
   }
 
   exportBilledVsPaidPdf(): void {
     const rows_data = this.tabData()?.billedVsPaid || [];
-    if (!rows_data.length) { this.toast.show('No billed vs paid data to export', 'error'); return; }
+    if (!rows_data.length) { this.toast.error('No billed vs paid data to export'); return; }
     const headers = ['Period', 'Financial Year', 'Billed Amount', 'Paid Amount', 'Variance', 'Collection Rate %'];
     const aligns: ('left' | 'right')[] = ['left', 'left', 'right', 'right', 'right', 'right'];
     const rows = rows_data.map((r: any) => {
@@ -6495,7 +6368,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
   exportServicesCsv(): void {
     const services = this.getServicesList();
-    if (!services.length) { this.toast.show('No services data to export', 'error'); return; }
+    if (!services.length) { this.toast.error('No services data to export'); return; }
     const headers = ['Service Description', 'Status', 'Tariff Code', 'Tariff Rate', 'Meter Number', 'Frequency', 'Connection Size'];
     const rows = services.map((s: any) => [
       s.serviceDescription || s.description || s.serviceTypeDescription || '',
@@ -6504,12 +6377,12 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       s.frequency || '', s.connectionSize || '',
     ]);
     this.exportService.exportCsv(this.getExportOpts('Services', 'SERVICES REPORT'), headers, rows);
-    this.toast.show('Services exported', 'success');
+    this.toast.success('Services exported');
   }
 
   exportServicesPdf(): void {
     const services = this.getServicesList();
-    if (!services.length) { this.toast.show('No services data to export', 'error'); return; }
+    if (!services.length) { this.toast.error('No services data to export'); return; }
     const headers = ['Service Description', 'Status', 'Tariff Code', 'Rate', 'Meter No', 'Frequency'];
     const rows = services.map((s: any) => [
       s.serviceDescription || s.description || s.serviceTypeDescription || '',
@@ -6522,7 +6395,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   exportConsumptionCsv(): void {
     const history = this.consumptionHistory();
     const meter = this.consumptionSelectedMeter();
-    if (!history.length) { this.toast.show('No consumption data to export', 'error'); return; }
+    if (!history.length) { this.toast.error('No consumption data to export'); return; }
     const meterNo = meter?.physicalMeterNo || meter?.meterNo || '';
     const opts = this.getExportOpts('Consumption', 'CONSUMPTION HISTORY REPORT');
     opts.extraHeaders = [{ label: 'Meter Number', value: meterNo }];
@@ -6540,13 +6413,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       r.readingStatus || r.status || '',
     ]);
     this.exportService.exportCsv(opts, headers, rows);
-    this.toast.show('Consumption history exported', 'success');
+    this.toast.success('Consumption history exported');
   }
 
   exportConsumptionPdf(): void {
     const history = this.consumptionHistory();
     const meter = this.consumptionSelectedMeter();
-    if (!history.length) { this.toast.show('No consumption data to export', 'error'); return; }
+    if (!history.length) { this.toast.error('No consumption data to export'); return; }
     const meterNo = meter?.physicalMeterNo || meter?.meterNo || '';
     const opts = this.getExportOpts('Consumption', 'CONSUMPTION HISTORY REPORT');
     opts.extraHeaders = [{ label: 'Meter Number', value: meterNo }];
@@ -6570,7 +6443,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   exportMetersCsv(): void {
     const data = this.tabData();
     const meters = data?.meters || data?.meterServices || [];
-    if (!meters.length) { this.toast.show('No meter data to export', 'error'); return; }
+    if (!meters.length) { this.toast.error('No meter data to export'); return; }
     const headers = ['Meter Number', 'Type', 'Status', 'Make', 'Model', 'Digits', 'Multiplier', 'Service'];
     const rows = meters.map((m: any) => [
       m.physicalMeterNo || m.meterNo || m.meterNumber || '',
@@ -6579,7 +6452,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       m.multiplier || '', m.serviceDescription || m.service || '',
     ]);
     this.exportService.exportCsv(this.getExportOpts('Meters', 'METER DETAILS REPORT'), headers, rows);
-    this.toast.show('Meters exported', 'success');
+    this.toast.success('Meters exported');
   }
 
   exportContactCsv(): void {
@@ -6604,13 +6477,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       ]));
     }
     this.exportService.exportCsv(this.getExportOpts('Contact', 'CONTACT DETAILS REPORT'), headers, rows);
-    this.toast.show('Contact details exported', 'success');
+    this.toast.success('Contact details exported');
   }
 
   exportLinkedAccountsCsv(): void {
     const data = this.tabData();
     const linked = data?.linkedAccounts || [];
-    if (!linked.length) { this.toast.show('No linked accounts to export', 'error'); return; }
+    if (!linked.length) { this.toast.error('No linked accounts to export'); return; }
     const headers = ['Account Number', 'Name', 'Status', 'Type', 'Outstanding Balance'];
     const rows = linked.map((a: any) => [
       a.accountNumber || a.accountNo || '', a.name || a.accountName || a.surname_Company || '',
@@ -6618,13 +6491,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       Number(a.totalOutstanding || a.outstandingAmount || a.outStandingAmt || 0),
     ]);
     this.exportService.exportCsv(this.getExportOpts('Linked_Accounts', 'LINKED ACCOUNTS REPORT'), headers, rows);
-    this.toast.show('Linked accounts exported', 'success');
+    this.toast.success('Linked accounts exported');
   }
 
   exportLinkedAccountsPdf(): void {
     const data = this.tabData();
     const linked = data?.linkedAccounts || [];
-    if (!linked.length) { this.toast.show('No linked accounts to export', 'error'); return; }
+    if (!linked.length) { this.toast.error('No linked accounts to export'); return; }
     const headers = ['Account Number', 'Name', 'Status', 'Type', 'Outstanding'];
     const aligns: ('left' | 'right')[] = ['left', 'left', 'left', 'left', 'right'];
     const rows = linked.map((a: any) => [
@@ -6708,11 +6581,10 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.rebuildingAccount.set(true);
     try {
       await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/rebuild-full-account`, { accountId: String(accountId) }));
-      this.toast.show('Account rebuilt successfully', 'success');
+      this.toast.success('Account rebuilt successfully');
       await this.loadTabData('account', accountId);
     } catch (e: any) {
-      console.error('[rebuildFullAccount] Error:', e?.message);
-      this.toast.show(e?.message || 'Failed to rebuild account', 'error');
+      this.toast.error(e?.message || 'Failed to rebuild account');
     } finally {
       this.rebuildingAccount.set(false);
     }
@@ -6732,7 +6604,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
   exportHandoverCsv(): void {
     const handover = this.getHandoverFiltered();
-    if (!handover.length) { this.toast.show('No handover data to export', 'error'); return; }
+    if (!handover.length) { this.toast.error('No handover data to export'); return; }
     const headers = ['Run Type', 'Handover Account', 'Handover Amount', 'Handed Over Date', 'Outstanding Days', 'Outstanding Month', 'Attorney', 'Status', 'Capturer', 'Date Created', 'Reviewed By', 'Termination Reason', 'Termination Date'];
     const rows = handover.map((h: any) => [
       h.runType ?? h.type ?? '', h.handoverAccount ?? h.accountNumber ?? h.account ?? '',
@@ -6743,12 +6615,12 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       h.reviewedBy ?? '', h.terminationReason ?? '', this.formatDate(h.terminationDate),
     ]);
     this.exportService.exportCsv(this.getExportOpts('Handover', 'HANDOVER REPORT'), headers, rows);
-    this.toast.show('Handover data exported', 'success');
+    this.toast.success('Handover data exported');
   }
 
   exportHandoverPdf(): void {
     const handover = this.getHandoverFiltered();
-    if (!handover.length) { this.toast.show('No handover data to export', 'error'); return; }
+    if (!handover.length) { this.toast.error('No handover data to export'); return; }
     const headers = ['Run Type', 'Account', 'Amount', 'Date', 'Attorney', 'Status'];
     const aligns: ('left' | 'right')[] = ['left', 'left', 'right', 'left', 'left', 'left'];
     const rows = handover.map((h: any) => [
@@ -6763,7 +6635,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   exportRatesCsv(): void {
     const data = this.tabData();
     const rates = data?.rates || data?.ratesDetails || [];
-    if (!rates.length) { this.toast.show('No rates data to export', 'error'); return; }
+    if (!rates.length) { this.toast.error('No rates data to export'); return; }
     const headers = ['Description', 'Rate Code', 'Tariff', 'Annual Rate', 'Monthly Rate', 'Market Value', 'Rebate'];
     const rows = rates.map((r: any) => [
       r.description || r.rateDescription || '', r.rateCode || r.code || '',
@@ -6771,13 +6643,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       r.monthlyRate || r.monthly || '', r.marketValue || '', r.rebate || r.rebateAmount || '',
     ]);
     this.exportService.exportCsv(this.getExportOpts('Rates', 'RATES & VALUATION REPORT'), headers, rows);
-    this.toast.show('Rates exported', 'success');
+    this.toast.success('Rates exported');
   }
 
   exportDebitOrdersCsv(): void {
     const data = this.tabData();
     const orders = data?.debitOrders || [];
-    if (!orders.length) { this.toast.show('No debit order data to export', 'error'); return; }
+    if (!orders.length) { this.toast.error('No debit order data to export'); return; }
     const headers = ['Bank Name', 'Account Number', 'Deduction Amount', 'Start Date', 'End Date', 'Status'];
     const rows = orders.map((o: any) => [
       o.bankName || o.bank || '', o.bankAccountNumber || o.accountNo || '',
@@ -6786,13 +6658,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       o.status || '',
     ]);
     this.exportService.exportCsv(this.getExportOpts('Debit_Orders', 'DEBIT ORDERS REPORT'), headers, rows);
-    this.toast.show('Debit orders exported', 'success');
+    this.toast.success('Debit orders exported');
   }
 
   exportClearanceCsv(): void {
     const data = this.tabData();
     const clearance = data?.clearances || data?.clearance || [];
-    if (!clearance.length) { this.toast.show('No clearance data to export', 'error'); return; }
+    if (!clearance.length) { this.toast.error('No clearance data to export'); return; }
     const headers = ['Application No', 'Date', 'Status', 'Expiry Date', 'Type', 'Applicant'];
     const rows = clearance.map((c: any) => [
       c.applicationNo || c.clearanceNo || c.certificateNo || '',
@@ -6801,13 +6673,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       c.applicant || c.applicantName || '',
     ]);
     this.exportService.exportCsv(this.getExportOpts('Clearance', 'CLEARANCE CERTIFICATES REPORT'), headers, rows);
-    this.toast.show('Clearance data exported', 'success');
+    this.toast.success('Clearance data exported');
   }
 
   exportDebtorNotesCsv(): void {
     const data = this.tabData();
     const notes = data?.notes || data?.debtorNotes || [];
-    if (!notes.length) { this.toast.show('No debtor notes to export', 'error'); return; }
+    if (!notes.length) { this.toast.error('No debtor notes to export'); return; }
     const headers = ['Date', 'User', 'Category', 'Note'];
     const rows = notes.map((n: any) => [
       this.formatDate(n.noteDate || n.date || n.createdDate),
@@ -6815,13 +6687,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       n.noteContent || n.note || n.notes || '',
     ]);
     this.exportService.exportCsv(this.getExportOpts('Debtor_Notes', 'DEBTOR NOTES REPORT'), headers, rows);
-    this.toast.show('Debtor notes exported', 'success');
+    this.toast.success('Debtor notes exported');
   }
 
   exportSection129Csv(): void {
     const data = this.tabData();
     const records = data?.section129 || [];
-    if (!records.length) { this.toast.show('No Section 129 data to export', 'error'); return; }
+    if (!records.length) { this.toast.error('No Section 129 data to export'); return; }
     const headers = ['Notice Type', 'Issue Date', 'Delivery Method', 'Status', 'Amount', 'Attorney', 'Financial Year'];
     const rows = records.map((r: any) => [
       r.noticeType || r.type || '', this.formatDate(r.issueDate || r.noticeDate || r.date || r.createdDate),
@@ -6830,13 +6702,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       r.attorney || '', r.financialYear || r.billingPeriod || '',
     ]);
     this.exportService.exportCsv(this.getExportOpts('Section_129', 'SECTION 129 NOTICES REPORT'), headers, rows);
-    this.toast.show('Section 129 data exported', 'success');
+    this.toast.success('Section 129 data exported');
   }
 
   exportSection129Pdf(): void {
     const data = this.tabData();
     const records = data?.section129 || [];
-    if (!records.length) { this.toast.show('No Section 129 data to export', 'error'); return; }
+    if (!records.length) { this.toast.error('No Section 129 data to export'); return; }
     const headers = ['Notice Type', 'Issue Date', 'Delivery', 'Status', 'Amount', 'Attorney', 'FY'];
     const aligns: ('left' | 'right')[] = ['left', 'left', 'left', 'left', 'right', 'left', 'left'];
     const rows = records.map((r: any) => [
@@ -6851,7 +6723,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   exportNotificationsCsv(): void {
     const data = this.tabData();
     const notifications = data?.notifications || data?.accountNotifications || data?.propertyNotifications || [];
-    if (!notifications.length) { this.toast.show('No notifications to export', 'error'); return; }
+    if (!notifications.length) { this.toast.error('No notifications to export'); return; }
     const headers = ['Date', 'Type', 'Method', 'Recipient', 'Subject', 'Status'];
     const rows = notifications.map((n: any) => [
       this.formatDate(n.sentDate || n.date || n.createdDate),
@@ -6860,13 +6732,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       n.subject || n.title || '', n.status || n.deliveryStatus || '',
     ]);
     this.exportService.exportCsv(this.getExportOpts('Notifications', 'NOTIFICATIONS REPORT'), headers, rows);
-    this.toast.show('Notifications exported', 'success');
+    this.toast.success('Notifications exported');
   }
 
   exportIncentivesCsv(): void {
     const data = this.tabData();
     const incentives = data?.incentives || [];
-    if (!incentives.length) { this.toast.show('No incentive data to export', 'error'); return; }
+    if (!incentives.length) { this.toast.error('No incentive data to export'); return; }
     const headers = ['Scheme', 'Qualification Date', 'Benefit Amount', 'Status', 'Description'];
     const rows = incentives.map((i: any) => [
       i.schemeName || i.incentiveScheme || i.scheme || '',
@@ -6875,13 +6747,13 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       i.description || i.notes || '',
     ]);
     this.exportService.exportCsv(this.getExportOpts('Incentives', 'INCENTIVES REPORT'), headers, rows);
-    this.toast.show('Incentives exported', 'success');
+    this.toast.success('Incentives exported');
   }
 
   exportIndigentCsv(): void {
     const data = this.tabData();
     const indigent = data?.indigent || data?.attpHistory || [];
-    if (!indigent.length) { this.toast.show('No indigent data to export', 'error'); return; }
+    if (!indigent.length) { this.toast.error('No indigent data to export'); return; }
     const headers = ['Application Date', 'Subsidy Type', 'Expiry Date', 'Status', 'Description'];
     const rows = indigent.map((i: any) => [
       this.formatDate(i.applicationDate || i.date || i.startDate),
@@ -6890,7 +6762,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       i.status || i.applicationStatus || '', i.description || i.notes || '',
     ]);
     this.exportService.exportCsv(this.getExportOpts('Indigent_Subsidy', 'INDIGENT SUBSIDY REPORT'), headers, rows);
-    this.toast.show('Indigent data exported', 'success');
+    this.toast.success('Indigent data exported');
   }
 
   private normalizeStr(s: string): string {
@@ -6949,10 +6821,10 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       this.occupierAddName.set('');
       this.occupierAddId.set('');
       this.showAddOccupierModal.set(false);
-      this.toast.show('Occupier added successfully', 'success');
+      this.toast.success('Occupier added successfully');
       this.loadTabData('occupiers', accountId);
     } catch (e: any) {
-      this.toast.show(e?.error?.message || 'Failed to add occupier', 'error');
+      this.toast.error(e?.error?.message || 'Failed to add occupier');
     } finally {
       this.occupierAddLoading.set(false);
     }
@@ -6960,16 +6832,16 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
   async removeOccupier(occupier: any): Promise<void> {
     const id = occupier.occupierId || occupier.id || occupier.occupier_ID;
-    if (!id) { this.toast.show('Cannot identify occupier to remove', 'error'); return; }
+    if (!id) { this.toast.error('Cannot identify occupier to remove'); return; }
     if (!confirm(`Remove occupier "${occupier.name || occupier.occupierName || 'this person'}"?`)) return;
     this.occupierRemoveLoading.set(id);
     try {
       await firstValueFrom(this.api.delete('/api/platinum/billing-enquiry/add-occupier', { occupierId: String(id) }));
       const accountId = this.getAccountId(this.selectedAccount());
-      this.toast.show('Occupier removed', 'success');
+      this.toast.success('Occupier removed');
       this.loadTabData('occupiers', accountId);
     } catch (e: any) {
-      this.toast.show(e?.error?.message || 'Failed to remove occupier', 'error');
+      this.toast.error(e?.error?.message || 'Failed to remove occupier');
     } finally {
       this.occupierRemoveLoading.set(null);
     }
@@ -6989,7 +6861,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       this.proofData.set({ property: propResp, nameInfo: nameResp });
       this.showProofModal.set(true);
     } catch (err) {
-      this.toast.show('Failed to load property details for proof of residence', 'error');
+      this.toast.error('Failed to load property details for proof of residence');
     } finally {
       this.proofLoading.set(false);
     }
@@ -7112,7 +6984,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           if (valByUnit && !valByUnit._error) {
             vals = this.normalizeArray(valByUnit);
           }
-        } catch (e) { console.log('[letter] valuation-by-unit failed:', e); }
+        } catch (e) { }
       }
       if (vals.length === 0) {
         const letterPropId = prop?.property_ID || prop?.propertyID || prop?.propertyId || consUnitByAcct?.property_ID || consUnitByAcct?.propertyID;
@@ -7120,7 +6992,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
           try {
             const suppVal = await firstValueFrom(this.api.get<any>(`/api/platinum/billing-enquiry/supplementary-valuations`, { propertyId: String(letterPropId) }));
             vals = this.normalizeArray(suppVal);
-          } catch (e) { console.log('[letter] supplementary-valuations failed:', e); }
+          } catch (e) { }
         }
       }
       const acct = this.selectedAccount();
@@ -7210,7 +7082,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       </body></html>`;
       this.showPrintOverlay(fullHtml, title);
     } catch (e: any) {
-      this.toast.show(`Failed to generate ${type} letter: ${e?.message || 'Unknown error'}`, 'error');
+      this.toast.error(`Failed to generate ${type} letter: ${e?.message || 'Unknown error'}`);
     } finally {
       this.generatingPropertyLetter.set(null);
     }
@@ -7356,19 +7228,19 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
   exportOccupiersCsv(): void {
     const occupiers = this.occupiersList();
-    if (!occupiers.length) { this.toast.show('No occupiers to export', 'error'); return; }
+    if (!occupiers.length) { this.toast.error('No occupiers to export'); return; }
     const headers = ['Name', 'ID Number'];
     const rows = occupiers.map((o: any) => [
       o.name || o.occupierName || o.surname || '',
       o.idNumber || o.idRegistrationNumber || o.idNo || '',
     ]);
     this.exportService.exportCsv(this.getExportOpts('Occupiers', 'OCCUPIERS REPORT'), headers, rows);
-    this.toast.show('Occupiers exported', 'success');
+    this.toast.success('Occupiers exported');
   }
 
   exportExtensionsCsv(): void {
     const extensions = this.tabData()?.extensions || [];
-    if (!extensions.length) { this.toast.show('No extension data to export', 'error'); return; }
+    if (!extensions.length) { this.toast.error('No extension data to export'); return; }
     const headers = ['Extension Status', 'Description', 'Commencement Date', 'Termination Date', 'Captured By', 'Capture Date'];
     const rows = extensions.map((e: any) => [
       e.extensionStatus || e.status || e.statusDesc || '',
@@ -7379,6 +7251,6 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       this.formatDate(e.captureDate || e.dateCaptured),
     ]);
     this.exportService.exportCsv(this.getExportOpts('Payment_Extensions', 'PAYMENT EXTENSIONS REPORT'), headers, rows);
-    this.toast.show('Extensions exported', 'success');
+    this.toast.success('Extensions exported');
   }
 }
