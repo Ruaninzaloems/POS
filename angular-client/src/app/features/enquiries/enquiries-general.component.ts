@@ -544,7 +544,19 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
 
   safeStr(v: any): string {
     if (v === null || v === undefined || v === '' || v === 'null') return '-';
-    return String(v).trim() || '-';
+    return this.stripHtml(String(v).trim()) || '-';
+  }
+
+  stripHtml(text: string): string {
+    if (!text) return text;
+    return text
+      .replace(/<br\s*\/?>/gi, ', ')
+      .replace(/<[^>]*>/g, '')
+      .replace(/(\s*,\s*)+/g, ', ')
+      .replace(/^\s*,\s*/g, '')
+      .replace(/,\s*$/g, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
   }
 
   isStatusActive(val: any): boolean {
@@ -877,11 +889,12 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
         } catch {}
       }
 
-      this.results.set(arr);
-      if (arr.length === 0) {
+      const sanitized = arr.map((a: any) => a.contactDetails ? { ...a, contactDetails: this.stripHtml(a.contactDetails) } : a);
+      this.results.set(sanitized);
+      if (sanitized.length === 0) {
         this.searchError.set('No accounts found matching your search.');
       } else {
-        this.enrichBalances(arr, token);
+        this.enrichBalances(sanitized, token);
       }
     } catch (e: any) {
       if (this.searchToken === token) {
@@ -3365,7 +3378,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       outStandingAmt: account.outStandingAmt || 0,
       outStandingAmount: account.outStandingAmount || 0,
       addName: account.addName || '',
-      contactDetails: account.contactDetails || '',
+      contactDetails: this.stripHtml(account.contactDetails || ''),
       unitID: account.unitID || 0,
       unitPartitionID: account.unitPartitionID || 0,
       sgNumber: account.sgNumber || '',

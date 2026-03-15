@@ -6301,7 +6301,7 @@
               @if (account.contactDetails) {
                 <div class="result-card-contact">
                   <span class="result-contact-icon">📞</span>
-                  <span class="result-contact-text">{{ account.contactDetails }}</span>
+                  <span class="result-contact-text">{{ stripHtml(account.contactDetails) }}</span>
                 </div>
               }
               <div class="result-card-bottom">
@@ -6355,7 +6355,7 @@
                     <td class="address-cell" [attr.data-testid]="'text-address-' +  getAccountId(account)  + ''">{{ (account.locationAddress || account.address || '-').replace('\r\n', ', ') }}</td>
                     <td class="contact-cell">
                       @if (account.contactDetails) {
-                        <div class="contact-cell-text">{{ account.contactDetails }}</div>
+                        <div class="contact-cell-text">{{ stripHtml(account.contactDetails) }}</div>
                       } @else {
                         <span class="muted">-</span>
                       }
