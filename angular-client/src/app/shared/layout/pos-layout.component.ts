@@ -185,7 +185,18 @@ export class PosLayoutComponent {
     event.preventDefault();
     event.stopPropagation();
     this.mobileSidebarOpen.set(false);
-    this.router.navigate([href]);
+    const currentUrl = this.currentUrl();
+    console.log(`[NAV-DEBUG] handleNav called: from="${currentUrl}" to="${href}"`);
+    this.router.navigate([href]).then(
+      success => {
+        console.log(`[NAV-DEBUG] navigate result: success=${success}, url now="${this.router.url}"`);
+        fetch(`/api/health?nav_debug=from:${encodeURIComponent(currentUrl)}_to:${encodeURIComponent(href)}_ok:${success}`).catch(() => {});
+      },
+      err => {
+        console.error(`[NAV-DEBUG] navigate error:`, err);
+        fetch(`/api/health?nav_debug=from:${encodeURIComponent(currentUrl)}_to:${encodeURIComponent(href)}_err:${err?.message || err}`).catch(() => {});
+      }
+    );
   }
 
   navigateTo(href: string): void {
