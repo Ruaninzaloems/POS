@@ -12,8 +12,8 @@
 
 .content-area { flex: 1; background: #F7F8FA; padding: 1.25rem 1.5rem; overflow-y: auto; }
 
-.import-card { background: white; border: 1px solid var(--pos-card-border); border-radius: 0.5rem; overflow: hidden; }
-.card-header { padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--pos-card-border); background: var(--platinum-primary); }
+.import-card { background: white; border: 1px solid var(--pos-card-border); border-radius: 0.5rem; overflow: visible; }
+.card-header { padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--pos-card-border); background: var(--platinum-primary); border-radius: 0.5rem 0.5rem 0 0; }
 .card-header h2 { font-size: 0.9375rem; font-weight: 600; color: white; margin: 0; }
 .card-body { padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; }
 .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
