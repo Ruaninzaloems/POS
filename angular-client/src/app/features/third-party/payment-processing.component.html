@@ -70,7 +70,7 @@
       @if (step() === 'transactions') {
         <div class="transactions-header">
           <div class="txn-header-left">
-            <button class="btn-outline" (click)="resetImport()" data-testid="button-back">&larr; Back</button>
+            <button class="btn-outline" (click)="requestResetImport()" data-testid="button-back">&larr; Back</button>
             <h2>Transaction Review</h2>
             <span class="txn-total">{{ transactions().length }} transactions &middot; {{ formatCurrency(totalImportAmount()) }}</span>
           </div>
@@ -78,8 +78,8 @@
             <button class="btn-outline" (click)="handleValidate()" [disabled]="validating()" data-testid="button-validate">
               @if (validating()) { <span class="spinner spinner-sm"></span> } Validate
             </button>
-            <button class="btn-primary" (click)="handleCommit()" [disabled]="committing()" data-testid="button-commit">
-              @if (committing()) { <span class="spinner spinner-sm"></span> } Commit Payments
+            <button class="btn-primary" (click)="requestCommit()" [disabled]="committing()" data-testid="button-commit">
+              @if (committing()) { <span class="spinner spinner-sm"></span> } Commit {{ matchCounts().ready }} Payment(s)
             </button>
           </div>
         </div>
@@ -116,6 +116,12 @@
           @if (validationResult()) {
             <div class="alert" [class.alert-success]="validationResult().isValid || validationResult().isSuccess" [class.alert-error]="!(validationResult().isValid || validationResult().isSuccess)">
               {{ validationResult().message || (validationResult().isValid ? 'Validation passed' : 'Validation failed') }}
+            </div>
+          }
+
+          @if (commitResult()?.error) {
+            <div class="alert alert-error" data-testid="text-commit-error">
+              {{ commitResult().message }}
             </div>
           }
 
@@ -252,6 +258,19 @@
               <div class="alert alert-error">{{ giError() }}</div>
             }
 
+            @if (giValidationProgress()) {
+              <div class="gi-validation-progress" data-testid="gi-validation-progress">
+                <div class="gi-progress-label">
+                  <span class="spinner spinner-sm"></span>
+                  <span>{{ giValidationProgress()!.detail }}</span>
+                </div>
+                <div class="gi-progress-bar-outer">
+                  <div class="gi-progress-bar-fill" [style.width.%]="giValidationProgress()!.percent"></div>
+                </div>
+                <div class="gi-progress-pct">{{ giValidationProgress()!.percent }}%</div>
+              </div>
+            }
+
             <div class="form-actions">
               <button class="btn-primary" (click)="handleGiPreview()" [disabled]="giPreviewLoading() || !giFile()" data-testid="button-gi-preview">
                 @if (giPreviewLoading()) { <span class="spinner spinner-sm"></span> } Preview &amp; Validate
@@ -317,8 +336,8 @@
         </div>
 
         <div class="form-actions" style="margin-top:1rem">
-          <button class="btn-outline" (click)="giStep.set('upload')" data-testid="button-gi-back">&larr; Back</button>
-          <button class="btn-primary" (click)="handleGiSubmit()" [disabled]="giSubmitting() || giPreviewRows().filter(r => r.isValid).length === 0" data-testid="button-gi-submit">
+          <button class="btn-outline" (click)="requestGiBack()" data-testid="button-gi-back">&larr; Back</button>
+          <button class="btn-primary" (click)="requestGiSubmit()" [disabled]="giSubmitting() || giPreviewRows().filter(r => r.isValid).length === 0" data-testid="button-gi-submit">
             @if (giSubmitting()) { <span class="spinner spinner-sm"></span> } Submit {{ giPreviewRows().filter(r => r.isValid).length }} Valid Rows
           </button>
         </div>
@@ -433,7 +452,91 @@
                 </tbody>
               </table>
             </div>
+          } @else if (!searching() && (searchAccountNo() || searchName())) {
+            <div class="empty-search-state" data-testid="text-no-search-results">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <p class="empty-search-title">No accounts found</p>
+              <p class="empty-search-hint">Try a different account number, name, or check for typos.</p>
+            </div>
           }
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (showCommitConfirm()) {
+    <div class="confirm-overlay" (click)="cancelCommit()">
+      <div class="confirm-dialog" (click)="$event.stopPropagation()" data-testid="dialog-commit-confirm">
+        <div class="confirm-icon confirm-icon-primary">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+        <h3 class="confirm-title">Commit Payments</h3>
+        <p class="confirm-message">You are about to commit <strong>{{ matchCounts().ready }} payment(s)</strong> totalling <strong>{{ formatCurrency(totalImportAmount()) }}</strong> to the ledger.</p>
+        <p class="confirm-message confirm-warning-text">This action cannot be undone.</p>
+        <div class="confirm-actions">
+          <button class="btn-outline" (click)="cancelCommit()" data-testid="button-cancel-commit">Cancel</button>
+          <button class="btn-primary" (click)="confirmCommit()" data-testid="button-confirm-commit">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            Yes, Commit Payments
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (showResetConfirm()) {
+    <div class="confirm-overlay" (click)="cancelResetImport()">
+      <div class="confirm-dialog" (click)="$event.stopPropagation()" data-testid="dialog-reset-confirm">
+        <div class="confirm-icon confirm-icon-warning">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <h3 class="confirm-title">Discard Review?</h3>
+        <p class="confirm-message">You have {{ transactions().length }} transaction(s) in review. Going back will discard all matching and editing work.</p>
+        <div class="confirm-actions">
+          <button class="btn-outline" (click)="cancelResetImport()" data-testid="button-cancel-reset">Stay</button>
+          <button class="btn-danger-solid" (click)="confirmResetImport()" data-testid="button-confirm-reset">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            Discard &amp; Go Back
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (showGiSubmitConfirm()) {
+    <div class="confirm-overlay" (click)="cancelGiSubmit()">
+      <div class="confirm-dialog" (click)="$event.stopPropagation()" data-testid="dialog-gi-submit-confirm">
+        <div class="confirm-icon confirm-icon-primary">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+        <h3 class="confirm-title">Submit Import</h3>
+        <p class="confirm-message">You are about to submit <strong>{{ giPreviewRows().filter(r => r.isValid).length }} valid payment(s)</strong> totalling <strong>{{ formatCurrency(giPreviewTotal()) }}</strong> for processing.</p>
+        <p class="confirm-message confirm-warning-text">This action cannot be undone.</p>
+        <div class="confirm-actions">
+          <button class="btn-outline" (click)="cancelGiSubmit()" data-testid="button-cancel-gi-submit">Cancel</button>
+          <button class="btn-primary" (click)="confirmGiSubmit()" data-testid="button-confirm-gi-submit">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            Yes, Submit
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (showGiBackConfirm()) {
+    <div class="confirm-overlay" (click)="cancelGiBack()">
+      <div class="confirm-dialog" (click)="$event.stopPropagation()" data-testid="dialog-gi-back-confirm">
+        <div class="confirm-icon confirm-icon-warning">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <h3 class="confirm-title">Discard Preview?</h3>
+        <p class="confirm-message">You have {{ giPreviewRows().length }} validated row(s) ready for submission. Going back will discard this preview.</p>
+        <div class="confirm-actions">
+          <button class="btn-outline" (click)="cancelGiBack()" data-testid="button-cancel-gi-back">Stay</button>
+          <button class="btn-danger-solid" (click)="confirmGiBack()" data-testid="button-confirm-gi-back">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            Discard &amp; Go Back
+          </button>
         </div>
       </div>
     </div>

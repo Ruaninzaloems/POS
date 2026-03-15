@@ -91,6 +91,11 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
   loadingTxns = signal(false);
   loadProgress = signal({ step: '', percent: 0 });
 
+  showCommitConfirm = signal(false);
+  showResetConfirm = signal(false);
+  showGiSubmitConfirm = signal(false);
+  showGiBackConfirm = signal(false);
+
   editingIdx = signal<number | null>(null);
   editAccountNo = signal('');
   editComment = signal('');
@@ -184,7 +189,8 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
           description: t.description,
         })));
       }
-    } catch {
+    } catch (e: any) {
+      this.toast.warning('Could not load third party types. You may need to refresh the page.');
     } finally {
       this.loadingTypes.set(false);
     }
@@ -555,10 +561,85 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
     }
   }
 
+  requestCommit(): void {
+    this.commitResult.set(null);
+    const unvalidatedCount = this.transactions().filter(t => !t.validated).length;
+    if (unvalidatedCount > 0) {
+      this.toast.error(`Cannot commit: ${unvalidatedCount} transaction(s) are not validated. Please resolve all Unmatched and Needs Review items first.`);
+      return;
+    }
+    if (this.matchCounts().ready === 0) {
+      this.toast.error('No validated payments ready to commit.');
+      return;
+    }
+    this.showCommitConfirm.set(true);
+  }
+
+  confirmCommit(): void {
+    this.showCommitConfirm.set(false);
+    this.handleCommit();
+  }
+
+  cancelCommit(): void {
+    this.showCommitConfirm.set(false);
+  }
+
+  requestResetImport(): void {
+    if (this.transactions().length > 0 && this.step() === 'transactions') {
+      this.showResetConfirm.set(true);
+    } else {
+      this.resetImport();
+    }
+  }
+
+  confirmResetImport(): void {
+    this.showResetConfirm.set(false);
+    this.resetImport();
+  }
+
+  cancelResetImport(): void {
+    this.showResetConfirm.set(false);
+  }
+
+  requestGiSubmit(): void {
+    const validCount = this.giPreviewRows().filter(r => r.isValid).length;
+    if (validCount === 0) {
+      this.toast.error('No valid payment rows to submit.');
+      return;
+    }
+    this.showGiSubmitConfirm.set(true);
+  }
+
+  confirmGiSubmit(): void {
+    this.showGiSubmitConfirm.set(false);
+    this.handleGiSubmit();
+  }
+
+  cancelGiSubmit(): void {
+    this.showGiSubmitConfirm.set(false);
+  }
+
+  requestGiBack(): void {
+    if (this.giPreviewRows().length > 0 && this.giStep() === 'preview') {
+      this.showGiBackConfirm.set(true);
+    } else {
+      this.giStep.set('upload');
+    }
+  }
+
+  confirmGiBack(): void {
+    this.showGiBackConfirm.set(false);
+    this.giStep.set('upload');
+  }
+
+  cancelGiBack(): void {
+    this.showGiBackConfirm.set(false);
+  }
+
   async handleCommit(): Promise<void> {
     const unvalidatedCount = this.transactions().filter(t => !t.validated).length;
     if (unvalidatedCount > 0) {
-      this.commitResult.set({ error: true, message: `Cannot commit: ${unvalidatedCount} transaction(s) are not validated. Please resolve all Unmatched and Needs Review items first.` });
+      this.toast.error(`Cannot commit: ${unvalidatedCount} transaction(s) are not validated.`);
       return;
     }
     const user = this.auth.user();
@@ -585,7 +666,9 @@ export class PaymentProcessingComponent implements OnInit, OnDestroy {
         this.toast.error('Commit failed: ' + (result?.message || result?.detail || 'Unknown error'));
       }
     } catch (e: any) {
-      this.toast.error('Commit failed: ' + (e?.message || ''));
+      const msg = 'Commit failed: ' + (e?.message || 'Unknown error');
+      this.commitResult.set({ error: true, message: msg });
+      this.toast.error(msg);
     } finally {
       this.committing.set(false);
     }
