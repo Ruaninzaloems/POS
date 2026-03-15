@@ -362,6 +362,10 @@ export class AllocationHistoryComponent implements OnInit {
       }
 
       this.jobAccountDetails.set(details);
+
+      if (details) {
+        this.resolveReceiptNumbers(details);
+      }
     } catch (e: any) {
       console.error('Failed to load job details:', e);
     } finally {
@@ -375,9 +379,38 @@ export class AllocationHistoryComponent implements OnInit {
     this.jobAccountDetails.set(null);
   }
 
+  async resolveReceiptNumbers(details: any[]): Promise<void> {
+    const needsResolution = details.filter((a: any) =>
+      !a.receiptNumber && !a.receiptNo && (a.receiptIdOnly || a.receiptId || a.receipt_ID)
+    );
+    if (needsResolution.length === 0) return;
+
+    for (const acc of needsResolution) {
+      acc.resolvingReceiptNo = true;
+    }
+    this.jobAccountDetails.set([...details]);
+
+    for (const acc of needsResolution) {
+      const id = acc.receiptIdOnly || acc.receiptId || acc.receipt_ID;
+      try {
+        const data: any = await firstValueFrom(
+          this.api.get('/api/platinum/pos-multi-receipt-print', { receiptId: String(id) })
+        );
+        const items = Array.isArray(data) ? data : [];
+        if (items.length > 0 && items[0].receiptNo) {
+          acc.resolvedReceiptNo = items[0].receiptNo;
+        }
+      } catch (e: any) {
+        console.warn(`[AllocationHistory] Receipt number lookup failed for ID ${id}:`, e?.message);
+      }
+      acc.resolvingReceiptNo = false;
+    }
+    this.jobAccountDetails.set([...details]);
+  }
+
   async printReceipt(acc: any): Promise<void> {
     const receiptId = acc.receiptId || acc.receipt_ID || acc.serialNo || acc.id;
-    const receiptNo = acc.receiptNumber || acc.receiptNo || acc.receipt_No || '';
+    const receiptNo = acc.receiptNumber || acc.receiptNo || acc.resolvedReceiptNo || acc.receipt_No || '';
     if (!receiptId && !receiptNo) {
       this.toast.error('No receipt identifier available.');
       return;

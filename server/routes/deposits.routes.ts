@@ -893,7 +893,9 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
                 job.results.push({ lineIndex: lineIdx, accountNo: line.accountNo, allocationType: allocType, amount: line.amount, status: 'FAILED', error: errMsg, apiResponse: parsed });
               } else {
                 job.completedLines++;
-                job.results.push({ lineIndex: lineIdx, accountNo: line.accountNo, allocationType: allocType, amount: line.amount, status: 'SUCCESS', apiResponse: parsed });
+                const receiptNo = parsed?.receiptNo || parsed?.receiptNumber || parsed?.receipt_No || '';
+                const receiptId = parsed?.receiptId || parsed?.receipt_ID || parsed?.id || parsed?.ids?.[0] || '';
+                job.results.push({ lineIndex: lineIdx, accountNo: line.accountNo, allocationType: allocType, amount: line.amount, status: 'SUCCESS', receiptNo, receiptId, apiResponse: parsed });
               }
             } catch (submitErr: any) {
               job.failedLines++;
