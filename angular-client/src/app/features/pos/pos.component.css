@@ -4182,6 +4182,47 @@
   .account-result-info {
     grid-template-columns: 1fr;
     gap: 6px 0;
+    padding: 8px 10px;
+  }
+  .account-result-header {
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .account-result-name {
+    font-size: 14px;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.3;
+    flex: 1 1 100%;
+    order: 1;
+  }
+  .result-type-badge {
+    order: 0;
+  }
+  .account-result-status {
+    order: 0;
+  }
+  .info-label {
+    font-size: 11px;
+    min-width: 50px;
+  }
+  .info-value {
+    font-size: 13px;
+    white-space: normal;
+    word-break: break-word;
+  }
+  .info-value.meter-value {
+    word-break: break-all;
+  }
+  .add-prepaid-inline {
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    min-height: 36px;
+  }
+  .search-result-card {
+    padding: 10px 12px;
   }
   .delivery-input-row {
     flex-direction: column;
@@ -4375,6 +4416,49 @@
   .account-result-info {
     grid-template-columns: 1fr;
     gap: 4px;
+    padding: 8px 10px;
+  }
+  .account-result-header {
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 6px;
+  }
+  .account-result-name {
+    font-size: 13px;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.3;
+    flex: 1 1 100%;
+    order: 1;
+  }
+  .info-label {
+    font-size: 10px;
+    min-width: 48px;
+  }
+  .info-value {
+    font-size: 12px;
+    white-space: normal;
+    word-break: break-word;
+  }
+  .add-prepaid-inline {
+    font-size: 11px;
+    padding: 6px 10px;
+    min-height: 34px;
+    width: 100%;
+    justify-content: center;
+    border-radius: 6px;
+  }
+  .search-result-card {
+    padding: 10px;
+  }
+  .search-results-panel {
+    max-height: 55vh;
+    border-radius: 8px;
+  }
+  .results-header {
+    padding: 8px 12px;
+    font-size: 11px;
+    border-radius: 8px 8px 0 0;
   }
   .rcpt-detail-truncate {
     max-width: 160px;
