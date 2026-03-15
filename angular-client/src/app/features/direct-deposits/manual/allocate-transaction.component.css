@@ -221,12 +221,44 @@
 .csv-add-btn { display: flex; align-items: center; gap: 0.375rem; background: #059669; }
 .csv-add-btn:hover { background: #047857; }
 
+.empty-lines-state { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 2rem 1.5rem; background: white; border: 1px dashed #D1D5DB; border-radius: 10px; margin-bottom: 1rem; text-align: center; }
+.empty-lines-title { font-size: 0.875rem; font-weight: 600; color: #64748B; margin: 0; }
+.empty-lines-hint { font-size: 0.75rem; color: #94A3B8; margin: 0; max-width: 28rem; line-height: 1.5; }
+
+.lines-panel-header { display: flex; align-items: center; justify-content: space-between; }
+.btn-clear-all-lines { display: flex; align-items: center; gap: 0.25rem; color: #DC2626; border-color: #FECACA; font-size: 0.6875rem; padding: 0.25rem 0.625rem; }
+.btn-clear-all-lines:hover { background: #FEF2F2; }
+
+.btn-fill-remaining { display: flex; align-items: center; gap: 0.25rem; padding: 0.375rem 0.625rem; border-radius: 6px; font-size: 0.6875rem; font-weight: 600; color: var(--platinum-accent, #c9a84c); background: rgba(201,168,76,0.08); border: 1px solid rgba(201,168,76,0.25); cursor: pointer; transition: all 0.15s ease; white-space: nowrap; font-family: 'SF Mono', 'Consolas', monospace; }
+.btn-fill-remaining:hover { background: rgba(201,168,76,0.15); border-color: rgba(201,168,76,0.4); }
+
+.confirm-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; padding: 1rem; animation: fadeInOverlay 0.15s ease; }
+.confirm-dialog { background: white; border-radius: 16px; padding: 2rem; max-width: 28rem; width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.08); animation: scaleIn 0.2s ease; }
+.confirm-icon { width: 3.5rem; height: 3.5rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; }
+.confirm-icon-primary { background: rgba(15,43,70,0.08); color: var(--platinum-primary); }
+.confirm-icon-warning { background: #FEF3C7; color: #D97706; }
+.confirm-title { font-size: 1.125rem; font-weight: 700; color: var(--platinum-primary, #0f2b46); margin: 0 0 0.625rem; }
+.confirm-message { font-size: 0.8125rem; color: #64748B; margin: 0 0 0.375rem; line-height: 1.5; }
+.confirm-warning-text { color: #B45309; font-weight: 500; font-size: 0.75rem; margin-top: 0.375rem; }
+.confirm-actions { display: flex; gap: 0.625rem; margin-top: 1.25rem; justify-content: center; }
+.confirm-actions .btn-outline { padding: 0.5rem 1.25rem; border-radius: 8px; font-weight: 500; font-size: 0.8125rem; }
+.confirm-actions .btn-primary { display: flex; align-items: center; gap: 0.375rem; padding: 0.5rem 1.25rem; border-radius: 8px; font-weight: 600; font-size: 0.8125rem; }
+.btn-danger-solid { display: flex; align-items: center; gap: 0.375rem; padding: 0.5rem 1.25rem; border-radius: 8px; font-weight: 600; font-size: 0.8125rem; background: #DC2626; color: white; border: 1px solid #DC2626; cursor: pointer; transition: background 0.15s; }
+.btn-danger-solid:hover { background: #B91C1C; }
+
+@keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
+@keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
 @media (max-width: 768px) {
   .allocate-layout { grid-template-columns: 1fr; }
   .transaction-panel { border-right: 0; border-bottom: 1px solid #E8ECF1; }
-  .scope-selector { gap: 2px; }
-  .scope-btn { padding: 5px 10px; font-size: 0.6875rem; }
+  .scope-selector { overflow-x: auto; flex-wrap: nowrap; gap: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 2px; }
+  .scope-selector::-webkit-scrollbar { display: none; }
+  .scope-btn { padding: 5px 10px; font-size: 0.6875rem; flex-shrink: 0; }
+  .amount-input-row { flex-wrap: wrap; }
+  .btn-fill-remaining { order: 4; width: 100%; justify-content: center; }
   .csv-dialog { max-width: 100%; max-height: 100vh; border-radius: 0; }
   .clearance-property-details { grid-template-columns: repeat(2, 1fr); }
   .clearance-footer { flex-direction: column; align-items: stretch; }
+  .confirm-dialog { margin: 0 0.5rem; }
 }

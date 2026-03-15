@@ -145,6 +145,10 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
   postErrors = signal<string[]>([]);
   completedLines = signal<any[]>([]);
 
+  showSubmitConfirm = signal(false);
+  showBackConfirm = signal(false);
+  showClearLinesConfirm = signal(false);
+
   csvDialogOpen = signal(false);
   csvFile = signal<File | null>(null);
   csvFileName = signal('');
@@ -201,6 +205,15 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
     if (this.posting()) return false;
     return this.lines().length > 0 && Math.abs(this.remaining()) < 0.01;
   });
+
+  canAddLine = computed(() => {
+    if (!this.selectedAccount()) return false;
+    const val = parseFloat(this.newLineAmount());
+    if (isNaN(val) || val <= 0) return false;
+    return val <= this.remaining() + 0.01;
+  });
+
+  hasUnsavedWork = computed(() => this.lines().length > 0 && !this.postComplete());
 
   clearanceAllocTotal = computed(() => Object.values(this.clearanceAllocations()).reduce((a, b) => a + b, 0));
   clearanceRemaining = computed(() => {
@@ -1031,6 +1044,10 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
       this.toast.error('Please enter a valid amount');
       return;
     }
+    if (amount > this.remaining() + 0.01) {
+      this.toast.error(`Amount exceeds remaining balance of ${this.formatCurrency(this.remaining())}`);
+      return;
+    }
 
     const nameParts = (account.name || '').split(/\s+/).filter(Boolean);
     let lastName = nameParts[0] || 'N/A';
@@ -1059,6 +1076,59 @@ export class AllocateTransactionComponent implements OnInit, OnDestroy {
 
   removeLine(index: number): void {
     this.lines.update(prev => prev.filter((_, i) => i !== index));
+  }
+
+  fillRemaining(): void {
+    const rem = this.remaining();
+    if (rem > 0) {
+      this.newLineAmount.set(rem.toFixed(2));
+    }
+  }
+
+  requestClearAllLines(): void {
+    if (this.lines().length === 0) return;
+    this.showClearLinesConfirm.set(true);
+  }
+
+  confirmClearAllLines(): void {
+    this.lines.set([]);
+    this.showClearLinesConfirm.set(false);
+    this.toast.success('All allocation lines cleared');
+  }
+
+  cancelClearAllLines(): void {
+    this.showClearLinesConfirm.set(false);
+  }
+
+  requestSubmit(): void {
+    if (!this.canSubmit()) return;
+    this.showSubmitConfirm.set(true);
+  }
+
+  confirmSubmit(): void {
+    this.showSubmitConfirm.set(false);
+    this.submitAllocation();
+  }
+
+  cancelSubmit(): void {
+    this.showSubmitConfirm.set(false);
+  }
+
+  requestGoBack(): void {
+    if (this.hasUnsavedWork()) {
+      this.showBackConfirm.set(true);
+    } else {
+      this.goBack();
+    }
+  }
+
+  confirmGoBack(): void {
+    this.showBackConfirm.set(false);
+    this.goBack();
+  }
+
+  cancelGoBack(): void {
+    this.showBackConfirm.set(false);
   }
 
   getResultTypeClass(type: string): string {
