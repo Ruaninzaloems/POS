@@ -2017,7 +2017,7 @@
               <!-- LIST VIEW -->
               @if (receiptViewMode() === 'list') {
                 <div class="rcpt-list-container">
-                  <div class="data-table-wrapper">
+                  <div class="data-table-wrapper rcpt-desktop-only">
                     <table class="data-table rcpt-table" data-testid="table-transactions">
                       <thead>
                         <tr>
@@ -2188,6 +2188,87 @@
                         }
                       </tbody>
                     </table>
+                  </div>
+                  <div class="rcpt-mobile-cards rcpt-mobile-only">
+                    @for (txn of getFilteredReceipts(); track $index) {
+                      <div class="rcpt-m-card" [class]="getReceiptStatusClass(txn)"
+                           [class.rcpt-m-selected]="getReceiptKey(receiptSelectedTxn()) === getReceiptKey(txn)"
+                           (click)="selectReceiptForDetail(txn)"
+                           [attr.data-testid]="'rcpt-card-' + $index">
+                        <div class="rcpt-m-row1">
+                          <span class="rcpt-type-badge" [class]="'rcpt-badge-' + (txn.paymentType || 'other').toLowerCase().replace(' ', '-')">
+                            {{ getReceiptPaymentIcon(txn.paymentType) }} {{ txn.paymentType || '-' }}
+                          </span>
+                          <span class="rcpt-m-amt mono">R {{ formatCurrency(txn.receiptAmount || txn.amount || txn.tenderAmount || txn.transactionAmount || 0) }}</span>
+                        </div>
+                        <div class="rcpt-m-row2">
+                          <span class="rcpt-m-no mono">{{ getReceiptNo(txn) || '-' }}</span>
+                        </div>
+                        <div class="rcpt-m-row3">
+                          <span class="rcpt-m-date">{{ formatDate(txn.receiptDate || txn.transactionDate || txn.date) }}</span>
+                          <span class="rcpt-m-cashier">{{ txn.cashier || txn.cashierName || '-' }}</span>
+                          <button class="rcpt-action-btn rcpt-print-btn rcpt-m-print"
+                                  (click)="printReceipt(txn, $event)"
+                                  [disabled]="receiptPrinting() === getReceiptKey(txn)"
+                                  title="Print Receipt"
+                                  [attr.data-testid]="'button-print-receipt-m-' + $index">
+                            @if (receiptPrinting() === getReceiptKey(txn)) {
+                              <span class="rcpt-spinner"></span>
+                            } @else {
+                              🖨️
+                            }
+                          </button>
+                        </div>
+                        @if (isEftReceipt(txn)) {
+                          <div class="rcpt-m-detail">{{ getEftBankDescription(txn) }}</div>
+                        }
+                      </div>
+                      @if (getReceiptKey(receiptSelectedTxn()) === getReceiptKey(txn)) {
+                        <div class="rcpt-detail-panel rcpt-m-detail-panel">
+                          <div class="rcpt-detail-header">
+                            <span class="rcpt-detail-title">Receipt Detail — {{ getReceiptNo(txn) || 'N/A' }}</span>
+                            <button class="rcpt-detail-close" (click)="receiptSelectedTxn.set(null); receiptDetailData.set(null)">✕</button>
+                          </div>
+                          <div class="rcpt-detail-body">
+                            <div class="rcpt-detail-summary">
+                              <div class="rcpt-detail-field">
+                                <span class="rcpt-detail-label">Receipt No</span>
+                                <span class="rcpt-detail-val mono">{{ getReceiptNo(txn) || '-' }}</span>
+                              </div>
+                              <div class="rcpt-detail-field">
+                                <span class="rcpt-detail-label">Date</span>
+                                <span class="rcpt-detail-val">{{ formatDate(txn.receiptDate || txn.transactionDate || txn.date) }}</span>
+                              </div>
+                              <div class="rcpt-detail-field">
+                                <span class="rcpt-detail-label">Amount</span>
+                                <span class="rcpt-detail-val mono rcpt-detail-amt">R {{ formatCurrency(txn.receiptAmount || txn.amount || txn.tenderAmount || 0) }}</span>
+                              </div>
+                              <div class="rcpt-detail-field">
+                                <span class="rcpt-detail-label">Cashier</span>
+                                <span class="rcpt-detail-val">{{ txn.cashier || txn.cashierName || '-' }}</span>
+                              </div>
+                              <div class="rcpt-detail-field">
+                                <span class="rcpt-detail-label">Cash Book</span>
+                                <span class="rcpt-detail-val">{{ txn.cashBook || '-' }}</span>
+                              </div>
+                            </div>
+                            @if (receiptDetailLoading()) {
+                              <div class="loading-state" style="padding: 1rem;"><div class="spinner"></div><p>Loading line items...</p></div>
+                            } @else if (receiptDetailData()?.lineItems?.length) {
+                              <div class="rcpt-line-items">
+                                <div class="rcpt-li-header">Line Items</div>
+                                @for (li of receiptDetailData()?.lineItems || []; track $index) {
+                                  <div class="rcpt-li-row">
+                                    <span class="rcpt-li-desc">{{ li.description || li.serviceDescription || '-' }}</span>
+                                    <span class="rcpt-li-amt mono">R {{ formatCurrency(li.amount || li.transactionAmount || 0) }}</span>
+                                  </div>
+                                }
+                              </div>
+                            }
+                          </div>
+                        </div>
+                      }
+                    }
                   </div>
                 </div>
               }
