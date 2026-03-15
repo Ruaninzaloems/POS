@@ -1,7 +1,7 @@
 <div class="app-shell">
   <aside class="app-sidenav" [class.collapsed]="sidebarCollapsed()" [class.mobile-open]="mobileSidebarOpen()">
     <div class="sidenav-header">
-      <button class="brand" (click)="handleNav($event, '/')" data-testid="link-home-logo">
+      <button class="brand" [routerLink]="['/']" (click)="mobileSidebarOpen.set(false)" data-testid="link-home-logo">
         <div class="brand-icon">
           <span class="material-icons">account_balance</span>
         </div>
@@ -27,8 +27,9 @@
             @if (isGroupExpanded(item.label) && !sidebarCollapsed()) {
               <div class="group-children">
                 @for (child of $any(item).children; track child.label) {
-                  <button class="nav-link sub-item" [class.active-link]="isActive(child.href)"
-                     (click)="handleNav($event, child.href)"
+                  <button class="nav-link sub-item" [routerLink]="[child.href]"
+                     routerLinkActive="active-link"
+                     (click)="mobileSidebarOpen.set(false)"
                      [attr.data-testid]="'link-' + child.label">
                     <span class="material-icons nav-icon">{{ child.icon }}</span>
                     <span class="nav-label">{{ child.label }}</span>
@@ -38,8 +39,9 @@
             }
           </div>
         } @else {
-          <button class="nav-link" [class.active-link]="isActive($any(item).href)"
-             (click)="handleNav($event, $any(item).href)"
+          <button class="nav-link" [routerLink]="[$any(item).href]"
+             routerLinkActive="active-link" [routerLinkActiveOptions]="{exact: $any(item).href === '/'}"
+             (click)="mobileSidebarOpen.set(false)"
              [attr.data-testid]="'link-' + item.label">
             <span class="material-icons nav-icon">{{ item.icon }}</span>
             <span class="nav-label" [class.hidden]="sidebarCollapsed()">{{ item.label }}</span>
@@ -77,7 +79,7 @@
       </div>
 
       <div class="toolbar-right">
-        <button class="toolbar-icon-btn" title="Settings" (click)="handleNav($event, '/settings')" data-testid="button-settings">
+        <button class="toolbar-icon-btn" title="Settings" [routerLink]="['/settings']" data-testid="button-settings">
           <span class="material-icons">settings</span>
         </button>
         <div class="user-section" data-testid="text-user-info">
@@ -92,7 +94,7 @@
 
     <div class="breadcrumb-bar">
       <div class="breadcrumb-trail">
-        <button class="breadcrumb-home" (click)="handleNav($event, '/')">
+        <button class="breadcrumb-home" [routerLink]="['/']">
           <span class="material-icons" style="font-size: 16px;">home</span>
         </button>
         @for (crumb of breadcrumbs(); track crumb.label; let last = $last) {

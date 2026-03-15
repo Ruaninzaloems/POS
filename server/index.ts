@@ -25,10 +25,7 @@ const httpServer = createServer(app);
 httpServer.keepAliveTimeout = 65000;
 httpServer.headersTimeout = 66000;
 
-app.get('/api/health', (req, res) => {
-  if (req.query.nav_debug) {
-    console.log(`[NAV-DEBUG-SERVER] ${req.query.nav_debug}`);
-  }
+app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: Date.now() });
 });
 

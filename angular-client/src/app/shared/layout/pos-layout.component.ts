@@ -1,5 +1,5 @@
 import { Component, signal, computed, inject } from '@angular/core';
-import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
+import { Router, RouterOutlet, RouterLink, RouterLinkActive, NavigationEnd } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
 import { filter } from 'rxjs/operators';
@@ -25,7 +25,7 @@ function isGroup(item: NavItem): item is NavGroup {
 @Component({
   selector: 'app-pos-layout',
   standalone: true,
-  imports: [CommonModule, RouterOutlet],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
   templateUrl: './pos-layout.component.html',
   styleUrl: './pos-layout.component.css'
 })
@@ -179,24 +179,6 @@ export class PosLayoutComponent {
 
   isGroupExpanded(label: string): boolean {
     return this.expandedGroups().has(label);
-  }
-
-  handleNav(event: Event, href: string): void {
-    event.preventDefault();
-    event.stopPropagation();
-    this.mobileSidebarOpen.set(false);
-    const currentUrl = this.currentUrl();
-    console.log(`[NAV-DEBUG] handleNav called: from="${currentUrl}" to="${href}"`);
-    this.router.navigate([href]).then(
-      success => {
-        console.log(`[NAV-DEBUG] navigate result: success=${success}, url now="${this.router.url}"`);
-        fetch(`/api/health?nav_debug=from:${encodeURIComponent(currentUrl)}_to:${encodeURIComponent(href)}_ok:${success}`).catch(() => {});
-      },
-      err => {
-        console.error(`[NAV-DEBUG] navigate error:`, err);
-        fetch(`/api/health?nav_debug=from:${encodeURIComponent(currentUrl)}_to:${encodeURIComponent(href)}_err:${err?.message || err}`).catch(() => {});
-      }
-    );
   }
 
   navigateTo(href: string): void {
