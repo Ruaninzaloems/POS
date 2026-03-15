@@ -491,7 +491,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
   totalCount = signal(0);
 
   searchQuery = signal('');
-  statusFilter = signal('all');
+  statusFilter = signal('unallocated');
   page = signal(1);
   pageSize = signal(25);
   sortField = signal<SortField>('dateOfTransaction');
@@ -652,7 +652,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
     this.loading.set(false);
     this.error.set('');
     this.searchQuery.set('');
-    this.statusFilter.set('all');
+    this.statusFilter.set('unallocated');
     this.page.set(1);
     this.pageSize.set(25);
     this.sortField.set('dateOfTransaction');
