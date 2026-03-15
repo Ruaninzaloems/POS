@@ -5497,7 +5497,7 @@
                   <button class="dtl-btn dtl-btn-retry" (click)="loadDetailedTransactions()">Retry</button>
                 </div>
               } @else if (detailTransactions().length > 0) {
-                <div class="dtl-table-wrapper">
+                <div class="dtl-table-wrapper dtl-desktop-only">
                   <table class="dtl-table" data-testid="table-detailed-transactions">
                     <thead>
                       <tr>
@@ -5528,6 +5528,34 @@
                       }
                     </tbody>
                   </table>
+                </div>
+                <div class="dtl-mobile-cards dtl-mobile-only">
+                  @for (txn of detailTransactions(); track $index) {
+                    <div class="dtl-card" [class]="getTxnRowClass(txn)" (click)="onTxnRowClick(txn)" [attr.data-testid]="'dtl-card-' + $index">
+                      <div class="dtl-card-top">
+                        <div class="dtl-card-left">
+                          <span class="dtl-card-date">{{ formatDate(txn.transactionDate || txn.date) }}</span>
+                          <span class="dtl-card-desc">{{ txn.transactionDescription || txn.description || '-' }}</span>
+                        </div>
+                        <span class="dtl-card-total" [class.dtl-neg]="(txn.total || txn.totalAmount || 0) < 0">{{ formatDebtAmt(txn.total ?? txn.totalAmount ?? 0) }}</span>
+                      </div>
+                      <div class="dtl-card-amounts">
+                        <span class="dtl-card-amt"><span class="dtl-card-amt-lbl">Amt</span> {{ formatDebtAmt(txn.amount ?? 0) }}</span>
+                        <span class="dtl-card-amt"><span class="dtl-card-amt-lbl">Int</span> {{ formatDebtAmt(txn.interestAmount ?? txn.interest ?? 0) }}</span>
+                        <span class="dtl-card-amt"><span class="dtl-card-amt-lbl">VAT</span> {{ formatDebtAmt(txn.vatAmount ?? txn.vat ?? 0) }}</span>
+                      </div>
+                      @if (txn.receiptId || txn.receiptNo || txn.receipt_ID || txn.documentTransactionId || txn.tariff) {
+                        <div class="dtl-card-meta">
+                          @if (txn.receiptId || txn.receiptNo || txn.receipt_ID || txn.documentTransactionId) {
+                            <span class="dtl-card-meta-item mono">Rcpt: {{ txn.receiptId || txn.receiptNo || txn.receipt_ID || txn.documentTransactionId }}</span>
+                          }
+                          @if (txn.tariff) {
+                            <span class="dtl-card-meta-item">{{ txn.tariff }}</span>
+                          }
+                        </div>
+                      }
+                    </div>
+                  }
                 </div>
                 <div class="dtl-footer">
                   <span class="dtl-count">{{ detailTransactions().length }} transaction{{ detailTransactions().length !== 1 ? 's' : '' }}</span>
