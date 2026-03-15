@@ -1,7 +1,7 @@
 <div class="app-shell">
   <aside class="app-sidenav" [class.collapsed]="sidebarCollapsed()" [class.mobile-open]="mobileSidebarOpen()">
     <div class="sidenav-header">
-      <a routerLink="/" class="brand" data-testid="link-home-logo">
+      <a routerLink="/" class="brand" (click)="mobileSidebarOpen.set(false)" data-testid="link-home-logo">
         <div class="brand-icon">
           <span class="material-icons">account_balance</span>
         </div>
@@ -27,8 +27,10 @@
             @if (isGroupExpanded(item.label) && !sidebarCollapsed()) {
               <div class="group-children">
                 @for (child of $any(item).children; track child.label) {
-                  <a class="nav-link sub-item" [class.active-link]="isActive(child.href)"
-                     (click)="navigateTo(child.href)" [attr.data-testid]="'link-' + child.label">
+                  <a class="nav-link sub-item" [routerLink]="child.href"
+                     routerLinkActive="active-link"
+                     (click)="mobileSidebarOpen.set(false)"
+                     [attr.data-testid]="'link-' + child.label">
                     <span class="material-icons nav-icon">{{ child.icon }}</span>
                     <span class="nav-label">{{ child.label }}</span>
                   </a>
@@ -37,8 +39,10 @@
             }
           </div>
         } @else {
-          <a class="nav-link" [class.active-link]="isActive($any(item).href)"
-             (click)="navigateTo($any(item).href)" [attr.data-testid]="'link-' + item.label">
+          <a class="nav-link" [routerLink]="$any(item).href"
+             routerLinkActive="active-link" [routerLinkActiveOptions]="{exact: $any(item).href === '/'}"
+             (click)="mobileSidebarOpen.set(false)"
+             [attr.data-testid]="'link-' + item.label">
             <span class="material-icons nav-icon">{{ item.icon }}</span>
             <span class="nav-label" [class.hidden]="sidebarCollapsed()">{{ item.label }}</span>
           </a>
@@ -90,7 +94,7 @@
 
     <div class="breadcrumb-bar">
       <div class="breadcrumb-trail">
-        <a class="breadcrumb-home" (click)="navigateTo('/')">
+        <a class="breadcrumb-home" routerLink="/">
           <span class="material-icons" style="font-size: 16px;">home</span>
         </a>
         @for (crumb of breadcrumbs(); track crumb.label; let last = $last) {
