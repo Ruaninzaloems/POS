@@ -1,5 +1,5 @@
 import { Component, signal, computed, inject } from '@angular/core';
-import { Router, RouterOutlet, RouterLink, RouterLinkActive, NavigationEnd } from '@angular/router';
+import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
 import { filter } from 'rxjs/operators';
@@ -25,7 +25,7 @@ function isGroup(item: NavItem): item is NavGroup {
 @Component({
   selector: 'app-pos-layout',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [CommonModule, RouterOutlet],
   templateUrl: './pos-layout.component.html',
   styleUrl: './pos-layout.component.css'
 })
@@ -179,6 +179,13 @@ export class PosLayoutComponent {
 
   isGroupExpanded(label: string): boolean {
     return this.expandedGroups().has(label);
+  }
+
+  handleNav(event: Event, href: string): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.mobileSidebarOpen.set(false);
+    this.router.navigate([href]);
   }
 
   navigateTo(href: string): void {
