@@ -371,7 +371,7 @@
   overflow: hidden;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 960px) {
   .dd-desktop-only { display: none !important; }
   .dd-mobile-only { display: block !important; }
   .dd-mobile-cards { margin: 0 0.75rem; }
