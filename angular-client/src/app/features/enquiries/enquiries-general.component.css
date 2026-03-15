@@ -4302,3 +4302,256 @@ thead .cons-sticky-col { z-index: 3; background: var(--platinum-primary, #0f2b46
   width: 100%;
   background: #f5f5f5;
 }
+
+/* ===== RESPONSIVE — TABLET (max-width: 768px) ===== */
+@media (max-width: 768px) {
+  .search-section { padding: 1rem; }
+  .search-input { padding: 0.625rem 2.25rem 0.625rem 2.25rem; font-size: 0.85rem; }
+  .summary-header-bar { padding: 0.625rem 0.875rem; gap: 0.625rem; flex-direction: column; align-items: stretch; }
+  .summary-title-row { justify-content: space-between; }
+  .summary-controls { justify-content: flex-end; }
+  .summary-dropdown { min-width: 100px; font-size: 0.8rem; }
+  .summary-table-wrapper { margin: 0 -0.25rem; }
+  .rates-letters-toolbar { padding: 0.5rem 0.75rem; gap: 0.5rem; flex-direction: column; align-items: stretch; }
+  .rates-letters-group { justify-content: center; }
+  .rates-letter-btn { padding: 0.35rem 0.625rem; font-size: 0.75rem; }
+  .rates-prop-info-card { padding: 1rem; }
+  .rates-prop-info-grid { grid-template-columns: 1fr 1fr; gap: 0.75rem 1rem; }
+  .rates-prop-info-desc { grid-column: 1 / -1; }
+  .acct-property-info-card { padding: 0.875rem 1rem; }
+  .acct-prop-info-row { grid-template-columns: 1fr 1fr; gap: 0.75rem 1rem; }
+  .acct-prop-desc { grid-column: 1 / -1; }
+  .meter-detail-grid { grid-template-columns: repeat(2, 1fr); }
+  .cons-insights-row { grid-template-columns: repeat(3, 1fr); }
+  .propdebt-summary-cards { grid-template-columns: repeat(3, 1fr); }
+  .export-toolbar { justify-content: center; }
+  .dtl-toolbar { flex-direction: column; align-items: stretch; gap: 0.5rem; }
+  .dtl-toolbar-controls { justify-content: space-between; }
+  .handover-filters { flex-direction: column; align-items: stretch; gap: 0.5rem; padding: 0.5rem 0.75rem; }
+  .handover-filter-select { min-width: unset; width: 100%; }
+  .table-pagination-bar { flex-wrap: wrap; gap: 0.5rem; justify-content: center; padding: 0.375rem 0.5rem; }
+  .intel-stats-row { grid-template-columns: repeat(2, 1fr); }
+  .intel-spike-item { flex-wrap: wrap; gap: 0.375rem; }
+  .intel-spike-month { min-width: 80px; }
+  .intel-spike-rate { min-width: 60px; }
+  .deposit-hero-card { padding: 1rem; gap: 0.75rem; }
+  .deposit-hero-amount { font-size: 1.5rem; }
+  .occ-actions-row { gap: 0.5rem; }
+  .occ-action-btn { padding: 0.4rem 1rem; font-size: 0.78rem; }
+  .rcpt-detail-summary { grid-template-columns: 1fr 1fr; }
+  .rcpt-tl-detail-panel { margin-left: 0.5rem; }
+  .print-overlay-container { width: 95vw; height: 90vh; }
+  .prop-letters-row { padding: 0.5rem 0.75rem; gap: 0.5rem; }
+  .prop-letter-btn { padding: 0.4rem 0.75rem; font-size: 0.78rem; }
+  .comm-compose-body { padding: 0.75rem; }
+  .comm-method-btn { padding: 0.5rem 0.75rem; font-size: 0.8rem; }
+  .val-hero-row { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+  .val-detail-columns { grid-template-columns: 1fr; gap: 1rem; }
+  .svc-balance-drilldown { padding: 0.875rem; }
+  .svc-bal-header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+  .svc-bal-fy-select { margin-left: 0; }
+  .nbe-calculate-btn { padding: 0.625rem 1.5rem; font-size: 0.88rem; }
+  .est-reading-details { gap: 0.5rem; }
+  .breakdown-grid { grid-template-columns: 1fr; }
+  .linked-balance-breakdown { padding: 0.5rem 0.75rem; }
+  .clr-detail-panels { padding: 0.75rem; }
+}
+
+/* ===== RESPONSIVE — PHONE (max-width: 640px) ===== */
+@media (max-width: 640px) {
+  .page-container { padding: 0.375rem; }
+  .page-title { font-size: 1.15rem; }
+  .page-subtitle { font-size: 0.78rem; }
+  .search-section { padding: 0.625rem; border-radius: 0.5rem; }
+  .quick-search-row { gap: 0.375rem; }
+  .search-input-wrapper { min-width: 0; }
+  .search-input { padding: 0.5rem 2rem 0.5rem 2rem; font-size: 0.82rem; border-radius: 0.5rem; }
+  .search-btn { padding: 0.5rem 0.75rem; font-size: 0.78rem; }
+  .search-type-hint { font-size: 0.68rem; }
+  .advanced-grid { grid-template-columns: 1fr; }
+  .btn-primary { padding: 0.5rem 1rem; font-size: 0.8rem; }
+  .btn-outline { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+  .results-header { padding: 0.375rem 0.5rem; }
+  .results-count { font-size: 0.78rem; }
+  .result-card { padding: 0.625rem; border-radius: 0.5rem; }
+  .result-avatar { width: 2rem; height: 2rem; font-size: 0.78rem; }
+  .result-name { font-size: 0.8rem; }
+  .result-acct-num { font-size: 0.72rem; }
+  .result-balance { font-size: 0.8rem; }
+  .tab-panel { padding: 0.375rem; }
+  .detail-header-inner { padding: 0.375rem 0.5rem; gap: 0.375rem; }
+  .summary-header-bar { padding: 0.5rem 0.625rem; border-radius: 0.5rem 0.5rem 0 0; }
+  .summary-title { font-size: 0.82rem; }
+  .summary-controls { gap: 0.375rem; flex-wrap: wrap; }
+  .summary-dropdown { font-size: 0.75rem; padding: 0.3rem 0.5rem; min-width: 90px; }
+  .btn-summary-download { padding: 0.3rem 0.625rem; font-size: 0.72rem; }
+  .summary-footer { padding: 0.375rem 0.625rem; flex-wrap: wrap; gap: 0.25rem; font-size: 0.68rem; }
+  .debt-table-header { padding: 0.5rem 0.75rem; }
+  .debt-table-title { font-size: 0.78rem; }
+  .dtl-toolbar { padding: 0.5rem 0.625rem; }
+  .dtl-toolbar-title { font-size: 0.78rem; }
+  .dtl-toolbar-controls { gap: 0.375rem; }
+  .dtl-select { min-width: 90px; font-size: 0.75rem; padding: 0.3rem 0.5rem; }
+  .dtl-btn { padding: 0.3rem 0.5rem; font-size: 0.72rem; }
+  .dtl-footer { padding: 0.375rem 0.625rem; font-size: 0.68rem; }
+  .cons-insights-row { grid-template-columns: repeat(2, 1fr); gap: 0.375rem; }
+  .cons-insight-card { padding: 0.625rem 0.5rem; }
+  .cons-insight-label { font-size: 0.62rem; margin-bottom: 0.3rem; }
+  .cons-insight-value { font-size: 1.15rem; }
+  .cons-insight-sub { font-size: 0.6rem; }
+  .cons-anomaly-item { padding: 0.375rem 0.5rem; font-size: 0.72rem; }
+  .cons-selected-header { padding: 0.5rem 0.75rem; border-radius: 0.5rem; }
+  .cons-selected-svc { font-size: 0.88rem; }
+  .cons-selected-meter { font-size: 0.72rem; }
+  .cons-header-actions { flex-wrap: wrap; gap: 0.375rem; }
+  .cons-view-btn { padding: 0.25rem 0.5rem; font-size: 0.68rem; }
+  .cons-fy-filter { padding: 0.375rem 0.5rem; gap: 0.375rem; }
+  .cons-fy-label { font-size: 0.68rem; }
+  .cons-fy-chip { padding: 0.2rem 0.5rem; font-size: 0.65rem; }
+  .cons-grid-header { flex-wrap: wrap; gap: 0.375rem; }
+  .cons-grid-title { font-size: 0.78rem; }
+  .meter-detail-grid { grid-template-columns: 1fr; gap: 0.375rem; }
+  .meter-detail-label { font-size: 0.62rem; }
+  .meter-detail-value { font-size: 0.75rem; }
+  .propdebt-summary { padding: 0.625rem; }
+  .propdebt-summary-title { font-size: 0.82rem; }
+  .propdebt-summary-cards { grid-template-columns: repeat(2, 1fr); gap: 0.375rem; }
+  .propdebt-card { padding: 0.375rem 0.25rem; }
+  .propdebt-card-label { font-size: 0.55rem; }
+  .propdebt-card-value { font-size: 0.78rem; }
+  .propdebt-summary-meta { font-size: 0.68rem; }
+  .propdebt-accounts-header { padding: 0.4rem 0.625rem; font-size: 0.78rem; }
+  .rates-letters-toolbar { padding: 0.375rem 0.5rem; }
+  .rates-letters-label { font-size: 0.68rem; }
+  .rates-letter-btn { padding: 0.3rem 0.5rem; font-size: 0.72rem; }
+  .rates-prop-info-card { padding: 0.75rem; border-radius: 0.5rem; }
+  .rates-prop-info-grid { grid-template-columns: 1fr; gap: 0.5rem; }
+  .rates-prop-info-title { font-size: 0.72rem; margin-bottom: 0.5rem; }
+  .rates-prop-info-label { font-size: 0.6rem; }
+  .rates-prop-info-value { font-size: 0.78rem; }
+  .acct-property-info-card { padding: 0.625rem 0.75rem; border-radius: 0.5rem; }
+  .acct-prop-info-row { grid-template-columns: 1fr; gap: 0.5rem; }
+  .acct-prop-info-label { font-size: 0.6rem; }
+  .acct-prop-info-value { font-size: 0.78rem; }
+  .acct-prop-desc { font-size: 0.88rem; }
+  .acct-prop-market-value { font-size: 0.88rem; }
+  .export-toolbar { gap: 0.375rem; }
+  .export-btn { padding: 0.3rem 0.625rem; font-size: 0.72rem; }
+  .rates-cards-row { gap: 0.5rem; }
+  .rates-val-card { min-width: 120px; padding: 0.625rem; }
+  .rates-val-amount { font-size: 1rem; }
+  .rates-val-label { font-size: 0.6rem; }
+  .rates-val-icon { font-size: 1.15rem; }
+  .rcpt-stats-row { gap: 0.375rem; }
+  .rcpt-stat-card { min-width: 70px; padding: 0.375rem; }
+  .rcpt-stat-value { font-size: 0.95rem; }
+  .rcpt-stat-label { font-size: 0.62rem; }
+  .rcpt-toolbar { padding: 0.375rem 0.5rem; gap: 0.375rem; }
+  .rcpt-filter-chips { gap: 0.25rem; }
+  .rcpt-chip { padding: 0.2rem 0.5rem; font-size: 0.68rem; }
+  .rcpt-sort-btn { padding: 0.25rem 0.4rem; font-size: 0.72rem; }
+  .rcpt-view-btn { padding: 0.25rem 0.5rem; font-size: 0.72rem; }
+  .rcpt-detail-panel { margin: 0.125rem 0.25rem 0.375rem; }
+  .rcpt-detail-header { padding: 0.4rem 0.625rem; }
+  .rcpt-detail-title { font-size: 0.75rem; }
+  .rcpt-detail-body { padding: 0.625rem; }
+  .rcpt-detail-summary { grid-template-columns: 1fr; gap: 0.5rem; }
+  .rcpt-detail-actions { flex-wrap: wrap; }
+  .rcpt-action-lg { padding: 0.375rem 0.75rem; font-size: 0.75rem; }
+  .rcpt-tl-month-header { padding: 0.375rem 0.5rem; border-radius: 0.5rem; }
+  .rcpt-tl-month-label { font-size: 0.78rem; }
+  .rcpt-tl-month-total { font-size: 0.75rem; }
+  .rcpt-tl-item { padding: 0.4rem 0.5rem; gap: 0.5rem; }
+  .rcpt-tl-content { gap: 0.25rem; }
+  .intel-body { padding: 0.625rem; }
+  .intel-stats-row { grid-template-columns: 1fr; gap: 0.5rem; }
+  .intel-stat-card { padding: 0.5rem; }
+  .intel-stat-value { font-size: 0.95rem; }
+  .intel-trend-bars { height: 90px; }
+  .intel-spike-item { flex-direction: column; align-items: flex-start; gap: 0.25rem; padding: 0.375rem 0.5rem; }
+  .intel-spike-month { min-width: unset; }
+  .intel-spike-rate { min-width: unset; }
+  .intel-spike-pct { text-align: left; }
+  .deposit-hero-card { flex-direction: column; align-items: flex-start; padding: 0.75rem; gap: 0.5rem; border-radius: 0.5rem; }
+  .deposit-hero-amount { font-size: 1.25rem; }
+  .deposit-hero-icon { width: 2.25rem; height: 2.25rem; font-size: 1.35rem; }
+  .occ-actions-row { gap: 0.375rem; }
+  .occ-action-btn { padding: 0.375rem 0.75rem; font-size: 0.72rem; }
+  .occ-modal { width: 100%; max-width: 100vw; border-radius: 0.5rem 0.5rem 0 0; }
+  .occ-modal-lg { width: 100%; }
+  .occ-modal-header { padding: 0.75rem; font-size: 0.88rem; }
+  .occ-modal-body { padding: 0.75rem; }
+  .occ-modal-footer { padding: 0.625rem 0.75rem; }
+  .occ-form-group { margin-bottom: 0.75rem; }
+  .print-overlay-container { width: 100vw; max-width: 100vw; height: 100vh; border-radius: 0; }
+  .print-overlay-toolbar { padding: 0.5rem 0.625rem; }
+  .print-overlay-title { font-size: 0.78rem; }
+  .print-overlay-btn { padding: 0.3rem 0.5rem; font-size: 0.72rem; }
+  .prop-letters-row { padding: 0.375rem 0.5rem; gap: 0.375rem; flex-direction: column; }
+  .prop-letter-btn { width: 100%; justify-content: center; }
+  .comm-compose-header { padding: 0.5rem 0.75rem; flex-wrap: wrap; gap: 0.375rem; }
+  .comm-compose-title { font-size: 0.82rem; }
+  .comm-compose-body { padding: 0.5rem; }
+  .comm-method-toggle { gap: 0.375rem; }
+  .comm-method-btn { padding: 0.375rem 0.5rem; font-size: 0.75rem; }
+  .comm-send-btn { padding: 0.5rem 1rem; font-size: 0.78rem; }
+  .comm-cancel-btn { padding: 0.5rem 0.75rem; font-size: 0.78rem; }
+  .comm-actions { flex-wrap: wrap; }
+  .val-hero-row { grid-template-columns: 1fr; gap: 0.5rem; }
+  .val-hero-card { padding: 0.875rem 0.75rem; }
+  .val-hero-label { font-size: 0.6rem; }
+  .val-hero-value { font-size: 1.1rem; }
+  .val-detail-col { padding: 0.75rem; }
+  .val-col-title { font-size: 0.65rem; }
+  .val-field-label { font-size: 0.72rem; }
+  .val-field-value { font-size: 0.75rem; }
+  .svc-balance-drilldown { padding: 0.625rem; border-radius: 0.5rem; }
+  .svc-bal-title { font-size: 0.95rem; }
+  .svc-bal-subtitle { font-size: 0.78rem; }
+  .svc-bal-chart-bars { height: 120px; }
+  .nbe-header { margin-bottom: 0.875rem; }
+  .nbe-title { font-size: 0.95rem; }
+  .nbe-subtitle { font-size: 0.75rem; }
+  .nbe-calculate-btn { padding: 0.5rem 1.25rem; font-size: 0.82rem; }
+  .nbe-result-header { padding: 0.5rem 0.75rem; font-size: 0.78rem; }
+  .nbe-disclaimer { padding: 0.5rem 0.75rem; font-size: 0.72rem; }
+  .est-reading-header { padding: 0.4rem 0.625rem; gap: 0.375rem; }
+  .est-reading-title { font-size: 0.8rem; }
+  .est-reading-details { padding: 0.375rem 0.625rem; font-size: 0.75rem; flex-direction: column; }
+  .est-totals { padding: 0.375rem 0.625rem; }
+  .est-total-line { font-size: 0.75rem; }
+  .est-grand-total { font-size: 0.82rem; }
+  .handover-filters { padding: 0.375rem 0.5rem; gap: 0.375rem; }
+  .handover-filter-select { font-size: 0.75rem; padding: 0.3rem 0.5rem; }
+  .table-pagination-bar { padding: 0.25rem 0.375rem; gap: 0.375rem; font-size: 0.65rem; }
+  .pagination-label { font-size: 0.65rem; }
+  .pagination-info { font-size: 0.65rem; }
+  .page-btn { font-size: 0.65rem; padding: 0.125rem 0.3rem; }
+  .linked-balance-breakdown { padding: 0.375rem 0.5rem; }
+  .breakdown-title { font-size: 0.6rem; }
+  .breakdown-item { padding: 0.2rem 0.4rem; }
+  .breakdown-label { font-size: 0.62rem; }
+  .breakdown-value { font-size: 0.62rem; }
+  .clr-detail-panels { grid-template-columns: 1fr; padding: 0.5rem; gap: 0.5rem; }
+  .clr-kv-row { padding: 0.25rem 0.5rem; }
+  .clr-kv-label { font-size: 0.65rem; }
+  .clr-kv-value { font-size: 0.72rem; max-width: 140px; }
+  .clr-footer { padding: 0.375rem 0.625rem; flex-wrap: wrap; gap: 0.25rem; }
+  .rates-summary-grid { grid-template-columns: 1fr; }
+  .rates-summary-card { padding: 0.625rem 0.75rem; }
+  .rates-summary-value { font-size: 0.95rem; }
+  .rates-fy-toolbar { gap: 0.375rem; flex-wrap: wrap; }
+  .rates-fy-label { font-size: 0.68rem; }
+  .rates-fy-select { font-size: 0.75rem; padding: 0.3rem 0.5rem; }
+  .s129-filter-count { font-size: 0.72rem; }
+  .contact-page-title { font-size: 0.88rem; padding: 0.375rem 0 0.5rem; }
+  .contact-cell { max-width: 140px; }
+  .contact-cell-text { font-size: 0.65rem; }
+  .pp-panels-grid { gap: 0.5rem; }
+  .pp-status-item { padding: 0.4rem 0.625rem; }
+  .pp-status-label { font-size: 0.78rem; }
+  .pp-capital-row { padding: 0.375rem 0; }
+  .pp-capital-label { font-size: 0.75rem; }
+  .pp-capital-value { font-size: 0.78rem; }
+  .auto-fields-grid { grid-template-columns: 1fr; padding: 0.625rem; }
+}
