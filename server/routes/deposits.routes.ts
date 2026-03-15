@@ -529,14 +529,14 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
   const tokenInflight = new Map<string, Promise<string>>();
   const TOKEN_CACHE_TTL = 4 * 60 * 1000;
 
-  function getSessionKey(session: any): string {
-    const id = session.id || session.sessionID;
+  function getSessionKey(reqSession: any): string {
+    const id = reqSession.id || reqSession.sessionID;
     if (!id) throw new Error('Session has no ID — cannot manage tokens safely');
     return String(id);
   }
 
-  async function getOrRefreshToken(session: any, jobId: string): Promise<string> {
-    const sessionKey = getSessionKey(session);
+  async function getOrRefreshToken(reqSession: any, userSession: any, jobId: string): Promise<string> {
+    const sessionKey = getSessionKey(reqSession);
     const cached = tokenCache.get(sessionKey);
     if (cached && Date.now() - cached.ts < TOKEN_CACHE_TTL) {
       return cached.token;
@@ -548,7 +548,7 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
     const promise = (async () => {
       try {
         console.log(`[DD Token ${jobId}] Refreshing token for session ${sessionKey}`);
-        const token = await refreshSessionToken(session);
+        const token = await refreshSessionToken(userSession);
         tokenCache.set(sessionKey, { token, ts: Date.now() });
         return token;
       } finally {
@@ -559,9 +559,9 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
     return promise;
   }
 
-  function invalidateTokenCache(session: any): void {
+  function invalidateTokenCache(reqSession: any): void {
     try {
-      const sessionKey = getSessionKey(session);
+      const sessionKey = getSessionKey(reqSession);
       tokenCache.delete(sessionKey);
     } catch {}
   }
@@ -632,6 +632,7 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
   app.post("/api/dd-allocation/submit-batch", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
+      const expressSession = req.session;
       const { posItemId, reconId, financialYear, transactionDate, transactionNote, lines } = req.body;
 
       if (!posItemId || !reconId || !financialYear || !transactionDate || !Array.isArray(lines) || lines.length === 0) {
@@ -675,7 +676,7 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
 
       let apiUrl: string;
       try {
-        await getOrRefreshToken(session, jobId);
+        await getOrRefreshToken(expressSession, session, jobId);
         apiUrl = getPlatinumApiUrl(session);
       } catch (e: any) {
         job.status = 'FAILED';
@@ -718,7 +719,7 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
           try {
             let token: string;
             try {
-              token = await getOrRefreshToken(session, jobId);
+              token = await getOrRefreshToken(expressSession, session, jobId);
             } catch (tokenErr: any) {
               console.error(`[DD Batch ${jobId}] Token refresh failed:`, tokenErr?.message);
               throw tokenErr;
@@ -738,7 +739,7 @@ export function registerDepositsRoutes(app: Express, httpServer: Server): void {
 
             if (rawRes.status === 401) {
               console.warn(`[DD Batch ${jobId}] Got 401, invalidating token cache`);
-              invalidateTokenCache(session);
+              invalidateTokenCache(expressSession);
               if (attempt < MAX_RETRIES) continue;
               circuitBreaker.recordFailure();
               return { rawRes, responseText, attempts: attempt + 1 };
