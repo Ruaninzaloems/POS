@@ -199,19 +199,23 @@
   background: var(--platinum-primary, #0f2b46);
   color: white;
   border: none;
-  padding: 8px 16px;
-  border-radius: 7px;
+  padding: 10px 18px;
+  border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   font-family: inherit;
-  transition: all 0.15s;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 40px;
+  -webkit-tap-highlight-color: transparent;
 }
-.search-go-btn:hover { background: #1a3d5c; }
+.search-go-btn:hover { background: #1a3d5c; box-shadow: 0 2px 8px rgba(15,43,70,0.2); }
+.search-go-btn:active:not(:disabled) { transform: scale(0.98); }
 .search-go-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .search-results-panel {
@@ -426,10 +430,12 @@
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   padding: 14px 16px;
-  transition: border-color 0.15s;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: fadeInUp 0.2s ease;
 }
 .cart-item:hover {
   border-color: var(--platinum-primary, #0f2b46);
+  box-shadow: 0 2px 8px rgba(15,43,70,0.06);
 }
 .cart-item-top {
   display: flex;
@@ -2004,7 +2010,9 @@
   border-radius: 10px;
   padding: 16px;
   margin-bottom: 16px;
+  animation: fadeInUp 0.25s ease;
 }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 .tab-form-section .section-title {
   font-size: 15px;
   font-weight: 700;
@@ -2835,10 +2843,18 @@
   .result-balance { font-size: 13px; }
   .result-add-hint { opacity: 1; }
   .cart-item {
-    padding: 10px 12px;
+    padding: 12px;
+    border-radius: 8px;
   }
-  .cart-item-amounts { grid-template-columns: 1fr; }
-  .form-row { flex-direction: column; }
+  .cart-item-amounts { grid-template-columns: 1fr; gap: 10px; }
+  .amount-col { flex-direction: row; align-items: center; gap: 8px; }
+  .amount-label { min-width: 32px; font-size: 11px; font-weight: 600; }
+  .amount-value { font-size: 14px; }
+  .pay-input-group { min-height: 42px; border-radius: 8px; }
+  .pay-prefix { padding: 8px 10px; }
+  .pay-input { font-size: 14px; padding: 8px; min-height: 42px; }
+  .full-btn { padding: 8px 10px; font-size: 11px; }
+  .form-row { flex-direction: column; gap: 0; }
   .detail-banner { grid-template-columns: 1fr; }
   .denomination-grid { grid-template-columns: repeat(3, 1fr); }
   .delivery-buttons { flex-direction: column; }
@@ -2863,7 +2879,43 @@
     margin: auto 14px 14px;
     padding: 12px;
     font-size: 14px;
+    min-height: 48px;
+    border-radius: 10px;
   }
+  .tab-form-section {
+    padding: 12px;
+    border-radius: 8px;
+  }
+  .tab-form-section .section-title { font-size: 14px; }
+  .tab-form-section .section-desc { font-size: 11px; margin-bottom: 10px; }
+  .tab-form-section .form-input,
+  .tab-form-section .form-select {
+    padding: 10px 12px;
+    font-size: 14px;
+    min-height: 44px;
+    border-radius: 8px;
+  }
+  .tab-form-section .form-label {
+    font-size: 11px;
+    margin-top: 6px;
+    margin-bottom: 3px;
+  }
+  .search-go-btn {
+    min-height: 44px;
+    font-size: 14px;
+    border-radius: 8px;
+    margin-top: 8px;
+  }
+  .cart-item-type-badge {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 5px;
+  }
+  .cart-item-name { font-size: 13px; }
+  .prepaid-chip { font-size: 11px; padding: 4px 12px; }
+  .clearance-detail-mini { flex-wrap: wrap; gap: 6px; }
+  .prepaid-breakdown { padding: 12px; border-radius: 8px; }
+  .breakdown-item { padding: 10px; border-radius: 6px; }
   .payment-overlay {
     align-items: flex-end;
     padding: 0;
@@ -4145,6 +4197,7 @@
   }
   .form-row {
     flex-direction: column;
+    gap: 0;
   }
   .detail-banner {
     grid-template-columns: 1fr;
@@ -4197,6 +4250,93 @@
     grid-template-columns: repeat(2, 1fr);
   }
   .vat-breakdown-row {
+    font-size: 12px;
+  }
+  .tab-form-section {
+    padding: 14px;
+    border-radius: 8px;
+  }
+  .tab-form-section .form-row {
+    gap: 0;
+  }
+  .tab-form-section .form-group {
+    margin-bottom: 4px;
+  }
+  .tab-form-section .form-label {
+    font-size: 11px;
+    margin-top: 6px;
+    margin-bottom: 3px;
+  }
+  .tab-form-section .form-input,
+  .tab-form-section .form-select {
+    padding: 10px 12px;
+    font-size: 14px;
+    min-height: 44px;
+    border-radius: 8px;
+  }
+  .search-go-btn {
+    min-height: 44px;
+    font-size: 14px;
+    border-radius: 8px;
+    margin-top: 10px;
+  }
+  .cart-item {
+    padding: 12px 14px;
+    border-radius: 8px;
+  }
+  .cart-item-name {
+    font-size: 14px;
+  }
+  .cart-item-desc {
+    font-size: 12px;
+  }
+  .cart-item-type-badge {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 5px;
+  }
+  .pay-input-group {
+    border-radius: 8px;
+    min-height: 40px;
+  }
+  .pay-prefix {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+  .pay-input {
+    font-size: 14px;
+    padding: 8px 10px;
+    min-height: 40px;
+  }
+  .full-btn {
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+  .amount-label {
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .amount-value {
+    font-size: 14px;
+  }
+  .prepaid-chip {
+    font-size: 11px;
+    padding: 4px 12px;
+  }
+  .clearance-detail-mini {
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 12px;
+  }
+  .breakdown-item {
+    padding: 10px;
+    border-radius: 6px;
+  }
+  .prepaid-breakdown {
+    padding: 14px;
+    border-radius: 8px;
+  }
+  .link-btn {
     font-size: 12px;
   }
 }

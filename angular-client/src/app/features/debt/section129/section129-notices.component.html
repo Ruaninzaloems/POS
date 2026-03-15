@@ -257,7 +257,7 @@
                     <td>{{ run.distributionType || '—' }}</td>
                     <td>{{ run.handoverOption || '—' }}</td>
                     <td>{{ run.actionedBy || '—' }}</td>
-                    <td>{{ run.dateCreated || '—' }}</td>
+                    <td>{{ fmtDate(run.dateCreated) }}</td>
                     <td>{{ run.billingCycle || '—' }}</td>
                     <td class="text-right font-mono">{{ run.totalAccounts }}</td>
                     <td class="text-right font-mono">R {{ run.totalAmount.toLocaleString('en-ZA', {minimumFractionDigits: 2}) }}</td>
@@ -323,7 +323,7 @@
                     <td>{{ file.fileName }}</td>
                     <td>{{ file.fileType }}</td>
                     <td class="text-right">{{ formatFileSize(file.fileSize) }}</td>
-                    <td>{{ file.dateCreated }}</td>
+                    <td>{{ fmtDate(file.dateCreated) }}</td>
                     <td>
                       <button class="btn btn-outline btn-sm" (click)="handleDownloadFile(file.fileId)" [disabled]="downloadingFileId === file.fileId" [attr.data-testid]="'button-download-' + file.fileId">
                         @if (downloadingFileId === file.fileId) { <span class="spinner"></span> } @else { Download }

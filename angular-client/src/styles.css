@@ -101,17 +101,27 @@ a { text-decoration: none; }
   background: linear-gradient(135deg, #0f2b46, #1a3a5c);
   color: white;
   border: none;
-  padding: 8px 20px;
+  padding: 10px 22px;
   border-radius: 8px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  -webkit-tap-highlight-color: transparent;
 }
 .btn-primary:hover:not(:disabled) {
   box-shadow: 0 4px 14px rgba(15, 43, 70, 0.3);
   transform: translateY(-1px);
+}
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(15, 43, 70, 0.2);
 }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
@@ -119,41 +129,61 @@ a { text-decoration: none; }
   background: white;
   color: var(--platinum-text-secondary);
   border: 1px solid var(--platinum-border);
-  padding: 8px 20px;
+  padding: 10px 22px;
   border-radius: 8px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  -webkit-tap-highlight-color: transparent;
 }
 .btn-outline:hover { background: var(--platinum-surface-alt); color: var(--platinum-text); }
+.btn-outline:active { background: #e8ecf0; }
 
 .btn-danger {
   background: var(--platinum-danger);
   color: white;
   border: none;
-  padding: 8px 20px;
+  padding: 10px 22px;
   border-radius: 8px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   font-family: inherit;
-  transition: all 0.2s;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  -webkit-tap-highlight-color: transparent;
 }
 .btn-danger:hover { background: #e53935; }
+.btn-danger:active { background: #c62828; }
 
 .btn-success {
   background: var(--platinum-success);
   color: white;
   border: none;
-  padding: 8px 20px;
+  padding: 10px 22px;
   border-radius: 8px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   font-family: inherit;
-  transition: all 0.2s;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .card {
@@ -253,10 +283,15 @@ table tbody tr:hover { background: #f8fafc; }
   display: inline-block;
   width: 1.25rem;
   height: 1.25rem;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  border: 2.5px solid rgba(255, 255, 255, 0.25);
   border-top-color: white;
   border-radius: 50%;
-  animation: spin 0.6s linear infinite;
+  animation: spin 0.7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+.spinner-sm {
+  width: 0.875rem;
+  height: 0.875rem;
+  border-width: 2px;
 }
 .spinner-dark {
   border-color: rgba(0, 0, 0, 0.1);

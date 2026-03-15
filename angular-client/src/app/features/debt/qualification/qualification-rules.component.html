@@ -129,7 +129,7 @@
                       <span class="toggle-slider"></span>
                     </label>
                   </td>
-                  <td class="text-muted">{{ rule.createdAt ? (rule.createdAt | date:'shortDate') : '-' }}</td>
+                  <td class="text-muted">{{ rule.createdAt ? (rule.createdAt | date:'dd/MM/yyyy') : '-' }}</td>
                   <td class="text-right">
                     <div class="action-btns">
                       <button class="btn btn-ghost btn-sm btn-success-text" (click)="handleRun(rule.id)" [disabled]="runningRuleId() === rule.id" [attr.data-testid]="'button-run-' + rule.id">

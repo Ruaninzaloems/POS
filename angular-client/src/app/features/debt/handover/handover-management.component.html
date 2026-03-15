@@ -193,7 +193,7 @@
                   <td class="font-mono">{{ h.accountNo }}</td>
                   <td>{{ h.accountName }}</td>
                   <td>{{ h.attorney }}</td>
-                  <td>{{ h.handoverDate }}</td>
+                  <td>{{ formatDate(h.handoverDate) }}</td>
                   <td class="text-right font-medium">{{ formatCurrency(h.handedOverAmount) }}</td>
                   <td><span class="badge" [ngClass]="getStatusClass(h.status)">{{ h.status }}</span></td>
                 </tr>

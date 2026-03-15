@@ -6,7 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { PAGE_SIZE } from '../../../services/debt-config';
-import { formatCurrency } from '../../../services/format.service';
+import { formatCurrency, formatDate } from '../../../services/format.service';
 import { Attorney, HandoverRecord, HandoverOption } from '../../../models/debt.models';
 
 @Component({
@@ -43,6 +43,7 @@ export class HandoverManagementComponent implements OnInit {
   currentPage = signal(1);
 
   formatCurrency = formatCurrency;
+  formatDate = formatDate;
 
   activeAttorneys = computed(() => this.attorneys().filter(a => a.isActive));
 

@@ -5,7 +5,7 @@ import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 import { ToastService } from '../../../core/services/toast.service';
-import { formatFileSize, getFinancialYearList } from '../../../services/format.service';
+import { formatFileSize, formatDate, getFinancialYearList } from '../../../services/format.service';
 import { getStatusColor } from '../../../services/validation.service';
 import type { Section129Config, Section129Run, Section129RunFile } from '../../../models/debt.models';
 import type { RunType, HandoverOption, DistributionType } from '../../../models/debt.models';
@@ -135,6 +135,10 @@ export class Section129NoticesComponent implements OnInit {
 
   formatFileSize(bytes: number): string {
     return formatFileSize(bytes);
+  }
+
+  fmtDate(val: string | null | undefined): string {
+    return formatDate(val);
   }
 
   canDeleteRun(run: Section129Run): boolean {
