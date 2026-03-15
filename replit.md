@@ -8,6 +8,13 @@ Preferred communication style: Simple, everyday language.
 Theme: Platinum SCM Design System — navy primary (`--platinum-primary: #0f2b46`), gold accent (`--platinum-accent: #c9a84c`), white surfaces, Inter font. Layout: sidebar (250px collapsible to 64px) + toolbar (56px) shell with grouped navigation. NO dark slate themes. All pages must use this consistent light theme with CSS variables from `styles.css`.
 **Date Format Rule**: ALL date displays EVERYWHERE in the UI must use `dd/mm/yyyy` format. Reports and all screens. This is a permanent standard — never use `month: 'short'`, `dateStyle: 'medium'`, or any other format. Date values sent to APIs remain unchanged (ISO format). Use the `padStart(2,'0')` pattern for consistent formatting.
 
+## CRITICAL DATA RULE — Platinum API Exclusively
+**ALL data must come from the Platinum Inzalo EMS API. No exceptions.**
+- NEVER reference, query, or update any local database for feature data. The local PostgreSQL is ONLY for infrastructure (sessions, internal tables like `users`, `cashier_sessions`, `transactions`, `conversations`, `messages`).
+- NEVER hardcode values, mock data, or use `_synthetic: true`. Every piece of feature data displayed or processed must originate from a Platinum API call.
+- NEVER create local DB tables to store or cache Platinum data. The Platinum API is the single source of truth for all business/feature data.
+- This is a permanent, non-negotiable standard for the entire project.
+
 ## System Architecture
 
 ### Frontend — Angular 19
