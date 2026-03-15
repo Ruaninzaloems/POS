@@ -6,7 +6,7 @@
       </div>
       <div class="header-titles">
         <h1 class="header-title" data-testid="text-pos-title">POS Cashier</h1>
-        <span class="header-subtitle">
+        <span class="header-subtitle header-subtitle-full">
           @if (cashierInfo()?.cashOfficeDesc) {
             {{ cashierInfo()?.cashOfficeDesc }}
           } @else {
@@ -17,6 +17,13 @@
           }
           @if (sessionActive()) {
             <span class="session-indicator session-active">Session Active</span>
+          }
+        </span>
+        <span class="header-subtitle header-subtitle-compact">
+          @if (cashierInfo()?.cashOfficeDesc) {
+            {{ cashierInfo()?.cashOfficeDesc }}
+          } @else {
+            George
           }
         </span>
       </div>

@@ -52,6 +52,9 @@
   text-overflow: ellipsis;
   display: block;
 }
+.header-subtitle-compact {
+  display: none;
+}
 
 .header-actions {
   display: flex;
@@ -2745,36 +2748,42 @@
     overflow: visible;
   }
   .pos-header {
-    padding: 6px 10px;
+    padding: 4px 8px;
     height: auto;
-    min-height: 48px;
-    gap: 4px;
+    min-height: 40px;
+    gap: 0;
+    flex-wrap: wrap;
   }
   .header-left {
-    gap: 8px;
+    gap: 6px;
     min-width: 0;
     flex: 1;
+    order: 1;
   }
   .header-icon {
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
-  }
-  .header-icon svg {
-    width: 16px;
-    height: 16px;
+    display: none;
   }
   .header-titles {
     flex: 1;
     min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
-  .header-title { font-size: 13px; }
-  .header-subtitle {
-    font-size: 9.5px;
-    white-space: normal;
-    overflow: visible;
-    text-overflow: unset;
-    line-height: 1.35;
+  .header-title {
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+  .header-subtitle-full {
+    display: none;
+  }
+  .header-subtitle-compact {
+    display: inline;
+    font-size: 10px;
+    opacity: 0.6;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .session-indicator {
     display: none;
@@ -2782,10 +2791,14 @@
   .header-actions {
     gap: 1px;
     flex-shrink: 0;
+    order: 2;
   }
   .header-btn {
-    padding: 5px 6px;
-    border-radius: 5px;
+    padding: 5px;
+    border-radius: 4px;
+    min-width: 28px;
+    min-height: 28px;
+    justify-content: center;
   }
   .header-btn svg {
     width: 14px;
@@ -4167,12 +4180,8 @@
     min-width: 0;
   }
   .header-title { font-size: 14px; }
-  .header-subtitle {
+  .header-subtitle-full {
     font-size: 10px;
-    white-space: normal;
-    overflow: visible;
-    text-overflow: unset;
-    line-height: 1.35;
   }
   .header-actions { gap: 3px; flex-shrink: 0; }
   .header-btn {
