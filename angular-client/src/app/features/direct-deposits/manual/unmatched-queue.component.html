@@ -240,7 +240,7 @@
                       } @else {
                         <div class="inline-matches-grid">
                           @for (match of getInlineSuggestions(item.posItem_ID); track match.accountId) {
-                            <div class="inline-match-card" [class.inline-match-high]="match.confidence >= 80" [class.inline-match-medium]="match.confidence >= 50 && match.confidence < 80" (click)="navigateToAllocateWithAccount(item, match); $event.stopPropagation()" [attr.data-testid]="'inline-match-' + match.accountId">
+                            <div class="inline-match-card" [class.inline-match-high]="match.confidence >= 80" [class.inline-match-medium]="match.confidence >= 50 && match.confidence < 80" (click)="showAllocConfirm(item, match); $event.stopPropagation()" [attr.data-testid]="'inline-match-' + match.accountId">
                               <div class="inline-match-left">
                                 <div class="inline-match-top-row">
                                   <span class="match-type-icon" [title]="match.matchType">{{ getMatchTypeIcon(match.matchType) }}</span>
@@ -273,16 +273,16 @@
                                   <div class="inline-match-balance">{{ formatCurrency(match.outstandingAmount) }}</div>
                                   <div class="inline-match-balance-label">Outstanding</div>
                                 }
-                                <button class="btn-select-match" (click)="navigateToAllocateWithAccount(item, match); $event.stopPropagation()">
-                                  Select & Allocate
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                                <button class="btn-select-match" (click)="showAllocConfirm(item, match); $event.stopPropagation()">
+                                  Allocate
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
                                 </button>
                               </div>
                             </div>
                           }
                         </div>
                         <div class="inline-suggestions-footer">
-                          <span class="inline-footer-hint">Select a match above to allocate, or use Allocate for manual search</span>
+                          <span class="inline-footer-hint">Click a match above to allocate directly, or use Allocate for manual search</span>
                         </div>
                       }
                     </div>
@@ -381,7 +381,7 @@
                 } @else {
                   <div class="inline-matches-grid">
                     @for (match of getInlineSuggestions(item.posItem_ID); track match.accountId) {
-                      <div class="inline-match-card" [class.inline-match-high]="match.confidence >= 80" [class.inline-match-medium]="match.confidence >= 50 && match.confidence < 80" (click)="navigateToAllocateWithAccount(item, match); $event.stopPropagation()" [attr.data-testid]="'inline-match-m-' + match.accountId">
+                      <div class="inline-match-card" [class.inline-match-high]="match.confidence >= 80" [class.inline-match-medium]="match.confidence >= 50 && match.confidence < 80" (click)="showAllocConfirm(item, match); $event.stopPropagation()" [attr.data-testid]="'inline-match-m-' + match.accountId">
                         <div class="inline-match-left">
                           <div class="inline-match-top-row">
                             <span class="inline-match-acc">{{ match.accountNo }}</span>
@@ -391,7 +391,7 @@
                           <div class="inline-match-detail">{{ match.matchDetail }}</div>
                         </div>
                         <div class="inline-match-right">
-                          <button class="btn-select-match">Select</button>
+                          <button class="btn-select-match">Allocate</button>
                         </div>
                       </div>
                     }
@@ -698,7 +698,7 @@
                           }
                         </div>
                       } @else {
-                        <button class="btn-primary btn-sm" (click)="quickAllocate(selectedItem()!, match)" [disabled]="quickAllocating()" [attr.data-testid]="'button-allocate-match-' + match.accountId">
+                        <button class="btn-primary btn-sm" (click)="showAllocConfirm(selectedItem()!, match)" [disabled]="quickAllocating()" [attr.data-testid]="'button-allocate-match-' + match.accountId">
                           Allocate
                         </button>
                       }
@@ -840,6 +840,56 @@
             </div>
           }
           }
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (pendingAllocConfirm()) {
+    <div class="alloc-confirm-overlay" (click)="cancelAllocConfirm()" data-testid="alloc-confirm-overlay">
+      <div class="alloc-confirm-dialog" (click)="$event.stopPropagation()" data-testid="alloc-confirm-dialog">
+        <div class="alloc-confirm-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><path d="M12 18v-6"/><path d="M9 15l3 3 3-3"/></svg>
+        </div>
+        <h3 class="alloc-confirm-title">Confirm Allocation</h3>
+        <p class="alloc-confirm-desc">Allocate this deposit directly to the selected account?</p>
+        <div class="alloc-confirm-details">
+          <div class="alloc-confirm-row">
+            <span class="alloc-confirm-label">Deposit Amount</span>
+            <span class="alloc-confirm-value mono bold">{{ formatCurrency(pendingAllocConfirm()!.item.amount) }}</span>
+          </div>
+          <div class="alloc-confirm-row">
+            <span class="alloc-confirm-label">Description</span>
+            <span class="alloc-confirm-value">{{ pendingAllocConfirm()!.item.note || pendingAllocConfirm()!.item.reference || '-' }}</span>
+          </div>
+          <div class="alloc-confirm-divider"></div>
+          <div class="alloc-confirm-row">
+            <span class="alloc-confirm-label">Account</span>
+            <span class="alloc-confirm-value mono">{{ pendingAllocConfirm()!.match.accountNo }}</span>
+          </div>
+          <div class="alloc-confirm-row">
+            <span class="alloc-confirm-label">Account Holder</span>
+            <span class="alloc-confirm-value">{{ pendingAllocConfirm()!.match.name }}</span>
+          </div>
+          @if (pendingAllocConfirm()!.match.address) {
+            <div class="alloc-confirm-row">
+              <span class="alloc-confirm-label">Address</span>
+              <span class="alloc-confirm-value">{{ pendingAllocConfirm()!.match.address }}{{ pendingAllocConfirm()!.match.town ? ', ' + pendingAllocConfirm()!.match.town : '' }}</span>
+            </div>
+          }
+          @if (pendingAllocConfirm()!.match.confidence) {
+            <div class="alloc-confirm-row">
+              <span class="alloc-confirm-label">Match Confidence</span>
+              <span class="confidence-badge" [ngClass]="getConfidenceBadgeClass(pendingAllocConfirm()!.match.confidence)">{{ pendingAllocConfirm()!.match.confidence }}%</span>
+            </div>
+          }
+        </div>
+        <div class="alloc-confirm-actions">
+          <button class="btn-outline" (click)="cancelAllocConfirm()" data-testid="button-cancel-alloc">Cancel</button>
+          <button class="btn-primary" (click)="confirmAndAllocate()" data-testid="button-confirm-alloc">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+            Confirm & Allocate
+          </button>
         </div>
       </div>
     </div>

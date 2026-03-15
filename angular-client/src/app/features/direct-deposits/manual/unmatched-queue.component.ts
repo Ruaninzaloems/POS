@@ -516,6 +516,7 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
   quickAllocError = signal('');
   quickAllocMatchId = signal<number | null>(null);
   depositAllocDone = signal<{ accountNo: string; name: string; amount: number; posItemId: number } | null>(null);
+  pendingAllocConfirm = signal<{ item: BankReconPosItem; match: SuggestedMatch } | null>(null);
   allocatedIds = signal<Set<number>>(new Set());
 
   manualSearchOpen = signal(false);
@@ -1785,6 +1786,26 @@ export class UnmatchedQueueComponent implements OnInit, OnDestroy {
         amount: item.amount,
       }
     });
+  }
+
+  showAllocConfirm(item: BankReconPosItem, match: SuggestedMatch): void {
+    if (this.quickAllocating()) return;
+    if (this.isItemAllocated(item)) {
+      this.toast.show('This deposit has already been allocated.', 'info');
+      return;
+    }
+    this.pendingAllocConfirm.set({ item, match });
+  }
+
+  cancelAllocConfirm(): void {
+    this.pendingAllocConfirm.set(null);
+  }
+
+  confirmAndAllocate(): void {
+    const pending = this.pendingAllocConfirm();
+    if (!pending) return;
+    this.pendingAllocConfirm.set(null);
+    this.quickAllocate(pending.item, pending.match);
   }
 
   async quickAllocate(item: BankReconPosItem, match: SuggestedMatch): Promise<void> {
