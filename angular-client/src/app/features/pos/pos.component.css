@@ -2745,23 +2745,46 @@
     overflow: visible;
   }
   .pos-header {
-    padding: 0 10px;
-    height: 48px;
+    padding: 6px 10px;
+    height: auto;
+    min-height: 48px;
+    gap: 4px;
+  }
+  .header-left {
     gap: 8px;
+    min-width: 0;
+    flex: 1;
   }
   .header-icon {
-    width: 30px;
-    height: 30px;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
   }
   .header-icon svg {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
+  }
+  .header-titles {
+    flex: 1;
+    min-width: 0;
   }
   .header-title { font-size: 13px; }
-  .header-subtitle { font-size: 10px; }
-  .header-actions { gap: 2px; }
+  .header-subtitle {
+    font-size: 9.5px;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    line-height: 1.35;
+  }
+  .session-indicator {
+    display: none;
+  }
+  .header-actions {
+    gap: 1px;
+    flex-shrink: 0;
+  }
   .header-btn {
-    padding: 6px 7px;
+    padding: 5px 6px;
     border-radius: 5px;
   }
   .header-btn svg {
@@ -4129,13 +4152,29 @@
 
 @media (max-width: 768px) {
   .pos-header {
-    padding: 0 12px;
-    height: 50px;
+    padding: 6px 12px;
+    height: auto;
+    min-height: 50px;
+    gap: 8px;
+  }
+  .header-left {
+    min-width: 0;
+    flex: 1;
     gap: 10px;
   }
+  .header-titles {
+    flex: 1;
+    min-width: 0;
+  }
   .header-title { font-size: 14px; }
-  .header-subtitle { font-size: 10px; }
-  .header-actions { gap: 3px; }
+  .header-subtitle {
+    font-size: 10px;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    line-height: 1.35;
+  }
+  .header-actions { gap: 3px; flex-shrink: 0; }
   .header-btn {
     padding: 7px 8px;
     font-size: 11px;
