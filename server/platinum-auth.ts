@@ -83,7 +83,7 @@ function setCachedUser(username: string, userData: any) {
 
 const responseCache = new Map<string, { data: any; ts: number }>();
 const RESPONSE_CACHE_TTL = 30 * 1000;
-const RESPONSE_CACHE_MAX = 500;
+const RESPONSE_CACHE_MAX = 1000;
 
 const inFlightRequests = new Map<string, Promise<any>>();
 
@@ -111,6 +111,8 @@ const CACHEABLE_PATHS = [
   '/api/ReceiptPrepaid/active-cashier-details',
   '/api/billing-payment/payment-options',
   '/api/billing-payment/payment-types',
+  '/api/BillingDashboard/',
+  '/api/billing-enquiry/property-details',
 ];
 
 const SHORT_CACHEABLE_PATHS: string[] = [];
@@ -127,8 +129,14 @@ const NEVER_CACHE_PATHS = [
   '/api/billing-payment-day-end-reconcile/save-Reconcile-data',
 ];
 
+const LONG_CACHE_TTL = 5 * 60 * 1000;
+const LONG_CACHEABLE_PATHS = [
+  '/api/BillingDashboard/',
+];
+
 function getCacheableInfo(path: string): { cacheable: boolean; ttl: number } {
   if (NEVER_CACHE_PATHS.some(p => path.includes(p))) return { cacheable: false, ttl: 0 };
+  if (LONG_CACHEABLE_PATHS.some(p => path.startsWith(p))) return { cacheable: true, ttl: LONG_CACHE_TTL };
   if (CACHEABLE_PATHS.some(p => path.startsWith(p))) return { cacheable: true, ttl: RESPONSE_CACHE_TTL };
   if (SHORT_CACHEABLE_PATHS.some(p => path.startsWith(p))) return { cacheable: true, ttl: SHORT_RESPONSE_CACHE_TTL };
   return { cacheable: false, ttl: 0 };
@@ -140,6 +148,7 @@ const USER_SPECIFIC_PATHS = [
   '/api/ReceiptPrepaid/active-cashier-details',
   '/api/billing-payment/payment-options',
   '/api/billing-payment/payment-types',
+  '/api/BillingDashboard/',
 ];
 
 function isUserSpecificPath(path: string): boolean {

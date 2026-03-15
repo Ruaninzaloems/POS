@@ -481,6 +481,7 @@ export function registerReceiptsRoutes(app: Express, httpServer: Server): void {
                 Accept: "application/pdf",
               },
               body: JSON.stringify({ Ids: [Number(serialNo)], ReceiptNos: [], IsReprint: false }),
+              signal: AbortSignal.timeout(60000),
             });
             if (pdfRes.ok) {
               const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());

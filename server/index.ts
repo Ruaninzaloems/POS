@@ -1,5 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
+import compression from "compression";
+import pgSessionStore from "connect-pg-simple";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
@@ -19,6 +21,9 @@ process.on('SIGINT', () => { console.log('[PROCESS] Received SIGINT'); process.e
 
 const app = express();
 const httpServer = createServer(app);
+
+httpServer.keepAliveTimeout = 65000;
+httpServer.headersTimeout = 66000;
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: Date.now() });
@@ -40,8 +45,25 @@ const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toSt
 
 app.set('trust proxy', 1);
 
+app.use(compression({
+  level: 6,
+  threshold: 1024,
+  filter: (req, res) => {
+    if (req.headers['x-no-compression']) return false;
+    return compression.filter(req, res);
+  },
+}));
+
+const PgStore = pgSessionStore(session);
+
 app.use(
   session({
+    store: new PgStore({
+      conString: process.env.DATABASE_URL,
+      tableName: 'user_sessions',
+      createTableIfMissing: true,
+      pruneSessionInterval: 300,
+    }),
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
@@ -79,24 +101,12 @@ export function log(message: string, source = "express") {
 
 app.use((req, res, next) => {
   const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
+  const reqPath = req.path;
 
   res.on("finish", () => {
     const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        const json = JSON.stringify(capturedJsonResponse);
-        logLine += ` :: ${json.length > 300 ? json.substring(0, 300) + '…' : json}`;
-      }
-      log(logLine);
+    if (reqPath.startsWith("/api")) {
+      log(`${req.method} ${reqPath} ${res.statusCode} in ${duration}ms`);
     }
   });
 

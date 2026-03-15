@@ -21,15 +21,29 @@ export function serveStatic(app: Express) {
   }
 
   app.use(express.static(distPath, {
-    etag: false,
-    lastModified: false,
-    setHeaders: (res) => {
-      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-      res.setHeader('Pragma', 'no-cache');
+    etag: true,
+    lastModified: true,
+    maxAge: 0,
+    setHeaders: (res, filePath) => {
+      const ext = path.extname(filePath).toLowerCase();
+      if (filePath.endsWith('index.html') || ext === '.html') {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+      } else if (/[-\.][A-Za-z0-9_-]{8,}\.(js|css|woff2?|ttf|eot|svg|png|jpg|webp|avif|ico)$/i.test(path.basename(filePath))) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      } else if (['.js', '.css', '.woff2', '.woff', '.ttf', '.eot'].includes(ext)) {
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+      } else if (['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.avif', '.ico'].includes(ext)) {
+        res.setHeader('Cache-Control', 'public, max-age=604800');
+      }
     }
   }));
 
   app.use("/{*path}", (_req, res) => {
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+    });
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }

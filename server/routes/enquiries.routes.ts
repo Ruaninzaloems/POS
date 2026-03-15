@@ -253,6 +253,7 @@ export function registerEnquiriesRoutes(app: Express, httpServer: Server): void 
                   Accept: 'application/pdf',
                 },
                 body: JSON.stringify({ Ids: [receiptId], ReceiptNos: [], IsReprint: true }),
+                signal: AbortSignal.timeout(60000),
               });
 
               if (pdfRes.ok) {

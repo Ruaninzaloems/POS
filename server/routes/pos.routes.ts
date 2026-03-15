@@ -465,6 +465,7 @@ export function registerPosRoutes(app: Express, httpServer: Server): void {
       const sessionApiUrl = getPlatinumApiUrl(session);
       const userListRes = await fetch(`${sessionApiUrl}/api/User`, {
         headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+        signal: AbortSignal.timeout(30000),
       });
       if (!userListRes.ok) {
         return res.json({ error: "Failed to fetch user list", status: userListRes.status });
@@ -503,6 +504,7 @@ export function registerPosRoutes(app: Express, httpServer: Server): void {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ userName: name, password, dbName }),
+            signal: AbortSignal.timeout(30000),
           });
           const text = await r.text();
           let parsed: any;

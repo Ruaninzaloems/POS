@@ -344,6 +344,7 @@ export function registerBillingRoutes(app: Express, httpServer: Server): void {
               Accept: "application/pdf,application/octet-stream,*/*",
             },
             body: JSON.stringify(payload),
+            signal: AbortSignal.timeout(60000),
           });
           if (!r.ok) {
             console.warn(`[print-receipt] Failed to fetch receipt ${id}: HTTP ${r.status}`);
@@ -419,6 +420,7 @@ export function registerBillingRoutes(app: Express, httpServer: Server): void {
             Accept: "application/pdf,application/octet-stream,*/*",
           },
           body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(60000),
         });
 
         if (!pdfRes.ok) {
@@ -470,6 +472,7 @@ export function registerBillingRoutes(app: Express, httpServer: Server): void {
             Accept: "application/pdf,application/octet-stream,*/*",
           },
           body: JSON.stringify(bulkPayload),
+          signal: AbortSignal.timeout(60000),
         });
         if (!pdfRes.ok) {
           const errorText = await pdfRes.text().catch((err) => { console.error('[print-receipt] Failed to read error response text:', err); return ""; });
@@ -555,6 +558,7 @@ export function registerBillingRoutes(app: Express, httpServer: Server): void {
           Accept: "application/pdf",
         },
         body: JSON.stringify({ Ids: [Number(receiptId)], ReceiptNos: [], IsReprint: true }),
+        signal: AbortSignal.timeout(60000),
       });
 
       if (!pdfRes.ok) {
@@ -851,6 +855,7 @@ export function registerBillingRoutes(app: Express, httpServer: Server): void {
           Authorization: `Bearer ${token}`,
           Accept: "application/pdf,application/octet-stream,*/*",
         },
+        signal: AbortSignal.timeout(60000),
       });
 
       if (!pdfRes.ok) {
