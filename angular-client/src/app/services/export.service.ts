@@ -9,6 +9,7 @@ export interface ExportOptions {
   address?: string;
   financialYear?: string;
   extraHeaders?: { label: string; value: string }[];
+  customFilename?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -64,7 +65,8 @@ export class ExportService {
 
     const csv = lines.join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
-    this.downloadBlob(blob, this.buildFilename(options.tabName, options.accountNo, 'csv'));
+    const filename = options.customFilename ? `${options.customFilename}.csv` : this.buildFilename(options.tabName, options.accountNo, 'csv');
+    this.downloadBlob(blob, filename);
   }
 
   exportPdf(options: ExportOptions, headers: string[], rows: (string | number)[][], columnAligns?: ('left' | 'right' | 'center')[]): void {

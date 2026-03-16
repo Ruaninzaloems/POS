@@ -183,6 +183,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
   consumptionViewMode = signal<'chart' | 'table'>('chart');
   consumptionSortCol = signal<string>('');
   consumptionSortDir = signal<'asc' | 'desc'>('desc');
+  consumptionMonthFrom = signal<string>('');
+  consumptionMonthTo = signal<string>('');
+  consumptionShowMonthFilter = signal(false);
 
   svcBalanceData = signal<any[]>([]);
   svcBalanceLoading = signal(false);
@@ -4208,6 +4211,9 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.consumptionSelectedYears.set([]);
     this.consumptionSortCol.set('');
     this.consumptionSortDir.set('desc');
+    this.consumptionMonthFrom.set('');
+    this.consumptionMonthTo.set('');
+    this.consumptionShowMonthFilter.set(false);
     const account = this.selectedAccount();
     const accountId = this.getAccountId(account);
     const baseParams = this.getMeterReadingParams(meter, accountId);
@@ -4302,38 +4308,125 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.applyConsumptionYearFilter();
   }
 
+  private parseReadingDate(r: any): Date | null {
+    const dateStr = r.reading2Date || r.reading1Date || r.readingDate || r.billingDate || r.date || r.transactionDate || '';
+    if (!dateStr) return null;
+    let d: Date;
+    const parts = dateStr.split('/');
+    if (parts.length === 3 && parts[0].length <= 2) {
+      d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+    } else {
+      d = new Date(dateStr);
+    }
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  getReadingFy(r: any): string {
+    if (r.finYear || r.financialYear) return r.finYear || r.financialYear;
+    const d = this.parseReadingDate(r);
+    if (!d) return '';
+    const fyStart = d.getMonth() >= 6 ? d.getFullYear() : d.getFullYear() - 1;
+    return `${fyStart}/${fyStart + 1}`;
+  }
+
   applyConsumptionYearFilter() {
     const all = this.consumptionAllHistory();
     const selectedYears = this.consumptionSelectedYears();
-    if (selectedYears.length === 0 || selectedYears.length === this.consumptionFinYears().length) {
-      this.consumptionHistory.set(all);
-      this.consumptionChartData.set(all);
-      this.consumptionInsights.set(this.computeConsumptionInsights(all));
-      return;
+    const allYears = selectedYears.length === 0 || selectedYears.length === this.consumptionFinYears().length;
+    let filtered = allYears ? [...all] : all.filter((r: any) => selectedYears.includes(this.getReadingFy(r)));
+
+    const monthFrom = this.consumptionMonthFrom();
+    const monthTo = this.consumptionMonthTo();
+    if (monthFrom || monthTo) {
+      const fromDate = monthFrom ? new Date(monthFrom + '-01') : null;
+      const toDate = monthTo ? new Date(monthTo + '-28') : null;
+      if (toDate) {
+        toDate.setMonth(toDate.getMonth() + 1);
+        toDate.setDate(0);
+      }
+      filtered = filtered.filter((r: any) => {
+        const d = this.parseReadingDate(r);
+        if (!d) return false;
+        if (fromDate && d < fromDate) return false;
+        if (toDate && d > toDate) return false;
+        return true;
+      });
     }
-    const filtered = all.filter((r: any) => {
-      if (r.finYear || r.financialYear) {
-        return selectedYears.includes(r.finYear || r.financialYear);
-      }
-      const dateStr = r.reading2Date || r.reading1Date || r.readingDate || r.billingDate || r.date || r.transactionDate || '';
-      if (!dateStr) return false;
-      let d: Date;
-      const parts = dateStr.split('/');
-      if (parts.length === 3 && parts[0].length <= 2) {
-        d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-      } else {
-        d = new Date(dateStr);
-      }
-      if (isNaN(d.getTime())) return false;
-      const month = d.getMonth();
-      const year = d.getFullYear();
-      const fyStart = month >= 6 ? year : year - 1;
-      const fy = `${fyStart}/${fyStart + 1}`;
-      return selectedYears.includes(fy);
-    });
+
     this.consumptionHistory.set(filtered);
     this.consumptionChartData.set(filtered);
     this.consumptionInsights.set(this.computeConsumptionInsights(filtered));
+  }
+
+  onConsumptionMonthFromChange(val: string) {
+    this.consumptionMonthFrom.set(val);
+    this.applyConsumptionYearFilter();
+  }
+
+  onConsumptionMonthToChange(val: string) {
+    this.consumptionMonthTo.set(val);
+    this.applyConsumptionYearFilter();
+  }
+
+  clearConsumptionMonthFilter() {
+    this.consumptionMonthFrom.set('');
+    this.consumptionMonthTo.set('');
+    this.applyConsumptionYearFilter();
+  }
+
+  getConsumptionMonthOptions(): { value: string; label: string }[] {
+    const all = this.consumptionAllHistory();
+    const months = new Set<string>();
+    for (const r of all) {
+      const d = this.parseReadingDate(r);
+      if (d) {
+        const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        months.add(ym);
+      }
+    }
+    return Array.from(months).sort().map(ym => {
+      const [y, m] = ym.split('-');
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return { value: ym, label: `${monthNames[parseInt(m) - 1]} ${y}` };
+    });
+  }
+
+  private buildConsumptionFilename(ext: string): string {
+    const acct = this.selectedAccount();
+    const accountNo = this.getAccountNum(acct);
+    const accountName = this.getAccountName(acct);
+    const sgNumber = acct?.sgNumber || (this.globalSnapshot() as any)?.sgNumber || '';
+    const clean = (s: string) => s.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+
+    const selectedYears = this.consumptionSelectedYears();
+    const allYears = selectedYears.length === this.consumptionFinYears().length;
+    let fyPart = '';
+    if (allYears) {
+      fyPart = 'All_Years';
+    } else if (selectedYears.length === 1) {
+      fyPart = `FY${clean(selectedYears[0])}`;
+    } else {
+      fyPart = selectedYears.map(y => `FY${clean(y)}`).join('_');
+    }
+
+    const monthFrom = this.consumptionMonthFrom();
+    const monthTo = this.consumptionMonthTo();
+    let datePart = '';
+    if (monthFrom && monthTo) {
+      datePart = `_${monthFrom}_to_${monthTo}`;
+    } else if (monthFrom) {
+      datePart = `_from_${monthFrom}`;
+    } else if (monthTo) {
+      datePart = `_to_${monthTo}`;
+    }
+
+    const parts = ['MeterReadings', clean(accountNo)];
+    if (accountName && accountName !== '-') parts.push(clean(accountName));
+    if (sgNumber) parts.push(clean(sgNumber));
+    parts.push(fyPart);
+    if (datePart) parts.push(clean(datePart));
+
+    return parts.join('_') + `.${ext}`;
   }
 
   computeConsumptionInsights(readings: any[]): any {
@@ -4471,7 +4564,7 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     const getColValue = (r: any, col: string): any => {
       switch (col) {
         case 'billingMonth': return (r.billingmonth || r.billingMonth || '').toLowerCase();
-        case 'finYear': return r.financialYear || r.finYear || '';
+        case 'finYear': return this.getReadingFy(r);
         case 'oldReadingDate': return this.parseDateToTs(r.reading1Date || r.readingDate || '');
         case 'oldReading': return Number(r.reading1 || r.previousReading || r.prevReading || 0);
         case 'newReadingDate': return this.parseDateToTs(r.reading2Date || r.date || '');
@@ -6392,16 +6485,38 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
     this.exportService.exportPdf(this.getExportOpts('Services', 'SERVICES REPORT'), headers, rows);
   }
 
-  exportConsumptionCsv(): void {
-    const history = this.consumptionHistory();
+  private getConsumptionExportOpts(): { opts: any; meterNo: string } {
     const meter = this.consumptionSelectedMeter();
-    if (!history.length) { this.toast.error('No consumption data to export'); return; }
     const meterNo = meter?.physicalMeterNo || meter?.meterNo || '';
-    const opts = this.getExportOpts('Consumption', 'CONSUMPTION HISTORY REPORT');
-    opts.extraHeaders = [{ label: 'Meter Number', value: meterNo }];
-    const headers = ['Billing Month', 'Capturer', 'Old Date', 'Old Reading', 'New Date', 'New Reading', 'Days', 'Consumption', 'Flag', 'Reading Status'];
+    const selectedYears = this.consumptionSelectedYears();
+    const fyDisplay = selectedYears.length === this.consumptionFinYears().length ? 'All Years' : selectedYears.map(y => `FY ${y}`).join(', ');
+    const opts = this.getExportOpts('Consumption', 'METER READING HISTORY REPORT');
+    opts.customFilename = this.buildConsumptionFilename('');
+    opts.financialYear = fyDisplay;
+    const extraHeaders: { label: string; value: string }[] = [{ label: 'Meter Number', value: meterNo }];
+    const sgNumber = this.selectedAccount()?.sgNumber || (this.globalSnapshot() as any)?.sgNumber || '';
+    if (sgNumber) extraHeaders.push({ label: 'SG Number', value: sgNumber });
+    const monthFrom = this.consumptionMonthFrom();
+    const monthTo = this.consumptionMonthTo();
+    if (monthFrom || monthTo) {
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const fmtMonth = (ym: string) => { const [y, m] = ym.split('-'); return `${monthNames[parseInt(m) - 1]} ${y}`; };
+      if (monthFrom && monthTo) extraHeaders.push({ label: 'Date Range', value: `${fmtMonth(monthFrom)} to ${fmtMonth(monthTo)}` });
+      else if (monthFrom) extraHeaders.push({ label: 'From Month', value: fmtMonth(monthFrom) });
+      else if (monthTo) extraHeaders.push({ label: 'To Month', value: fmtMonth(monthTo) });
+    }
+    opts.extraHeaders = extraHeaders;
+    return { opts, meterNo };
+  }
+
+  private getConsumptionExportRows(history: any[]): { headers: string[]; rows: (string | number)[][]; headersShort: string[]; aligns: ('left' | 'right')[] } {
+    const headers = ['FY', 'Billing Month', 'Service', 'Capturer', 'Old Date', 'Old Reading', 'New Date', 'New Reading', 'Days', 'Consumption', 'Levy Status', 'Reading Status'];
+    const headersShort = ['FY', 'Month', 'Service', 'Capturer', 'Old Date', 'Old Rdg', 'New Date', 'New Rdg', 'Days', 'Cons.', 'Levy', 'Status'];
+    const aligns: ('left' | 'right')[] = ['left', 'left', 'left', 'left', 'left', 'right', 'left', 'right', 'right', 'right', 'left', 'left'];
     const rows = history.map((r: any) => [
+      this.getReadingFy(r) || '',
       r.billingmonth || r.billingMonth || '',
+      r.serviceDesc || '',
       r.capturer || r.capturerName || r.reader || r.meterReader || '',
       this.formatDate(r.reading1Date || r.readingDate),
       r.reading1 || r.previousReading || '',
@@ -6409,35 +6524,28 @@ export class EnquiriesGeneralComponent implements OnInit, OnDestroy {
       r.reading2 || r.currentReading || '',
       r.readingdays || r.readingDays || r.days || '',
       this.getConsumptionVal(r),
-      r.flag || '',
+      r.levyStatus || '',
       r.readingStatus || r.status || '',
     ]);
+    return { headers, rows, headersShort, aligns };
+  }
+
+  exportConsumptionCsv(): void {
+    const history = this.consumptionHistory();
+    if (!history.length) { this.toast.error('No consumption data to export'); return; }
+    const { opts } = this.getConsumptionExportOpts();
+    const { headers, rows } = this.getConsumptionExportRows(history);
+    opts.customFilename = this.buildConsumptionFilename('csv').replace(/\.csv$/, '');
     this.exportService.exportCsv(opts, headers, rows);
-    this.toast.success('Consumption history exported');
+    this.toast.success('Meter reading history downloaded');
   }
 
   exportConsumptionPdf(): void {
     const history = this.consumptionHistory();
-    const meter = this.consumptionSelectedMeter();
     if (!history.length) { this.toast.error('No consumption data to export'); return; }
-    const meterNo = meter?.physicalMeterNo || meter?.meterNo || '';
-    const opts = this.getExportOpts('Consumption', 'CONSUMPTION HISTORY REPORT');
-    opts.extraHeaders = [{ label: 'Meter Number', value: meterNo }];
-    const headers = ['Month', 'Capturer', 'Old Date', 'Old Rdg', 'New Date', 'New Rdg', 'Days', 'Consumption', 'Flag', 'Status'];
-    const aligns: ('left' | 'right')[] = ['left', 'left', 'left', 'right', 'left', 'right', 'right', 'right', 'left', 'left'];
-    const rows = history.map((r: any) => [
-      r.billingmonth || r.billingMonth || '',
-      r.capturer || r.capturerName || r.reader || r.meterReader || '',
-      this.formatDate(r.reading1Date || r.readingDate),
-      r.reading1 || r.previousReading || '',
-      this.formatDate(r.reading2Date || r.date),
-      r.reading2 || r.currentReading || '',
-      r.readingdays || r.readingDays || r.days || '',
-      String(this.getConsumptionVal(r)),
-      r.flag || '',
-      r.readingStatus || r.status || '',
-    ]);
-    this.exportService.exportPdf(opts, headers, rows, aligns);
+    const { opts } = this.getConsumptionExportOpts();
+    const { headersShort, rows, aligns } = this.getConsumptionExportRows(history);
+    this.exportService.exportPdf(opts, headersShort, rows, aligns);
   }
 
   exportMetersCsv(): void {

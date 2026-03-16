@@ -4930,10 +4930,48 @@
           <div class="tab-panel" data-testid="consumption-tab">
             @if ((tabData()?.meters || []).length > 0) {
               @if (consumptionHistory().length > 0) {
-                <div class="export-toolbar">
-                  <button class="export-btn export-csv" (click)="exportConsumptionCsv()" data-testid="button-export-consumption-csv">📥 Excel/CSV</button>
-                  <button class="export-btn export-pdf" (click)="exportConsumptionPdf()" data-testid="button-export-consumption-pdf">🖨️ Print/PDF</button>
+                <div class="export-toolbar cons-download-toolbar">
+                  <div class="cons-download-left">
+                    <button class="export-btn export-csv cons-download-btn" (click)="exportConsumptionCsv()" data-testid="button-export-consumption-csv">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                      Download CSV
+                    </button>
+                    <button class="export-btn export-pdf cons-download-btn" (click)="exportConsumptionPdf()" data-testid="button-export-consumption-pdf">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+                      Print/PDF
+                    </button>
+                  </div>
+                  <button class="cons-filter-toggle" (click)="consumptionShowMonthFilter.set(!consumptionShowMonthFilter())" data-testid="btn-toggle-month-filter" [class.cons-filter-active]="consumptionMonthFrom() || consumptionMonthTo()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    @if (consumptionMonthFrom() || consumptionMonthTo()) {
+                      Date Filter Active
+                    } @else {
+                      Filter by Date
+                    }
+                  </button>
                 </div>
+                @if (consumptionShowMonthFilter()) {
+                  <div class="cons-month-filter-bar" data-testid="month-filter-bar">
+                    <span class="cons-month-label">Date Range:</span>
+                    <div class="cons-month-pickers">
+                      <div class="cons-month-field">
+                        <label>From</label>
+                        <input type="month" class="cons-month-input" [value]="consumptionMonthFrom()" (change)="onConsumptionMonthFromChange($any($event.target).value)" data-testid="input-month-from" />
+                      </div>
+                      <span class="cons-month-arrow">→</span>
+                      <div class="cons-month-field">
+                        <label>To</label>
+                        <input type="month" class="cons-month-input" [value]="consumptionMonthTo()" (change)="onConsumptionMonthToChange($any($event.target).value)" data-testid="input-month-to" />
+                      </div>
+                    </div>
+                    @if (consumptionMonthFrom() || consumptionMonthTo()) {
+                      <button class="cons-month-clear" (click)="clearConsumptionMonthFilter()" data-testid="btn-clear-month-filter">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        Clear
+                      </button>
+                    }
+                  </div>
+                }
               }
               <div class="cons-layout-full">
                 @if ((tabData()?.meters || []).length > 1) {
@@ -5129,6 +5167,9 @@
                           <table class="cons-smart-table cons-reading-table" data-testid="table-meter-history">
                             <thead>
                               <tr>
+                                @if (consumptionSelectedYears().length > 1 || consumptionSelectedYears().length === consumptionFinYears().length) {
+                                  <th class="cons-th-sortable cons-th-fy" (click)="sortConsumptionBy('finYear')"><span>FY</span><span class="cons-sort-icon">{{ getConsSortIcon('finYear') }}</span></th>
+                                }
                                 <th class="cons-th-sortable" (click)="sortConsumptionBy('serviceDesc')"><span>Service Type</span><span class="cons-sort-icon">{{ getConsSortIcon('serviceDesc') }}</span></th>
                                 <th class="cons-th-sortable" (click)="sortConsumptionBy('meterClassificationDesc')"><span>Meter Classification</span><span class="cons-sort-icon">{{ getConsSortIcon('meterClassificationDesc') }}</span></th>
                                 <th class="cons-th-sortable" (click)="sortConsumptionBy('tariff')"><span>Tariff</span><span class="cons-sort-icon">{{ getConsSortIcon('tariff') }}</span></th>
@@ -5167,6 +5208,9 @@
                             <tbody>
                               @for (r of getConsumptionHistorySorted(); track $index) {
                                 <tr [class.cons-row-open]="isOpenPeriodRow(r)" [class.cons-row-estimate]="getConsRowClass(r) === 'cons-row-estimate'" [class.cons-row-reversed]="getConsRowClass(r) === 'cons-row-reversed'" [class.cons-row-anomaly]="isAnomalyReading(r, $index) === 'spike'" [attr.data-testid]="'reading-row-' + $index">
+                                  @if (consumptionSelectedYears().length > 1 || consumptionSelectedYears().length === consumptionFinYears().length) {
+                                    <td class="cons-td-fy">{{ getReadingFy(r) || '-' }}</td>
+                                  }
                                   <td>{{ r.serviceDesc || '-' }}</td>
                                   <td>{{ r.meterClassificationDesc || '-' }}</td>
                                   <td class="cons-td-tariff">{{ r.tariff || '-' }}</td>
