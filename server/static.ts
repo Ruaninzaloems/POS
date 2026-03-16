@@ -26,13 +26,19 @@ export function serveStatic(app: Express) {
     maxAge: 0,
     setHeaders: (res, filePath) => {
       const ext = path.extname(filePath).toLowerCase();
+      const basename = path.basename(filePath);
       if (filePath.endsWith('index.html') || ext === '.html') {
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.setHeader('Pragma', 'no-cache');
-      } else if (/[-\.][A-Za-z0-9_-]{8,}\.(js|css|woff2?|ttf|eot|svg|png|jpg|webp|avif|ico)$/i.test(path.basename(filePath))) {
+      } else if (basename === 'main.js' || basename === 'styles.css' || basename === 'polyfills.js') {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+      } else if (/[-\.][A-Za-z0-9_-]{8,}\.(js|css|woff2?|ttf|eot|svg|png|jpg|webp|avif|ico)$/i.test(basename)) {
         res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-      } else if (['.js', '.css', '.woff2', '.woff', '.ttf', '.eot'].includes(ext)) {
-        res.setHeader('Cache-Control', 'public, max-age=86400');
+      } else if (['.js', '.css'].includes(ext)) {
+        res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+      } else if (['.woff2', '.woff', '.ttf', '.eot'].includes(ext)) {
+        res.setHeader('Cache-Control', 'public, max-age=604800');
       } else if (['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.avif', '.ico'].includes(ext)) {
         res.setHeader('Cache-Control', 'public, max-age=604800');
       }
