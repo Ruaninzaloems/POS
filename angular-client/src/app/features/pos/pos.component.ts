@@ -2691,6 +2691,58 @@ export class PosComponent implements OnInit, OnDestroy {
     }
   }
 
+  async printConsolidatedReceipt(): Promise<void> {
+    const results = this.receiptResults();
+    if (results.length < 2) return;
+    this.printingReceipt.set(true);
+    try {
+      const cashierName = this.cashierInfo()?.cashierName || this.user()?.userName || '';
+      const cashOffice = this.cashierInfo()?.cashOfficeDesc || this.cashierInfo()?.cashOfficeName || '';
+      const payload = {
+        receipts: results.map(r => ({
+          receiptNumber: r.receiptNumber,
+          tenderType: r.tenderType,
+          amount: r.amount,
+          items: r.items.map(i => ({
+            id: i.id,
+            type: i.type,
+            label: i.label,
+            accountData: i.accountData ? {
+              accountNumber: i.accountData.accountNumber || '',
+              name: i.accountData.name || '',
+              address: i.accountData.address || '',
+              sgNumber: (i.accountData as any).sgNumber || '',
+              originalData: (i.accountData as any).originalData,
+            } : undefined,
+            miscData: i.miscData || undefined,
+            clearanceData: i.clearanceData || undefined,
+            prepaidData: i.prepaidData || undefined,
+          })),
+        })),
+        cashierName,
+        cashOffice,
+        municipality: 'George Municipality',
+      };
+      const resp = await firstValueFrom(this.api.post<{ base64: string; mimeType: string }>('/api/pos/consolidated-receipt', payload));
+      if (resp?.base64) {
+        const byteChars = atob(resp.base64);
+        const byteArr = new Uint8Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+        const blob = new Blob([byteArr], { type: resp.mimeType || 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        this.toast.success('Consolidated receipt generated.');
+      } else {
+        this.toast.error('No PDF data returned.');
+      }
+    } catch (e: any) {
+      console.error('[printConsolidatedReceipt] Error:', e);
+      this.toast.error(e?.error?.message || 'Failed to generate consolidated receipt.');
+    } finally {
+      this.printingReceipt.set(false);
+    }
+  }
+
   getReceiptGrandTotal(): number {
     return this.receiptResults().reduce((s, r) => s + r.amount, 0);
   }
