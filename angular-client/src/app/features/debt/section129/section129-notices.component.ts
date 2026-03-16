@@ -98,8 +98,8 @@ export class Section129NoticesComponent implements OnInit {
 
   async loadData(): Promise<void> {
     const results = await Promise.allSettled([
-      firstValueFrom(this.api.get('/api/platinum/billing-debt/section129-config')),
-      firstValueFrom(this.api.get('/api/platinum/billing-debt/section129-runs')),
+      firstValueFrom(this.api.get('/api/platinum/billing-debt/section129-config', { finYear: this.finYear })),
+      firstValueFrom(this.api.get('/api/platinum/billing-debt/section129-runs', { finYear: this.finYear })),
       firstValueFrom(this.api.get('/api/platinum/billing-debt/billing-cycles')),
       firstValueFrom(this.api.get('/api/platinum/billing-debt/towns')),
       firstValueFrom(this.api.get('/api/platinum/billing-debt/property-categories')),
@@ -120,6 +120,21 @@ export class Section129NoticesComponent implements OnInit {
     if (results[5].status === 'fulfilled') this.accountTypes = results[5].value || [];
     if (results[6].status === 'fulfilled') this.personTypes = results[6].value || [];
     if (results[7].status === 'fulfilled') this.ageingRanges = results[7].value || [];
+  }
+
+  async onFinYearChange(): Promise<void> {
+    this.configLoading.set(true);
+    this.runsLoading.set(true);
+    this.config.set(null);
+    this.runs.set([]);
+    const [cfgResult, runsResult] = await Promise.allSettled([
+      firstValueFrom(this.api.get('/api/platinum/billing-debt/section129-config', { finYear: this.finYear })),
+      firstValueFrom(this.api.get('/api/platinum/billing-debt/section129-runs', { finYear: this.finYear })),
+    ]);
+    if (cfgResult.status === 'fulfilled') this.config.set(cfgResult.value);
+    this.configLoading.set(false);
+    if (runsResult.status === 'fulfilled') this.runs.set(runsResult.value || []);
+    this.runsLoading.set(false);
   }
 
   get paginatedRuns(): Section129Run[] {

@@ -9,7 +9,7 @@
   <div class="top-selects">
     <div class="field-group">
       <span class="field-label">Financial Year</span>
-      <select class="field-select" [(ngModel)]="finYear" data-testid="select-fin-year">
+      <select class="field-select" [(ngModel)]="finYear" (ngModelChange)="onFinYearChange()" data-testid="select-fin-year">
         @for (fy of finYears; track fy) {
           <option [value]="fy">{{ fy }}</option>
         }
