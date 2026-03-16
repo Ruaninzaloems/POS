@@ -31,6 +31,8 @@ export class Section129NoticesComponent implements OnInit {
 
   billingCycles: { id: string; name: string }[] = [];
   towns: { id: string; name: string }[] = [];
+  suburbs: { id: string; name: string }[] = [];
+  suburbsLoading = false;
   propertyCategories: { id: string; name: string }[] = [];
   accountTypes: { id: string; name: string }[] = [];
   personTypes: { id: string; name: string }[] = [];
@@ -185,10 +187,26 @@ export class Section129NoticesComponent implements OnInit {
     }
   }
 
+  async onTownChange(): Promise<void> {
+    this.suburb = '';
+    this.suburbs = [];
+    if (!this.town || this.town === '__all__') return;
+    this.suburbsLoading = true;
+    try {
+      const data = await firstValueFrom(this.api.get('/api/platinum/billing-debt/suburbs', { townId: this.town }));
+      this.suburbs = Array.isArray(data) ? data : [];
+    } catch {
+      this.suburbs = [];
+    } finally {
+      this.suburbsLoading = false;
+    }
+  }
+
   handleClear(): void {
     this.billingCycle = '';
     this.town = '';
     this.suburb = '';
+    this.suburbs = [];
     this.propertyCategory = '';
     this.accountType = '';
     this.typeOfPerson = '';

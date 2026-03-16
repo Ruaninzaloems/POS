@@ -101,7 +101,7 @@
           </div>
           <div class="field-group">
             <span class="field-label">Town</span>
-            <select class="field-select" [(ngModel)]="town" data-testid="select-town">
+            <select class="field-select" [(ngModel)]="town" (ngModelChange)="onTownChange()" data-testid="select-town">
               <option value="__all__">All Towns</option>
               @for (t of towns; track t.id) {
                 <option [value]="t.id">{{ t.name }}</option>
@@ -110,7 +110,18 @@
           </div>
           <div class="field-group">
             <span class="field-label">Suburb</span>
-            <input class="field-input" [(ngModel)]="suburb" placeholder="Enter suburb" data-testid="input-suburb" />
+            <select class="field-select" [(ngModel)]="suburb" [disabled]="!town || town === '__all__' || suburbsLoading" data-testid="select-suburb">
+              @if (suburbsLoading) {
+                <option value="">Loading suburbs...</option>
+              } @else if (suburbs.length === 0) {
+                <option value="">{{ !town || town === '__all__' ? 'Select a town first' : 'No suburbs available' }}</option>
+              } @else {
+                <option value="__all__">All Suburbs</option>
+                @for (s of suburbs; track s.id) {
+                  <option [value]="s.id">{{ s.name }}</option>
+                }
+              }
+            </select>
           </div>
           <div class="field-group">
             <span class="field-label">Property Category</span>

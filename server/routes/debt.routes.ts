@@ -168,6 +168,26 @@ export function registerDebtRoutes(app: Express, httpServer: Server): void {
     }
   });
 
+  app.get("/api/platinum/billing-debt/suburbs", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const townId = req.query.townId as string;
+      if (!townId) { res.json([]); return; }
+
+      const data = await platinumGet(session, "/api/BillingDebt/suburbs", { townId } as Record<string, string>);
+      if (data && (data as any)._error) {
+        console.log(`[suburbs] Platinum API error for townId=${townId}:`, JSON.stringify(data).substring(0, 150));
+        res.json([]);
+        return;
+      }
+      const arr = Array.isArray(data) ? data : [];
+      console.log(`[suburbs] Returned ${arr.length} suburb(s) for townId=${townId}`);
+      res.json(arr);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   // requiredPermission: SECTION129_REPORT
   app.get("/api/platinum/billing-debt/section129-report", async (req, res) => {
     try {
