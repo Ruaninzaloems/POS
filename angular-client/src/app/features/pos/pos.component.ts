@@ -115,6 +115,7 @@ export class PosComponent implements OnInit, OnDestroy {
   banksLoading = signal(false);
 
   receiptResults = signal<ReceiptResult[]>([]);
+  sessionCashOfficeName = signal('');
   showReceipt = signal(false);
   printingReceipt = signal(false);
   receiptDeliveryMethod = signal<ReceiptDeliveryMethod>('print');
@@ -632,6 +633,9 @@ export class PosComponent implements OnInit, OnDestroy {
       };
 
       this.cashierInfo.set(cashierInfoObj);
+      if (cashierInfoObj.cashOfficeDesc) {
+        this.sessionCashOfficeName.set(cashierInfoObj.cashOfficeDesc);
+      }
 
       if (hasDayEndReturned) {
         this.sessionActive.set(true);
@@ -2697,7 +2701,7 @@ export class PosComponent implements OnInit, OnDestroy {
     this.printingReceipt.set(true);
     try {
       const cashierName = this.cashierInfo()?.cashierName || this.user()?.userName || '';
-      const cashOffice = this.cashierInfo()?.cashOfficeDesc || this.cashierInfo()?.cashOfficeName || '';
+      const cashOffice = this.sessionCashOfficeName() || this.cashierInfo()?.cashOfficeDesc || this.cashierInfo()?.cashOfficeName || '';
       const payload = {
         receipts: results.map(r => ({
           receiptNumber: r.receiptNumber,
