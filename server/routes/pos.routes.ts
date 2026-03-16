@@ -723,19 +723,50 @@ export function registerPosRoutes(app: Express, httpServer: Server): void {
       lines.push({ type: 'center', text: 'Thank you.' });
       lines.push({ type: 'gap' });
 
+      const pdfDoc = await PDFDocument.create();
+      const font = await pdfDoc.embedFont(StandardFonts.Courier);
+      const fontBold = await pdfDoc.embedFont(StandardFonts.CourierBold);
+
+      const preWrap = (text: string, maxW: number, size: number, f = font): number => {
+        const words = text.split(' ');
+        let current = '';
+        let lineCount = 0;
+        for (const word of words) {
+          const test = current ? `${current} ${word}` : word;
+          if (f.widthOfTextAtSize(test, size) <= maxW) {
+            current = test;
+          } else {
+            if (current) lineCount++;
+            current = word;
+          }
+        }
+        if (current) lineCount++;
+        return Math.max(lineCount, 1);
+      };
+
+      const valueW = CW * 0.53;
       let totalHeight = MARGIN * 2;
       for (const l of lines) {
-        if (l.type === 'gap') totalHeight += SECTION_GAP;
-        else if (l.type === 'separator') totalHeight += 6;
-        else if (l.type === 'header' || l.type === 'center-bold') totalHeight += LINE_H + 2;
-        else totalHeight += LINE_H_SM;
+        if (l.type === 'gap') { totalHeight += SECTION_GAP; continue; }
+        if (l.type === 'separator') { totalHeight += 6; continue; }
+        if (l.type === 'center' || l.type === 'center-bold') {
+          const f = l.type === 'center-bold' ? fontBold : font;
+          const sz = l.type === 'center-bold' ? FONT_BOLD_NORMAL + 1 : FONT_SMALL;
+          const wrapCount = preWrap(l.text || '', CW, sz, f);
+          totalHeight += wrapCount * (l.type === 'center-bold' ? LINE_H + 2 : LINE_H_SM);
+          continue;
+        }
+        if (l.type === 'row' || l.type === 'row-bold') {
+          const f = l.type === 'row-bold' ? fontBold : font;
+          const rightLines = preWrap(l.right || '', valueW, FONT_NORMAL, f);
+          totalHeight += LINE_H_SM + (rightLines > 1 ? (rightLines - 1) * LINE_H_SM : 0);
+          continue;
+        }
+        totalHeight += LINE_H_SM;
       }
       totalHeight = Math.max(totalHeight, 200);
 
-      const pdfDoc = await PDFDocument.create();
       const page = pdfDoc.addPage([W, totalHeight]);
-      const font = await pdfDoc.embedFont(StandardFonts.Courier);
-      const fontBold = await pdfDoc.embedFont(StandardFonts.CourierBold);
 
       let y = totalHeight - MARGIN;
 
