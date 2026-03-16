@@ -135,6 +135,30 @@ export function registerDebtRoutes(app: Express, httpServer: Server): void {
     }
   });
 
+  app.get("/api/platinum/billing-debt/handover-account-detail", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireDebtPermission(session, DEBT_PERMISSIONS.HANDOVER_PROCESS, res)) return;
+      if (!req.query.handoverId && !req.query.accountNo) { res.status(400).json({ message: "handoverId or accountNo required" }); return; }
+      const data = await platinumGet(session, "/api/BillingDebt/handover-account-detail", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-debt/handover-transactions", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      if (!requireDebtPermission(session, DEBT_PERMISSIONS.HANDOVER_PROCESS, res)) return;
+      if (!req.query.handoverId) { res.status(400).json({ message: "handoverId required" }); return; }
+      const data = await platinumGet(session, "/api/BillingDebt/handover-transactions", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   // requiredPermission: HANDOVER_PROCESS
   app.get("/api/platinum/billing-debt/attorney-list", async (req, res) => {
     try {

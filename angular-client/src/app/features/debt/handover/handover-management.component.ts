@@ -42,6 +42,11 @@ export class HandoverManagementComponent implements OnInit {
   submitting = signal(false);
   currentPage = signal(1);
 
+  selectedHandover = signal<HandoverRecord | null>(null);
+  accountDetail = signal<any>(null);
+  handoverTransactions = signal<any[]>([]);
+  loadingDetail = signal(false);
+
   formatCurrency = formatCurrency;
   formatDate = formatDate;
 
@@ -174,6 +179,37 @@ export class HandoverManagementComponent implements OnInit {
     this.ageing.set('');
     this.amountGreaterThan.set('');
     this.rotationAllocations.set([]);
+  }
+
+  async selectHandover(h: HandoverRecord): Promise<void> {
+    if (this.selectedHandover()?.handoverId === h.handoverId) {
+      this.selectedHandover.set(null);
+      this.accountDetail.set(null);
+      this.handoverTransactions.set([]);
+      return;
+    }
+    this.selectedHandover.set(h);
+    this.loadingDetail.set(true);
+    this.accountDetail.set(null);
+    this.handoverTransactions.set([]);
+    try {
+      const [detail, txns] = await Promise.allSettled([
+        firstValueFrom(this.api.get<any>('/api/platinum/billing-debt/handover-account-detail', { handoverId: String(h.handoverId), accountNo: h.accountNo })),
+        firstValueFrom(this.api.get<any[]>('/api/platinum/billing-debt/handover-transactions', { handoverId: String(h.handoverId) })),
+      ]);
+      if (detail.status === 'fulfilled') this.accountDetail.set(detail.value);
+      if (txns.status === 'fulfilled') this.handoverTransactions.set(Array.isArray(txns.value) ? txns.value : []);
+    } catch (e: any) {
+      this.toast.error('Failed to load handover detail');
+    } finally {
+      this.loadingDetail.set(false);
+    }
+  }
+
+  closeDetail(): void {
+    this.selectedHandover.set(null);
+    this.accountDetail.set(null);
+    this.handoverTransactions.set([]);
   }
 
   getStatusClass(status: string): string {
