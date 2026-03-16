@@ -106,7 +106,7 @@ export function registerDebtRoutes(app: Express, httpServer: Server): void {
   app.get("/api/platinum/billing-debt/handover-list", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const data = await platinumGet(session, "/api/BillingDebt/handover-list", req.query as Record<string, string>);
+      const data = await platinumGet(session, "/api/BillingHandover/handover-list", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -117,7 +117,7 @@ export function registerDebtRoutes(app: Express, httpServer: Server): void {
     try {
       const session = requireAuth(req, res); if (!session) return;
       if (!requireDebtPermission(session, DEBT_PERMISSIONS.HANDOVER_PROCESS, res)) return;
-      const data = await platinumPost(session, "/api/BillingDebt/handover-submit", injectAuditFields(session, req.body));
+      const data = await platinumPost(session, "/api/BillingHandover/handover-submit", injectAuditFields(session, req.body));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -128,7 +128,7 @@ export function registerDebtRoutes(app: Express, httpServer: Server): void {
     try {
       const session = requireAuth(req, res); if (!session) return;
       if (!requireDebtPermission(session, DEBT_PERMISSIONS.HANDOVER_PROCESS, res)) return;
-      const data = await platinumPost(session, "/api/BillingDebt/handover-terminate", injectAuditFields(session, req.body, { isTermination: true }));
+      const data = await platinumPost(session, "/api/BillingHandover/handover-terminate", injectAuditFields(session, req.body, { isTermination: true }));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -140,7 +140,7 @@ export function registerDebtRoutes(app: Express, httpServer: Server): void {
       const session = requireAuth(req, res); if (!session) return;
       if (!requireDebtPermission(session, DEBT_PERMISSIONS.HANDOVER_PROCESS, res)) return;
       if (!req.query.handoverId && !req.query.accountNo) { res.status(400).json({ message: "handoverId or accountNo required" }); return; }
-      const data = await platinumGet(session, "/api/BillingDebt/handover-account-detail", req.query as Record<string, string>);
+      const data = await platinumGet(session, "/api/BillingHandover/handover-account-detail", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -152,7 +152,7 @@ export function registerDebtRoutes(app: Express, httpServer: Server): void {
       const session = requireAuth(req, res); if (!session) return;
       if (!requireDebtPermission(session, DEBT_PERMISSIONS.HANDOVER_PROCESS, res)) return;
       if (!req.query.handoverId) { res.status(400).json({ message: "handoverId required" }); return; }
-      const data = await platinumGet(session, "/api/BillingDebt/handover-transactions", req.query as Record<string, string>);
+      const data = await platinumGet(session, "/api/BillingHandover/handover-transactions", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -227,7 +227,7 @@ export function registerDebtRoutes(app: Express, httpServer: Server): void {
   app.get("/api/platinum/billing-debt/handover-report", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const data = await platinumGet(session, "/api/BillingDebt/handover-report", req.query as Record<string, string>);
+      const data = await platinumGet(session, "/api/BillingHandover/handover-report", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
