@@ -3,6 +3,8 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
+const BUILD_VERSION = Date.now().toString(36);
+
 export function serveStatic(app: Express) {
   const currentDir = typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url));
 
@@ -20,10 +22,28 @@ export function serveStatic(app: Express) {
     );
   }
 
+  let indexHtml = fs.readFileSync(path.resolve(distPath, "index.html"), "utf-8");
+  indexHtml = indexHtml
+    .replace(/src="main\.js"/g, `src="main.js?v=${BUILD_VERSION}"`)
+    .replace(/href="styles\.css"/g, `href="styles.css?v=${BUILD_VERSION}"`)
+    .replace(/src="polyfills\.js"/g, `src="polyfills.js?v=${BUILD_VERSION}"`);
+
+  const sendIndex = (_req: any, res: any) => {
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Content-Type': 'text/html; charset=utf-8',
+    });
+    res.send(indexHtml);
+  };
+
+  app.get("/", sendIndex);
+
   app.use(express.static(distPath, {
     etag: true,
     lastModified: true,
     maxAge: 0,
+    index: false,
     setHeaders: (res, filePath) => {
       const ext = path.extname(filePath).toLowerCase();
       const basename = path.basename(filePath);
@@ -45,11 +65,5 @@ export function serveStatic(app: Express) {
     }
   }));
 
-  app.use("/{*path}", (_req, res) => {
-    res.set({
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-    });
-    res.sendFile(path.resolve(distPath, "index.html"));
-  });
+  app.use("/{*path}", sendIndex);
 }
